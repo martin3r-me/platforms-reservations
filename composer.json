@@ -1,0 +1,24 @@
+{
+  "name": "martin3r/platform-reservation",
+  "description": "PausePlus – Reservation & Pre-order system for theater gastronomy",
+  "type": "library",
+  "require": {
+    "php": "^8.2",
+    "laravel/framework": "^12.0",
+    "livewire/livewire": "^3.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Platform\\Reservation\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Platform\\Reservation\\ReservationServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
