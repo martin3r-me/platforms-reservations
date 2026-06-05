@@ -46,6 +46,19 @@
                     class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
             </div>
 
+            @if ($this->availableTables->isNotEmpty())
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tisch (optional)</label>
+                <select wire:model="tableId"
+                    class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                    <option value="">– kein Tisch –</option>
+                    @foreach ($this->availableTables as $table)
+                        <option value="{{ $table->id }}">{{ $table->label }} (max. {{ $table->capacity }} P.)</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+
             <button wire:click="nextStep"
                 class="mt-4 w-full rounded-xl bg-indigo-600 py-3 text-base font-bold text-white hover:bg-indigo-700">
                 Weiter
@@ -151,9 +164,10 @@
                     class="flex-1 rounded-xl border py-3 text-base font-medium dark:border-gray-700 dark:text-white">
                     Zurück
                 </button>
-                <button wire:click="nextStep"
-                    class="flex-1 rounded-xl bg-indigo-600 py-3 text-base font-bold text-white hover:bg-indigo-700">
-                    Weiter
+                <button wire:click="confirm" wire:loading.attr="disabled"
+                    class="flex-1 rounded-xl bg-indigo-600 py-3 text-base font-bold text-white hover:bg-indigo-700 disabled:opacity-50">
+                    <span wire:loading.remove wire:target="confirm">Buchung absenden</span>
+                    <span wire:loading wire:target="confirm">Wird gespeichert…</span>
                 </button>
             </div>
         </div>
@@ -170,9 +184,9 @@
             </p>
             <p class="text-xs text-gray-500">Eine Bestätigung erhalten Sie per E-Mail.</p>
 
-            <a href="{{ route('reservation.floor-plan.viewer', ['floorPlanId' => $tableId]) }}"
+            <a href="{{ route('reservation.bookings.index') }}"
                 class="mt-4 block w-full rounded-xl border py-3 text-base font-medium dark:border-gray-700 dark:text-white">
-                Zurück zur Übersicht
+                Zur Buchungsübersicht
             </a>
         </div>
     @endif

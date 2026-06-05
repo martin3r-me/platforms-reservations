@@ -20,7 +20,7 @@ class BookingList extends Component
     public function bookings()
     {
         $user   = Auth::user();
-        $teamId = $user?->currentTeamRelation?->getRootTeam()?->id;
+        $teamId = $user?->current_team_id;
 
         $query = Booking::with(['table.floorPlan.venue', 'payment'])
             ->where('team_id', $teamId)

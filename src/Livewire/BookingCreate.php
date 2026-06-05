@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\BookingItem;
+use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Table;
 use Illuminate\Support\Facades\Auth;
@@ -40,7 +41,7 @@ class BookingCreate extends Component
                 'date'       => 'required|date|after_or_equal:today',
                 'timeStart'  => 'required|date_format:H:i',
                 'guestCount' => 'required|integer|min:1|max:20',
-                'tableId'    => 'required|integer|exists:reservation_tables,id',
+                'tableId'    => 'nullable|integer|exists:reservation_tables,id',
             ],
             2 => [
                 'guestName'  => 'required|string|max:255',
@@ -51,11 +52,19 @@ class BookingCreate extends Component
         };
     }
 
-    public function mount(int $teamId, ?int $tableId = null): void
+    public function mount(?int $tableId = null): void
     {
-        $this->teamId  = $teamId;
+        $this->teamId  = Auth::user()->current_team_id;
         $this->tableId = $tableId;
         $this->date    = now()->toDateString();
+    }
+
+    #[Computed]
+    public function availableTables(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Table::whereHas('floorPlan', fn ($q) => $q->whereHas('venue', fn ($q2) => $q2->where('team_id', $this->teamId)))
+            ->orderBy('label')
+            ->get();
     }
 
     #[Computed]
@@ -89,7 +98,10 @@ class BookingCreate extends Component
 
     public function nextStep(): void
     {
-        $this->validate($this->rules());
+        $rules = $this->rules();
+        if (!empty($rules)) {
+            $this->validate($rules);
+        }
         $this->step++;
     }
 
@@ -119,12 +131,12 @@ class BookingCreate extends Component
             'guestName'  => 'required|string|max:255',
             'date'       => 'required|date',
             'timeStart'  => 'required|date_format:H:i',
-            'tableId'    => 'required|integer|exists:reservation_tables,id',
+            'tableId'    => 'nullable|integer|exists:reservation_tables,id',
         ]);
 
         $booking = Booking::create([
             'team_id'     => $this->teamId,
-            'table_id'    => $this->tableId,
+            'table_id'    => $this->tableId ?: null,
             'guest_name'  => $this->guestName,
             'guest_email' => $this->guestEmail,
             'guest_phone' => $this->guestPhone,
@@ -155,6 +167,7 @@ class BookingCreate extends Component
 
     public function render()
     {
-        return view('reservation::livewire.booking-create');
+        return view('reservation::livewire.booking-create')
+            ->layout('platform::layouts.app');
     }
 }

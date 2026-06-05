@@ -1,4 +1,21 @@
 <div class="p-4 space-y-4">
+    {{-- ── Schnell-Navigation ────────────────────────────────── --}}
+    <div class="flex flex-wrap gap-2 text-sm">
+        <span class="font-semibold text-gray-500 dark:text-gray-400 self-center">PausePlus:</span>
+        <a href="{{ route('reservation.venues.index') }}"
+            class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
+            🎭 Venues & Tischpläne
+        </a>
+        <a href="{{ route('reservation.menu.index') }}"
+            class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            🍽 Menü verwalten
+        </a>
+        <a href="{{ route('reservation.export') }}"
+            class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            📊 Export
+        </a>
+    </div>
+
     <div class="flex flex-wrap items-center justify-between gap-3">
         <h1 class="text-xl font-semibold dark:text-white">Buchungen</h1>
         <a href="{{ route('reservation.bookings.create') }}"

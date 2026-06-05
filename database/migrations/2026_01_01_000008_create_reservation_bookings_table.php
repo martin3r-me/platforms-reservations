@@ -13,8 +13,9 @@ return new class extends Migration
             $table->uuid('uuid')->unique();
             $table->foreignId('team_id')->constrained('teams')->cascadeOnDelete();
             $table->foreignId('table_id')
+                ->nullable()
                 ->constrained('reservation_tables')
-                ->cascadeOnDelete();
+                ->nullOnDelete();
 
             // Gastdaten
             $table->string('guest_name');

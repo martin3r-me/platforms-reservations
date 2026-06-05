@@ -40,9 +40,6 @@ class ReservationServiceProvider extends ServiceProvider
             __DIR__ . '/../resources/views' => resource_path('views/vendor/reservation'),
         ], 'reservation-views');
 
-        // Routes laden
-        $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
-
         // Livewire-Komponenten registrieren
         $this->registerLivewireComponents();
     }
@@ -57,15 +54,23 @@ class ReservationServiceProvider extends ServiceProvider
                 \Platform\Core\PlatformCore::registerModule([
                     'key'        => 'reservation',
                     'title'      => 'PausePlus',
+                    'group'      => 'operations',
                     'routing'    => config('reservation.routing'),
                     'guard'      => config('reservation.guard'),
                     'navigation' => config('reservation.navigation'),
+                    'sidebar'    => config('reservation.sidebar'),
                 ]);
 
                 if (\Platform\Core\PlatformCore::getModule('reservation')) {
+                    // Authentifizierte Admin-Routen (Prefix + Middleware via ModuleRouter)
                     \Platform\Core\Routing\ModuleRouter::group('reservation', function () {
                         $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
                     });
+
+                    // Öffentliche Gast-Routen (z.B. Tischplan-Buchung) – ohne Auth
+                    \Platform\Core\Routing\ModuleRouter::group('reservation', function () {
+                        $this->loadRoutesFrom(__DIR__ . '/../routes/guest.php');
+                    }, requireAuth: false);
                 }
             }
         } catch (\Throwable $e) {

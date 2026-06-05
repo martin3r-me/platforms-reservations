@@ -1,26 +1,57 @@
 <?php
 
 return [
-    // Scope-Type: 'parent' = root-scoped, 'single' = team-spezifisch
-    'scope_type' => 'single',
-
+    /**
+     * Routing – wie die übrigen Module über den Pfad (…/reservation/…).
+     */
     'routing' => [
-        'mode'   => env('RESERVATION_MODE', 'subdomain'),
+        'mode'   => env('RESERVATION_MODE', 'path'),
         'prefix' => 'reservation',
     ],
 
     'guard' => 'web',
 
+    /**
+     * Hauptnavigation.
+     */
     'navigation' => [
         'route' => 'reservation.dashboard',
         'icon'  => 'heroicon-o-calendar-days',
         'order' => 50,
     ],
 
-    // Mollie Zahlungsintegration
+    /**
+     * Sidebar-Struktur (Metadaten + wird von Livewire\Sidebar gerendert).
+     */
+    'sidebar' => [
+        [
+            'group' => 'Übersicht',
+            'items' => [
+                ['label' => 'Buchungen', 'route' => 'reservation.bookings.index', 'icon' => 'heroicon-o-calendar-days'],
+            ],
+        ],
+        [
+            'group' => 'Verwaltung',
+            'items' => [
+                ['label' => 'Venues & Tischpläne', 'route' => 'reservation.venues.index', 'icon' => 'heroicon-o-building-storefront'],
+                ['label' => 'Menü', 'route' => 'reservation.menu.index', 'icon' => 'heroicon-o-rectangle-stack'],
+                ['label' => 'Drop-off', 'route' => 'reservation.dropoff.index', 'icon' => 'heroicon-o-clock'],
+            ],
+        ],
+        [
+            'group' => 'Auswertung',
+            'items' => [
+                ['label' => 'Export', 'route' => 'reservation.export', 'icon' => 'heroicon-o-arrow-down-tray'],
+            ],
+        ],
+    ],
+
+    /**
+     * Mollie-Zahlungsintegration.
+     */
     'mollie' => [
-        'enabled'    => env('MOLLIE_ENABLED', false),
-        'api_key'    => env('MOLLIE_API_KEY', ''),
+        'enabled'     => env('MOLLIE_ENABLED', false),
+        'api_key'     => env('MOLLIE_API_KEY', ''),
         'webhook_url' => env('MOLLIE_WEBHOOK_URL', ''),
     ],
 

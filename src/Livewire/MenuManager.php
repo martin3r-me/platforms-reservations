@@ -31,7 +31,7 @@ class MenuManager extends Component
     protected function getTeamId(): ?int
     {
         $user = Auth::user();
-        return $user?->currentTeamRelation?->getRootTeam()?->id;
+        return $user?->current_team_id;
     }
 
     #[Computed]
