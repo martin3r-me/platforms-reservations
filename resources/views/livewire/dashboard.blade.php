@@ -28,45 +28,52 @@
 
     {{-- Kennzahlen --}}
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <x-ui-dashboard-tile
-            title="Offene Buchungen"
-            :count="$this->stats->pending_bookings"
-            icon="inbox"
-            variant="warning"
-            size="sm"
-            :href="route('reservation.bookings.index')"
-            :clickable="true"
-            description="warten auf Bestätigung"
-        />
-        <x-ui-dashboard-tile
-            title="Kommende Termine"
-            :count="$this->stats->upcoming_events"
-            icon="ticket"
-            variant="primary"
-            size="sm"
-            :href="route('reservation.events.index')"
-            :clickable="true"
-        />
-        <x-ui-dashboard-tile
-            title="Umsatz im Monat"
-            :count="number_format($this->stats->month_revenue, 2, ',', '.') . ' €'"
-            icon="banknotes"
-            variant="success"
-            size="sm"
-            :href="route('reservation.finance.index')"
-            :clickable="true"
-            description="{{ now()->locale('de')->isoFormat('MMMM Y') }}"
-        />
-        <x-ui-dashboard-tile
-            title="Freigegebene Artikel"
-            :count="$this->stats->approved_items . ' / ' . $this->stats->total_items"
-            icon="rectangle-stack"
-            variant="info"
-            size="sm"
-            :href="route('reservation.menu.index')"
-            :clickable="true"
-            description="Vier-Augen-Freigabe"
-        />
+        @foreach ([
+            [
+                'label' => 'Offene Buchungen',
+                'value' => (string) $this->stats->pending_bookings,
+                'hint'  => 'warten auf Bestätigung',
+                'icon'  => 'heroicon-o-inbox',
+                'color' => 'var(--ui-warning)',
+                'href'  => route('reservation.bookings.index'),
+            ],
+            [
+                'label' => 'Kommende Termine',
+                'value' => (string) $this->stats->upcoming_events,
+                'hint'  => null,
+                'icon'  => 'heroicon-o-ticket',
+                'color' => 'var(--ui-primary)',
+                'href'  => route('reservation.events.index'),
+            ],
+            [
+                'label' => 'Umsatz im Monat',
+                'value' => number_format($this->stats->month_revenue, 2, ',', '.') . ' €',
+                'hint'  => now()->locale('de')->isoFormat('MMMM Y'),
+                'icon'  => 'heroicon-o-banknotes',
+                'color' => 'var(--ui-success)',
+                'href'  => route('reservation.finance.index'),
+            ],
+            [
+                'label' => 'Freigegebene Artikel',
+                'value' => $this->stats->approved_items . ' / ' . $this->stats->total_items,
+                'hint'  => 'Vier-Augen-Freigabe',
+                'icon'  => 'heroicon-o-rectangle-stack',
+                'color' => 'var(--ui-info)',
+                'href'  => route('reservation.menu.index'),
+            ],
+        ] as $tile)
+            <a href="{{ $tile['href'] }}" wire:navigate wire:key="tile-{{ $loop->index }}"
+                class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm p-3 transition hover:shadow-md">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">{{ $tile['label'] }}</span>
+                    @svg($tile['icon'], 'w-4 h-4 shrink-0', ['style' => 'color: ' . $tile['color']])
+                </div>
+                <p class="m-0 mt-1 whitespace-nowrap text-lg font-bold tabular-nums text-[var(--ui-secondary)]">{{ $tile['value'] }}</p>
+                @if ($tile['hint'])
+                    <p class="m-0 mt-0.5 text-[11px] text-[var(--ui-muted)]">{{ $tile['hint'] }}</p>
+                @endif
+            </a>
+        @endforeach
     </div>
 
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
