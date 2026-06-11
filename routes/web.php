@@ -5,6 +5,7 @@ use Platform\Reservation\Livewire\BookingList;
 use Platform\Reservation\Livewire\BookingCreate;
 use Platform\Reservation\Livewire\FloorPlanEditor;
 use Platform\Reservation\Livewire\MenuManager;
+use Platform\Reservation\Livewire\MenuImport;
 use Platform\Reservation\Livewire\DropoffManager;
 use Platform\Reservation\Livewire\Export;
 use Platform\Reservation\Livewire\VenueManager;
@@ -26,6 +27,7 @@ Route::get('/floor-plan/{venueId}/edit/{floorPlanId?}', FloorPlanEditor::class)
 
 // Menü-Verwaltung
 Route::get('/menu', MenuManager::class)->name('reservation.menu.index');
+Route::get('/menu/import', MenuImport::class)->name('reservation.menu.import');
 
 // Drop-off Slots
 Route::get('/dropoff', DropoffManager::class)->name('reservation.dropoff.index');
