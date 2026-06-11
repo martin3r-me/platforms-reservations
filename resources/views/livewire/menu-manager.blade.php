@@ -1,6 +1,6 @@
 <x-ui-page>
     <x-slot name="navbar">
-        <x-ui-page-navbar title="Menü-Verwaltung" />
+        <x-ui-page-navbar title="Menü-Verwaltung" icon="heroicon-o-rectangle-stack" />
     </x-slot>
 
     <x-slot name="actionbar">
@@ -9,326 +9,332 @@
             ['label' => 'Menü'],
         ]">
             <div class="flex items-center gap-2">
-                <select wire:model.live="approvalFilter"
-                    class="rounded-md border px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                    <option value="">Alle Status</option>
-                    <option value="draft">Entwurf</option>
-                    <option value="review">In Prüfung</option>
-                    <option value="approved">Freigegeben</option>
-                </select>
+                <x-ui-input-select
+                    name="approvalFilter"
+                    size="sm"
+                    :options="[
+                        ['value' => 'draft', 'label' => 'Entwurf'],
+                        ['value' => 'review', 'label' => 'In Prüfung'],
+                        ['value' => 'approved', 'label' => 'Freigegeben'],
+                    ]"
+                    :nullable="true"
+                    nullLabel="Alle Status"
+                    wire:model.live="approvalFilter"
+                />
                 @if (\Illuminate\Support\Facades\Route::has('reservation.menu.import'))
-                    <x-ui-button :href="route('reservation.menu.import')" variant="secondary" size="sm">
+                    <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.menu.import')">
                         @svg('heroicon-o-arrow-up-tray', 'w-4 h-4')
-                        Import
+                        <span>Import</span>
                     </x-ui-button>
                 @endif
-                <x-ui-button wire:click="openCategoryForm()" variant="primary" size="sm">
+                <x-ui-button variant="primary" size="sm" wire:click="openCategoryForm()">
                     @svg('heroicon-o-plus', 'w-4 h-4')
-                    Kategorie
+                    <span>Kategorie</span>
                 </x-ui-button>
             </div>
         </x-ui-page-actionbar>
     </x-slot>
 
     <x-ui-page-container>
-    <div class="pt-4 space-y-6">
+    <div class="pt-4 space-y-4">
 
     @if (session('menu_message'))
-        <div class="rounded-lg bg-green-100 p-3 text-sm text-green-800 dark:bg-green-900/30 dark:text-green-300">
+        <div class="rounded-lg border border-[var(--ui-success)]/30 bg-[var(--ui-success-10)] p-3 text-sm text-[var(--ui-success)]">
             {{ session('menu_message') }}
         </div>
     @endif
     @if (session('menu_error'))
-        <div class="rounded-lg bg-red-100 p-3 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-300">
+        <div class="rounded-lg border border-[var(--ui-danger)]/30 bg-[var(--ui-danger-10)] p-3 text-sm text-[var(--ui-danger)]">
             {{ session('menu_error') }}
         </div>
     @endif
 
+    @if ($this->categories->isEmpty())
+        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm">
+            <div class="flex flex-col items-center justify-center py-16 text-[var(--ui-muted)]">
+                @svg('heroicon-o-rectangle-stack', 'w-10 h-10 mb-3 opacity-40')
+                <span class="text-sm font-medium text-[var(--ui-secondary)]">Noch keine Kategorien</span>
+                <span class="text-xs mt-1 opacity-70">Lege zuerst eine Kategorie an, dann Gerichte.</span>
+            </div>
+        </section>
+    @endif
+
     @foreach ($this->categories as $category)
-        <div class="rounded-xl border dark:border-gray-700">
-            <div class="flex items-center justify-between border-b px-4 py-3 dark:border-gray-700">
-                <h2 class="font-semibold dark:text-white">{{ $category->name }}</h2>
-                <div class="flex gap-2">
-                    <button wire:click="openItemForm(null, {{ $category->id }})"
-                        class="text-xs text-indigo-600 hover:underline dark:text-indigo-400">+ Gericht</button>
-                    <button wire:click="openCategoryForm({{ $category->id }})"
-                        class="text-xs text-gray-500 hover:underline dark:text-gray-400">Bearbeiten</button>
-                    <button wire:click="deleteCategory({{ $category->id }})"
-                        wire:confirm="Kategorie und alle Gerichte löschen?"
-                        class="text-xs text-red-500 hover:underline">Löschen</button>
+        <section wire:key="cat-{{ $category->id }}" class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+                @svg('heroicon-o-tag', 'w-4 h-4 text-[var(--ui-muted)]')
+                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">{{ $category->name }}</h2>
+                <span class="text-[11px] text-[var(--ui-muted)]">{{ $category->menuItems->count() }}</span>
+                <div class="ml-auto flex items-center gap-1.5">
+                    <x-ui-button variant="secondary-ghost" size="sm" wire:click="openItemForm(null, {{ $category->id }})">+ Gericht</x-ui-button>
+                    <x-ui-button variant="secondary-ghost" size="sm" wire:click="openCategoryForm({{ $category->id }})">Bearbeiten</x-ui-button>
+                    <x-ui-confirm-button
+                        action="deleteCategory"
+                        :value="$category->id"
+                        text="Löschen"
+                        confirmText="Kategorie und alle Gerichte löschen?"
+                        variant="danger"
+                        size="sm"
+                    />
                 </div>
             </div>
 
-            @foreach ($category->menuItems as $item)
-                <div wire:key="item-{{ $item->id }}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                    @if ($item->image_context_file_id && $item->imageFile)
-                        <img src="{{ $item->imageUrl('thumbnail_1_1') }}" alt=""
-                            class="mr-3 h-12 w-12 shrink-0 rounded-lg object-cover" />
-                    @else
-                        <div class="mr-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-300 dark:bg-gray-800 dark:text-gray-600">
-                            @svg('heroicon-o-photo', 'w-5 h-5')
-                        </div>
-                    @endif
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2">
-                            <span class="font-medium dark:text-white">{{ $item->name }}</span>
-
-                            {{-- Freigabe-Badge --}}
-                            @php
-                                $approvalBadge = [
-                                    'draft'    => ['Entwurf', 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'],
-                                    'review'   => ['In Prüfung', 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300'],
-                                    'approved' => ['Freigegeben', 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'],
-                                ][$item->approval_status] ?? ['Entwurf', 'bg-gray-200 text-gray-700'];
-                            @endphp
-                            <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ $approvalBadge[1] }}">
-                                {{ $approvalBadge[0] }}
-                            </span>
-
-                            {{-- Flags --}}
-                            @if ($item->is_vegan)
-                                <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Vegan</span>
-                            @elseif ($item->is_vegetarian)
-                                <span class="rounded-full bg-lime-100 px-2 py-0.5 text-xs text-lime-700 dark:bg-lime-900/30 dark:text-lime-300">Vegetarisch</span>
-                            @endif
-                            @if ($item->is_alcoholic)
-                                <span class="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">18+</span>
-                            @endif
-                            @if (!$item->available)
-                                <span class="rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                                    Nicht verfügbar
-                                </span>
-                            @endif
-                        </div>
-                        @if ($item->description)
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $item->description }}</p>
-                        @endif
-                        @if ($item->allergens->isNotEmpty() || $item->additives->isNotEmpty())
-                            <div class="mt-1 flex flex-wrap gap-1">
-                                @foreach ($item->allergens as $allergen)
-                                    <span class="rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
-                                        {{ $allergen->code ? "({$allergen->code})" : '' }} {{ $allergen->name }}
-                                    </span>
-                                @endforeach
-                                @foreach ($item->additives as $additive)
-                                    <span class="rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
-                                        {{ $additive->code ? "({$additive->code})" : '' }} {{ $additive->name }}
-                                    </span>
-                                @endforeach
+            <div class="divide-y divide-[var(--ui-border)]/30">
+                @foreach ($category->menuItems as $item)
+                    <div wire:key="item-{{ $item->id }}" class="flex items-center px-4 py-3 hover:bg-[var(--ui-muted-5)] transition-colors">
+                        @if ($item->image_context_file_id && $item->imageFile)
+                            <img src="{{ $item->imageUrl('thumbnail_1_1') }}" alt=""
+                                class="mr-3 h-12 w-12 shrink-0 rounded-lg object-cover" />
+                        @else
+                            <div class="mr-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-muted-5)] text-[var(--ui-muted)]">
+                                @svg('heroicon-o-photo', 'w-5 h-5 opacity-40')
                             </div>
                         @endif
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <span class="text-sm font-medium text-[var(--ui-secondary)]">{{ $item->name }}</span>
+
+                                @php
+                                    [$approvalLabel, $approvalVariant] = [
+                                        'draft'    => ['Entwurf', 'muted'],
+                                        'review'   => ['In Prüfung', 'warning'],
+                                        'approved' => ['Freigegeben', 'success'],
+                                    ][$item->approval_status] ?? ['Entwurf', 'muted'];
+                                @endphp
+                                <x-ui-badge :variant="$approvalVariant" size="xs">{{ $approvalLabel }}</x-ui-badge>
+
+                                @if ($item->is_vegan)
+                                    <x-ui-badge variant="success" size="xs">Vegan</x-ui-badge>
+                                @elseif ($item->is_vegetarian)
+                                    <x-ui-badge variant="success" size="xs">Vegetarisch</x-ui-badge>
+                                @endif
+                                @if ($item->is_alcoholic)
+                                    <x-ui-badge variant="info" size="xs">18+</x-ui-badge>
+                                @endif
+                                @if (!$item->available)
+                                    <x-ui-badge variant="muted" size="xs">Nicht verfügbar</x-ui-badge>
+                                @endif
+                            </div>
+                            @if ($item->description)
+                                <p class="text-xs text-[var(--ui-muted)] m-0 mt-0.5">{{ $item->description }}</p>
+                            @endif
+                            @if ($item->allergens->isNotEmpty() || $item->additives->isNotEmpty())
+                                <p class="text-[11px] text-[var(--ui-muted)] m-0 mt-0.5">
+                                    {{ $item->allergens->pluck('code')->merge($item->additives->pluck('code'))->filter()->map(fn ($c) => "($c)")->implode(' ') }}
+                                </p>
+                            @endif
+                        </div>
+                        <div class="ml-4 flex shrink-0 items-center gap-1.5">
+                            <span class="text-sm font-semibold tabular-nums text-[var(--ui-primary)]">
+                                {{ number_format($item->price, 2, ',', '.') }} €
+                            </span>
+
+                            @if ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_DRAFT)
+                                <x-ui-button variant="warning-ghost" size="sm" wire:click="submitItemForReview({{ $item->id }})">Zur Prüfung</x-ui-button>
+                            @elseif ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_REVIEW)
+                                <x-ui-button variant="success" size="sm" wire:click="approveItem({{ $item->id }})">Freigeben</x-ui-button>
+                            @elseif ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_APPROVED)
+                                <x-ui-confirm-button
+                                    action="resetItemApproval"
+                                    :value="$item->id"
+                                    text="Zurückziehen"
+                                    confirmText="Freigabe zurückziehen?"
+                                    variant="secondary-ghost"
+                                    size="sm"
+                                />
+                            @endif
+
+                            <x-ui-button variant="secondary-ghost" size="sm" wire:click="openItemForm({{ $item->id }})">Bearbeiten</x-ui-button>
+                            <x-ui-confirm-button
+                                action="deleteItem"
+                                :value="$item->id"
+                                text="Löschen"
+                                confirmText="Gericht löschen?"
+                                variant="danger"
+                                size="sm"
+                            />
+                        </div>
                     </div>
-                    <div class="ml-4 flex items-center gap-3">
-                        <span class="font-semibold text-indigo-600 dark:text-indigo-400">
-                            {{ number_format($item->price, 2, ',', '.') }} €
-                        </span>
+                @endforeach
 
-                        {{-- Freigabe-Aktionen --}}
-                        @if ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_DRAFT)
-                            <button wire:click="submitItemForReview({{ $item->id }})"
-                                class="text-xs text-yellow-600 hover:underline dark:text-yellow-400">Zur Prüfung</button>
-                        @elseif ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_REVIEW)
-                            <button wire:click="approveItem({{ $item->id }})"
-                                class="text-xs text-green-600 hover:underline dark:text-green-400">Freigeben</button>
-                        @elseif ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_APPROVED)
-                            <button wire:click="resetItemApproval({{ $item->id }})"
-                                wire:confirm="Freigabe zurückziehen?"
-                                class="text-xs text-gray-500 hover:underline dark:text-gray-400">Zurückziehen</button>
-                        @endif
-
-                        <button wire:click="openItemForm({{ $item->id }})"
-                            class="text-xs text-gray-500 hover:underline dark:text-gray-400">Edit</button>
-                        <button wire:click="deleteItem({{ $item->id }})"
-                            wire:confirm="Gericht löschen?"
-                            class="text-xs text-red-500 hover:underline">Del</button>
+                @if ($category->menuItems->isEmpty())
+                    <div class="flex flex-col items-center justify-center py-6 text-[var(--ui-muted)]">
+                        @svg('heroicon-o-inbox', 'w-6 h-6 mb-1 opacity-40')
+                        <span class="text-xs">{{ $approvalFilter !== '' ? 'Keine Gerichte mit diesem Status.' : 'Keine Gerichte vorhanden.' }}</span>
                     </div>
-                </div>
-            @endforeach
-
-            @if ($category->menuItems->isEmpty())
-                <p class="px-4 py-3 text-sm text-gray-400">
-                    {{ $approvalFilter !== '' ? 'Keine Gerichte mit diesem Status.' : 'Keine Gerichte vorhanden.' }}
-                </p>
-            @endif
-        </div>
+                @endif
+            </div>
+        </section>
     @endforeach
 
     {{-- Kategorie-Modal --}}
-    @if ($showCategoryForm)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div class="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900">
-                <h3 class="mb-4 text-lg font-semibold dark:text-white">
+    <x-ui-modal size="sm" wire:model="showCategoryForm">
+        <x-slot name="header">
+            <div class="flex items-center gap-3">
+                <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--ui-primary-10)] flex-shrink-0">
+                    @svg('heroicon-o-tag', 'w-5 h-5 text-[var(--ui-primary)]')
+                </div>
+                <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">
                     {{ $editingCategoryId ? 'Kategorie bearbeiten' : 'Neue Kategorie' }}
                 </h3>
-                <div class="space-y-3">
-                    <input wire:model="categoryName" type="text" placeholder="Name"
-                        class="w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                    <textarea wire:model="categoryDescription" rows="2" placeholder="Beschreibung (optional)"
-                        class="w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
+            </div>
+        </x-slot>
 
-                    {{-- Kategoriebild (16:9) --}}
-                    <div>
-                        <label class="text-xs text-gray-600 dark:text-gray-400">Bild (16:9)</label>
-                        @php $editingCategory = $editingCategoryId ? $this->categories->firstWhere('id', $editingCategoryId) : null; @endphp
-                        @if ($categoryImage)
-                            <img src="{{ $categoryImage->temporaryUrl() }}" alt="" class="mt-1 aspect-video w-full rounded-lg object-cover" />
-                        @elseif ($editingCategory?->image_context_file_id && $editingCategory->imageFile)
-                            <div class="relative mt-1">
-                                <img src="{{ $editingCategory->imageUrl('medium_16_9') }}" alt="" class="aspect-video w-full rounded-lg object-cover" />
-                                <button wire:click="removeCategoryImage" type="button"
-                                    class="absolute right-2 top-2 rounded bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80">Entfernen</button>
-                            </div>
-                        @endif
-                        <input type="file" wire:model="categoryImage" accept="image/*"
-                            class="mt-1 w-full text-sm text-gray-600 dark:text-gray-300" />
-                        <div wire:loading wire:target="categoryImage" class="mt-1 text-xs text-gray-500">Wird hochgeladen…</div>
-                        @error('categoryImage') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+        <div class="space-y-3">
+            <x-ui-input-text name="categoryName" label="Name" wire:model="categoryName" required errorKey="categoryName" />
+            <x-ui-input-textarea name="categoryDescription" label="Beschreibung" wire:model="categoryDescription" rows="2" />
+
+            {{-- Kategoriebild (16:9) --}}
+            <div>
+                <label class="block text-[12px] font-medium text-[var(--ui-muted)] mb-1">Bild (16:9)</label>
+                @php $editingCategory = $editingCategoryId ? $this->categories->firstWhere('id', $editingCategoryId) : null; @endphp
+                @if ($categoryImage)
+                    <img src="{{ $categoryImage->temporaryUrl() }}" alt="" class="mb-2 aspect-video w-full rounded-lg object-cover" />
+                @elseif ($editingCategory?->image_context_file_id && $editingCategory->imageFile)
+                    <div class="relative mb-2">
+                        <img src="{{ $editingCategory->imageUrl('medium_16_9') }}" alt="" class="aspect-video w-full rounded-lg object-cover" />
+                        <button wire:click="removeCategoryImage" type="button"
+                            class="absolute right-2 top-2 rounded bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80">Entfernen</button>
                     </div>
-                </div>
-                <div class="mt-4 flex justify-end gap-2">
-                    <button wire:click="$set('showCategoryForm', false)"
-                        class="rounded-md border px-4 py-2 text-sm dark:border-gray-700 dark:text-white">Abbrechen</button>
-                    <button wire:click="saveCategory"
-                        class="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700">Speichern</button>
-                </div>
+                @endif
+                <input type="file" wire:model="categoryImage" accept="image/*" class="w-full text-sm text-[var(--ui-muted)]" />
+                <div wire:loading wire:target="categoryImage" class="mt-1 text-xs text-[var(--ui-muted)]">Wird hochgeladen…</div>
+                @error('categoryImage') <p class="mt-1 text-xs text-[var(--ui-danger)]">{{ $message }}</p> @enderror
             </div>
         </div>
-    @endif
+
+        <x-slot name="footer">
+            <div class="flex justify-end gap-2">
+                <x-ui-button variant="secondary-outline" size="sm" wire:click="$set('showCategoryForm', false)">Abbrechen</x-ui-button>
+                <x-ui-button variant="primary" size="sm" wire:click="saveCategory">Speichern</x-ui-button>
+            </div>
+        </x-slot>
+    </x-ui-modal>
 
     {{-- Menüpunkt-Modal --}}
-    @if ($showItemForm)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900 overflow-y-auto max-h-screen"
-                x-data
-                x-on:menu-item-form-reset.window="$nextTick(() => $refs.itemName?.focus())">
-                <h3 class="mb-4 text-lg font-semibold dark:text-white">
-                    {{ $editingItemId ? 'Gericht bearbeiten' : 'Neues Gericht' }}
-                </h3>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-xs text-gray-600 dark:text-gray-400">Kategorie</label>
-                        <select wire:model="itemCategoryId"
-                            class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                            @foreach ($this->categories as $cat)
-                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-600 dark:text-gray-400">Name *</label>
-                        <input wire:model="itemName" type="text" x-ref="itemName" autofocus
-                            class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                        @error('itemName') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-600 dark:text-gray-400">Beschreibung</label>
-                        <textarea wire:model="itemDescription" rows="2"
-                            class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="text-xs text-gray-600 dark:text-gray-400">Preis (€) *</label>
-                            <input wire:model="itemPrice" type="number" step="0.01" min="0"
-                                class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                            @error('itemPrice') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-600 dark:text-gray-400">MwSt. (%)</label>
-                            <select wire:model="itemTaxRate"
-                                class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                                <option value="7.00">7 %</option>
-                                <option value="19.00">19 %</option>
-                                <option value="0.00">0 %</option>
-                            </select>
-                        </div>
-                    </div>
+    <x-ui-modal size="md" wire:model="showItemForm">
+        <x-slot name="header">
+            <div class="flex items-center gap-3">
+                <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--ui-primary-10)] flex-shrink-0">
+                    @svg('heroicon-o-cake', 'w-5 h-5 text-[var(--ui-primary)]')
+                </div>
+                <div class="min-w-0">
+                    <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">
+                        {{ $editingItemId ? 'Gericht bearbeiten' : 'Neues Gericht' }}
+                    </h3>
+                    <p class="text-[12px] text-[var(--ui-muted)] m-0 mt-0.5">Keine Pflichtfelder bei Allergenen/MwSt – Verantwortung beim Bearbeiter</p>
+                </div>
+            </div>
+        </x-slot>
 
-                    {{-- Produktbild (1:1) --}}
-                    <div>
-                        <label class="text-xs text-gray-600 dark:text-gray-400">Produktbild (quadratisch)</label>
-                        @php $editingItem = $editingItemId ? \Platform\Reservation\Models\MenuItem::with('imageFile.variants')->find($editingItemId) : null; @endphp
-                        <div class="mt-1 flex items-start gap-3">
-                            @if ($itemImage)
-                                <img src="{{ $itemImage->temporaryUrl() }}" alt="" class="h-20 w-20 rounded-lg object-cover" />
-                            @elseif ($editingItem?->image_context_file_id && $editingItem->imageFile)
-                                <div class="relative">
-                                    <img src="{{ $editingItem->imageUrl('thumbnail_1_1') }}" alt="" class="h-20 w-20 rounded-lg object-cover" />
-                                    <button wire:click="removeItemImage" type="button"
-                                        class="absolute -right-1 -top-1 rounded-full bg-black/60 px-1.5 text-xs text-white hover:bg-black/80">✕</button>
-                                </div>
-                            @endif
-                            <div class="flex-1">
-                                <input type="file" wire:model="itemImage" accept="image/*"
-                                    class="w-full text-sm text-gray-600 dark:text-gray-300" />
-                                <div wire:loading wire:target="itemImage" class="mt-1 text-xs text-gray-500">Wird hochgeladen…</div>
-                                @error('itemImage') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
-                            </div>
-                        </div>
-                    </div>
+        <div class="space-y-4" x-data x-on:menu-item-form-reset.window="$nextTick(() => $refs.itemName?.querySelector('input')?.focus())">
+            <x-ui-form-grid :cols="2" :gap="3">
+                <div class="sm:col-span-2">
+                    <x-ui-input-select
+                        name="itemCategoryId"
+                        label="Kategorie"
+                        :options="$this->categories"
+                        optionValue="id"
+                        optionLabel="name"
+                        wire:model="itemCategoryId"
+                        errorKey="itemCategoryId"
+                    />
+                </div>
+                <div class="sm:col-span-2" x-ref="itemName">
+                    <x-ui-input-text name="itemName" label="Name" wire:model="itemName" required errorKey="itemName" />
+                </div>
+                <div class="sm:col-span-2">
+                    <x-ui-input-textarea name="itemDescription" label="Beschreibung" wire:model="itemDescription" rows="2" />
+                </div>
+                <x-ui-input-number name="itemPrice" label="Preis (€)" step="0.01" min="0" wire:model="itemPrice" required errorKey="itemPrice" />
+                <x-ui-input-select
+                    name="itemTaxRate"
+                    label="MwSt. (%)"
+                    :options="[
+                        ['value' => '7.00', 'label' => '7 %'],
+                        ['value' => '19.00', 'label' => '19 %'],
+                        ['value' => '0.00', 'label' => '0 %'],
+                    ]"
+                    wire:model="itemTaxRate"
+                />
+            </x-ui-form-grid>
 
-                    {{-- Eigenschaften --}}
-                    <div class="flex flex-wrap gap-x-4 gap-y-2">
-                        <label class="flex items-center gap-2 text-sm dark:text-white">
-                            <input wire:model="itemAvailable" type="checkbox" class="rounded border-gray-300" />
-                            Verfügbar
-                        </label>
-                        <label class="flex items-center gap-2 text-sm dark:text-white">
-                            <input wire:model="itemVegetarian" type="checkbox" class="rounded border-gray-300" />
-                            Vegetarisch
-                        </label>
-                        <label class="flex items-center gap-2 text-sm dark:text-white">
-                            <input wire:model="itemVegan" type="checkbox" class="rounded border-gray-300" />
-                            Vegan
-                        </label>
-                        <label class="flex items-center gap-2 text-sm dark:text-white">
-                            <input wire:model="itemAlcoholic" type="checkbox" class="rounded border-gray-300" />
-                            Alkoholisch (18+)
-                        </label>
-                    </div>
-
-                    {{-- Allergene --}}
-                    <div>
-                        <label class="mb-1 block text-xs text-gray-600 dark:text-gray-400">Allergene</label>
-                        <div class="flex flex-wrap gap-2">
-                            @foreach ($this->allergens as $allergen)
-                                <label class="flex cursor-pointer items-center gap-1 rounded-full border px-2 py-1 text-xs
-                                    {{ in_array($allergen->id, $itemAllergenIds) ? 'border-orange-400 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'border-gray-300 dark:border-gray-700 dark:text-gray-300' }}">
-                                    <input type="checkbox" wire:model.live="itemAllergenIds" value="{{ $allergen->id }}" class="sr-only" />
-                                    {{ $allergen->code ? "({$allergen->code})" : '' }} {{ $allergen->name }}
-                                </label>
-                            @endforeach
+            {{-- Produktbild (1:1) --}}
+            <div>
+                <label class="block text-[12px] font-medium text-[var(--ui-muted)] mb-1">Produktbild (quadratisch)</label>
+                @php $editingItem = $editingItemId ? \Platform\Reservation\Models\MenuItem::with('imageFile.variants')->find($editingItemId) : null; @endphp
+                <div class="flex items-start gap-3">
+                    @if ($itemImage)
+                        <img src="{{ $itemImage->temporaryUrl() }}" alt="" class="h-20 w-20 rounded-lg object-cover" />
+                    @elseif ($editingItem?->image_context_file_id && $editingItem->imageFile)
+                        <div class="relative">
+                            <img src="{{ $editingItem->imageUrl('thumbnail_1_1') }}" alt="" class="h-20 w-20 rounded-lg object-cover" />
+                            <button wire:click="removeItemImage" type="button"
+                                class="absolute -right-1 -top-1 rounded-full bg-black/60 px-1.5 text-xs text-white hover:bg-black/80">✕</button>
                         </div>
-                    </div>
-
-                    {{-- Zusatzstoffe --}}
-                    <div>
-                        <label class="mb-1 block text-xs text-gray-600 dark:text-gray-400">Zusatzstoffe</label>
-                        <div class="flex flex-wrap gap-2">
-                            @foreach ($this->additives as $additive)
-                                <label class="flex cursor-pointer items-center gap-1 rounded-full border px-2 py-1 text-xs
-                                    {{ in_array($additive->id, $itemAdditiveIds) ? 'border-sky-400 bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300' : 'border-gray-300 dark:border-gray-700 dark:text-gray-300' }}">
-                                    <input type="checkbox" wire:model.live="itemAdditiveIds" value="{{ $additive->id }}" class="sr-only" />
-                                    {{ $additive->code ? "({$additive->code})" : '' }} {{ $additive->name }}
-                                </label>
-                            @endforeach
-                        </div>
+                    @endif
+                    <div class="flex-1">
+                        <input type="file" wire:model="itemImage" accept="image/*" class="w-full text-sm text-[var(--ui-muted)]" />
+                        <div wire:loading wire:target="itemImage" class="mt-1 text-xs text-[var(--ui-muted)]">Wird hochgeladen…</div>
+                        @error('itemImage') <p class="mt-1 text-xs text-[var(--ui-danger)]">{{ $message }}</p> @enderror
                     </div>
                 </div>
-                <div class="mt-4 flex justify-end gap-2">
-                    <button wire:click="$set('showItemForm', false)"
-                        class="rounded-md border px-4 py-2 text-sm dark:border-gray-700 dark:text-white">Abbrechen</button>
-                    @unless ($editingItemId)
-                        <button wire:click="saveItem(true)"
-                            class="rounded-md border border-indigo-300 px-4 py-2 text-sm text-indigo-700 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-900/30">
-                            Speichern &amp; Neu
-                        </button>
-                    @endunless
-                    <button wire:click="saveItem"
-                        class="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700">Speichern</button>
+            </div>
+
+            {{-- Eigenschaften --}}
+            <div class="flex flex-wrap gap-x-5 gap-y-2">
+                @foreach ([
+                    'itemAvailable'  => 'Verfügbar',
+                    'itemVegetarian' => 'Vegetarisch',
+                    'itemVegan'      => 'Vegan',
+                    'itemAlcoholic'  => 'Alkoholisch (18+)',
+                ] as $prop => $label)
+                    <label class="flex items-center gap-2 text-sm text-[var(--ui-secondary)] cursor-pointer">
+                        <input wire:model="{{ $prop }}" type="checkbox" class="rounded border-[var(--ui-border)]" />
+                        {{ $label }}
+                    </label>
+                @endforeach
+            </div>
+
+            {{-- Allergene --}}
+            <div>
+                <label class="block text-[12px] font-medium text-[var(--ui-muted)] mb-1">Allergene</label>
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach ($this->allergens as $allergen)
+                        <label class="inline-flex cursor-pointer items-center gap-1 rounded-full border px-2 py-1 text-xs transition-colors
+                            {{ in_array($allergen->id, $itemAllergenIds) ? 'border-[var(--ui-warning)]/40 bg-[var(--ui-warning-10)] text-[var(--ui-warning)]' : 'border-[var(--ui-border)]/60 text-[var(--ui-muted)]' }}">
+                            <input type="checkbox" wire:model.live="itemAllergenIds" value="{{ $allergen->id }}" class="sr-only" />
+                            {{ $allergen->code ? "({$allergen->code})" : '' }} {{ $allergen->name }}
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Zusatzstoffe --}}
+            <div>
+                <label class="block text-[12px] font-medium text-[var(--ui-muted)] mb-1">Zusatzstoffe</label>
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach ($this->additives as $additive)
+                        <label class="inline-flex cursor-pointer items-center gap-1 rounded-full border px-2 py-1 text-xs transition-colors
+                            {{ in_array($additive->id, $itemAdditiveIds) ? 'border-[var(--ui-info)]/40 bg-[var(--ui-info-10)] text-[var(--ui-info)]' : 'border-[var(--ui-border)]/60 text-[var(--ui-muted)]' }}">
+                            <input type="checkbox" wire:model.live="itemAdditiveIds" value="{{ $additive->id }}" class="sr-only" />
+                            {{ $additive->code ? "({$additive->code})" : '' }} {{ $additive->name }}
+                        </label>
+                    @endforeach
                 </div>
             </div>
         </div>
-    @endif
+
+        <x-slot name="footer">
+            <div class="flex justify-end gap-2">
+                <x-ui-button variant="secondary-outline" size="sm" wire:click="$set('showItemForm', false)">Abbrechen</x-ui-button>
+                @unless ($editingItemId)
+                    <x-ui-button variant="primary-outline" size="sm" wire:click="saveItem(true)">Speichern &amp; Neu</x-ui-button>
+                @endunless
+                <x-ui-button variant="primary" size="sm" wire:click="saveItem">Speichern</x-ui-button>
+            </div>
+        </x-slot>
+    </x-ui-modal>
 
     </div>
     </x-ui-page-container>

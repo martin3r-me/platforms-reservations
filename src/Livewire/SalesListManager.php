@@ -19,6 +19,7 @@ class SalesListManager extends Component
     public bool $listIsDefault = false;
 
     // Artikel-Zuordnung
+    public bool $showAssignForm = false;
     public ?int $assigningListId = null;
     public array $assignedItemIds = [];
     public string $itemSearch = '';
@@ -118,6 +119,7 @@ class SalesListManager extends Component
 
         if ($this->assigningListId === $id) {
             $this->assigningListId = null;
+            $this->showAssignForm = false;
         }
 
         unset($this->salesLists);
@@ -128,6 +130,7 @@ class SalesListManager extends Component
     {
         $list = SalesList::with('menuItems')->findOrFail($listId);
         $this->assigningListId = $listId;
+        $this->showAssignForm = true;
         $this->assignedItemIds = $list->menuItems->pluck('id')->map(fn ($id) => (string) $id)->toArray();
         $this->itemSearch = '';
     }
@@ -142,6 +145,7 @@ class SalesListManager extends Component
         $list->menuItems()->sync(array_map('intval', $this->assignedItemIds));
 
         $this->assigningListId = null;
+        $this->showAssignForm = false;
         unset($this->salesLists);
         session()->flash('sales_list_message', 'Artikel-Zuordnung gespeichert.');
     }

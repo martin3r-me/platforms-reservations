@@ -1,6 +1,6 @@
 <x-ui-page>
     <x-slot name="navbar">
-        <x-ui-page-navbar title="Termine" />
+        <x-ui-page-navbar title="Termine" icon="heroicon-o-ticket" />
     </x-slot>
 
     <x-slot name="actionbar">
@@ -8,54 +8,64 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Termine'],
         ]">
-            <x-ui-button wire:click="openForm()" variant="primary" size="sm">
+            <x-ui-button variant="primary" size="sm" wire:click="openForm()">
                 @svg('heroicon-o-plus', 'w-4 h-4')
-                Termin
+                <span>Termin</span>
             </x-ui-button>
         </x-ui-page-actionbar>
     </x-slot>
 
     <x-ui-page-container>
-    <div class="pt-4 space-y-6">
+    <div class="pt-4 space-y-4">
 
     @if (session('event_error'))
-        <div class="rounded-lg bg-red-100 p-3 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-300">
+        <div class="rounded-lg border border-[var(--ui-danger)]/30 bg-[var(--ui-danger-10)] p-3 text-sm text-[var(--ui-danger)]">
             {{ session('event_error') }}
         </div>
     @endif
 
     @if ($this->events->isEmpty())
-        <div class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 py-16 text-center">
-            <h2 class="text-lg font-semibold dark:text-white">Noch kein Termin angelegt</h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Ein Termin ist eine Veranstaltung mit Pausen-Slots und Räumen, für die Gäste vorbestellen können.
-            </p>
-            <button wire:click="openForm()"
-                class="mt-5 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-medium text-white hover:bg-indigo-700">
-                Termin erstellen
-            </button>
-        </div>
+        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm">
+            <div class="flex flex-col items-center justify-center py-16 text-[var(--ui-muted)]">
+                @svg('heroicon-o-ticket', 'w-10 h-10 mb-3 opacity-40')
+                <span class="text-sm font-medium text-[var(--ui-secondary)]">Noch kein Termin angelegt</span>
+                <span class="text-xs mt-1 opacity-70">Ein Termin ist eine Veranstaltung mit Pausen-Slots und Räumen, für die Gäste vorbestellen können.</span>
+                <div class="mt-4">
+                    <x-ui-button variant="primary" size="sm" wire:click="openForm()">
+                        @svg('heroicon-o-plus', 'w-4 h-4')
+                        <span>Termin erstellen</span>
+                    </x-ui-button>
+                </div>
+            </div>
+        </section>
     @else
-        <div class="overflow-hidden rounded-xl border dark:border-gray-700">
-            <div class="divide-y dark:divide-gray-700">
+        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+                @svg('heroicon-o-ticket', 'w-4 h-4 text-[var(--ui-muted)]')
+                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">
+                    Termine
+                </h2>
+                <span class="ml-auto text-[11px] text-[var(--ui-muted)]">{{ $this->events->count() }}</span>
+            </div>
+            <div class="divide-y divide-[var(--ui-border)]/30">
                 @foreach ($this->events as $event)
-                    <div wire:key="event-{{ $event->id }}" class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                    <div wire:key="event-{{ $event->id }}" class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--ui-muted-5)] transition-colors">
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
-                                <span class="font-medium dark:text-white">{{ $event->name }}</span>
+                                <span class="text-sm font-medium text-[var(--ui-secondary)]">{{ $event->name }}</span>
                                 @php
-                                    $statusBadge = [
-                                        'draft'     => ['Entwurf', 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'],
-                                        'published' => ['Veröffentlicht', 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'],
-                                        'closed'    => ['Geschlossen', 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'],
-                                    ][$event->status] ?? ['Entwurf', 'bg-gray-200 text-gray-700'];
+                                    [$statusLabel, $statusVariant] = [
+                                        'draft'     => ['Entwurf', 'muted'],
+                                        'published' => ['Veröffentlicht', 'success'],
+                                        'closed'    => ['Geschlossen', 'danger'],
+                                    ][$event->status] ?? ['Entwurf', 'muted'];
                                 @endphp
-                                <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ $statusBadge[1] }}">{{ $statusBadge[0] }}</span>
+                                <x-ui-badge :variant="$statusVariant" size="xs">{{ $statusLabel }}</x-ui-badge>
                                 @if ($event->room_release_mode === 'sequential')
-                                    <span class="rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">Sequentielle Freigabe</span>
+                                    <x-ui-badge variant="info" size="xs">Sequentielle Freigabe</x-ui-badge>
                                 @endif
                             </div>
-                            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                            <p class="mt-0.5 text-xs text-[var(--ui-muted)] m-0">
                                 {{ $event->date->format('d.m.Y') }}
                                 @if ($event->slots->isNotEmpty())
                                     · {{ $event->slots->map(fn ($s) => $s->name . ' ' . substr($s->time_start, 0, 5))->implode(', ') }}
@@ -66,229 +76,222 @@
                                 @if ($event->salesList) · Liste: {{ $event->salesList->name }} @endif
                             </p>
                         </div>
-                        <div class="flex shrink-0 flex-wrap gap-2">
+                        <div class="flex shrink-0 flex-wrap items-center gap-1.5">
                             @if ($event->status === 'published')
                                 @if (\Illuminate\Support\Facades\Route::has('reservation.guest.checkout'))
-                                    <a href="{{ route('reservation.guest.checkout', $event->uuid) }}" target="_blank"
-                                        class="rounded px-3 py-1 text-xs bg-emerald-600 text-white hover:bg-emerald-700">Gast-Ansicht</a>
+                                    <x-ui-button variant="success" size="sm" :href="route('reservation.guest.checkout', $event->uuid)" target="_blank">
+                                        @svg('heroicon-o-eye', 'w-4 h-4')
+                                        <span>Gast-Ansicht</span>
+                                    </x-ui-button>
                                 @endif
-                                <button wire:click="unpublish({{ $event->id }})"
-                                    class="rounded border px-3 py-1 text-xs dark:border-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Zurückziehen</button>
-                                <button wire:click="close({{ $event->id }})"
-                                    class="rounded border px-3 py-1 text-xs dark:border-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Schließen</button>
+                                <x-ui-button variant="secondary-outline" size="sm" wire:click="unpublish({{ $event->id }})">Zurückziehen</x-ui-button>
+                                <x-ui-button variant="secondary-ghost" size="sm" wire:click="close({{ $event->id }})">Schließen</x-ui-button>
                             @else
-                                <button wire:click="publish({{ $event->id }})"
-                                    class="rounded px-3 py-1 text-xs bg-indigo-600 text-white hover:bg-indigo-700">Veröffentlichen</button>
+                                <x-ui-button variant="primary" size="sm" wire:click="publish({{ $event->id }})">
+                                    @svg('heroicon-o-rocket-launch', 'w-4 h-4')
+                                    <span>Veröffentlichen</span>
+                                </x-ui-button>
                             @endif
-                            <button wire:click="openForm({{ $event->id }})"
-                                class="rounded border px-3 py-1 text-xs dark:border-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Bearbeiten</button>
-                            <button wire:click="delete({{ $event->id }})"
-                                wire:confirm="Termin und alle Slots/Raum-Zuordnungen löschen? (Buchungen bleiben erhalten)"
-                                class="rounded px-3 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">Löschen</button>
+                            <x-ui-button variant="secondary-ghost" size="sm" wire:click="openForm({{ $event->id }})">Bearbeiten</x-ui-button>
+                            <x-ui-confirm-button
+                                action="delete"
+                                :value="$event->id"
+                                text="Löschen"
+                                confirmText="Termin und alle Slots/Raum-Zuordnungen löschen? (Buchungen bleiben erhalten)"
+                                variant="danger"
+                                size="sm"
+                            />
                         </div>
                     </div>
                 @endforeach
             </div>
-        </div>
+        </section>
     @endif
 
     {{-- Modal: Termin anlegen/bearbeiten --}}
-    @if ($showForm)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div class="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl dark:bg-gray-900">
-                <div class="border-b p-4 dark:border-gray-700">
-                    <h3 class="text-lg font-semibold dark:text-white">
+    <x-ui-modal size="lg" wire:model="showForm">
+        <x-slot name="header">
+            <div class="flex items-center gap-3">
+                <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--ui-primary-10)] flex-shrink-0">
+                    @svg('heroicon-o-ticket', 'w-5 h-5 text-[var(--ui-primary)]')
+                </div>
+                <div class="min-w-0">
+                    <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">
                         {{ $editingEventId ? 'Termin bearbeiten' : 'Neuer Termin' }}
                     </h3>
-                </div>
-
-                <div class="flex-1 space-y-4 overflow-y-auto p-4">
-                    {{-- Stammdaten --}}
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div class="sm:col-span-2">
-                            <label class="text-xs text-gray-600 dark:text-gray-400">Name *</label>
-                            <input wire:model="eventName" type="text" placeholder="z.B. Bodo Wartke"
-                                class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                            @error('eventName') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-600 dark:text-gray-400">Datum *</label>
-                            <input wire:model="eventDate" type="date"
-                                class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                            @error('eventDate') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-600 dark:text-gray-400">Bestellschluss</label>
-                            <input wire:model="eventDeadline" type="datetime-local"
-                                class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label class="text-xs text-gray-600 dark:text-gray-400">Beschreibung</label>
-                            <textarea wire:model="eventDescription" rows="2"
-                                class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-600 dark:text-gray-400">Venue</label>
-                            <select wire:model.live="eventVenueId"
-                                class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                                <option value="">– wählen –</option>
-                                @foreach ($this->venues as $venue)
-                                    <option value="{{ $venue->id }}">{{ $venue->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-600 dark:text-gray-400">Verkaufsliste</label>
-                            <select wire:model="eventSalesListId"
-                                class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                                <option value="">– Team-Standard –</option>
-                                @foreach ($this->salesLists as $list)
-                                    <option value="{{ $list->id }}">{{ $list->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-600 dark:text-gray-400">Raumfreigabe</label>
-                            <select wire:model="eventReleaseMode"
-                                class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                                <option value="parallel">Parallel (alle Räume offen)</option>
-                                <option value="sequential">Sequentiell (Raum 2 nach Füllung von Raum 1)</option>
-                            </select>
-                        </div>
-                        @if (!empty($this->linkableEventsEvents))
-                            <div>
-                                <label class="text-xs text-gray-600 dark:text-gray-400">Mit Veranstaltung verknüpfen (Events-Modul)</label>
-                                <select wire:model="eventEventsEventId"
-                                    class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                                    <option value="">– keine –</option>
-                                    @foreach ($this->linkableEventsEvents as $linkable)
-                                        <option value="{{ $linkable['id'] }}">{{ $linkable['name'] }} ({{ $linkable['start_date'] }})</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        @endif
-                    </div>
-
-                    {{-- Pausen-Slots --}}
-                    <div class="rounded-lg border p-3 dark:border-gray-700">
-                        <div class="mb-2 flex items-center justify-between">
-                            <h4 class="text-sm font-semibold dark:text-white">Pausen-Slots *</h4>
-                            <button wire:click="addSlot" type="button"
-                                class="text-xs text-indigo-600 hover:underline dark:text-indigo-400">+ Slot</button>
-                        </div>
-                        @error('slots') <p class="mb-2 text-xs text-red-500">{{ $message }}</p> @enderror
-                        <div class="space-y-2">
-                            @foreach ($slots as $i => $slot)
-                                <div wire:key="slot-row-{{ $i }}" class="flex items-end gap-2">
-                                    <div class="flex-1">
-                                        <label class="text-xs text-gray-600 dark:text-gray-400">Name</label>
-                                        <input wire:model="slots.{{ $i }}.name" type="text"
-                                            class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                                    </div>
-                                    <div>
-                                        <label class="text-xs text-gray-600 dark:text-gray-400">Von *</label>
-                                        <input wire:model="slots.{{ $i }}.time_start" type="time"
-                                            class="mt-1 w-28 rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                                    </div>
-                                    <div>
-                                        <label class="text-xs text-gray-600 dark:text-gray-400">Bis</label>
-                                        <input wire:model="slots.{{ $i }}.time_end" type="time"
-                                            class="mt-1 w-28 rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                                    </div>
-                                    <button wire:click="removeSlot({{ $i }})" type="button"
-                                        class="mb-1 rounded px-2 py-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">✕</button>
-                                </div>
-                                @error("slots.{$i}.time_start") <p class="text-xs text-red-500">{{ $message }}</p> @enderror
-                            @endforeach
-                        </div>
-                    </div>
-
-                    {{-- Räume --}}
-                    <div class="rounded-lg border p-3 dark:border-gray-700">
-                        <div class="mb-2 flex items-center justify-between">
-                            <h4 class="text-sm font-semibold dark:text-white">Räume {{ $eventReleaseMode === 'sequential' ? '(Reihenfolge = Freigabe-Reihenfolge)' : '' }}</h4>
-                            <button wire:click="addRoom" type="button"
-                                class="text-xs text-indigo-600 hover:underline dark:text-indigo-400">+ Raum</button>
-                        </div>
-                        @if ($this->availableFloorPlans->isEmpty())
-                            <p class="text-xs text-gray-400">
-                                Noch keine Tischpläne vorhanden –
-                                <a href="{{ route('reservation.venues.index') }}" wire:navigate class="text-indigo-600 underline dark:text-indigo-400">zuerst unter „Venues &amp; Tischpläne“ anlegen</a>.
-                            </p>
-                        @elseif (empty($rooms))
-                            <p class="text-xs text-gray-400">Noch kein Raum zugeordnet – über „+ Raum“ einen Tischplan hinzufügen.</p>
-                        @endif
-                        <div class="space-y-2">
-                            @foreach ($rooms as $i => $room)
-                                <div wire:key="room-row-{{ $i }}" class="flex flex-wrap items-end gap-2">
-                                    <div class="min-w-[160px] flex-1">
-                                        <label class="text-xs text-gray-600 dark:text-gray-400">Tischplan *</label>
-                                        <select wire:model.live="rooms.{{ $i }}.floor_plan_id"
-                                            class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                                            <option value="">– wählen –</option>
-                                            @foreach ($this->availableFloorPlans->groupBy(fn ($p) => $p->venue?->name ?? 'Ohne Venue') as $venueName => $plans)
-                                                <optgroup label="{{ $venueName }}">
-                                                    @foreach ($plans as $plan)
-                                                        <option value="{{ $plan->id }}">{{ $plan->name }}</option>
-                                                    @endforeach
-                                                </optgroup>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    @if ($eventReleaseMode === 'sequential')
-                                        <div>
-                                            <label class="text-xs text-gray-600 dark:text-gray-400">Voll ab (%)</label>
-                                            <input wire:model="rooms.{{ $i }}.fill_threshold_percent" type="number" min="1" max="100"
-                                                class="mt-1 w-24 rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                                        </div>
-                                    @endif
-                                    <div>
-                                        <label class="text-xs text-gray-600 dark:text-gray-400">Plätze (Override)</label>
-                                        <input wire:model="rooms.{{ $i }}.capacity_override" type="number" min="1" placeholder="auto"
-                                            class="mt-1 w-28 rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                                    </div>
-                                    <div>
-                                        <label class="text-xs text-gray-600 dark:text-gray-400">Status</label>
-                                        <select wire:model="rooms.{{ $i }}.open_mode"
-                                            class="mt-1 w-32 rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                                            <option value="auto">Automatisch</option>
-                                            <option value="open">Immer offen</option>
-                                            <option value="closed">Geschlossen</option>
-                                        </select>
-                                    </div>
-                                    <button wire:click="removeRoom({{ $i }})" type="button"
-                                        class="mb-1 rounded px-2 py-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">✕</button>
-                                </div>
-                                @error("rooms.{$i}.floor_plan_id") <p class="text-xs text-red-500">{{ $message }}</p> @enderror
-                            @endforeach
-                        </div>
-                    </div>
-
-                    {{-- Hero-Bild --}}
-                    <div>
-                        <label class="text-xs text-gray-600 dark:text-gray-400">Bild (16:9, für die Termin-Übersicht)</label>
-                        @php $editingEvent = $editingEventId ? \Platform\Reservation\Models\Event::with('imageFile.variants')->find($editingEventId) : null; @endphp
-                        @if ($eventImage)
-                            <img src="{{ $eventImage->temporaryUrl() }}" alt="" class="mt-1 aspect-video w-full rounded-lg object-cover" />
-                        @elseif ($editingEvent?->image_context_file_id && $editingEvent->imageFile)
-                            <img src="{{ $editingEvent->imageUrl('medium_16_9') }}" alt="" class="mt-1 aspect-video w-full rounded-lg object-cover" />
-                        @endif
-                        <input type="file" wire:model="eventImage" accept="image/*"
-                            class="mt-1 w-full text-sm text-gray-600 dark:text-gray-300" />
-                        <div wire:loading wire:target="eventImage" class="mt-1 text-xs text-gray-500">Wird hochgeladen…</div>
-                        @error('eventImage') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
-                    </div>
-                </div>
-
-                <div class="flex justify-end gap-2 border-t p-4 dark:border-gray-700">
-                    <button wire:click="$set('showForm', false)"
-                        class="rounded-md border px-4 py-2 text-sm dark:border-gray-700 dark:text-white">Abbrechen</button>
-                    <button wire:click="save"
-                        class="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700">Speichern</button>
+                    <p class="text-[12px] text-[var(--ui-muted)] m-0 mt-0.5">Veranstaltung mit Pausen-Slots und Räumen</p>
                 </div>
             </div>
+        </x-slot>
+
+        <div class="space-y-5">
+            {{-- Stammdaten --}}
+            <x-ui-form-grid :cols="2" :gap="3">
+                <div class="sm:col-span-2">
+                    <x-ui-input-text name="eventName" label="Name" wire:model="eventName" placeholder="z.B. Bodo Wartke" required errorKey="eventName" />
+                </div>
+                <x-ui-input-date name="eventDate" label="Datum" wire:model="eventDate" required errorKey="eventDate" />
+                <x-ui-input-datetime name="eventDeadline" label="Bestellschluss" wire:model="eventDeadline" :nullable="true" errorKey="eventDeadline" />
+                <div class="sm:col-span-2">
+                    <x-ui-input-textarea name="eventDescription" label="Beschreibung" wire:model="eventDescription" rows="2" />
+                </div>
+                <x-ui-input-select
+                    name="eventVenueId"
+                    label="Venue"
+                    :options="$this->venues"
+                    optionValue="id"
+                    optionLabel="name"
+                    :nullable="true"
+                    nullLabel="– automatisch aus Raum –"
+                    wire:model="eventVenueId"
+                />
+                <x-ui-input-select
+                    name="eventSalesListId"
+                    label="Verkaufsliste"
+                    :options="$this->salesLists"
+                    optionValue="id"
+                    optionLabel="name"
+                    :nullable="true"
+                    nullLabel="– Team-Standard –"
+                    wire:model="eventSalesListId"
+                />
+                <x-ui-input-select
+                    name="eventReleaseMode"
+                    label="Raumfreigabe"
+                    :options="[
+                        ['value' => 'parallel', 'label' => 'Parallel (alle Räume offen)'],
+                        ['value' => 'sequential', 'label' => 'Sequentiell (Raum 2 nach Füllung von Raum 1)'],
+                    ]"
+                    wire:model.live="eventReleaseMode"
+                />
+                @if (!empty($this->linkableEventsEvents))
+                    <x-ui-input-select
+                        name="eventEventsEventId"
+                        label="Veranstaltung (Events-Modul)"
+                        :options="collect($this->linkableEventsEvents)->map(fn ($e) => ['value' => $e['id'], 'label' => $e['name'] . ' (' . $e['start_date'] . ')'])->all()"
+                        :nullable="true"
+                        nullLabel="– keine –"
+                        wire:model="eventEventsEventId"
+                    />
+                @endif
+            </x-ui-form-grid>
+
+            {{-- Pausen-Slots --}}
+            <section class="rounded-lg border border-[var(--ui-border)]/40 overflow-hidden">
+                <div class="px-3 py-2 border-b border-[var(--ui-border)]/30 flex items-center gap-2 bg-[var(--ui-muted-5)]">
+                    @svg('heroicon-o-clock', 'w-4 h-4 text-[var(--ui-muted)]')
+                    <h4 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Pausen-Slots</h4>
+                    <div class="ml-auto">
+                        <x-ui-button variant="secondary-ghost" size="sm" wire:click="addSlot" type="button">+ Slot</x-ui-button>
+                    </div>
+                </div>
+                <div class="p-3 space-y-2">
+                    @error('slots') <p class="text-xs text-[var(--ui-danger)] m-0">{{ $message }}</p> @enderror
+                    @foreach ($slots as $i => $slot)
+                        <div wire:key="slot-row-{{ $i }}" class="flex items-end gap-2">
+                            <div class="flex-1">
+                                <x-ui-input-text name="slots.{{ $i }}.name" label="Name" size="sm" wire:model="slots.{{ $i }}.name" />
+                            </div>
+                            <div class="w-28">
+                                <x-ui-input-text type="time" name="slots.{{ $i }}.time_start" label="Von *" size="sm" wire:model="slots.{{ $i }}.time_start" errorKey="slots.{{ $i }}.time_start" />
+                            </div>
+                            <div class="w-28">
+                                <x-ui-input-text type="time" name="slots.{{ $i }}.time_end" label="Bis" size="sm" wire:model="slots.{{ $i }}.time_end" />
+                            </div>
+                            <x-ui-button variant="secondary-ghost" size="sm" wire:click="removeSlot({{ $i }})" type="button">✕</x-ui-button>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+
+            {{-- Räume --}}
+            <section class="rounded-lg border border-[var(--ui-border)]/40 overflow-hidden">
+                <div class="px-3 py-2 border-b border-[var(--ui-border)]/30 flex items-center gap-2 bg-[var(--ui-muted-5)]">
+                    @svg('heroicon-o-building-storefront', 'w-4 h-4 text-[var(--ui-muted)]')
+                    <h4 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">
+                        Räume{{ $eventReleaseMode === 'sequential' ? ' · Reihenfolge = Freigabe-Reihenfolge' : '' }}
+                    </h4>
+                    <div class="ml-auto">
+                        <x-ui-button variant="secondary-ghost" size="sm" wire:click="addRoom" type="button">+ Raum</x-ui-button>
+                    </div>
+                </div>
+                <div class="p-3 space-y-2">
+                    @if ($this->availableFloorPlans->isEmpty())
+                        <p class="text-xs text-[var(--ui-muted)] m-0">
+                            Noch keine Tischpläne vorhanden –
+                            <a href="{{ route('reservation.venues.index') }}" wire:navigate class="text-[var(--ui-primary)] underline">zuerst unter „Venues &amp; Tischpläne“ anlegen</a>.
+                        </p>
+                    @elseif (empty($rooms))
+                        <p class="text-xs text-[var(--ui-muted)] m-0">Noch kein Raum zugeordnet – über „+ Raum“ einen Tischplan hinzufügen.</p>
+                    @endif
+
+                    @foreach ($rooms as $i => $room)
+                        <div wire:key="room-row-{{ $i }}" class="flex flex-wrap items-end gap-2">
+                            <div class="min-w-[180px] flex-1">
+                                <x-ui-input-select
+                                    name="rooms.{{ $i }}.floor_plan_id"
+                                    label="Tischplan *"
+                                    size="sm"
+                                    :options="$this->availableFloorPlans->map(fn ($p) => [
+                                        'value' => $p->id,
+                                        'label' => ($p->venue?->name ? $p->venue->name . ' – ' : '') . $p->name,
+                                    ])->values()->all()"
+                                    :nullable="true"
+                                    nullLabel="– wählen –"
+                                    wire:model.live="rooms.{{ $i }}.floor_plan_id"
+                                    errorKey="rooms.{{ $i }}.floor_plan_id"
+                                />
+                            </div>
+                            @if ($eventReleaseMode === 'sequential')
+                                <div class="w-24">
+                                    <x-ui-input-number name="rooms.{{ $i }}.fill_threshold_percent" label="Voll ab %" size="sm" min="1" max="100" wire:model="rooms.{{ $i }}.fill_threshold_percent" />
+                                </div>
+                            @endif
+                            <div class="w-28">
+                                <x-ui-input-number name="rooms.{{ $i }}.capacity_override" label="Plätze" size="sm" min="1" placeholder="auto" wire:model="rooms.{{ $i }}.capacity_override" />
+                            </div>
+                            <div class="w-36">
+                                <x-ui-input-select
+                                    name="rooms.{{ $i }}.open_mode"
+                                    label="Status"
+                                    size="sm"
+                                    :options="[
+                                        ['value' => 'auto', 'label' => 'Automatisch'],
+                                        ['value' => 'open', 'label' => 'Immer offen'],
+                                        ['value' => 'closed', 'label' => 'Geschlossen'],
+                                    ]"
+                                    wire:model="rooms.{{ $i }}.open_mode"
+                                />
+                            </div>
+                            <x-ui-button variant="secondary-ghost" size="sm" wire:click="removeRoom({{ $i }})" type="button">✕</x-ui-button>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+
+            {{-- Hero-Bild --}}
+            <div>
+                <label class="block text-[12px] font-medium text-[var(--ui-muted)] mb-1">Bild (16:9, für die Termin-Übersicht)</label>
+                @php $editingEvent = $editingEventId ? \Platform\Reservation\Models\Event::with('imageFile.variants')->find($editingEventId) : null; @endphp
+                @if ($eventImage)
+                    <img src="{{ $eventImage->temporaryUrl() }}" alt="" class="mb-2 aspect-video w-full rounded-lg object-cover" />
+                @elseif ($editingEvent?->image_context_file_id && $editingEvent->imageFile)
+                    <img src="{{ $editingEvent->imageUrl('medium_16_9') }}" alt="" class="mb-2 aspect-video w-full rounded-lg object-cover" />
+                @endif
+                <input type="file" wire:model="eventImage" accept="image/*"
+                    class="w-full text-sm text-[var(--ui-muted)]" />
+                <div wire:loading wire:target="eventImage" class="mt-1 text-xs text-[var(--ui-muted)]">Wird hochgeladen…</div>
+                @error('eventImage') <p class="mt-1 text-xs text-[var(--ui-danger)]">{{ $message }}</p> @enderror
+            </div>
         </div>
-    @endif
+
+        <x-slot name="footer">
+            <div class="flex justify-end gap-2">
+                <x-ui-button variant="secondary-outline" size="sm" wire:click="$set('showForm', false)">Abbrechen</x-ui-button>
+                <x-ui-button variant="primary" size="sm" wire:click="save">Speichern</x-ui-button>
+            </div>
+        </x-slot>
+    </x-ui-modal>
 
     </div>
     </x-ui-page-container>
