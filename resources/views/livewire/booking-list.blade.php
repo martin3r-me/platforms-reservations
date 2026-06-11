@@ -1,6 +1,6 @@
 <x-ui-page>
     <x-slot name="navbar">
-        <x-ui-page-navbar title="Buchungen" />
+        <x-ui-page-navbar title="Buchungen" icon="heroicon-o-calendar-days" />
     </x-slot>
 
     <x-slot name="actionbar">
@@ -8,103 +8,113 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Buchungen'],
         ]">
-            <x-ui-button :href="route('reservation.bookings.create')" variant="primary" size="sm">
+            <x-ui-button variant="primary" size="sm" :href="route('reservation.bookings.create')">
                 @svg('heroicon-o-plus', 'w-4 h-4')
-                Neue Buchung
+                <span>Neue Buchung</span>
             </x-ui-button>
         </x-ui-page-actionbar>
     </x-slot>
 
     <x-ui-page-container>
-    <div class="space-y-4 pt-4">
+    <div class="pt-4 space-y-4">
 
     {{-- Filter --}}
-    <div class="flex flex-wrap gap-2">
-        <input type="date" wire:model.live="filterDate"
-            class="rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-        <select wire:model.live="filterStatus"
-            class="rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-            <option value="">Alle Status</option>
-            <option value="pending">Ausstehend</option>
-            <option value="confirmed">Bestätigt</option>
-            <option value="cancelled">Storniert</option>
-            <option value="no_show">No-Show</option>
-            <option value="completed">Abgeschlossen</option>
-        </select>
-        <input type="text" wire:model.live.debounce.300ms="search" placeholder="Name oder E-Mail suchen…"
-            class="flex-1 min-w-[200px] rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+    <div class="flex flex-wrap items-end gap-2">
+        <div class="w-44">
+            <x-ui-input-date name="filterDate" size="sm" wire:model.live="filterDate" />
+        </div>
+        <div class="w-44">
+            <x-ui-input-select
+                name="filterStatus"
+                size="sm"
+                :options="[
+                    ['value' => 'pending', 'label' => 'Ausstehend'],
+                    ['value' => 'confirmed', 'label' => 'Bestätigt'],
+                    ['value' => 'cancelled', 'label' => 'Storniert'],
+                    ['value' => 'no_show', 'label' => 'No-Show'],
+                    ['value' => 'completed', 'label' => 'Abgeschlossen'],
+                ]"
+                :nullable="true"
+                nullLabel="Alle Status"
+                wire:model.live="filterStatus"
+            />
+        </div>
+        <div class="min-w-[200px] flex-1">
+            <x-ui-input-text name="search" size="sm" wire:model.live.debounce.300ms="search" placeholder="Name oder E-Mail suchen…" />
+        </div>
     </div>
 
     {{-- Tabelle --}}
-    <div class="overflow-x-auto rounded-xl border dark:border-gray-700">
-        <table class="min-w-full text-sm">
-            <thead class="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Datum</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Uhrzeit</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tisch</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Gast</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Personen</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Aktionen</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y dark:divide-gray-700">
+    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+        <x-ui-table compact="true">
+            <x-ui-table-header>
+                <x-ui-table-header-cell compact="true">Datum</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true">Uhrzeit</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true">Tisch</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true">Gast</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true" align="center">Personen</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true">Status</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true">Aktionen</x-ui-table-header-cell>
+            </x-ui-table-header>
+            <x-ui-table-body>
                 @forelse ($this->bookings as $booking)
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                        <td class="px-4 py-3 dark:text-white">{{ $booking->date->format('d.m.Y') }}</td>
-                        <td class="px-4 py-3 dark:text-white">{{ $booking->time_start }}</td>
-                        <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ $booking->table?->label }}</td>
-                        <td class="px-4 py-3">
-                            <div class="font-medium dark:text-white">{{ $booking->guest_name }}</div>
+                    <x-ui-table-row compact="true" wire:key="booking-{{ $booking->id }}">
+                        <x-ui-table-cell compact="true">{{ $booking->date->format('d.m.Y') }}</x-ui-table-cell>
+                        <x-ui-table-cell compact="true">{{ $booking->time_start }}</x-ui-table-cell>
+                        <x-ui-table-cell compact="true">{{ $booking->table?->label }}</x-ui-table-cell>
+                        <x-ui-table-cell compact="true">
+                            <span class="font-medium text-[var(--ui-secondary)]">{{ $booking->guest_name }}</span>
                             @if ($booking->guest_email)
-                                <div class="text-xs text-gray-500">{{ $booking->guest_email }}</div>
+                                <span class="block text-xs text-[var(--ui-muted)]">{{ $booking->guest_email }}</span>
                             @endif
-                        </td>
-                        <td class="px-4 py-3 text-center dark:text-white">{{ $booking->guest_count }}</td>
-                        <td class="px-4 py-3">
+                        </x-ui-table-cell>
+                        <x-ui-table-cell compact="true" align="center">{{ $booking->guest_count }}</x-ui-table-cell>
+                        <x-ui-table-cell compact="true">
                             @php
-                                $statusColors = [
-                                    'pending'   => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
-                                    'confirmed' => 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-                                    'cancelled' => 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
-                                    'no_show'   => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-                                    'completed' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-                                ];
+                                [$statusLabel, $statusVariant] = [
+                                    'pending'   => ['Ausstehend', 'warning'],
+                                    'confirmed' => ['Bestätigt', 'success'],
+                                    'cancelled' => ['Storniert', 'danger'],
+                                    'no_show'   => ['No-Show', 'muted'],
+                                    'completed' => ['Abgeschlossen', 'info'],
+                                ][$booking->status] ?? [ucfirst($booking->status), 'muted'];
                             @endphp
-                            <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium {{ $statusColors[$booking->status] ?? '' }}">
-                                {{ ucfirst($booking->status) }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3">
-                            <div class="flex gap-1">
+                            <x-ui-badge :variant="$statusVariant" size="xs">{{ $statusLabel }}</x-ui-badge>
+                        </x-ui-table-cell>
+                        <x-ui-table-cell compact="true">
+                            <div class="flex gap-1.5">
                                 @if ($booking->status === 'pending')
-                                    <button wire:click="confirmBooking({{ $booking->id }})"
-                                        class="rounded px-2 py-1 text-xs bg-green-600 text-white hover:bg-green-700">Bestätigen</button>
-                                    <button wire:click="cancelBooking({{ $booking->id }})"
-                                        wire:confirm="Buchung wirklich stornieren?"
-                                        class="rounded px-2 py-1 text-xs bg-red-600 text-white hover:bg-red-700">Stornieren</button>
+                                    <x-ui-button variant="success" size="sm" wire:click="confirmBooking({{ $booking->id }})">Bestätigen</x-ui-button>
+                                    <x-ui-confirm-button
+                                        action="cancelBooking"
+                                        :value="$booking->id"
+                                        text="Stornieren"
+                                        confirmText="Buchung wirklich stornieren?"
+                                        variant="danger"
+                                        size="sm"
+                                    />
                                 @elseif ($booking->status === 'confirmed')
-                                    <button wire:click="markCompleted({{ $booking->id }})"
-                                        class="rounded px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700">Abschließen</button>
-                                    <button wire:click="markNoShow({{ $booking->id }})"
-                                        class="rounded px-2 py-1 text-xs bg-gray-500 text-white hover:bg-gray-600">No-Show</button>
+                                    <x-ui-button variant="info" size="sm" wire:click="markCompleted({{ $booking->id }})">Abschließen</x-ui-button>
+                                    <x-ui-button variant="secondary-outline" size="sm" wire:click="markNoShow({{ $booking->id }})">No-Show</x-ui-button>
                                 @endif
+                            </div>
+                        </x-ui-table-cell>
+                    </x-ui-table-row>
+                @empty
+                    <tr>
+                        <td colspan="7">
+                            <div class="flex flex-col items-center justify-center py-8 text-[var(--ui-muted)]">
+                                @svg('heroicon-o-inbox', 'w-8 h-8 mb-2 opacity-40')
+                                <span class="text-xs">Keine Buchungen gefunden</span>
                             </div>
                         </td>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                            Keine Buchungen gefunden.
-                        </td>
-                    </tr>
                 @endforelse
-            </tbody>
-        </table>
-    </div>
+            </x-ui-table-body>
+        </x-ui-table>
+    </section>
 
-    <div class="mt-4">
+    <div>
         {{ $this->bookings->links() }}
     </div>
 

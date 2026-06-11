@@ -93,17 +93,19 @@
                             <span class="text-sm text-[var(--ui-secondary)]">
                                 {{ $plan->venue?->name }} – {{ $plan->name }}
                             </span>
-                            <x-ui-input-select
-                                name="plan-default-{{ $plan->id }}"
-                                size="sm"
-                                :options="$this->salesLists"
-                                optionValue="id"
-                                optionLabel="name"
-                                :nullable="true"
-                                nullLabel="– keine –"
-                                :value="$plan->default_sales_list_id"
-                                wire:change="setFloorPlanDefault({{ $plan->id }}, $event.target.value)"
-                            />
+                            <div class="w-52">
+                                <x-ui-input-select
+                                    name="plan-default-{{ $plan->id }}"
+                                    size="sm"
+                                    :options="$this->salesLists"
+                                    optionValue="id"
+                                    optionLabel="name"
+                                    :nullable="true"
+                                    nullLabel="– keine –"
+                                    :value="$plan->default_sales_list_id"
+                                    wire:change="setFloorPlanDefault({{ $plan->id }}, $event.target.value)"
+                                />
+                            </div>
                         </div>
                     @endforeach
                 </div>

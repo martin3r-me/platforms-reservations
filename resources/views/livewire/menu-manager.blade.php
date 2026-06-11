@@ -9,18 +9,20 @@
             ['label' => 'Menü'],
         ]">
             <div class="flex items-center gap-2">
-                <x-ui-input-select
-                    name="approvalFilter"
-                    size="sm"
-                    :options="[
-                        ['value' => 'draft', 'label' => 'Entwurf'],
-                        ['value' => 'review', 'label' => 'In Prüfung'],
-                        ['value' => 'approved', 'label' => 'Freigegeben'],
-                    ]"
-                    :nullable="true"
-                    nullLabel="Alle Status"
-                    wire:model.live="approvalFilter"
-                />
+                <div class="w-40">
+                    <x-ui-input-select
+                        name="approvalFilter"
+                        size="sm"
+                        :options="[
+                            ['value' => 'draft', 'label' => 'Entwurf'],
+                            ['value' => 'review', 'label' => 'In Prüfung'],
+                            ['value' => 'approved', 'label' => 'Freigegeben'],
+                        ]"
+                        :nullable="true"
+                        nullLabel="Alle Status"
+                        wire:model.live="approvalFilter"
+                    />
+                </div>
                 @if (\Illuminate\Support\Facades\Route::has('reservation.menu.import'))
                     <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.menu.import')">
                         @svg('heroicon-o-arrow-up-tray', 'w-4 h-4')

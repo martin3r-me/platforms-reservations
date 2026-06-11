@@ -1,6 +1,6 @@
 <x-ui-page>
     <x-slot name="navbar">
-        <x-ui-page-navbar title="Drop-off Slots" />
+        <x-ui-page-navbar title="Drop-off Slots" icon="heroicon-o-clock" />
     </x-slot>
 
     <x-slot name="actionbar">
@@ -8,9 +8,9 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Drop-off'],
         ]">
-            <x-ui-button wire:click="openForm()" variant="primary" size="sm">
+            <x-ui-button variant="primary" size="sm" wire:click="openForm()">
                 @svg('heroicon-o-plus', 'w-4 h-4')
-                Neuer Slot
+                <span>Neuer Slot</span>
             </x-ui-button>
         </x-ui-page-actionbar>
     </x-slot>
@@ -19,107 +19,93 @@
     <div class="pt-4 space-y-4">
 
     {{-- Datumsfilter --}}
-    <div>
-        <input type="date" wire:model.live="filterDate"
-            class="rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+    <div class="w-44">
+        <x-ui-input-date name="filterDate" size="sm" wire:model.live="filterDate" />
     </div>
 
     {{-- Slot-Liste --}}
-    <div class="overflow-x-auto rounded-xl border dark:border-gray-700">
-        <table class="min-w-full text-sm">
-            <thead class="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Datum</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Von</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Bis</th>
-                    <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Kapazität</th>
-                    <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Gebucht</th>
-                    <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Frei</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Aktionen</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y dark:divide-gray-700">
+    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+        <x-ui-table compact="true">
+            <x-ui-table-header>
+                <x-ui-table-header-cell compact="true">Datum</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true">Von</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true">Bis</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true" align="center">Kapazität</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true" align="center">Gebucht</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true" align="center">Frei</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true">Aktionen</x-ui-table-header-cell>
+            </x-ui-table-header>
+            <x-ui-table-body>
                 @forelse ($this->slots as $slot)
-                    <tr wire:key="slot-{{ $slot->id }}" class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                        <td class="px-4 py-3 dark:text-white">{{ $slot->date->format('d.m.Y') }}</td>
-                        <td class="px-4 py-3 dark:text-white">{{ $slot->time_from }}</td>
-                        <td class="px-4 py-3 dark:text-white">{{ $slot->time_to }}</td>
-                        <td class="px-4 py-3 text-center dark:text-white">{{ $slot->capacity }}</td>
-                        <td class="px-4 py-3 text-center dark:text-white">{{ $slot->booked_count }}</td>
-                        <td class="px-4 py-3 text-center">
-                            <span class="font-semibold {{ $slot->remaining_capacity > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                    <x-ui-table-row compact="true" wire:key="slot-{{ $slot->id }}">
+                        <x-ui-table-cell compact="true">{{ $slot->date->format('d.m.Y') }}</x-ui-table-cell>
+                        <x-ui-table-cell compact="true">{{ $slot->time_from }}</x-ui-table-cell>
+                        <x-ui-table-cell compact="true">{{ $slot->time_to }}</x-ui-table-cell>
+                        <x-ui-table-cell compact="true" align="center">{{ $slot->capacity }}</x-ui-table-cell>
+                        <x-ui-table-cell compact="true" align="center">{{ $slot->booked_count }}</x-ui-table-cell>
+                        <x-ui-table-cell compact="true" align="center">
+                            <span class="font-semibold tabular-nums {{ $slot->remaining_capacity > 0 ? 'text-[var(--ui-success)]' : 'text-[var(--ui-danger)]' }}">
                                 {{ $slot->remaining_capacity }}
                             </span>
-                        </td>
-                        <td class="px-4 py-3">
-                            <div class="flex gap-2">
-                                <button wire:click="openForm({{ $slot->id }})"
-                                    class="text-xs text-gray-500 hover:underline dark:text-gray-400">Edit</button>
-                                <button wire:click="delete({{ $slot->id }})"
-                                    wire:confirm="Slot löschen?"
-                                    class="text-xs text-red-500 hover:underline">Del</button>
+                        </x-ui-table-cell>
+                        <x-ui-table-cell compact="true">
+                            <div class="flex gap-1.5">
+                                <x-ui-button variant="secondary-ghost" size="sm" wire:click="openForm({{ $slot->id }})">Bearbeiten</x-ui-button>
+                                <x-ui-confirm-button
+                                    action="delete"
+                                    :value="$slot->id"
+                                    text="Löschen"
+                                    confirmText="Slot löschen?"
+                                    variant="danger"
+                                    size="sm"
+                                />
+                            </div>
+                        </x-ui-table-cell>
+                    </x-ui-table-row>
+                @empty
+                    <tr>
+                        <td colspan="7">
+                            <div class="flex flex-col items-center justify-center py-8 text-[var(--ui-muted)]">
+                                @svg('heroicon-o-inbox', 'w-8 h-8 mb-2 opacity-40')
+                                <span class="text-xs">Keine Slots gefunden</span>
                             </div>
                         </td>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                            Keine Slots gefunden.
-                        </td>
-                    </tr>
                 @endforelse
-            </tbody>
-        </table>
-    </div>
+            </x-ui-table-body>
+        </x-ui-table>
+    </section>
 
     {{-- Formular-Modal --}}
-    @if ($showForm)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div class="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900">
-                <h3 class="mb-4 text-lg font-semibold dark:text-white">
+    <x-ui-modal size="sm" wire:model="showForm">
+        <x-slot name="header">
+            <div class="flex items-center gap-3">
+                <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--ui-primary-10)] flex-shrink-0">
+                    @svg('heroicon-o-clock', 'w-5 h-5 text-[var(--ui-primary)]')
+                </div>
+                <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">
                     {{ $editingId ? 'Slot bearbeiten' : 'Neuer Drop-off Slot' }}
                 </h3>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-xs text-gray-600 dark:text-gray-400">Datum</label>
-                        <input wire:model="slotDate" type="date"
-                            class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                        @error('slotDate') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="text-xs text-gray-600 dark:text-gray-400">Von</label>
-                            <input wire:model="slotTimeFrom" type="time"
-                                class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                            @error('slotTimeFrom') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-600 dark:text-gray-400">Bis</label>
-                            <input wire:model="slotTimeTo" type="time"
-                                class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                            @error('slotTimeTo') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
-                        </div>
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-600 dark:text-gray-400">Kapazität</label>
-                        <input wire:model="slotCapacity" type="number" min="1"
-                            class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-600 dark:text-gray-400">Notizen</label>
-                        <textarea wire:model="slotNotes" rows="2"
-                            class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
-                    </div>
-                </div>
-                <div class="mt-4 flex justify-end gap-2">
-                    <button wire:click="$set('showForm', false)"
-                        class="rounded-md border px-4 py-2 text-sm dark:border-gray-700 dark:text-white">Abbrechen</button>
-                    <button wire:click="save"
-                        class="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700">Speichern</button>
-                </div>
             </div>
+        </x-slot>
+
+        <div class="space-y-3">
+            <x-ui-input-date name="slotDate" label="Datum" wire:model="slotDate" required errorKey="slotDate" />
+            <x-ui-form-grid :cols="2" :gap="3">
+                <x-ui-input-text type="time" name="slotTimeFrom" label="Von" wire:model="slotTimeFrom" required errorKey="slotTimeFrom" />
+                <x-ui-input-text type="time" name="slotTimeTo" label="Bis" wire:model="slotTimeTo" required errorKey="slotTimeTo" />
+            </x-ui-form-grid>
+            <x-ui-input-number name="slotCapacity" label="Kapazität" min="1" wire:model="slotCapacity" />
+            <x-ui-input-textarea name="slotNotes" label="Notizen" wire:model="slotNotes" rows="2" />
         </div>
-    @endif
+
+        <x-slot name="footer">
+            <div class="flex justify-end gap-2">
+                <x-ui-button variant="secondary-outline" size="sm" wire:click="$set('showForm', false)">Abbrechen</x-ui-button>
+                <x-ui-button variant="primary" size="sm" wire:click="save">Speichern</x-ui-button>
+            </div>
+        </x-slot>
+    </x-ui-modal>
 
     </div>
     </x-ui-page-container>

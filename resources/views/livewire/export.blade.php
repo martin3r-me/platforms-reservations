@@ -1,6 +1,6 @@
 <x-ui-page>
     <x-slot name="navbar">
-        <x-ui-page-navbar title="Export" />
+        <x-ui-page-navbar title="Export" icon="heroicon-o-arrow-down-tray" />
     </x-slot>
 
     <x-slot name="actionbar">
@@ -11,71 +11,69 @@
     </x-slot>
 
     <x-ui-page-container>
-    <div class="pt-4 space-y-6">
+    <div class="pt-4 space-y-4">
 
-    <div class="rounded-xl border p-4 space-y-4 dark:border-gray-700">
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm text-gray-700 dark:text-gray-300">Von</label>
-                <input wire:model.live="dateFrom" type="date"
-                    class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-            </div>
-            <div>
-                <label class="block text-sm text-gray-700 dark:text-gray-300">Bis</label>
-                <input wire:model.live="dateTo" type="date"
-                    class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+            @svg('heroicon-o-funnel', 'w-4 h-4 text-[var(--ui-muted)]')
+            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Zeitraum &amp; Filter</h2>
+        </div>
+        <div class="p-5 space-y-4">
+            <x-ui-form-grid :cols="2" :gap="3">
+                <x-ui-input-date name="dateFrom" label="Von" wire:model.live="dateFrom" />
+                <x-ui-input-date name="dateTo" label="Bis" wire:model.live="dateTo" />
+                <x-ui-input-select
+                    name="filterStatus"
+                    label="Status"
+                    :options="[
+                        ['value' => 'pending', 'label' => 'Ausstehend'],
+                        ['value' => 'confirmed', 'label' => 'Bestätigt'],
+                        ['value' => 'cancelled', 'label' => 'Storniert'],
+                        ['value' => 'no_show', 'label' => 'No-Show'],
+                        ['value' => 'completed', 'label' => 'Abgeschlossen'],
+                    ]"
+                    :nullable="true"
+                    nullLabel="Alle Status"
+                    wire:model.live="filterStatus"
+                />
+                <x-ui-input-select
+                    name="format"
+                    label="Format"
+                    :options="[
+                        ['value' => 'csv', 'label' => 'CSV (Excel)'],
+                        ['value' => 'json', 'label' => 'JSON'],
+                    ]"
+                    wire:model="format"
+                />
+            </x-ui-form-grid>
+
+            <div class="flex items-center justify-between rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 p-3">
+                <p class="text-sm text-[var(--ui-muted)] m-0">
+                    <strong class="text-[var(--ui-secondary)] tabular-nums">{{ $this->previewCount }}</strong>
+                    Buchungen im Zeitraum
+                </p>
+                <x-ui-button variant="primary" size="sm" wire:click="export" :disabled="$this->previewCount === 0">
+                    @svg('heroicon-o-arrow-down-tray', 'w-4 h-4')
+                    <span>Exportieren</span>
+                </x-ui-button>
             </div>
         </div>
-
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm text-gray-700 dark:text-gray-300">Status</label>
-                <select wire:model.live="filterStatus"
-                    class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                    <option value="">Alle Status</option>
-                    <option value="pending">Ausstehend</option>
-                    <option value="confirmed">Bestätigt</option>
-                    <option value="cancelled">Storniert</option>
-                    <option value="no_show">No-Show</option>
-                    <option value="completed">Abgeschlossen</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm text-gray-700 dark:text-gray-300">Format</label>
-                <select wire:model="format"
-                    class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                    <option value="csv">CSV (Excel)</option>
-                    <option value="json">JSON</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="flex items-center justify-between rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
-            <p class="text-sm text-gray-600 dark:text-gray-400">
-                <strong class="text-gray-900 dark:text-white">{{ $this->previewCount }}</strong>
-                Buchungen im Zeitraum
-            </p>
-            <button
-                wire:click="export"
-                class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-                @if ($this->previewCount === 0) disabled @endif
-            >
-                Exportieren
-            </button>
-        </div>
-    </div>
+    </section>
 
     {{-- Felder-Übersicht --}}
-    <div class="rounded-xl border p-4 dark:border-gray-700">
-        <h2 class="mb-3 text-sm font-semibold dark:text-white">Exportierte Felder</h2>
-        <div class="flex flex-wrap gap-2">
-            @foreach(['Buchungs-ID', 'Datum', 'Uhrzeit', 'Tisch', 'Venue', 'Gast', 'E-Mail', 'Telefon', 'Personen', 'Status', 'Betrag', 'Zahlungsart', 'Mollie-ID', 'Steuersatz', 'Erstellt'] as $field)
-                <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                    {{ $field }}
-                </span>
-            @endforeach
+    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+            @svg('heroicon-o-table-cells', 'w-4 h-4 text-[var(--ui-muted)]')
+            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Exportierte Felder</h2>
         </div>
-    </div>
+        <div class="p-5">
+            <div class="flex flex-wrap gap-1.5">
+                @foreach(['Buchungs-ID', 'Datum', 'Uhrzeit', 'Tisch', 'Venue', 'Gast', 'E-Mail', 'Telefon', 'Personen', 'Status', 'Betrag', 'Zahlungsart', 'Mollie-ID', 'Steuersatz', 'Erstellt'] as $field)
+                    <x-ui-badge variant="muted" size="xs">{{ $field }}</x-ui-badge>
+                @endforeach
+            </div>
+        </div>
+    </section>
 
     </div>
     </x-ui-page-container>

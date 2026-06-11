@@ -1,6 +1,6 @@
 <x-ui-page>
     <x-slot name="navbar">
-        <x-ui-page-navbar title="Venues & Tischpläne" />
+        <x-ui-page-navbar title="Venues & Tischpläne" icon="heroicon-o-building-storefront" />
     </x-slot>
 
     <x-slot name="actionbar">
@@ -8,194 +8,149 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Venues & Tischpläne'],
         ]">
-            <x-ui-button wire:click="openVenueForm()" variant="primary" size="sm">
+            <x-ui-button variant="primary" size="sm" wire:click="openVenueForm()">
                 @svg('heroicon-o-plus', 'w-4 h-4')
-                Venue anlegen
+                <span>Venue anlegen</span>
             </x-ui-button>
         </x-ui-page-actionbar>
     </x-slot>
 
     <x-ui-page-container>
-    <div class="mx-auto max-w-4xl pt-4 space-y-6">
+    <div class="pt-4 space-y-4">
 
-    {{-- ── Leer-Zustand ─────────────────────────────────────────── --}}
+    {{-- Leer-Zustand --}}
     @if ($this->venues->isEmpty())
-        <div class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 py-20 text-center">
-            <div class="text-5xl mb-4">🎭</div>
-            <h2 class="text-lg font-semibold dark:text-white">Noch kein Venue vorhanden</h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Lege dein erstes Venue an, um Tischpläne zu erstellen.</p>
-            <button
-                wire:click="openVenueForm()"
-                class="mt-5 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-medium text-white hover:bg-indigo-700"
-            >
-                Venue erstellen
-            </button>
-        </div>
-
-    {{-- ── Venue-Liste ──────────────────────────────────────────── --}}
+        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm">
+            <div class="flex flex-col items-center justify-center py-16 text-[var(--ui-muted)]">
+                @svg('heroicon-o-building-storefront', 'w-10 h-10 mb-3 opacity-40')
+                <span class="text-sm font-medium text-[var(--ui-secondary)]">Noch kein Venue vorhanden</span>
+                <span class="text-xs mt-1 opacity-70">Lege dein erstes Venue an, um Tischpläne zu erstellen.</span>
+                <div class="mt-4">
+                    <x-ui-button variant="primary" size="sm" wire:click="openVenueForm()">
+                        @svg('heroicon-o-plus', 'w-4 h-4')
+                        <span>Venue erstellen</span>
+                    </x-ui-button>
+                </div>
+            </div>
+        </section>
     @else
         @foreach ($this->venues as $venue)
-            <div class="overflow-hidden rounded-xl border dark:border-gray-700">
-
+            <section wire:key="venue-{{ $venue->id }}" class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
                 {{-- Venue-Kopfzeile --}}
-                <div class="flex items-center justify-between gap-3 bg-gray-50 px-4 py-3 dark:bg-gray-800">
-                    <div>
-                        <h2 class="font-semibold dark:text-white">{{ $venue->name }}</h2>
+                <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+                    @svg('heroicon-o-building-storefront', 'w-4 h-4 text-[var(--ui-muted)]')
+                    <div class="min-w-0">
+                        <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">{{ $venue->name }}</h2>
                         @if ($venue->address)
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $venue->address }}</p>
+                            <p class="text-[11px] text-[var(--ui-muted)] m-0 normal-case tracking-normal">{{ $venue->address }}</p>
                         @endif
                     </div>
-                    <div class="flex shrink-0 gap-2">
-                        <button
-                            wire:click="openFloorPlanForm({{ $venue->id }})"
-                            class="rounded px-3 py-1 text-xs bg-indigo-600 text-white hover:bg-indigo-700"
-                        >
-                            + Tischplan
-                        </button>
-                        <button
-                            wire:click="openVenueForm({{ $venue->id }})"
-                            class="rounded border px-3 py-1 text-xs dark:border-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                            Bearbeiten
-                        </button>
-                        <button
-                            wire:click="deleteVenue({{ $venue->id }})"
-                            wire:confirm="Venue und alle Tischpläne wirklich löschen?"
-                            class="rounded px-3 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        >
-                            Löschen
-                        </button>
+                    <div class="ml-auto flex shrink-0 items-center gap-1.5">
+                        <x-ui-button variant="primary" size="sm" wire:click="openFloorPlanForm({{ $venue->id }})">+ Tischplan</x-ui-button>
+                        <x-ui-button variant="secondary-ghost" size="sm" wire:click="openVenueForm({{ $venue->id }})">Bearbeiten</x-ui-button>
+                        <x-ui-confirm-button
+                            action="deleteVenue"
+                            :value="$venue->id"
+                            text="Löschen"
+                            confirmText="Venue und alle Tischpläne wirklich löschen?"
+                            variant="danger"
+                            size="sm"
+                        />
                     </div>
                 </div>
 
                 {{-- Tischplan-Liste --}}
                 @if ($venue->floorPlans->isEmpty())
-                    <div class="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    <div class="px-4 py-4 text-sm text-[var(--ui-muted)]">
                         Noch kein Tischplan vorhanden. Klicke auf <em>+ Tischplan</em>.
                     </div>
                 @else
-                    <div class="divide-y dark:divide-gray-700">
+                    <div class="divide-y divide-[var(--ui-border)]/30">
                         @foreach ($venue->floorPlans as $plan)
-                            <div class="flex items-center justify-between gap-3 px-4 py-3">
+                            <div wire:key="plan-{{ $plan->id }}" class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-[var(--ui-muted-5)] transition-colors">
                                 <div class="min-w-0">
-                                    <span class="font-medium dark:text-white">{{ $plan->name }}</span>
-                                    <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                                    <span class="text-sm font-medium text-[var(--ui-secondary)]">{{ $plan->name }}</span>
+                                    <span class="ml-2 text-xs text-[var(--ui-muted)]">
                                         {{ $plan->tables_count }} {{ $plan->tables_count === 1 ? 'Tisch' : 'Tische' }}
                                     </span>
                                 </div>
-                                <div class="flex shrink-0 flex-wrap gap-2">
-                                    <a
-                                        href="{{ route('reservation.floor-plan.editor', ['venueId' => $venue->id, 'floorPlanId' => $plan->id]) }}"
-                                        class="rounded px-3 py-1 text-xs bg-gray-600 text-white hover:bg-gray-700"
-                                    >
-                                        ✏️ Tischplan Editor
-                                    </a>
-                                    <a
-                                        href="{{ route('reservation.floor-plan.viewer', ['floorPlanId' => $plan->id]) }}"
-                                        target="_blank"
-                                        class="rounded px-3 py-1 text-xs bg-emerald-600 text-white hover:bg-emerald-700"
-                                    >
-                                        👁 3D-Ansicht
-                                    </a>
-                                    <button
-                                        wire:click="openFloorPlanForm({{ $venue->id }}, {{ $plan->id }})"
-                                        class="rounded border px-3 py-1 text-xs dark:border-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    >
-                                        Umbenennen
-                                    </button>
-                                    <button
-                                        wire:click="deleteFloorPlan({{ $plan->id }})"
-                                        wire:confirm="Tischplan wirklich löschen?"
-                                        class="rounded px-3 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                    >
-                                        Löschen
-                                    </button>
+                                <div class="flex shrink-0 flex-wrap items-center gap-1.5">
+                                    <x-ui-button variant="secondary-outline" size="sm"
+                                        :href="route('reservation.floor-plan.editor', ['venueId' => $venue->id, 'floorPlanId' => $plan->id])">
+                                        @svg('heroicon-o-pencil-square', 'w-4 h-4')
+                                        <span>Editor</span>
+                                    </x-ui-button>
+                                    <x-ui-button variant="success" size="sm"
+                                        :href="route('reservation.floor-plan.viewer', ['floorPlanId' => $plan->id])" target="_blank">
+                                        @svg('heroicon-o-eye', 'w-4 h-4')
+                                        <span>3D-Ansicht</span>
+                                    </x-ui-button>
+                                    <x-ui-button variant="secondary-ghost" size="sm" wire:click="openFloorPlanForm({{ $venue->id }}, {{ $plan->id }})">Umbenennen</x-ui-button>
+                                    <x-ui-confirm-button
+                                        action="deleteFloorPlan"
+                                        :value="$plan->id"
+                                        text="Löschen"
+                                        confirmText="Tischplan wirklich löschen?"
+                                        variant="danger"
+                                        size="sm"
+                                    />
                                 </div>
                             </div>
                         @endforeach
                     </div>
                 @endif
-            </div>
+            </section>
         @endforeach
     @endif
 
-    {{-- ── Modal: Venue erstellen / bearbeiten ─────────────────── --}}
-    @if ($showVenueForm)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900">
-                <h2 class="mb-4 text-lg font-semibold dark:text-white">
+    {{-- Modal: Venue erstellen / bearbeiten --}}
+    <x-ui-modal size="sm" wire:model="showVenueForm">
+        <x-slot name="header">
+            <div class="flex items-center gap-3">
+                <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--ui-primary-10)] flex-shrink-0">
+                    @svg('heroicon-o-building-storefront', 'w-5 h-5 text-[var(--ui-primary)]')
+                </div>
+                <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">
                     {{ $editingVenueId ? 'Venue bearbeiten' : 'Neues Venue' }}
-                </h2>
-
-                <div class="space-y-3">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name *</label>
-                        <input
-                            wire:model="venueName"
-                            type="text"
-                            placeholder="z.B. Foyer, Hauptsaal, Galerie …"
-                            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                        />
-                        @error('venueName') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Adresse / Beschreibung</label>
-                        <input
-                            wire:model="venueAddress"
-                            type="text"
-                            placeholder="Haus 1, EG, links …"
-                            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                        />
-                    </div>
-                </div>
-
-                <div class="mt-6 flex justify-end gap-3">
-                    <button
-                        wire:click="$set('showVenueForm', false)"
-                        class="rounded-lg border px-4 py-2 text-sm dark:border-gray-700 dark:text-white"
-                    >Abbrechen</button>
-                    <button
-                        wire:click="saveVenue"
-                        class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                    >Speichern</button>
-                </div>
+                </h3>
             </div>
-        </div>
-    @endif
+        </x-slot>
 
-    {{-- ── Modal: Tischplan erstellen / umbenennen ──────────────── --}}
-    @if ($showFloorPlanForm)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900">
-                <h2 class="mb-4 text-lg font-semibold dark:text-white">
+        <div class="space-y-3">
+            <x-ui-input-text name="venueName" label="Name" wire:model="venueName" placeholder="z.B. Foyer, Hauptsaal, Galerie …" required errorKey="venueName" />
+            <x-ui-input-text name="venueAddress" label="Adresse / Beschreibung" wire:model="venueAddress" placeholder="Haus 1, EG, links …" />
+        </div>
+
+        <x-slot name="footer">
+            <div class="flex justify-end gap-2">
+                <x-ui-button variant="secondary-outline" size="sm" wire:click="$set('showVenueForm', false)">Abbrechen</x-ui-button>
+                <x-ui-button variant="primary" size="sm" wire:click="saveVenue">Speichern</x-ui-button>
+            </div>
+        </x-slot>
+    </x-ui-modal>
+
+    {{-- Modal: Tischplan erstellen / umbenennen --}}
+    <x-ui-modal size="sm" wire:model="showFloorPlanForm">
+        <x-slot name="header">
+            <div class="flex items-center gap-3">
+                <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--ui-primary-10)] flex-shrink-0">
+                    @svg('heroicon-o-map', 'w-5 h-5 text-[var(--ui-primary)]')
+                </div>
+                <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">
                     {{ $editingFloorPlanId ? 'Tischplan umbenennen' : 'Neuer Tischplan' }}
-                </h2>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name *</label>
-                    <input
-                        wire:model="floorPlanName"
-                        type="text"
-                        placeholder="z.B. Erdgeschoss, Terrasse …"
-                        class="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                        autofocus
-                    />
-                    @error('floorPlanName') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
-                </div>
-
-                <div class="mt-6 flex justify-end gap-3">
-                    <button
-                        wire:click="$set('showFloorPlanForm', false)"
-                        class="rounded-lg border px-4 py-2 text-sm dark:border-gray-700 dark:text-white"
-                    >Abbrechen</button>
-                    <button
-                        wire:click="saveFloorPlan"
-                        class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                    >Speichern</button>
-                </div>
+                </h3>
             </div>
-        </div>
-    @endif
+        </x-slot>
+
+        <x-ui-input-text name="floorPlanName" label="Name" wire:model="floorPlanName" placeholder="z.B. Erdgeschoss, Terrasse …" required errorKey="floorPlanName" />
+
+        <x-slot name="footer">
+            <div class="flex justify-end gap-2">
+                <x-ui-button variant="secondary-outline" size="sm" wire:click="$set('showFloorPlanForm', false)">Abbrechen</x-ui-button>
+                <x-ui-button variant="primary" size="sm" wire:click="saveFloorPlan">Speichern</x-ui-button>
+            </div>
+        </x-slot>
+    </x-ui-modal>
 
     </div>
     </x-ui-page-container>
