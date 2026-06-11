@@ -84,37 +84,40 @@
                                 @if ($event->salesList) · Liste: {{ $event->salesList->name }} @endif
                             </p>
                         </div>
-                        <div class="flex shrink-0 flex-wrap items-center gap-1.5">
+                        <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                            @if ($event->status !== 'published')
+                                <x-ui-button variant="primary" size="sm" wire:click="publish({{ $event->id }})">
+                                    @svg('heroicon-o-rocket-launch', 'w-4 h-4')
+                                    <span>Veröffentlichen</span>
+                                </x-ui-button>
+                            @endif
                             @if ($event->bookings_count > 0)
-                                <x-ui-button variant="warning" size="sm" :href="route('reservation.events.orders', $event->id)" wire:navigate>
+                                <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.events.orders', $event->id)" wire:navigate>
                                     @svg('heroicon-o-fire', 'w-4 h-4')
                                     <span>Küche</span>
                                 </x-ui-button>
                             @endif
                             @if ($event->status === 'published')
                                 @if (\Illuminate\Support\Facades\Route::has('reservation.guest.checkout'))
-                                    <x-ui-button variant="success" size="sm" :href="route('reservation.guest.checkout', $event->uuid)" target="_blank">
+                                    <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.guest.checkout', $event->uuid)" target="_blank">
                                         @svg('heroicon-o-eye', 'w-4 h-4')
                                         <span>Gast-Ansicht</span>
                                     </x-ui-button>
                                 @endif
                                 <x-ui-button variant="secondary-outline" size="sm" wire:click="unpublish({{ $event->id }})">Zurückziehen</x-ui-button>
-                                <x-ui-button variant="secondary-ghost" size="sm" wire:click="close({{ $event->id }})">Schließen</x-ui-button>
-                            @else
-                                <x-ui-button variant="primary" size="sm" wire:click="publish({{ $event->id }})">
-                                    @svg('heroicon-o-rocket-launch', 'w-4 h-4')
-                                    <span>Veröffentlichen</span>
-                                </x-ui-button>
+                                <x-ui-button variant="secondary-outline" size="sm" wire:click="close({{ $event->id }})">Schließen</x-ui-button>
                             @endif
-                            <x-ui-button variant="secondary-ghost" size="sm" wire:click="openForm({{ $event->id }})">Bearbeiten</x-ui-button>
-                            <x-ui-confirm-button
-                                action="delete"
-                                :value="$event->id"
-                                text="Löschen"
-                                confirmText="Termin und alle Slots/Raum-Zuordnungen löschen? (Buchungen bleiben erhalten)"
-                                variant="danger"
-                                size="sm"
-                            />
+                            <x-ui-button variant="secondary-outline" size="sm" wire:click="openForm({{ $event->id }})">Bearbeiten</x-ui-button>
+                            <div class="shrink-0">
+                                <x-ui-confirm-button
+                                    action="delete"
+                                    :value="$event->id"
+                                    text="Löschen"
+                                    confirmText="Wirklich löschen?"
+                                    variant="danger-outline"
+                                    size="sm"
+                                />
+                            </div>
                         </div>
                     </div>
                 @endforeach

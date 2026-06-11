@@ -73,7 +73,7 @@
                         <x-ui-table-cell compact="true" align="right">
                             @if ($booking->items_count > 0)
                                 <button wire:click="openDetail({{ $booking->id }})" type="button"
-                                    class="inline-flex items-center gap-1 text-[var(--ui-primary)] hover:underline">
+                                    class="inline-flex items-center gap-1 whitespace-nowrap text-[var(--ui-primary)] hover:underline">
                                     <span class="tabular-nums">{{ $booking->items_count }} Pos. · {{ number_format($booking->total_amount, 2, ',', '.') }} €</span>
                                 </button>
                             @else
@@ -93,21 +93,27 @@
                             <x-ui-badge :variant="$statusVariant" size="xs">{{ $statusLabel }}</x-ui-badge>
                         </x-ui-table-cell>
                         <x-ui-table-cell compact="true">
-                            <div class="flex gap-1.5">
-                                <x-ui-button variant="secondary-ghost" size="sm" wire:click="openDetail({{ $booking->id }})">Details</x-ui-button>
+                            <div class="flex flex-wrap gap-1.5">
                                 @if ($booking->status === 'pending')
                                     <x-ui-button variant="success" size="sm" wire:click="confirmBooking({{ $booking->id }})">Bestätigen</x-ui-button>
-                                    <x-ui-confirm-button
-                                        action="cancelBooking"
-                                        :value="$booking->id"
-                                        text="Stornieren"
-                                        confirmText="Buchung wirklich stornieren?"
-                                        variant="danger"
-                                        size="sm"
-                                    />
                                 @elseif ($booking->status === 'confirmed')
-                                    <x-ui-button variant="info" size="sm" wire:click="markCompleted({{ $booking->id }})">Abschließen</x-ui-button>
+                                    <x-ui-button variant="primary" size="sm" wire:click="markCompleted({{ $booking->id }})">Abschließen</x-ui-button>
+                                @endif
+                                <x-ui-button variant="secondary-outline" size="sm" wire:click="openDetail({{ $booking->id }})">Details</x-ui-button>
+                                @if ($booking->status === 'confirmed')
                                     <x-ui-button variant="secondary-outline" size="sm" wire:click="markNoShow({{ $booking->id }})">No-Show</x-ui-button>
+                                @endif
+                                @if ($booking->status === 'pending')
+                                    <div class="shrink-0">
+                                        <x-ui-confirm-button
+                                            action="cancelBooking"
+                                            :value="$booking->id"
+                                            text="Stornieren"
+                                            confirmText="Wirklich stornieren?"
+                                            variant="danger-outline"
+                                            size="sm"
+                                        />
+                                    </div>
                                 @endif
                             </div>
                         </x-ui-table-cell>
@@ -197,7 +203,7 @@
                                         @endif
                                     </div>
                                     <div class="shrink-0 text-right">
-                                        <span class="tabular-nums text-[var(--ui-secondary)]">{{ number_format($item->quantity * $item->unit_price, 2, ',', '.') }} €</span>
+                                        <span class="whitespace-nowrap tabular-nums text-[var(--ui-secondary)]">{{ number_format($item->quantity * $item->unit_price, 2, ',', '.') }} €</span>
                                         <span class="block text-[11px] text-[var(--ui-muted)] tabular-nums">
                                             à {{ number_format($item->unit_price, 2, ',', '.') }} € · {{ rtrim(rtrim($item->tax_rate, '0'), '.') }} %
                                         </span>
@@ -207,7 +213,7 @@
                         </div>
                         <div class="flex justify-between border-t border-[var(--ui-border)]/40 bg-[var(--ui-muted-5)] px-3 py-2 text-sm font-semibold text-[var(--ui-secondary)]">
                             <span>Gesamt</span>
-                            <span class="tabular-nums">{{ number_format($detail->total_amount, 2, ',', '.') }} €</span>
+                            <span class="whitespace-nowrap tabular-nums">{{ number_format($detail->total_amount, 2, ',', '.') }} €</span>
                         </div>
                     </section>
                 @endif

@@ -60,17 +60,19 @@
                                 <p class="text-xs text-[var(--ui-muted)] m-0 mt-0.5">{{ $list->description }}</p>
                             @endif
                         </div>
-                        <div class="flex shrink-0 items-center gap-1.5">
+                        <div class="flex shrink-0 items-center justify-end gap-1.5">
                             <x-ui-button variant="primary" size="sm" wire:click="openAssignment({{ $list->id }})">Artikel zuordnen</x-ui-button>
-                            <x-ui-button variant="secondary-ghost" size="sm" wire:click="openListForm({{ $list->id }})">Bearbeiten</x-ui-button>
-                            <x-ui-confirm-button
-                                action="deleteList"
-                                :value="$list->id"
-                                text="Löschen"
-                                confirmText="Verkaufsliste löschen? (Artikel bleiben erhalten)"
-                                variant="danger"
-                                size="sm"
-                            />
+                            <x-ui-button variant="secondary-outline" size="sm" wire:click="openListForm({{ $list->id }})">Bearbeiten</x-ui-button>
+                            <div class="shrink-0">
+                                <x-ui-confirm-button
+                                    action="deleteList"
+                                    :value="$list->id"
+                                    text="Löschen"
+                                    confirmText="Wirklich löschen?"
+                                    variant="danger-outline"
+                                    size="sm"
+                                />
+                            </div>
                         </div>
                     </div>
                 @endforeach
@@ -175,7 +177,7 @@
                                         <input type="checkbox" wire:model.live="assignedItemIds" value="{{ $item->id }}" class="rounded border-[var(--ui-border)]" />
                                         {{ $item->name }}
                                     </span>
-                                    <span class="text-xs tabular-nums text-[var(--ui-muted)]">{{ number_format($item->price, 2, ',', '.') }} €</span>
+                                    <span class="whitespace-nowrap text-xs tabular-nums text-[var(--ui-muted)]">{{ number_format($item->price, 2, ',', '.') }} €</span>
                                 </label>
                             @endforeach
                         </div>

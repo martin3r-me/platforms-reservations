@@ -45,17 +45,22 @@
                             <p class="text-[11px] text-[var(--ui-muted)] m-0 normal-case tracking-normal">{{ $venue->address }}</p>
                         @endif
                     </div>
-                    <div class="ml-auto flex shrink-0 items-center gap-1.5">
-                        <x-ui-button variant="primary" size="sm" wire:click="openFloorPlanForm({{ $venue->id }})">+ Tischplan</x-ui-button>
-                        <x-ui-button variant="secondary-ghost" size="sm" wire:click="openVenueForm({{ $venue->id }})">Bearbeiten</x-ui-button>
-                        <x-ui-confirm-button
-                            action="deleteVenue"
-                            :value="$venue->id"
-                            text="Löschen"
-                            confirmText="Venue und alle Tischpläne wirklich löschen?"
-                            variant="danger"
-                            size="sm"
-                        />
+                    <div class="ml-auto flex shrink-0 items-center justify-end gap-1.5">
+                        <x-ui-button variant="primary" size="sm" wire:click="openFloorPlanForm({{ $venue->id }})">
+                            @svg('heroicon-o-plus', 'w-4 h-4')
+                            <span>Tischplan</span>
+                        </x-ui-button>
+                        <x-ui-button variant="secondary-outline" size="sm" wire:click="openVenueForm({{ $venue->id }})">Bearbeiten</x-ui-button>
+                        <div class="shrink-0">
+                            <x-ui-confirm-button
+                                action="deleteVenue"
+                                :value="$venue->id"
+                                text="Löschen"
+                                confirmText="Wirklich löschen?"
+                                variant="danger-outline"
+                                size="sm"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -74,26 +79,28 @@
                                         {{ $plan->tables_count }} {{ $plan->tables_count === 1 ? 'Tisch' : 'Tische' }}
                                     </span>
                                 </div>
-                                <div class="flex shrink-0 flex-wrap items-center gap-1.5">
+                                <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                                     <x-ui-button variant="secondary-outline" size="sm"
                                         :href="route('reservation.floor-plan.editor', ['venueId' => $venue->id, 'floorPlanId' => $plan->id])">
                                         @svg('heroicon-o-pencil-square', 'w-4 h-4')
                                         <span>Editor</span>
                                     </x-ui-button>
-                                    <x-ui-button variant="success" size="sm"
+                                    <x-ui-button variant="secondary-outline" size="sm"
                                         :href="route('reservation.floor-plan.viewer', ['floorPlanId' => $plan->id])" target="_blank">
                                         @svg('heroicon-o-eye', 'w-4 h-4')
                                         <span>3D-Ansicht</span>
                                     </x-ui-button>
-                                    <x-ui-button variant="secondary-ghost" size="sm" wire:click="openFloorPlanForm({{ $venue->id }}, {{ $plan->id }})">Umbenennen</x-ui-button>
-                                    <x-ui-confirm-button
-                                        action="deleteFloorPlan"
-                                        :value="$plan->id"
-                                        text="Löschen"
-                                        confirmText="Tischplan wirklich löschen?"
-                                        variant="danger"
-                                        size="sm"
-                                    />
+                                    <x-ui-button variant="secondary-outline" size="sm" wire:click="openFloorPlanForm({{ $venue->id }}, {{ $plan->id }})">Umbenennen</x-ui-button>
+                                    <div class="shrink-0">
+                                        <x-ui-confirm-button
+                                            action="deleteFloorPlan"
+                                            :value="$plan->id"
+                                            text="Löschen"
+                                            confirmText="Wirklich löschen?"
+                                            variant="danger-outline"
+                                            size="sm"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         @endforeach

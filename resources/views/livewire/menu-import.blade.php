@@ -112,7 +112,7 @@
                             </x-ui-table-cell>
                             <x-ui-table-cell compact="true">{{ $row['category'] }}</x-ui-table-cell>
                             <x-ui-table-cell compact="true" align="right">
-                                <span class="tabular-nums">{{ number_format((float) $row['price'], 2, ',', '.') }} €</span>
+                                <span class="whitespace-nowrap tabular-nums">{{ number_format((float) $row['price'], 2, ',', '.') }} €</span>
                             </x-ui-table-cell>
                             <x-ui-table-cell compact="true" align="right">{{ rtrim(rtrim($row['tax_rate'], '0'), '.') }} %</x-ui-table-cell>
                             <x-ui-table-cell compact="true">

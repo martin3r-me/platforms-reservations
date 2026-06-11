@@ -88,7 +88,7 @@
                                     <div class="h-full rounded-full bg-[var(--ui-primary)] transition-all"
                                         style="width: {{ max($month->revenue > 0 ? 2 : 0, $pct) }}%"></div>
                                 </div>
-                                <span class="w-28 shrink-0 text-right text-xs font-semibold tabular-nums text-[var(--ui-secondary)]">
+                                <span class="w-28 shrink-0 whitespace-nowrap text-right text-xs font-semibold tabular-nums text-[var(--ui-secondary)]">
                                     {{ number_format($month->revenue, 2, ',', '.') }} €
                                 </span>
                                 <span class="w-16 shrink-0 text-right text-[11px] tabular-nums text-[var(--ui-muted)]">
@@ -111,7 +111,7 @@
                 @forelse ($this->taxBreakdown as $tax)
                     <div class="flex items-center justify-between px-4 py-2.5 text-sm">
                         <span class="text-[var(--ui-muted)]">{{ rtrim(rtrim($tax->tax_rate, '0'), '.') }} % MwSt.</span>
-                        <span class="font-semibold tabular-nums text-[var(--ui-secondary)]">{{ number_format($tax->revenue, 2, ',', '.') }} €</span>
+                        <span class="whitespace-nowrap font-semibold tabular-nums text-[var(--ui-secondary)]">{{ number_format($tax->revenue, 2, ',', '.') }} €</span>
                     </div>
                 @empty
                     <div class="px-4 py-6 text-center text-xs text-[var(--ui-muted)]">Keine Daten</div>
@@ -147,14 +147,14 @@
                         <x-ui-table-cell compact="true" align="center">{{ $row->bookings }}</x-ui-table-cell>
                         <x-ui-table-cell compact="true" align="center">{{ $row->guests }}</x-ui-table-cell>
                         <x-ui-table-cell compact="true" align="right">
-                            <span class="tabular-nums">{{ number_format($row->bookings > 0 ? $row->revenue / $row->bookings : 0, 2, ',', '.') }} €</span>
+                            <span class="whitespace-nowrap tabular-nums">{{ number_format($row->bookings > 0 ? $row->revenue / $row->bookings : 0, 2, ',', '.') }} €</span>
                         </x-ui-table-cell>
                         <x-ui-table-cell compact="true" align="right">
-                            <span class="font-semibold tabular-nums text-[var(--ui-secondary)]">{{ number_format($row->revenue, 2, ',', '.') }} €</span>
+                            <span class="whitespace-nowrap font-semibold tabular-nums text-[var(--ui-secondary)]">{{ number_format($row->revenue, 2, ',', '.') }} €</span>
                         </x-ui-table-cell>
                         <x-ui-table-cell compact="true">
                             @if ($row->event_id)
-                                <x-ui-button variant="secondary-ghost" size="sm" :href="route('reservation.events.orders', $row->event_id)" wire:navigate>
+                                <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.events.orders', $row->event_id)" wire:navigate>
                                     @svg('heroicon-o-fire', 'w-4 h-4')
                                     <span>Küche</span>
                                 </x-ui-button>

@@ -68,16 +68,21 @@
                 <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">{{ $category->name }}</h2>
                 <span class="text-[11px] text-[var(--ui-muted)]">{{ $category->menuItems->count() }}</span>
                 <div class="ml-auto flex items-center gap-1.5">
-                    <x-ui-button variant="secondary-ghost" size="sm" wire:click="openItemForm(null, {{ $category->id }})">+ Gericht</x-ui-button>
-                    <x-ui-button variant="secondary-ghost" size="sm" wire:click="openCategoryForm({{ $category->id }})">Bearbeiten</x-ui-button>
-                    <x-ui-confirm-button
-                        action="deleteCategory"
-                        :value="$category->id"
-                        text="Löschen"
-                        confirmText="Kategorie und alle Gerichte löschen?"
-                        variant="danger"
-                        size="sm"
-                    />
+                    <x-ui-button variant="primary" size="sm" wire:click="openItemForm(null, {{ $category->id }})">
+                        @svg('heroicon-o-plus', 'w-4 h-4')
+                        <span>Gericht</span>
+                    </x-ui-button>
+                    <x-ui-button variant="secondary-outline" size="sm" wire:click="openCategoryForm({{ $category->id }})">Bearbeiten</x-ui-button>
+                    <div class="shrink-0">
+                        <x-ui-confirm-button
+                            action="deleteCategory"
+                            :value="$category->id"
+                            text="Löschen"
+                            confirmText="Wirklich löschen?"
+                            variant="danger-outline"
+                            size="sm"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -126,35 +131,39 @@
                                 </p>
                             @endif
                         </div>
-                        <div class="ml-4 flex shrink-0 items-center gap-1.5">
-                            <span class="text-sm font-semibold tabular-nums text-[var(--ui-primary)]">
+                        <div class="ml-4 flex shrink-0 items-center justify-end gap-1.5">
+                            <span class="mr-2 whitespace-nowrap text-sm font-semibold tabular-nums text-[var(--ui-secondary)]">
                                 {{ number_format($item->price, 2, ',', '.') }} €
                             </span>
 
                             @if ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_DRAFT)
-                                <x-ui-button variant="warning-ghost" size="sm" wire:click="submitItemForReview({{ $item->id }})">Zur Prüfung</x-ui-button>
+                                <x-ui-button variant="secondary-outline" size="sm" wire:click="submitItemForReview({{ $item->id }})">Zur Prüfung</x-ui-button>
                             @elseif ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_REVIEW)
                                 <x-ui-button variant="success" size="sm" wire:click="approveItem({{ $item->id }})">Freigeben</x-ui-button>
                             @elseif ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_APPROVED)
-                                <x-ui-confirm-button
-                                    action="resetItemApproval"
-                                    :value="$item->id"
-                                    text="Zurückziehen"
-                                    confirmText="Freigabe zurückziehen?"
-                                    variant="secondary-ghost"
-                                    size="sm"
-                                />
+                                <div class="shrink-0">
+                                    <x-ui-confirm-button
+                                        action="resetItemApproval"
+                                        :value="$item->id"
+                                        text="Zurückziehen"
+                                        confirmText="Sicher?"
+                                        variant="secondary-outline"
+                                        size="sm"
+                                    />
+                                </div>
                             @endif
 
-                            <x-ui-button variant="secondary-ghost" size="sm" wire:click="openItemForm({{ $item->id }})">Bearbeiten</x-ui-button>
-                            <x-ui-confirm-button
-                                action="deleteItem"
-                                :value="$item->id"
-                                text="Löschen"
-                                confirmText="Gericht löschen?"
-                                variant="danger"
-                                size="sm"
-                            />
+                            <x-ui-button variant="secondary-outline" size="sm" wire:click="openItemForm({{ $item->id }})">Bearbeiten</x-ui-button>
+                            <div class="shrink-0">
+                                <x-ui-confirm-button
+                                    action="deleteItem"
+                                    :value="$item->id"
+                                    text="Löschen"
+                                    confirmText="Wirklich löschen?"
+                                    variant="danger-outline"
+                                    size="sm"
+                                />
+                            </div>
                         </div>
                     </div>
                 @endforeach
