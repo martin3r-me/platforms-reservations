@@ -5,9 +5,12 @@ namespace Platform\Reservation\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Platform\Reservation\Models\Concerns\HasContextImage;
 
 class MenuCategory extends Model
 {
+    use HasContextImage;
+
     protected $table = 'reservation_menu_categories';
 
     protected $fillable = [
@@ -16,6 +19,7 @@ class MenuCategory extends Model
         'description',
         'sort_order',
         'is_active',
+        'image_context_file_id',
     ];
 
     protected $casts = [

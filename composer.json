@@ -9,7 +9,8 @@
   },
   "autoload": {
     "psr-4": {
-      "Platform\\Reservation\\": "src/"
+      "Platform\\Reservation\\": "src/",
+      "Platform\\Reservation\\Database\\Seeders\\": "database/seeders/"
     }
   },
   "extra": {
