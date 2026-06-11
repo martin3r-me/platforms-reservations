@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Platform\Reservation\Livewire\FloorPlanViewer;
+use Platform\Reservation\Livewire\Guest\CheckoutWizard;
 use Platform\Reservation\Livewire\Guest\EventOverview;
 
 // Öffentliche Gast-Routen (ohne Auth) – via ModuleRouter::group(..., requireAuth: false).
@@ -9,6 +10,9 @@ use Platform\Reservation\Livewire\Guest\EventOverview;
 
 // Termin-Übersicht für Endkunden
 Route::get('/termine', EventOverview::class)->name('reservation.guest.events.index');
+
+// Buchungs-Wizard für einen Termin (Gastdaten → Produkte → Sitzplatz → Checkout)
+Route::get('/termine/{uuid}', CheckoutWizard::class)->name('reservation.guest.checkout');
 
 // Tischplan-Buchung durch Gäste (Alt-Flow ohne Termin)
 Route::get('/book/{floorPlanId}', FloorPlanViewer::class)->name('reservation.floor-plan.viewer');
