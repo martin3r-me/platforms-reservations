@@ -11,6 +11,7 @@ use Platform\Reservation\Livewire\Export;
 use Platform\Reservation\Livewire\VenueManager;
 use Platform\Reservation\Livewire\SalesListManager;
 use Platform\Reservation\Livewire\EventManager;
+use Platform\Reservation\Livewire\EventOrders;
 
 // Prefix + Middleware (web/auth/Modul-Guard/Permission) kommen aus ModuleRouter::group().
 // Route-Namen daher voll qualifiziert ('reservation.*').
@@ -22,6 +23,9 @@ Route::get('/bookings/create', BookingCreate::class)->name('reservation.bookings
 
 // Termine (Veranstaltungen mit Pausen-Slots und Räumen)
 Route::get('/events', EventManager::class)->name('reservation.events.index');
+
+// Küchen-Übersicht: Gesamtbestellungen eines Termins je Pause
+Route::get('/events/{eventId}/orders', EventOrders::class)->name('reservation.events.orders');
 
 // Venues & Tischpläne verwalten
 Route::get('/venues', VenueManager::class)->name('reservation.venues.index');

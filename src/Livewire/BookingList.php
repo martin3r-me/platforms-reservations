@@ -16,13 +16,18 @@ class BookingList extends Component
     public string $filterStatus = '';
     public string $search = '';
 
+    // Detail-Modal
+    public bool $showDetail = false;
+    public ?int $detailBookingId = null;
+
     #[Computed]
     public function bookings()
     {
         $user   = Auth::user();
         $teamId = $user?->current_team_id;
 
-        $query = Booking::with(['table.floorPlan.venue', 'payment'])
+        $query = Booking::with(['table.floorPlan.venue', 'payment', 'event', 'slot'])
+            ->withCount('items')
             ->where('team_id', $teamId)
             ->orderByDesc('date')
             ->orderByDesc('time_start');
@@ -43,6 +48,24 @@ class BookingList extends Component
         }
 
         return $query->paginate(25);
+    }
+
+    #[Computed]
+    public function detailBooking(): ?Booking
+    {
+        if (!$this->detailBookingId) {
+            return null;
+        }
+
+        return Booking::with(['items.menuItem', 'table.floorPlan.venue', 'event', 'slot', 'payment'])
+            ->where('team_id', Auth::user()?->current_team_id)
+            ->find($this->detailBookingId);
+    }
+
+    public function openDetail(int $bookingId): void
+    {
+        $this->detailBookingId = $bookingId;
+        $this->showDetail = true;
     }
 
     public function confirmBooking(int $bookingId): void

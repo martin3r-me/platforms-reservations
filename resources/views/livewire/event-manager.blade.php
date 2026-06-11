@@ -85,6 +85,12 @@
                             </p>
                         </div>
                         <div class="flex shrink-0 flex-wrap items-center gap-1.5">
+                            @if ($event->bookings_count > 0)
+                                <x-ui-button variant="warning" size="sm" :href="route('reservation.events.orders', $event->id)" wire:navigate>
+                                    @svg('heroicon-o-fire', 'w-4 h-4')
+                                    <span>Küche</span>
+                                </x-ui-button>
+                            @endif
                             @if ($event->status === 'published')
                                 @if (\Illuminate\Support\Facades\Route::has('reservation.guest.checkout'))
                                     <x-ui-button variant="success" size="sm" :href="route('reservation.guest.checkout', $event->uuid)" target="_blank">
