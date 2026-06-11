@@ -4,6 +4,8 @@ namespace Platform\Reservation\Livewire;
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\WithFileUploads;
+use Platform\Core\Services\ContextFileService;
 use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Allergen;
@@ -12,6 +14,8 @@ use Illuminate\Support\Facades\Auth;
 
 class MenuManager extends Component
 {
+    use WithFileUploads;
+
     // Kategorie-Formular
     public bool $showCategoryForm = false;
     public ?int $editingCategoryId = null;
@@ -33,6 +37,10 @@ class MenuManager extends Component
     public array $itemAllergenIds = [];
     public array $itemAdditiveIds = [];
 
+    // Bild-Uploads (ContextFileService aus platform-core)
+    public $itemImage = null;       // 1:1 Produktbild
+    public $categoryImage = null;   // 16:9 Kategoriebild
+
     // Filter
     public string $approvalFilter = '';
 
@@ -45,11 +53,11 @@ class MenuManager extends Component
     #[Computed]
     public function categories(): \Illuminate\Database\Eloquent\Collection
     {
-        return MenuCategory::with(['menuItems' => function ($query) {
+        return MenuCategory::with(['imageFile.variants', 'menuItems' => function ($query) {
                 if ($this->approvalFilter !== '') {
                     $query->where('approval_status', $this->approvalFilter);
                 }
-                $query->with(['allergens', 'additives'])->orderBy('sort_order');
+                $query->with(['allergens', 'additives', 'imageFile.variants'])->orderBy('sort_order');
             }])
             ->where('team_id', $this->getTeamId())
             ->orderBy('sort_order')
@@ -68,11 +76,51 @@ class MenuManager extends Component
         return Additive::orderByRaw('CAST(code AS UNSIGNED)')->get();
     }
 
+    /**
+     * Bild via platform-core ContextFileService speichern und am Model
+     * verknüpfen; ein vorhandenes Bild wird ersetzt (altes File gelöscht).
+     */
+    protected function storeImage($model, $file, string $contextType): void
+    {
+        $service = app(ContextFileService::class);
+
+        $uploaded = $service->uploadForContext($file, $contextType, $model->id, [
+            'team_id' => $this->getTeamId(),
+            'user_id' => Auth::id(),
+        ]);
+
+        if ($model->image_context_file_id) {
+            try {
+                $service->delete($model->image_context_file_id, $this->getTeamId());
+            } catch (\Throwable $e) {
+                // Altes File fehlt bereits – Verknüpfung wird trotzdem ersetzt
+            }
+        }
+
+        $model->update(['image_context_file_id' => $uploaded['id']]);
+    }
+
+    protected function removeImage($model): void
+    {
+        if (!$model->image_context_file_id) {
+            return;
+        }
+
+        try {
+            app(ContextFileService::class)->delete($model->image_context_file_id, $this->getTeamId());
+        } catch (\Throwable $e) {
+            // File bereits weg – Verknüpfung trotzdem lösen
+        }
+
+        $model->update(['image_context_file_id' => null]);
+    }
+
     // Kategorie-Aktionen
     public function openCategoryForm(?int $id = null): void
     {
         $this->showCategoryForm = true;
         $this->editingCategoryId = $id;
+        $this->categoryImage = null;
 
         if ($id) {
             $cat = MenuCategory::findOrFail($id);
@@ -87,7 +135,8 @@ class MenuManager extends Component
     public function saveCategory(): void
     {
         $this->validate([
-            'categoryName' => 'required|string|max:255',
+            'categoryName'  => 'required|string|max:255',
+            'categoryImage' => 'nullable|image|max:10240',
         ]);
 
         $data = [
@@ -97,9 +146,15 @@ class MenuManager extends Component
         ];
 
         if ($this->editingCategoryId) {
-            MenuCategory::findOrFail($this->editingCategoryId)->update($data);
+            $category = MenuCategory::findOrFail($this->editingCategoryId);
+            $category->update($data);
         } else {
-            MenuCategory::create($data);
+            $category = MenuCategory::create($data);
+        }
+
+        if ($this->categoryImage) {
+            $this->storeImage($category, $this->categoryImage, 'reservation.menu_category.image');
+            $this->categoryImage = null;
         }
 
         $this->showCategoryForm = false;
@@ -118,6 +173,7 @@ class MenuManager extends Component
     {
         $this->showItemForm = true;
         $this->editingItemId = $id;
+        $this->itemImage = null;
         $this->resetErrorBag();
 
         if ($id) {
@@ -159,6 +215,7 @@ class MenuManager extends Component
             'itemCategoryId' => 'required|integer|exists:reservation_menu_categories,id',
             'itemName'       => 'required|string|max:255',
             'itemPrice'      => 'required|numeric|min:0',
+            'itemImage'      => 'nullable|image|max:10240',
         ]);
 
         $data = [
@@ -184,6 +241,11 @@ class MenuManager extends Component
         } else {
             $item = MenuItem::create($data);
             $contentChanged = false;
+        }
+
+        if ($this->itemImage) {
+            $this->storeImage($item, $this->itemImage, 'reservation.menu_item.image');
+            $this->itemImage = null;
         }
 
         $allergenChanges = $item->allergens()->sync($this->itemAllergenIds);
@@ -213,6 +275,22 @@ class MenuManager extends Component
     {
         MenuItem::findOrFail($id)->delete();
         unset($this->categories);
+    }
+
+    public function removeItemImage(): void
+    {
+        if ($this->editingItemId) {
+            $this->removeImage(MenuItem::findOrFail($this->editingItemId));
+            unset($this->categories);
+        }
+    }
+
+    public function removeCategoryImage(): void
+    {
+        if ($this->editingCategoryId) {
+            $this->removeImage(MenuCategory::findOrFail($this->editingCategoryId));
+            unset($this->categories);
+        }
     }
 
     // Vier-Augen-Freigabe

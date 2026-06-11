@@ -61,6 +61,14 @@
 
             @foreach ($category->menuItems as $item)
                 <div wire:key="item-{{ $item->id }}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                    @if ($item->image_context_file_id && $item->imageFile)
+                        <img src="{{ $item->imageUrl('thumbnail_1_1') }}" alt=""
+                            class="mr-3 h-12 w-12 shrink-0 rounded-lg object-cover" />
+                    @else
+                        <div class="mr-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-300 dark:bg-gray-800 dark:text-gray-600">
+                            @svg('heroicon-o-photo', 'w-5 h-5')
+                        </div>
+                    @endif
                     <div class="flex-1">
                         <div class="flex items-center gap-2">
                             <span class="font-medium dark:text-white">{{ $item->name }}</span>
@@ -157,6 +165,25 @@
                         class="w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
                     <textarea wire:model="categoryDescription" rows="2" placeholder="Beschreibung (optional)"
                         class="w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
+
+                    {{-- Kategoriebild (16:9) --}}
+                    <div>
+                        <label class="text-xs text-gray-600 dark:text-gray-400">Bild (16:9)</label>
+                        @php $editingCategory = $editingCategoryId ? $this->categories->firstWhere('id', $editingCategoryId) : null; @endphp
+                        @if ($categoryImage)
+                            <img src="{{ $categoryImage->temporaryUrl() }}" alt="" class="mt-1 aspect-video w-full rounded-lg object-cover" />
+                        @elseif ($editingCategory?->image_context_file_id && $editingCategory->imageFile)
+                            <div class="relative mt-1">
+                                <img src="{{ $editingCategory->imageUrl('medium_16_9') }}" alt="" class="aspect-video w-full rounded-lg object-cover" />
+                                <button wire:click="removeCategoryImage" type="button"
+                                    class="absolute right-2 top-2 rounded bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80">Entfernen</button>
+                            </div>
+                        @endif
+                        <input type="file" wire:model="categoryImage" accept="image/*"
+                            class="mt-1 w-full text-sm text-gray-600 dark:text-gray-300" />
+                        <div wire:loading wire:target="categoryImage" class="mt-1 text-xs text-gray-500">Wird hochgeladen…</div>
+                        @error('categoryImage') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                    </div>
                 </div>
                 <div class="mt-4 flex justify-end gap-2">
                     <button wire:click="$set('showCategoryForm', false)"
@@ -213,6 +240,29 @@
                                 <option value="19.00">19 %</option>
                                 <option value="0.00">0 %</option>
                             </select>
+                        </div>
+                    </div>
+
+                    {{-- Produktbild (1:1) --}}
+                    <div>
+                        <label class="text-xs text-gray-600 dark:text-gray-400">Produktbild (quadratisch)</label>
+                        @php $editingItem = $editingItemId ? \Platform\Reservation\Models\MenuItem::with('imageFile.variants')->find($editingItemId) : null; @endphp
+                        <div class="mt-1 flex items-start gap-3">
+                            @if ($itemImage)
+                                <img src="{{ $itemImage->temporaryUrl() }}" alt="" class="h-20 w-20 rounded-lg object-cover" />
+                            @elseif ($editingItem?->image_context_file_id && $editingItem->imageFile)
+                                <div class="relative">
+                                    <img src="{{ $editingItem->imageUrl('thumbnail_1_1') }}" alt="" class="h-20 w-20 rounded-lg object-cover" />
+                                    <button wire:click="removeItemImage" type="button"
+                                        class="absolute -right-1 -top-1 rounded-full bg-black/60 px-1.5 text-xs text-white hover:bg-black/80">✕</button>
+                                </div>
+                            @endif
+                            <div class="flex-1">
+                                <input type="file" wire:model="itemImage" accept="image/*"
+                                    class="w-full text-sm text-gray-600 dark:text-gray-300" />
+                                <div wire:loading wire:target="itemImage" class="mt-1 text-xs text-gray-500">Wird hochgeladen…</div>
+                                @error('itemImage') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                            </div>
                         </div>
                     </div>
 
