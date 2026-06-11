@@ -39,6 +39,13 @@
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
 
+    <x-ui-sidebar-list label="Finanzen">
+        <x-ui-sidebar-item :href="route('reservation.finance.index')">
+            @svg('heroicon-o-banknotes', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Umsatz</span>
+        </x-ui-sidebar-item>
+    </x-ui-sidebar-list>
+
     <x-ui-sidebar-list label="Auswertung">
         <x-ui-sidebar-item :href="route('reservation.export')">
             @svg('heroicon-o-arrow-down-tray', 'w-4 h-4 text-[var(--ui-secondary)]')
@@ -61,6 +68,12 @@
             </a>
             <a href="{{ route('reservation.dropoff.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
                 @svg('heroicon-o-clock', 'w-5 h-5')
+            </a>
+            <a href="{{ route('reservation.events.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
+                @svg('heroicon-o-ticket', 'w-5 h-5')
+            </a>
+            <a href="{{ route('reservation.finance.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
+                @svg('heroicon-o-banknotes', 'w-5 h-5')
             </a>
             <a href="{{ route('reservation.export') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
                 @svg('heroicon-o-arrow-down-tray', 'w-5 h-5')

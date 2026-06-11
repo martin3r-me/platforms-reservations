@@ -42,6 +42,12 @@ return [
             ],
         ],
         [
+            'group' => 'Finanzen',
+            'items' => [
+                ['label' => 'Umsatz', 'route' => 'reservation.finance.index', 'icon' => 'heroicon-o-banknotes'],
+            ],
+        ],
+        [
             'group' => 'Auswertung',
             'items' => [
                 ['label' => 'Export', 'route' => 'reservation.export', 'icon' => 'heroicon-o-arrow-down-tray'],
