@@ -208,11 +208,15 @@
                         <div class="mb-2 flex items-center justify-between">
                             <h4 class="text-sm font-semibold dark:text-white">Räume {{ $eventReleaseMode === 'sequential' ? '(Reihenfolge = Freigabe-Reihenfolge)' : '' }}</h4>
                             <button wire:click="addRoom" type="button"
-                                class="text-xs text-indigo-600 hover:underline dark:text-indigo-400"
-                                @if(!$eventVenueId) disabled title="Zuerst Venue wählen" @endif>+ Raum</button>
+                                class="text-xs text-indigo-600 hover:underline dark:text-indigo-400">+ Raum</button>
                         </div>
-                        @if (!$eventVenueId)
-                            <p class="text-xs text-gray-400">Zuerst ein Venue wählen, dann Räume (Tischpläne) zuordnen.</p>
+                        @if ($this->availableFloorPlans->isEmpty())
+                            <p class="text-xs text-gray-400">
+                                Noch keine Tischpläne vorhanden –
+                                <a href="{{ route('reservation.venues.index') }}" wire:navigate class="text-indigo-600 underline dark:text-indigo-400">zuerst unter „Venues &amp; Tischpläne“ anlegen</a>.
+                            </p>
+                        @elseif (empty($rooms))
+                            <p class="text-xs text-gray-400">Noch kein Raum zugeordnet – über „+ Raum“ einen Tischplan hinzufügen.</p>
                         @endif
                         <div class="space-y-2">
                             @foreach ($rooms as $i => $room)
@@ -222,8 +226,12 @@
                                         <select wire:model.live="rooms.{{ $i }}.floor_plan_id"
                                             class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
                                             <option value="">– wählen –</option>
-                                            @foreach ($this->availableFloorPlans as $plan)
-                                                <option value="{{ $plan->id }}">{{ $plan->name }}</option>
+                                            @foreach ($this->availableFloorPlans->groupBy(fn ($p) => $p->venue?->name ?? 'Ohne Venue') as $venueName => $plans)
+                                                <optgroup label="{{ $venueName }}">
+                                                    @foreach ($plans as $plan)
+                                                        <option value="{{ $plan->id }}">{{ $plan->name }}</option>
+                                                    @endforeach
+                                                </optgroup>
                                             @endforeach
                                         </select>
                                     </div>

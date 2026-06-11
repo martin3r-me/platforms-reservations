@@ -66,15 +66,16 @@ class EventManager extends Component
         return SalesList::forTeam($this->getTeamId())->orderBy('name')->get();
     }
 
-    /** FloorPlans des gewählten Venues (Räume des Termins). */
+    /**
+     * Alle aktiven Tischpläne des Teams (nach Venue gruppiert) – Räume sind
+     * nicht an die Venue-Auswahl gekoppelt, das Venue wird beim Speichern
+     * automatisch aus dem ersten Raum übernommen, falls keins gewählt ist.
+     */
     #[Computed]
     public function availableFloorPlans(): \Illuminate\Database\Eloquent\Collection
     {
-        if (!$this->eventVenueId) {
-            return new \Illuminate\Database\Eloquent\Collection();
-        }
-
-        return FloorPlan::where('venue_id', $this->eventVenueId)
+        return FloorPlan::with('venue')
+            ->whereHas('venue', fn ($q) => $q->where('team_id', $this->getTeamId()))
             ->active()
             ->orderBy('name')
             ->get();
@@ -228,6 +229,14 @@ class EventManager extends Component
             'events_event_id'   => $this->eventEventsEventId,
             'events_event_uuid' => $this->resolveEventsEventUuid(),
         ];
+
+        // Venue automatisch aus dem ersten Raum ableiten, falls keins gewählt
+        if (!$data['venue_id'] && !empty($this->rooms)) {
+            $firstPlanId = $this->rooms[0]['floor_plan_id'] ?? null;
+            $data['venue_id'] = $firstPlanId
+                ? FloorPlan::find((int) $firstPlanId)?->venue_id
+                : null;
+        }
 
         if ($this->editingEventId) {
             $event = Event::findOrFail($this->editingEventId);
