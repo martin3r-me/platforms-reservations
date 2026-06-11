@@ -24,12 +24,12 @@
                             <img src="{{ $event->imageUrl('medium_16_9') }}" alt=""
                                 class="aspect-video w-full object-cover transition group-hover:scale-[1.02]" />
                         @else
-                            <div class="flex aspect-video w-full items-center justify-center bg-indigo-50 text-4xl dark:bg-indigo-950">
+                            <div class="flex aspect-video w-full items-center justify-center bg-[var(--ui-primary-10)] text-4xl">
                                 🎭
                             </div>
                         @endif
                         <div class="p-4">
-                            <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-[var(--ui-primary)]">
                                 {{ $event->date->locale('de')->isoFormat('dd, D. MMMM Y') }}
                             </p>
                             <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ $event->name }}</h2>
@@ -46,7 +46,7 @@
                                     Bestellschluss erreicht
                                 </p>
                             @else
-                                <p class="mt-3 text-sm font-medium text-indigo-600 group-hover:underline dark:text-indigo-400">
+                                <p class="mt-3 text-sm font-medium text-[var(--ui-primary)] group-hover:underline">
                                     Jetzt vorbestellen →
                                 </p>
                             @endif

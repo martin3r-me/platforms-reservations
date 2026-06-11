@@ -50,15 +50,18 @@
                         </x-ui-table-cell>
                         <x-ui-table-cell compact="true">
                             <div class="flex gap-1.5">
-                                <x-ui-button variant="secondary-outline" size="sm" wire:click="openForm({{ $slot->id }})">Bearbeiten</x-ui-button>
+                                <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openForm({{ $slot->id }})" title="Bearbeiten">
+                                    @svg('heroicon-o-pencil', 'w-4 h-4')
+                                </x-ui-button>
                                 <div class="shrink-0">
                                     <x-ui-confirm-button
                                         action="delete"
                                         :value="$slot->id"
-                                        text="Löschen"
+                                        text=""
                                         confirmText="Wirklich löschen?"
                                         variant="danger-outline"
                                         size="sm"
+                                        :icon="svg('heroicon-o-trash', 'w-4 h-4')->toHtml()"
                                     />
                                 </div>
                             </div>

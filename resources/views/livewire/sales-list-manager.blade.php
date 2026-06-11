@@ -47,7 +47,7 @@
             </div>
             <div class="divide-y divide-[var(--ui-border)]/30">
                 @foreach ($this->salesLists as $list)
-                    <div wire:key="list-{{ $list->id }}" class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--ui-muted-5)] transition-colors">
+                    <div wire:key="list-{{ $list->id }}" class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-[var(--ui-muted-5)] transition-colors">
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="text-sm font-medium text-[var(--ui-secondary)]">{{ $list->name }}</span>
@@ -62,15 +62,18 @@
                         </div>
                         <div class="flex shrink-0 items-center justify-end gap-1.5">
                             <x-ui-button variant="primary" size="sm" wire:click="openAssignment({{ $list->id }})">Artikel zuordnen</x-ui-button>
-                            <x-ui-button variant="secondary-outline" size="sm" wire:click="openListForm({{ $list->id }})">Bearbeiten</x-ui-button>
+                            <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openListForm({{ $list->id }})" title="Bearbeiten">
+                                @svg('heroicon-o-pencil', 'w-4 h-4')
+                            </x-ui-button>
                             <div class="shrink-0">
                                 <x-ui-confirm-button
                                     action="deleteList"
                                     :value="$list->id"
-                                    text="Löschen"
+                                    text=""
                                     confirmText="Wirklich löschen?"
                                     variant="danger-outline"
                                     size="sm"
+                                    :icon="svg('heroicon-o-trash', 'w-4 h-4')->toHtml()"
                                 />
                             </div>
                         </div>

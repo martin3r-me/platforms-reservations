@@ -50,15 +50,18 @@
                             @svg('heroicon-o-plus', 'w-4 h-4')
                             <span>Tischplan</span>
                         </x-ui-button>
-                        <x-ui-button variant="secondary-outline" size="sm" wire:click="openVenueForm({{ $venue->id }})">Bearbeiten</x-ui-button>
+                        <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openVenueForm({{ $venue->id }})" title="Venue bearbeiten">
+                            @svg('heroicon-o-pencil', 'w-4 h-4')
+                        </x-ui-button>
                         <div class="shrink-0">
                             <x-ui-confirm-button
                                 action="deleteVenue"
                                 :value="$venue->id"
-                                text="Löschen"
+                                text=""
                                 confirmText="Wirklich löschen?"
                                 variant="danger-outline"
                                 size="sm"
+                                :icon="svg('heroicon-o-trash', 'w-4 h-4')->toHtml()"
                             />
                         </div>
                     </div>
@@ -90,15 +93,18 @@
                                         @svg('heroicon-o-eye', 'w-4 h-4')
                                         <span>3D-Ansicht</span>
                                     </x-ui-button>
-                                    <x-ui-button variant="secondary-outline" size="sm" wire:click="openFloorPlanForm({{ $venue->id }}, {{ $plan->id }})">Umbenennen</x-ui-button>
+                                    <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openFloorPlanForm({{ $venue->id }}, {{ $plan->id }})" title="Umbenennen">
+                                        @svg('heroicon-o-pencil', 'w-4 h-4')
+                                    </x-ui-button>
                                     <div class="shrink-0">
                                         <x-ui-confirm-button
                                             action="deleteFloorPlan"
                                             :value="$plan->id"
-                                            text="Löschen"
+                                            text=""
                                             confirmText="Wirklich löschen?"
                                             variant="danger-outline"
                                             size="sm"
+                                            :icon="svg('heroicon-o-trash', 'w-4 h-4')->toHtml()"
                                         />
                                     </div>
                                 </div>

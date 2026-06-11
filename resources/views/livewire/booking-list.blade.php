@@ -108,10 +108,11 @@
                                         <x-ui-confirm-button
                                             action="cancelBooking"
                                             :value="$booking->id"
-                                            text="Stornieren"
+                                            text=""
                                             confirmText="Wirklich stornieren?"
                                             variant="danger-outline"
                                             size="sm"
+                                            :icon="svg('heroicon-o-x-mark', 'w-4 h-4')->toHtml()"
                                         />
                                     </div>
                                 @endif

@@ -57,7 +57,7 @@
             </div>
             <div class="divide-y divide-[var(--ui-border)]/30">
                 @foreach ($this->events as $event)
-                    <div wire:key="event-{{ $event->id }}" class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--ui-muted-5)] transition-colors">
+                    <div wire:key="event-{{ $event->id }}" class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-[var(--ui-muted-5)] transition-colors">
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="text-sm font-medium text-[var(--ui-secondary)]">{{ $event->name }}</span>
@@ -105,17 +105,19 @@
                                     </x-ui-button>
                                 @endif
                                 <x-ui-button variant="secondary-outline" size="sm" wire:click="unpublish({{ $event->id }})">Zurückziehen</x-ui-button>
-                                <x-ui-button variant="secondary-outline" size="sm" wire:click="close({{ $event->id }})">Schließen</x-ui-button>
                             @endif
-                            <x-ui-button variant="secondary-outline" size="sm" wire:click="openForm({{ $event->id }})">Bearbeiten</x-ui-button>
+                            <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openForm({{ $event->id }})" title="Bearbeiten">
+                                @svg('heroicon-o-pencil', 'w-4 h-4')
+                            </x-ui-button>
                             <div class="shrink-0">
                                 <x-ui-confirm-button
                                     action="delete"
                                     :value="$event->id"
-                                    text="Löschen"
+                                    text=""
                                     confirmText="Wirklich löschen?"
                                     variant="danger-outline"
                                     size="sm"
+                                    :icon="svg('heroicon-o-trash', 'w-4 h-4')->toHtml()"
                                 />
                             </div>
                         </div>

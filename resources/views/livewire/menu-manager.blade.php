@@ -72,15 +72,18 @@
                         @svg('heroicon-o-plus', 'w-4 h-4')
                         <span>Gericht</span>
                     </x-ui-button>
-                    <x-ui-button variant="secondary-outline" size="sm" wire:click="openCategoryForm({{ $category->id }})">Bearbeiten</x-ui-button>
+                    <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openCategoryForm({{ $category->id }})" title="Kategorie bearbeiten">
+                        @svg('heroicon-o-pencil', 'w-4 h-4')
+                    </x-ui-button>
                     <div class="shrink-0">
                         <x-ui-confirm-button
                             action="deleteCategory"
                             :value="$category->id"
-                            text="Löschen"
+                            text=""
                             confirmText="Wirklich löschen?"
                             variant="danger-outline"
                             size="sm"
+                            :icon="svg('heroicon-o-trash', 'w-4 h-4')->toHtml()"
                         />
                     </div>
                 </div>
@@ -88,7 +91,7 @@
 
             <div class="divide-y divide-[var(--ui-border)]/30">
                 @foreach ($category->menuItems as $item)
-                    <div wire:key="item-{{ $item->id }}" class="flex items-center px-4 py-3 hover:bg-[var(--ui-muted-5)] transition-colors">
+                    <div wire:key="item-{{ $item->id }}" class="flex items-center px-4 py-2.5 hover:bg-[var(--ui-muted-5)] transition-colors">
                         @if ($item->image_context_file_id && $item->imageFile)
                             <img src="{{ $item->imageUrl('thumbnail_1_1') }}" alt=""
                                 class="mr-3 h-12 w-12 shrink-0 rounded-lg object-cover" />
@@ -153,15 +156,18 @@
                                 </div>
                             @endif
 
-                            <x-ui-button variant="secondary-outline" size="sm" wire:click="openItemForm({{ $item->id }})">Bearbeiten</x-ui-button>
+                            <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openItemForm({{ $item->id }})" title="Bearbeiten">
+                                @svg('heroicon-o-pencil', 'w-4 h-4')
+                            </x-ui-button>
                             <div class="shrink-0">
                                 <x-ui-confirm-button
                                     action="deleteItem"
                                     :value="$item->id"
-                                    text="Löschen"
+                                    text=""
                                     confirmText="Wirklich löschen?"
                                     variant="danger-outline"
                                     size="sm"
+                                    :icon="svg('heroicon-o-trash', 'w-4 h-4')->toHtml()"
                                 />
                             </div>
                         </div>

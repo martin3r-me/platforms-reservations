@@ -2,7 +2,7 @@
     {{-- Kopf --}}
     <div class="border-b bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-900">
         <div class="mx-auto max-w-3xl">
-            <a href="{{ route('reservation.guest.events.index') }}" class="text-xs text-indigo-600 hover:underline dark:text-indigo-400">← Alle Termine</a>
+            <a href="{{ route('reservation.guest.events.index') }}" class="text-xs text-[var(--ui-primary)] hover:underline">← Alle Termine</a>
             <h1 class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ $this->event->name }}</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400">
                 {{ $this->event->date->locale('de')->isoFormat('dd, D. MMMM Y') }}
@@ -21,7 +21,7 @@
                     Für diesen Termin sind leider keine Vorbestellungen mehr möglich.
                 </p>
                 <a href="{{ route('reservation.guest.events.index') }}"
-                    class="mt-5 inline-block rounded-xl bg-indigo-600 px-6 py-3 text-sm font-medium text-white hover:bg-indigo-700">
+                    class="mt-5 inline-block rounded-xl bg-[var(--ui-primary)] px-6 py-3 text-sm font-medium text-white hover:opacity-90">
                     Andere Termine ansehen
                 </a>
             </div>
@@ -29,19 +29,33 @@
 
         {{-- Step-Indicator --}}
         @if ($step < 5)
-            <div class="mb-6 flex items-center justify-between">
-                @foreach (['Gastdaten', 'Produkte', 'Sitzplatz', 'Bezahlung'] as $i => $label)
-                    <div class="flex flex-col items-center">
-                        <div class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold
-                            {{ $step > $i + 1 ? 'bg-green-500 text-white' : ($step === $i + 1 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-500 dark:bg-gray-800') }}">
-                            {{ $step > $i + 1 ? '✓' : $i + 1 }}
+            <div class="mx-auto mb-6 max-w-lg">
+                <div class="grid grid-cols-4 gap-0">
+                    @foreach (['Gastdaten', 'Produkte', 'Sitzplatz', 'Bezahlung'] as $i => $label)
+                        @php
+                            $isDone = $step > $i + 1;
+                            $isActive = $step === $i + 1;
+                        @endphp
+                        <div class="relative flex flex-col items-center">
+                            {{-- Verbindungslinien auf Kreis-Höhe --}}
+                            @if ($i > 0)
+                                <div class="absolute left-0 right-1/2 top-4 -z-0 h-0.5 -translate-y-1/2 {{ $step > $i ? 'bg-[var(--ui-primary)]' : 'bg-gray-200 dark:bg-gray-800' }}"></div>
+                            @endif
+                            @if ($i < 3)
+                                <div class="absolute left-1/2 right-0 top-4 -z-0 h-0.5 -translate-y-1/2 {{ $step > $i + 1 ? 'bg-[var(--ui-primary)]' : 'bg-gray-200 dark:bg-gray-800' }}"></div>
+                            @endif
+                            <div class="relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ring-4 ring-gray-50 dark:ring-gray-950
+                                {{ $isDone ? 'bg-[var(--ui-primary)] text-white' : ($isActive ? 'bg-[var(--ui-primary)] text-white' : 'bg-white text-gray-400 border border-gray-300 dark:border-gray-700 dark:bg-gray-900') }}">
+                                @if ($isDone)
+                                    @svg('heroicon-o-check', 'w-4 h-4')
+                                @else
+                                    {{ $i + 1 }}
+                                @endif
+                            </div>
+                            <span class="mt-1.5 text-[11px] {{ $isActive ? 'font-semibold text-[var(--ui-primary)]' : 'text-gray-500' }}">{{ $label }}</span>
                         </div>
-                        <span class="mt-1 text-xs text-gray-500">{{ $label }}</span>
-                    </div>
-                    @if ($i < 3)
-                        <div class="mx-1 mt-[-16px] h-px flex-1 bg-gray-200 dark:bg-gray-800"></div>
-                    @endif
-                @endforeach
+                    @endforeach
+                </div>
             </div>
         @endif
 
@@ -86,7 +100,7 @@
                 </div>
 
                 <button wire:click="nextStep"
-                    class="mt-2 w-full rounded-xl bg-indigo-600 py-3 text-base font-bold text-white hover:bg-indigo-700">
+                    class="mt-2 w-full rounded-xl bg-[var(--ui-primary)] py-3 text-base font-bold text-white hover:opacity-90">
                     Weiter zur Produktauswahl
                 </button>
             </div>
@@ -146,7 +160,7 @@
                                                 Enthält: {{ $item->allergens->pluck('code')->merge($item->additives->pluck('code'))->filter()->implode(', ') }}
                                             </p>
                                         @endif
-                                        <p class="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                                        <p class="text-sm font-semibold text-[var(--ui-primary)]">
                                             {{ number_format($item->price, 2, ',', '.') }} €
                                         </p>
                                     </div>
@@ -159,7 +173,7 @@
                                             </span>
                                         @endif
                                         <button wire:click="incrementItem({{ $item->id }})"
-                                            class="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">+</button>
+                                            class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--ui-primary-10)] text-[var(--ui-primary)]">+</button>
                                     </div>
                                 </div>
                             @endforeach
@@ -197,7 +211,7 @@
                             <button wire:click="prevStep"
                                 class="rounded-xl border px-4 py-3 text-sm font-medium dark:border-gray-700 dark:text-white">Zurück</button>
                             <button wire:click="nextStep"
-                                class="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-700">
+                                class="rounded-xl bg-[var(--ui-primary)] px-5 py-3 text-sm font-bold text-white hover:opacity-90">
                                 Weiter zur Sitzplatzwahl
                             </button>
                         </div>
@@ -218,7 +232,7 @@
                         <div class="flex flex-wrap gap-2">
                             @foreach ($this->event->slots as $slot)
                                 <button wire:key="slot-{{ $slot->id }}" wire:click="selectSlot({{ $slot->id }})"
-                                    class="rounded-xl border px-4 py-2 text-sm {{ $selectedSlotId === $slot->id ? 'border-indigo-500 bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' : 'border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-300' }}">
+                                    class="rounded-xl border px-4 py-2 text-sm {{ $selectedSlotId === $slot->id ? 'border-[var(--ui-primary)] bg-[var(--ui-primary-10)] font-semibold text-[var(--ui-primary)]' : 'border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-300' }}">
                                     {{ $slot->name }} · {{ substr($slot->time_start, 0, 5) }} Uhr
                                 </button>
                             @endforeach
@@ -235,7 +249,7 @@
                             <div class="flex flex-wrap gap-2">
                                 @foreach ($this->openRooms as $room)
                                     <button wire:key="room-{{ $room->id }}" wire:click="selectRoom({{ $room->id }})"
-                                        class="rounded-xl border px-4 py-2 text-sm {{ $selectedRoomId === $room->id ? 'border-indigo-500 bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' : 'border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-300' }}">
+                                        class="rounded-xl border px-4 py-2 text-sm {{ $selectedRoomId === $room->id ? 'border-[var(--ui-primary)] bg-[var(--ui-primary-10)] font-semibold text-[var(--ui-primary)]' : 'border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-300' }}">
                                         {{ $room->floorPlan->name }}
                                     </button>
                                 @endforeach
@@ -275,7 +289,7 @@
                     <button wire:click="prevStep"
                         class="flex-1 rounded-xl border py-3 text-base font-medium dark:border-gray-700 dark:text-white">Zurück</button>
                     <button wire:click="nextStep"
-                        class="flex-1 rounded-xl bg-indigo-600 py-3 text-base font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+                        class="flex-1 rounded-xl bg-[var(--ui-primary)] py-3 text-base font-bold text-white hover:opacity-90 disabled:opacity-50"
                         @if (!$selectedTableId) disabled @endif>
                         Weiter zur Bezahlung
                     </button>
@@ -334,8 +348,8 @@
                         @foreach (['card' => '💳 Kredit-/Debitkarte', 'paypal' => '🅿️ PayPal', 'applepay' => ' Apple Pay'] as $method => $label)
                             <label wire:key="pay-{{ $method }}"
                                 class="flex cursor-pointer items-center gap-3 rounded-xl border bg-white px-4 py-3 text-sm dark:bg-gray-900
-                                {{ $paymentMethod === $method ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-gray-300 dark:border-gray-700' }}">
-                                <input type="radio" wire:model.live="paymentMethod" value="{{ $method }}" class="text-indigo-600" />
+                                {{ $paymentMethod === $method ? 'border-[var(--ui-primary)] ring-1 ring-[var(--ui-primary)]' : 'border-gray-300 dark:border-gray-700' }}">
+                                <input type="radio" wire:model.live="paymentMethod" value="{{ $method }}" class="text-[var(--ui-primary)]" />
                                 <span class="dark:text-white">{{ $label }}</span>
                             </label>
                         @endforeach
@@ -368,7 +382,7 @@
                     <button wire:click="prevStep"
                         class="flex-1 rounded-xl border py-3 text-base font-medium dark:border-gray-700 dark:text-white">Zurück</button>
                     <button wire:click="confirm" wire:loading.attr="disabled"
-                        class="flex-1 rounded-xl bg-indigo-600 py-3 text-base font-bold text-white hover:bg-indigo-700 disabled:opacity-50">
+                        class="flex-1 rounded-xl bg-[var(--ui-primary)] py-3 text-base font-bold text-white hover:opacity-90 disabled:opacity-50">
                         <span wire:loading.remove wire:target="confirm">Jetzt verbindlich bestellen</span>
                         <span wire:loading wire:target="confirm">Wird gespeichert…</span>
                     </button>

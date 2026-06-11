@@ -16,8 +16,8 @@ use Platform\Reservation\Livewire\EventOrders;
 // Prefix + Middleware (web/auth/Modul-Guard/Permission) kommen aus ModuleRouter::group().
 // Route-Namen daher voll qualifiziert ('reservation.*').
 
-// Dashboard → Buchungsliste
-Route::get('/', BookingList::class)->name('reservation.dashboard');
+// Dashboard (Kennzahlen, nächste Termine, neueste Buchungen)
+Route::get('/', \Platform\Reservation\Livewire\Dashboard::class)->name('reservation.dashboard');
 Route::get('/bookings', BookingList::class)->name('reservation.bookings.index');
 Route::get('/bookings/create', BookingCreate::class)->name('reservation.bookings.create');
 

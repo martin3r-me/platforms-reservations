@@ -6,6 +6,10 @@
     {{-- Expanded: gruppierte Navigation --}}
     <div x-show="!collapsed">
     <x-ui-sidebar-list label="Übersicht">
+        <x-ui-sidebar-item :href="route('reservation.dashboard')">
+            @svg('heroicon-o-home', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Dashboard</span>
+        </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.bookings.index')">
             @svg('heroicon-o-calendar-days', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Buchungen</span>
