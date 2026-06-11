@@ -236,6 +236,10 @@ class CheckoutWizard extends Component
 
         $this->resetErrorBag();
         $this->step = min(4, $this->step + 1);
+
+        if ($this->step === 3 && $this->selectedSlotId && !$this->selectedRoomId) {
+            $this->autoSelectSingleRoom();
+        }
     }
 
     public function prevStep(): void
@@ -294,13 +298,6 @@ class CheckoutWizard extends Component
     {
         if ($this->openRooms->count() === 1) {
             $this->selectedRoomId = $this->openRooms->first()->id;
-        }
-    }
-
-    public function updatedStep(): void
-    {
-        if ($this->step === 3 && $this->selectedSlotId && !$this->selectedRoomId) {
-            $this->autoSelectSingleRoom();
         }
     }
 
