@@ -17,6 +17,10 @@
             @svg('heroicon-o-building-storefront', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Venues &amp; Tischpläne</span>
         </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('reservation.sales-lists.index')">
+            @svg('heroicon-o-queue-list', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Verkaufslisten</span>
+        </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.menu.index')">
             @svg('heroicon-o-rectangle-stack', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Menü</span>

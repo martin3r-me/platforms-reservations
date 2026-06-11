@@ -14,6 +14,7 @@ class FloorPlan extends Model
         'venue_id',
         'name',
         'layout_json',
+        'default_sales_list_id',
         'is_active',
     ];
 
@@ -30,6 +31,12 @@ class FloorPlan extends Model
     public function tables(): HasMany
     {
         return $this->hasMany(Table::class, 'floor_plan_id');
+    }
+
+    /** Raum-Default: Vorbelegung der Verkaufsliste beim Anlegen eines Termins. */
+    public function defaultSalesList(): BelongsTo
+    {
+        return $this->belongsTo(SalesList::class, 'default_sales_list_id');
     }
 
     public function scopeActive($query)

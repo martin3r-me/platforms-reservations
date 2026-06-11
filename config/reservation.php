@@ -34,6 +34,7 @@ return [
             'group' => 'Verwaltung',
             'items' => [
                 ['label' => 'Venues & Tischpläne', 'route' => 'reservation.venues.index', 'icon' => 'heroicon-o-building-storefront'],
+                ['label' => 'Verkaufslisten', 'route' => 'reservation.sales-lists.index', 'icon' => 'heroicon-o-queue-list'],
                 ['label' => 'Menü', 'route' => 'reservation.menu.index', 'icon' => 'heroicon-o-rectangle-stack'],
                 ['label' => 'Artikel-Import', 'route' => 'reservation.menu.import', 'icon' => 'heroicon-o-arrow-up-tray'],
                 ['label' => 'Drop-off', 'route' => 'reservation.dropoff.index', 'icon' => 'heroicon-o-clock'],

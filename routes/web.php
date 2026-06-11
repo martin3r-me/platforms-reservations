@@ -9,6 +9,7 @@ use Platform\Reservation\Livewire\MenuImport;
 use Platform\Reservation\Livewire\DropoffManager;
 use Platform\Reservation\Livewire\Export;
 use Platform\Reservation\Livewire\VenueManager;
+use Platform\Reservation\Livewire\SalesListManager;
 
 // Prefix + Middleware (web/auth/Modul-Guard/Permission) kommen aus ModuleRouter::group().
 // Route-Namen daher voll qualifiziert ('reservation.*').
@@ -24,6 +25,9 @@ Route::get('/venues', VenueManager::class)->name('reservation.venues.index');
 // Tischplan (Admin)
 Route::get('/floor-plan/{venueId}/edit/{floorPlanId?}', FloorPlanEditor::class)
     ->name('reservation.floor-plan.editor');
+
+// Verkaufslisten (segmentierte Sortimente)
+Route::get('/sales-lists', SalesListManager::class)->name('reservation.sales-lists.index');
 
 // Menü-Verwaltung
 Route::get('/menu', MenuManager::class)->name('reservation.menu.index');
