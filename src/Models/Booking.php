@@ -23,6 +23,8 @@ class Booking extends Model
         'uuid',
         'team_id',
         'table_id',
+        'event_id',
+        'event_slot_id',
         'guest_name',
         'guest_email',
         'guest_phone',
@@ -32,12 +34,17 @@ class Booking extends Model
         'time_start',
         'time_end',
         'status',
+        'age_check_confirmed_at',
+        'legal_accepted_at',
+        'payment_method',
         'mollie_payment_id',
     ];
 
     protected $casts = [
-        'date'        => 'date',
-        'guest_count' => 'integer',
+        'date'                   => 'date',
+        'guest_count'            => 'integer',
+        'age_check_confirmed_at' => 'datetime',
+        'legal_accepted_at'      => 'datetime',
     ];
 
     protected static function booted(): void
@@ -57,6 +64,16 @@ class Booking extends Model
     public function table(): BelongsTo
     {
         return $this->belongsTo(Table::class, 'table_id');
+    }
+
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(Event::class, 'event_id');
+    }
+
+    public function slot(): BelongsTo
+    {
+        return $this->belongsTo(EventSlot::class, 'event_slot_id');
     }
 
     public function items(): HasMany
@@ -97,5 +114,13 @@ class Booking extends Model
     public function getTotalAmountAttribute(): float
     {
         return $this->items->sum(fn ($item) => $item->unit_price * $item->quantity);
+    }
+
+    /** Enthält die Buchung alkoholische Artikel (→ 18+-Check erforderlich)? */
+    public function getRequiresAgeCheckAttribute(): bool
+    {
+        return $this->items()
+            ->whereHas('menuItem', fn ($q) => $q->where('is_alcoholic', true))
+            ->exists();
     }
 }

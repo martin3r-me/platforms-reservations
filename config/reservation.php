@@ -33,6 +33,7 @@ return [
         [
             'group' => 'Verwaltung',
             'items' => [
+                ['label' => 'Termine', 'route' => 'reservation.events.index', 'icon' => 'heroicon-o-ticket'],
                 ['label' => 'Venues & Tischpläne', 'route' => 'reservation.venues.index', 'icon' => 'heroicon-o-building-storefront'],
                 ['label' => 'Verkaufslisten', 'route' => 'reservation.sales-lists.index', 'icon' => 'heroicon-o-queue-list'],
                 ['label' => 'Menü', 'route' => 'reservation.menu.index', 'icon' => 'heroicon-o-rectangle-stack'],

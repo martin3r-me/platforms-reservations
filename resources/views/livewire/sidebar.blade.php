@@ -13,6 +13,10 @@
     </x-ui-sidebar-list>
 
     <x-ui-sidebar-list label="Verwaltung">
+        <x-ui-sidebar-item :href="route('reservation.events.index')">
+            @svg('heroicon-o-ticket', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Termine</span>
+        </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.venues.index')">
             @svg('heroicon-o-building-storefront', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Venues &amp; Tischpläne</span>
