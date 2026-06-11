@@ -1,4 +1,18 @@
-<div class="mx-auto max-w-lg p-4">
+<x-ui-page>
+    <x-slot name="navbar">
+        <x-ui-page-navbar title="Neue Buchung" />
+    </x-slot>
+
+    <x-slot name="actionbar">
+        <x-ui-page-actionbar :breadcrumbs="[
+            ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
+            ['label' => 'Buchungen', 'href' => route('reservation.bookings.index')],
+            ['label' => 'Neue Buchung'],
+        ]" />
+    </x-slot>
+
+    <x-ui-page-container>
+    <div class="mx-auto max-w-lg pt-4">
     {{-- Step Indicator --}}
     <div class="mb-6 flex items-center justify-between">
         @foreach(['Termin', 'Gast', 'Menü', 'Bestätigung'] as $i => $label)
@@ -190,4 +204,6 @@
             </a>
         </div>
     @endif
-</div>
+    </div>
+    </x-ui-page-container>
+</x-ui-page>

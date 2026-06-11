@@ -3,6 +3,8 @@
         PausePlus
     </div>
 
+    {{-- Expanded: gruppierte Navigation --}}
+    <div x-show="!collapsed">
     <x-ui-sidebar-list label="Übersicht">
         <x-ui-sidebar-item :href="route('reservation.bookings.index')">
             @svg('heroicon-o-calendar-days', 'w-4 h-4 text-[var(--ui-secondary)]')
@@ -31,6 +33,7 @@
             <span class="ml-2 text-sm">Export</span>
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
+    </div>
 
     {{-- Collapsed: Icons-only --}}
     <div x-show="collapsed" class="px-2 py-2 border-b border-[var(--ui-border)]">

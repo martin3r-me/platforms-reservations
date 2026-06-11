@@ -1,10 +1,18 @@
-<div class="p-4 space-y-4">
-    {{-- Header --}}
-    <div class="flex items-center justify-between">
-        <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
-            Tischplan bearbeiten – {{ $this->venue->name }}
-        </h1>
-    </div>
+<x-ui-page>
+    <x-slot name="navbar">
+        <x-ui-page-navbar :title="'Tischplan – ' . $this->venue->name" />
+    </x-slot>
+
+    <x-slot name="actionbar">
+        <x-ui-page-actionbar :breadcrumbs="[
+            ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
+            ['label' => 'Venues & Tischpläne', 'href' => route('reservation.venues.index')],
+            ['label' => 'Tischplan bearbeiten'],
+        ]" />
+    </x-slot>
+
+    <x-ui-page-container>
+    <div class="pt-4 space-y-4">
 
     {{-- Tischplan Name --}}
     <div class="flex gap-2">
@@ -130,7 +138,10 @@
     @else
         <p class="text-sm text-gray-500">Speichere zuerst den Tischplan, um Tische hinzuzufügen.</p>
     @endif
-</div>
+
+    </div>
+    </x-ui-page-container>
+</x-ui-page>
 
 @script
 <script>

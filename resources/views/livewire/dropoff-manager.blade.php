@@ -1,11 +1,22 @@
-<div class="p-4 space-y-4">
-    <div class="flex items-center justify-between">
-        <h1 class="text-xl font-semibold dark:text-white">Drop-off Slots</h1>
-        <button wire:click="openForm()"
-            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-            + Neuer Slot
-        </button>
-    </div>
+<x-ui-page>
+    <x-slot name="navbar">
+        <x-ui-page-navbar title="Drop-off Slots" />
+    </x-slot>
+
+    <x-slot name="actionbar">
+        <x-ui-page-actionbar :breadcrumbs="[
+            ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
+            ['label' => 'Drop-off'],
+        ]">
+            <x-ui-button wire:click="openForm()" variant="primary" size="sm">
+                @svg('heroicon-o-plus', 'w-4 h-4')
+                Neuer Slot
+            </x-ui-button>
+        </x-ui-page-actionbar>
+    </x-slot>
+
+    <x-ui-page-container>
+    <div class="pt-4 space-y-4">
 
     {{-- Datumsfilter --}}
     <div>
@@ -109,4 +120,7 @@
             </div>
         </div>
     @endif
-</div>
+
+    </div>
+    </x-ui-page-container>
+</x-ui-page>

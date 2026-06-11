@@ -1,18 +1,22 @@
-<div class="mx-auto max-w-4xl p-4 space-y-6">
+<x-ui-page>
+    <x-slot name="navbar">
+        <x-ui-page-navbar title="Venues & Tischpläne" />
+    </x-slot>
 
-    {{-- ── Header ─────────────────────────────────────────────── --}}
-    <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-            <h1 class="text-xl font-semibold dark:text-white">Venues & Tischpläne</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400">Verwalte deine Locations und erstelle interaktive Tischpläne.</p>
-        </div>
-        <button
-            wire:click="openVenueForm()"
-            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-        >
-            + Venue anlegen
-        </button>
-    </div>
+    <x-slot name="actionbar">
+        <x-ui-page-actionbar :breadcrumbs="[
+            ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
+            ['label' => 'Venues & Tischpläne'],
+        ]">
+            <x-ui-button wire:click="openVenueForm()" variant="primary" size="sm">
+                @svg('heroicon-o-plus', 'w-4 h-4')
+                Venue anlegen
+            </x-ui-button>
+        </x-ui-page-actionbar>
+    </x-slot>
+
+    <x-ui-page-container>
+    <div class="mx-auto max-w-4xl pt-4 space-y-6">
 
     {{-- ── Leer-Zustand ─────────────────────────────────────────── --}}
     @if ($this->venues->isEmpty())
@@ -193,4 +197,6 @@
         </div>
     @endif
 
-</div>
+    </div>
+    </x-ui-page-container>
+</x-ui-page>

@@ -1,11 +1,22 @@
-<div class="p-4 space-y-6">
-    <div class="flex items-center justify-between">
-        <h1 class="text-xl font-semibold dark:text-white">Menü-Verwaltung</h1>
-        <button wire:click="openCategoryForm()"
-            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-            + Kategorie
-        </button>
-    </div>
+<x-ui-page>
+    <x-slot name="navbar">
+        <x-ui-page-navbar title="Menü-Verwaltung" />
+    </x-slot>
+
+    <x-slot name="actionbar">
+        <x-ui-page-actionbar :breadcrumbs="[
+            ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
+            ['label' => 'Menü'],
+        ]">
+            <x-ui-button wire:click="openCategoryForm()" variant="primary" size="sm">
+                @svg('heroicon-o-plus', 'w-4 h-4')
+                Kategorie
+            </x-ui-button>
+        </x-ui-page-actionbar>
+    </x-slot>
+
+    <x-ui-page-container>
+    <div class="pt-4 space-y-6">
 
     @foreach ($this->categories as $category)
         <div class="rounded-xl border dark:border-gray-700">
@@ -160,4 +171,7 @@
             </div>
         </div>
     @endif
-</div>
+
+    </div>
+    </x-ui-page-container>
+</x-ui-page>

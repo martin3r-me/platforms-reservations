@@ -1,5 +1,17 @@
-<div class="p-4 space-y-6">
-    <h1 class="text-xl font-semibold dark:text-white">Export</h1>
+<x-ui-page>
+    <x-slot name="navbar">
+        <x-ui-page-navbar title="Export" />
+    </x-slot>
+
+    <x-slot name="actionbar">
+        <x-ui-page-actionbar :breadcrumbs="[
+            ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
+            ['label' => 'Export'],
+        ]" />
+    </x-slot>
+
+    <x-ui-page-container>
+    <div class="pt-4 space-y-6">
 
     <div class="rounded-xl border p-4 space-y-4 dark:border-gray-700">
         <div class="grid grid-cols-2 gap-4">
@@ -64,4 +76,7 @@
             @endforeach
         </div>
     </div>
-</div>
+
+    </div>
+    </x-ui-page-container>
+</x-ui-page>

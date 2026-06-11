@@ -1,28 +1,22 @@
-<div class="p-4 space-y-4">
-    {{-- ── Schnell-Navigation ────────────────────────────────── --}}
-    <div class="flex flex-wrap gap-2 text-sm">
-        <span class="font-semibold text-gray-500 dark:text-gray-400 self-center">PausePlus:</span>
-        <a href="{{ route('reservation.venues.index') }}"
-            class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
-            🎭 Venues & Tischpläne
-        </a>
-        <a href="{{ route('reservation.menu.index') }}"
-            class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-            🍽 Menü verwalten
-        </a>
-        <a href="{{ route('reservation.export') }}"
-            class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-            📊 Export
-        </a>
-    </div>
+<x-ui-page>
+    <x-slot name="navbar">
+        <x-ui-page-navbar title="Buchungen" />
+    </x-slot>
 
-    <div class="flex flex-wrap items-center justify-between gap-3">
-        <h1 class="text-xl font-semibold dark:text-white">Buchungen</h1>
-        <a href="{{ route('reservation.bookings.create') }}"
-            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-            + Neue Buchung
-        </a>
-    </div>
+    <x-slot name="actionbar">
+        <x-ui-page-actionbar :breadcrumbs="[
+            ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
+            ['label' => 'Buchungen'],
+        ]">
+            <x-ui-button :href="route('reservation.bookings.create')" variant="primary" size="sm">
+                @svg('heroicon-o-plus', 'w-4 h-4')
+                Neue Buchung
+            </x-ui-button>
+        </x-ui-page-actionbar>
+    </x-slot>
+
+    <x-ui-page-container>
+    <div class="space-y-4 pt-4">
 
     {{-- Filter --}}
     <div class="flex flex-wrap gap-2">
@@ -113,4 +107,7 @@
     <div class="mt-4">
         {{ $this->bookings->links() }}
     </div>
-</div>
+
+    </div>
+    </x-ui-page-container>
+</x-ui-page>
