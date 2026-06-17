@@ -15,19 +15,30 @@
     <div class="pt-4 space-y-4">
 
     {{-- Tischplan Name --}}
-    <div class="flex gap-2">
+    <div class="flex items-center gap-2"
+        x-data="{ saved: false }"
+        x-on:floor-plan-saved.window="saved = true; clearTimeout($refs.t); $refs.t = setTimeout(() => saved = false, 2500)">
         <input
             type="text"
             wire:model="floorPlanName"
             placeholder="Name des Tischplans"
-            class="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            class="flex-1 rounded-md border border-[var(--ui-border)] px-3 py-2 text-sm text-[var(--ui-secondary)]"
         />
-        <button
-            wire:click="saveFloorPlan"
-            class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-        >
-            Speichern
-        </button>
+        <x-ui-button variant="primary" size="sm" wire:click="saveFloorPlan" wire:loading.attr="disabled" wire:target="saveFloorPlan">
+            <span wire:loading.remove wire:target="saveFloorPlan" class="flex items-center gap-1">
+                @svg('heroicon-o-check', 'w-4 h-4')
+                <span>Speichern</span>
+            </span>
+            <span wire:loading wire:target="saveFloorPlan">Speichert…</span>
+        </x-ui-button>
+        <span x-show="saved" x-cloak x-transition
+            class="flex items-center gap-1 rounded-md bg-[var(--ui-success-10)] px-2.5 py-1.5 text-sm font-medium text-[var(--ui-success)]">
+            @svg('heroicon-o-check-circle', 'w-4 h-4')
+            Gespeichert
+        </span>
+        @error('floorPlanName')
+            <span class="text-xs text-[var(--ui-danger)]">{{ $message }}</span>
+        @enderror
     </div>
 
     @if ($floorPlanId)
