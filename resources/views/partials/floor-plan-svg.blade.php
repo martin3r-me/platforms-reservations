@@ -1,5 +1,6 @@
 {{--
-    Wiederverwendbarer 3D-Tischplan mit Pan/Zoom (FloorPlanViewer + Gast-CheckoutWizard).
+    Wiederverwendbarer Tischplan (Draufsicht) mit Pan/Zoom.
+    Genutzt von FloorPlanViewer + Gast-CheckoutWizard.
 
     Erwartet:
     - $tableStates: array<int, array{table: \Platform\Reservation\Models\Table, state: string, remaining: ?int}>
@@ -9,7 +10,7 @@
 --}}
 <div
     class="relative flex-1 overflow-hidden"
-    style="min-height: 55vh; perspective: 1200px; cursor: grab;"
+    style="min-height: 55vh; cursor: grab;"
     x-data="{
         scale: 1,
         panX: 0,
@@ -19,7 +20,7 @@
         pinchDist: null,
 
         zoom(factor, cx, cy) {
-            const newScale = Math.min(3, Math.max(0.3, this.scale * factor));
+            const newScale = Math.min(3, Math.max(0.4, this.scale * factor));
             const ratio = newScale / this.scale;
             this.panX = cx - ratio * (cx - this.panX);
             this.panY = cy - ratio * (cy - this.panY);
@@ -75,38 +76,41 @@
     @touchmove.prevent="onTouchMove($event)"
     @touchend="onTouchEnd()"
 >
-    {{-- Pan + Scale wrapper (centered) --}}
-    <div class="absolute inset-0 flex items-start justify-center" style="padding-top: 8%;">
+    @if (count($tableStates) === 0)
+        {{-- Raum ohne Tische --}}
+        <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+            @svg('heroicon-o-map', 'w-10 h-10 mb-3 opacity-40')
+            <span class="text-sm">Für diesen Raum sind noch keine Tische hinterlegt.</span>
+        </div>
+    @else
+    {{-- Pan + Zoom wrapper (zentriert) --}}
+    <div class="absolute inset-0 flex items-center justify-center p-6">
         <div
             :style="`transform: scale(${scale}) translate(${panX / scale}px, ${panY / scale}px);`"
-            style="transform-origin: center top; will-change: transform;"
+            style="will-change: transform;"
         >
-            {{-- Tilted 3D canvas --}}
+            {{-- Flache Plan-Fläche (Draufsicht) --}}
             <div
                 class="relative"
                 style="
                     width: 800px;
                     height: 600px;
-                    transform: rotateX(40deg);
-                    transform-origin: center top;
                     background-color: #1e293b;
                     background-image:
-                        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+                        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
                     background-size: 40px 40px;
                     border-radius: 16px;
-                    box-shadow:
-                        0 80px 160px -20px rgba(0,0,0,0.95),
-                        inset 0 0 0 1px rgba(255,255,255,0.05);
+                    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
                 "
             >
-                {{-- Bühne / Stage als Referenzfläche oben --}}
+                {{-- Bühne / Referenzfläche oben --}}
                 <div
-                    class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-lg text-slate-400 text-xs font-medium tracking-widest uppercase"
+                    class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-lg text-slate-400 text-xs font-medium uppercase"
                     style="
-                        top: 10px;
-                        width: 340px;
-                        height: 36px;
+                        top: 16px;
+                        width: 320px;
+                        height: 34px;
                         background: rgba(255,255,255,0.04);
                         border: 1px solid rgba(255,255,255,0.08);
                         letter-spacing: 0.2em;
@@ -120,10 +124,10 @@
                         $state = $info['state'];
                         $remaining = $info['remaining'] ?? null;
 
-                        [$bgColor, $sideColor, $glow] = match ($state) {
-                            'selected' => ['#6366f1', '#3730a3', '0 0 20px rgba(99,102,241,0.6)'],
-                            'free'     => ['#22c55e', '#15803d', '0 0 14px rgba(34,197,94,0.35)'],
-                            'partial'  => ['#f59e0b', '#b45309', '0 0 14px rgba(245,158,11,0.35)'],
+                        [$bgColor, $ringColor, $glow] = match ($state) {
+                            'selected' => ['#6366f1', '#312e81', '0 0 0 3px #fbbf24'],
+                            'free'     => ['#22c55e', '#15803d', '0 0 12px rgba(34,197,94,0.35)'],
+                            'partial'  => ['#f59e0b', '#b45309', '0 0 12px rgba(245,158,11,0.35)'],
                             default    => ['#ef4444', '#b91c1c', 'none'],
                         };
                         $clickable = $state !== 'full';
@@ -144,10 +148,8 @@
                             background: {{ $bgColor }};
                             border-radius: {{ $radius }};
                             box-shadow:
-                                0 10px 0 {{ $sideColor }},
+                                inset 0 0 0 1px {{ $ringColor }},
                                 {{ $glow }};
-                            transform: translateY(-5px);
-                            {{ $state === 'selected' ? 'outline: 3px solid #fbbf24; outline-offset: 4px;' : '' }}
                         "
                     >
                         <div class="pointer-events-none text-center leading-tight">
@@ -165,4 +167,5 @@
             </div>
         </div>
     </div>
+    @endif
 </div>
