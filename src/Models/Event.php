@@ -38,14 +38,16 @@ class Event extends Model
         'venue_id',
         'sales_list_id',
         'room_release_mode',
+        'disabled_table_ids',
         'image_context_file_id',
         'events_event_id',
         'events_event_uuid',
     ];
 
     protected $casts = [
-        'date'              => 'date',
-        'order_deadline_at' => 'datetime',
+        'date'               => 'date',
+        'order_deadline_at'  => 'datetime',
+        'disabled_table_ids' => 'array',
     ];
 
     protected static function booted(): void
@@ -120,6 +122,12 @@ class Event extends Model
     public function resolveSalesList(): ?SalesList
     {
         return $this->salesList ?? SalesList::defaultForTeam($this->team_id);
+    }
+
+    /** Ist dieser Tisch für den Termin gesperrt (nicht buchbar)? */
+    public function isTableDisabled(int $tableId): bool
+    {
+        return in_array($tableId, $this->disabled_table_ids ?? [], true);
     }
 
     /**

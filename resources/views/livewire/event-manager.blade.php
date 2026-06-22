@@ -31,6 +31,11 @@
             {{ session('event_error') }}
         </div>
     @endif
+    @if (session('event_message'))
+        <div class="rounded-lg border border-[var(--ui-success)]/30 bg-[var(--ui-success-10)] p-3 text-sm text-[var(--ui-success)]">
+            {{ session('event_message') }}
+        </div>
+    @endif
 
     @if ($this->events->isEmpty())
         <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm">
@@ -108,6 +113,9 @@
                             @endif
                             <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openForm({{ $event->id }})" title="Bearbeiten">
                                 @svg('heroicon-o-pencil', 'w-4 h-4')
+                            </x-ui-button>
+                            <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="duplicate({{ $event->id }})" title="Duplizieren">
+                                @svg('heroicon-o-document-duplicate', 'w-4 h-4')
                             </x-ui-button>
                             <div class="shrink-0">
                                 <x-ui-confirm-button
@@ -287,6 +295,45 @@
                     @endforeach
                 </div>
             </section>
+
+            {{-- Gesperrte Tische je Raum --}}
+            @if ($this->roomTables->isNotEmpty())
+                <section class="rounded-lg border border-[var(--ui-border)]/40 overflow-hidden">
+                    <div class="px-3 py-2 border-b border-[var(--ui-border)]/30 flex items-center gap-2 bg-[var(--ui-muted-5)]">
+                        @svg('heroicon-o-no-symbol', 'w-4 h-4 text-[var(--ui-muted)]')
+                        <h4 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Tische sperren</h4>
+                        <span class="ml-auto text-[11px] text-[var(--ui-muted)]">{{ count($disabledTableIds) }} gesperrt</span>
+                    </div>
+                    <div class="p-3 space-y-3">
+                        <p class="text-xs text-[var(--ui-muted)] m-0">Gesperrte Tische sind für diesen Termin nicht buchbar (z.&nbsp;B. reserviert oder defekt).</p>
+                        @foreach ($this->roomTables as $plan)
+                            <div wire:key="dis-plan-{{ $plan->id }}">
+                                <p class="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">{{ $plan->name }}</p>
+                                @if ($plan->tables->isEmpty())
+                                    <p class="text-xs text-[var(--ui-muted)] m-0">Keine Tische in diesem Raum.</p>
+                                @else
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach ($plan->tables as $table)
+                                            @php $isDisabled = in_array($table->id, $disabledTableIds); @endphp
+                                            <button type="button" wire:click="toggleDisabledTable({{ $table->id }})"
+                                                wire:key="dis-table-{{ $table->id }}"
+                                                class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors
+                                                    {{ $isDisabled
+                                                        ? 'border-[var(--ui-danger)]/40 bg-[var(--ui-danger-10)] text-[var(--ui-danger)] line-through'
+                                                        : 'border-[var(--ui-border)]/60 text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]' }}">
+                                                @if ($isDisabled)
+                                                    @svg('heroicon-o-no-symbol', 'w-3.5 h-3.5')
+                                                @endif
+                                                {{ $table->label }} ({{ $table->capacity }}P)
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
 
             {{-- Hero-Bild --}}
             <div>

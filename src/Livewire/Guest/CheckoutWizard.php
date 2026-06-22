@@ -184,11 +184,17 @@ class CheckoutWizard extends Component
 
         $seats = app(SeatAvailabilityService::class);
         $bookedByTable = $seats->bookedSeatsByTable($room->floorPlan, $slot);
+        $event = $this->event;
 
         return $room->floorPlan->tables()->where('is_active', true)->get()
-            ->map(function (Table $table) use ($bookedByTable, $seats) {
+            ->map(function (Table $table) use ($bookedByTable, $seats, $event) {
                 $booked = $bookedByTable->get($table->id, 0);
                 $remaining = max(0, $table->capacity - $booked);
+
+                // Pro Termin gesperrte Tische sind nicht buchbar
+                if ($event->isTableDisabled($table->id)) {
+                    return ['table' => $table, 'state' => 'full', 'remaining' => 0];
+                }
 
                 $state = $this->selectedTableId === $table->id
                     ? 'selected'

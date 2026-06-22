@@ -37,6 +37,9 @@ class EventManager extends Component
     /** @var array<int, array{id: ?int, floor_plan_id: ?int, fill_threshold_percent: int, capacity_override: ?string, open_mode: string}> */
     public array $rooms = [];
 
+    /** @var array<int, int> Tisch-IDs, die für diesen Termin gesperrt sind */
+    public array $disabledTableIds = [];
+
     public $eventImage = null;
 
     protected function getTeamId(): ?int
@@ -78,6 +81,24 @@ class EventManager extends Component
             ->whereHas('venue', fn ($q) => $q->where('team_id', $this->getTeamId()))
             ->active()
             ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * Tische der aktuell gewählten Räume (zum Sperren je Termin),
+     * nach Tischplan gruppiert.
+     */
+    #[Computed]
+    public function roomTables(): \Illuminate\Database\Eloquent\Collection
+    {
+        $planIds = collect($this->rooms)->pluck('floor_plan_id')->filter()->unique()->values();
+
+        if ($planIds->isEmpty()) {
+            return new \Illuminate\Database\Eloquent\Collection();
+        }
+
+        return FloorPlan::with(['tables' => fn ($q) => $q->where('is_active', true)->orderBy('label')])
+            ->whereIn('id', $planIds)
             ->get();
     }
 
@@ -135,6 +156,8 @@ class EventManager extends Component
                 'capacity_override'      => $room->capacity_override !== null ? (string) $room->capacity_override : '',
                 'open_mode'              => $room->is_open_override === null ? 'auto' : ($room->is_open_override ? 'open' : 'closed'),
             ])->toArray();
+
+            $this->disabledTableIds = array_map('intval', $event->disabled_table_ids ?? []);
         } else {
             $this->eventName          = '';
             $this->eventDescription   = '';
@@ -146,6 +169,16 @@ class EventManager extends Component
             $this->eventEventsEventId = null;
             $this->slots = [['id' => null, 'name' => 'Pause', 'time_start' => '', 'time_end' => '']];
             $this->rooms = [];
+            $this->disabledTableIds = [];
+        }
+    }
+
+    public function toggleDisabledTable(int $tableId): void
+    {
+        if (in_array($tableId, $this->disabledTableIds, true)) {
+            $this->disabledTableIds = array_values(array_diff($this->disabledTableIds, [$tableId]));
+        } else {
+            $this->disabledTableIds[] = $tableId;
         }
     }
 
@@ -217,17 +250,26 @@ class EventManager extends Component
             'rooms.*.floor_plan_id.required' => 'Jeder Raum braucht einen Tischplan.',
         ]);
 
+        // Gesperrte Tische auf die Tische der aktuell gewählten Räume eingrenzen
+        // (entfernt verwaiste IDs, wenn ein Raum wieder entfernt wurde).
+        $validTableIds = $this->roomTables->flatMap->tables->pluck('id')->all();
+        $disabledTableIds = array_values(array_intersect(
+            array_map('intval', $this->disabledTableIds),
+            $validTableIds
+        ));
+
         $data = [
-            'team_id'           => $this->getTeamId(),
-            'name'              => $this->eventName,
-            'description'       => $this->eventDescription ?: null,
-            'date'              => $this->eventDate,
-            'order_deadline_at' => $this->eventDeadline ?: null,
-            'venue_id'          => $this->eventVenueId,
-            'sales_list_id'     => $this->eventSalesListId,
-            'room_release_mode' => $this->eventReleaseMode,
-            'events_event_id'   => $this->eventEventsEventId,
-            'events_event_uuid' => $this->resolveEventsEventUuid(),
+            'team_id'            => $this->getTeamId(),
+            'name'               => $this->eventName,
+            'description'        => $this->eventDescription ?: null,
+            'date'               => $this->eventDate,
+            'order_deadline_at'  => $this->eventDeadline ?: null,
+            'venue_id'           => $this->eventVenueId,
+            'sales_list_id'      => $this->eventSalesListId,
+            'room_release_mode'  => $this->eventReleaseMode,
+            'disabled_table_ids' => $disabledTableIds,
+            'events_event_id'    => $this->eventEventsEventId,
+            'events_event_uuid'  => $this->resolveEventsEventUuid(),
         ];
 
         // Venue automatisch aus dem ersten Raum ableiten, falls keins gewählt
@@ -355,6 +397,40 @@ class EventManager extends Component
     {
         Event::findOrFail($id)->update(['status' => Event::STATUS_CLOSED]);
         unset($this->events);
+    }
+
+    /**
+     * Termin als Entwurf duplizieren – inkl. Slots, Räumen und gesperrten
+     * Tischen, aber OHNE Buchungen, Veröffentlichungsstatus, Bild und
+     * Events-Modul-Verknüpfung.
+     */
+    public function duplicate(int $id): void
+    {
+        $original = Event::with(['slots', 'eventRooms'])
+            ->forTeam($this->getTeamId())
+            ->findOrFail($id);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($original) {
+            $copy = $original->replicate([
+                'uuid', 'status', 'image_context_file_id', 'events_event_id', 'events_event_uuid',
+            ]);
+            $copy->name = $original->name . ' (Kopie)';
+            $copy->status = Event::STATUS_DRAFT;
+            $copy->save();
+
+            foreach ($original->slots as $slot) {
+                $copy->slots()->create($slot->only(['name', 'time_start', 'time_end', 'sort_order']));
+            }
+
+            foreach ($original->eventRooms as $room) {
+                $copy->eventRooms()->create($room->only([
+                    'floor_plan_id', 'sort_order', 'fill_threshold_percent', 'capacity_override', 'is_open_override',
+                ]));
+            }
+        });
+
+        unset($this->events);
+        session()->flash('event_message', 'Termin als Entwurf dupliziert.');
     }
 
     public function delete(int $id): void
