@@ -16,7 +16,12 @@ https://historische-stadthalle-wuppertal-culinaria.guestofy.events/#/
       umstellbar). Bleibt inert ohne Key (Checkout läuft dann als Demo-Mock).
       **Offen:** echter Mollie-(Test-)Key + End-to-End-Test auf öffentlichem Host;
       SDK via `composer update` ziehen (`mollie/mollie-api-php`).
-- [ ] **E-Mail-Bestätigungen** an Gäste (die Bestätigungsseite verspricht sie bereits).
+- [~] **E-Mail-Bestätigungen** an Gäste — vorbereitet: `BookingConfirmationMailer`
+      versendet über den CRM-Comms-Dienst (`PostmarkEmailService` + team-scoped
+      `CommsChannel`, wie das Events-Modul) mit eigenem HTML-Template; ausgelöst beim
+      Mollie-„bezahlt"-Übergang. Inert ohne aktiven Postmark-Email-Channel.
+      **Offen:** CRM-Email-Channel je Team einrichten; optionale weitere Trigger
+      (Admin-Bestätigung, Mock-Flow) sind Einzeiler über `BookingConfirmationMailer::send()`.
 - [ ] **Bestellschluss-Enforcement** härten (Altsystem: Uhrzeit am Veranstaltungstag, 20:00).
 - [ ] **Concurrency-Härtung** Platzvergabe (zwei Gäste buchen gleichzeitig die letzten Plätze)
       + Sequential-Release bei Stornos.

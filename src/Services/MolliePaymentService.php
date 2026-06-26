@@ -7,6 +7,7 @@ use Mollie\Api\MollieApiClient;
 use Platform\Reservation\Contracts\MollieCredentialResolver;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\Payment;
+use Platform\Reservation\Services\BookingConfirmationMailer;
 use Platform\Reservation\Support\MollieCredentials;
 
 /**
@@ -101,6 +102,9 @@ class MolliePaymentService
         if ($molliePayment->isPaid()) {
             if ($booking->status === Booking::STATUS_PENDING) {
                 $booking->update(['status' => Booking::STATUS_CONFIRMED]);
+
+                // Bestätigungsmail an den Gast (über CRM-Comms; inert ohne Channel).
+                BookingConfirmationMailer::send($booking);
             }
         } elseif (in_array($molliePayment->status, ['failed', 'canceled', 'expired'], true)) {
             if ($booking->status === Booking::STATUS_PENDING) {
