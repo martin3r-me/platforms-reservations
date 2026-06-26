@@ -46,6 +46,7 @@ return [
             'group' => 'Finanzen',
             'items' => [
                 ['label' => 'Umsatz', 'route' => 'reservation.finance.index', 'icon' => 'heroicon-o-banknotes'],
+                ['label' => 'Zahlungen', 'route' => 'reservation.settings.payment', 'icon' => 'heroicon-o-credit-card'],
             ],
         ],
         [
@@ -58,11 +59,15 @@ return [
 
     /**
      * Mollie-Zahlungsintegration.
+     *
+     * Pro Team wird der API-Key i.d.R. in den Modul-Einstellungen hinterlegt
+     * (reservation_payment_settings, verschlüsselt). Die ENV-Werte dienen nur
+     * als globaler Fallback (z.B. Single-Tenant-Demo).
      */
     'mollie' => [
-        'enabled'     => env('MOLLIE_ENABLED', false),
-        'api_key'     => env('MOLLIE_API_KEY', ''),
-        'webhook_url' => env('MOLLIE_WEBHOOK_URL', ''),
+        'enabled' => env('MOLLIE_ENABLED', false),
+        'mode'    => env('MOLLIE_MODE', 'test'), // test | live
+        'api_key' => env('MOLLIE_API_KEY', ''),  // Fallback, falls keine Team-Einstellung
     ],
 
     // Standard-Währung für Buchungen

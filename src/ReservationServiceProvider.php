@@ -13,7 +13,13 @@ class ReservationServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // Mollie-Credential-Seam: Standard liest die verschlüsselte Team-
+        // Einstellung (mit ENV-Fallback). Für eine integrations-basierte
+        // Quelle hier einfach ein anderes Binding setzen.
+        $this->app->bind(
+            \Platform\Reservation\Contracts\MollieCredentialResolver::class,
+            \Platform\Reservation\Services\SettingsMollieCredentialResolver::class,
+        );
     }
 
     public function boot(): void
@@ -70,6 +76,11 @@ class ReservationServiceProvider extends ServiceProvider
                     // Öffentliche Gast-Routen (z.B. Tischplan-Buchung) – ohne Auth
                     \Platform\Core\Routing\ModuleRouter::group('reservation', function () {
                         $this->loadRoutesFrom(__DIR__ . '/../routes/guest.php');
+                    }, requireAuth: false);
+
+                    // Öffentliche API-Routen (Mollie-Webhook) – /api/reservation, ohne CSRF/Auth
+                    \Platform\Core\Routing\ModuleRouter::apiGroup('reservation', function () {
+                        $this->loadRoutesFrom(__DIR__ . '/../routes/api.php');
                     }, requireAuth: false);
                 }
             }

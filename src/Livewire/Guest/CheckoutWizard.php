@@ -12,6 +12,7 @@ use Platform\Reservation\Models\EventRoom;
 use Platform\Reservation\Models\EventSlot;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Table;
+use Platform\Reservation\Services\MolliePaymentService;
 use Platform\Reservation\Services\RoomReleaseService;
 use Platform\Reservation\Services\SeatAvailabilityService;
 
@@ -375,6 +376,25 @@ class CheckoutWizard extends Component
         });
 
         $this->bookingUuid = $booking->uuid;
+
+        // Echte Zahlung, wenn für das Team Mollie hinterlegt ist UND ein
+        // Betrag > 0 anfällt – sonst Mock-Bestätigung (Klick-Dummy/0 €).
+        $payments = app(MolliePaymentService::class);
+
+        if ($booking->total_amount > 0 && $payments->isEnabledForTeam($event->team_id)) {
+            try {
+                $checkoutUrl = $payments->createForBooking($booking);
+                $this->redirect($checkoutUrl, navigate: false);
+
+                return;
+            } catch (\Throwable $e) {
+                report($e);
+                $this->addError('paymentMethod', 'Die Zahlung konnte nicht gestartet werden. Bitte versuchen Sie es erneut.');
+
+                return;
+            }
+        }
+
         $this->step = 5;
     }
 

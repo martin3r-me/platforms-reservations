@@ -9,15 +9,19 @@ https://historische-stadthalle-wuppertal-culinaria.guestofy.events/#/
 
 ## M2 – Zahlung & Härtung (Kern, vor Go-live zwingend)
 
-- [ ] **Mollie-Integration**: Create-Payment beim Checkout, Webhook, Statusübergänge
-      `pending → confirmed` nach Zahlungseingang (Payment-Schema existiert bereits).
-      Mollie-Account: martin3r stellt Link mit besseren Konditionen.
+- [x] **Mollie-Integration (Fundament)**: Hosted-Redirect-Checkout, Webhook
+      (`/api/reservation/payment/webhook`), Statusübergänge `pending → confirmed`
+      bzw. `→ cancelled`. Key als verschlüsselte Team-Einstellung hinter
+      Resolver-Seam (`MollieCredentialResolver`, später auf platforms-integrations
+      umstellbar). Bleibt inert ohne Key (Checkout läuft dann als Demo-Mock).
+      **Offen:** echter Mollie-(Test-)Key + End-to-End-Test auf öffentlichem Host;
+      SDK via `composer update` ziehen (`mollie/mollie-api-php`).
 - [ ] **E-Mail-Bestätigungen** an Gäste (die Bestätigungsseite verspricht sie bereits).
 - [ ] **Bestellschluss-Enforcement** härten (Altsystem: Uhrzeit am Veranstaltungstag, 20:00).
 - [ ] **Concurrency-Härtung** Platzvergabe (zwei Gäste buchen gleichzeitig die letzten Plätze)
       + Sequential-Release bei Stornos.
-- [ ] **Termin duplizieren** im Admin (Saisonpflege: dutzende ähnliche Konzerte).
-- [ ] **Tische pro Termin sperren** (Altsystem: `disabled_table_ids`).
+- [x] **Termin duplizieren** im Admin (Saisonpflege: dutzende ähnliche Konzerte).
+- [x] **Tische pro Termin sperren** (Altsystem: `disabled_table_ids`).
 - [ ] Import der echten **37 Artikel** + Vier-Augen-Freigabe-Durchlauf.
 
 ## Produktentscheidungen – beim nächsten Kundentermin klären

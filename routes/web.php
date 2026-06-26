@@ -49,3 +49,6 @@ Route::get('/export', Export::class)->name('reservation.export');
 
 // Finanzen (Umsatz nach Monaten/Terminen)
 Route::get('/finance', \Platform\Reservation\Livewire\Finance::class)->name('reservation.finance.index');
+
+// Zahlungseinstellungen (Mollie)
+Route::get('/settings/payment', \Platform\Reservation\Livewire\PaymentSettings::class)->name('reservation.settings.payment');
