@@ -27,7 +27,9 @@ https://historische-stadthalle-wuppertal-culinaria.guestofy.events/#/
       + Sequential-Release bei Stornos.
 - [x] **Termin duplizieren** im Admin (Saisonpflege: dutzende ähnliche Konzerte).
 - [x] **Tische pro Termin sperren** (Altsystem: `disabled_table_ids`).
-- [ ] Import der echten **37 Artikel** + Vier-Augen-Freigabe-Durchlauf.
+- [~] Import der echten **37 Artikel**: CSV-Beispielvorlage im Import-Dialog
+      herunterladbar (`resources/samples/artikel-import-vorlage.csv`), damit der
+      Kunde die Liste vorbereiten kann. **Offen:** echte Liste + Freigabe-Durchlauf.
 
 ## Produktentscheidungen – beim nächsten Kundentermin klären
 
@@ -38,8 +40,9 @@ https://historische-stadthalle-wuppertal-culinaria.guestofy.events/#/
       das Altsystem → abnehmen lassen.
 - [ ] **Platz- vs. Tischwahl**: Altsystem markiert n einzelne Plätze; wir wählen einen
       Tisch mit Restplatz-Prüfung. Reicht Tischwahl?
-- [ ] Wortlaut **Altersnachweis/Datenschutz** im Checkout (Altsystem: gepflegte
-      Consent-Texte) + Kaiserwagen-Klärung mit Herrn von Bauer (out of scope bestätigt).
+- [x] Wortlaut **Altersnachweis/Datenschutz** im Checkout pflegbar (Einstellungen →
+      Checkout-Texte, `reservation_checkout_settings`, mit Defaults). **Offen:** finaler
+      Wortlaut vom Kunden + Kaiserwagen-Klärung mit Herrn von Bauer (out of scope bestätigt).
 
 ## M3 – Komfort, Sortiment, Migration
 
@@ -47,12 +50,12 @@ https://historische-stadthalle-wuppertal-culinaria.guestofy.events/#/
       sortenrein oder Bundle mit höherem Satz).
 - [ ] **Datums-/Vorstellungssuche** in der Gast-Terminübersicht (viele Termine pro
       Saison, teils mehrere pro Tag; „Keine Vorstellung für …“-Zustand).
-- [ ] **Migration der Saisondaten aus Guestofy**: Events, Räume inkl. Tischpositionen
-      und Pausen sind über die offene AJAX-API exportierbar
-      (`admin-ajax.php?action=reservations_get_events/_rooms/_options`) –
-      automatisierte Übernahme statt Abtippen.
-- [ ] **Konfigurierbare Checkout-Consents** (Datenschutz-/18+-Texte pflegbar statt
-      hartkodiert).
+- [~] **Migration der Saisondaten aus Guestofy**: Räume inkl. Tischpositionen/
+      -kapazitäten werden über die offene AJAX-API übernommen (Venues & Tischpläne →
+      „Aus Alt-System“, `GuestofyImporter`). **Offen:** Events/Pausen-Import (saisonal;
+      Pausen haben im Altsystem keine Uhrzeiten) – bewusst manuell gelassen.
+- [x] **Konfigurierbare Checkout-Consents** (Datenschutz-/18+-Texte pflegbar statt
+      hartkodiert) – siehe Einstellungen → Checkout-Texte.
 - [ ] **Servicegebühr** (optional, Altsystem: `service_charge`).
 - [ ] Produkt-Sortierung nach Verkaufszahlen; „Service-Runden“-Konzept des
       Altsystems (`enable_service_rounds`) verstehen und ggf. übernehmen.
