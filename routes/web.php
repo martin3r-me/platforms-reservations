@@ -40,6 +40,7 @@ Route::get('/sales-lists', SalesListManager::class)->name('reservation.sales-lis
 // Menü-Verwaltung
 Route::get('/menu', MenuManager::class)->name('reservation.menu.index');
 Route::get('/menu/import', MenuImport::class)->name('reservation.menu.import');
+Route::get('/menu/import/vorlage', \Platform\Reservation\Http\Controllers\MenuImportSampleController::class)->name('reservation.menu.import.sample');
 
 // Drop-off Slots
 Route::get('/dropoff', DropoffManager::class)->name('reservation.dropoff.index');

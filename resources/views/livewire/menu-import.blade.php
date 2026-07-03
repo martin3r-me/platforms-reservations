@@ -53,6 +53,13 @@
                     <code>name; beschreibung; kategorie; preis; mwst; allergene; zusatzstoffe; vegetarisch; vegan; alkohol; verfuegbar</code>
                     <p class="mt-2 m-0">Allergene als Buchstaben („A,C,G“), Zusatzstoffe als Nummern („1,2“) gemäß Legende.
                     Preise mit Komma oder Punkt. Ja/Nein-Spalten: ja/nein bzw. 1/0.</p>
+                    <p class="mt-3 m-0">
+                        <a href="{{ route('reservation.menu.import.sample') }}"
+                            class="inline-flex items-center gap-1 font-medium text-[var(--ui-primary)] hover:underline">
+                            @svg('heroicon-o-arrow-down-tray', 'w-4 h-4')
+                            Beispiel-Vorlage herunterladen (.csv)
+                        </a>
+                    </p>
                 </div>
             </div>
         </section>
