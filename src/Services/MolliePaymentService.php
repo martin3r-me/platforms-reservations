@@ -101,7 +101,11 @@ class MolliePaymentService
 
         if ($molliePayment->isPaid()) {
             if ($booking->status === Booking::STATUS_PENDING) {
-                $booking->update(['status' => Booking::STATUS_CONFIRMED]);
+                $booking->update([
+                    'status'         => Booking::STATUS_CONFIRMED,
+                    // Von Mollie gemeldete echte Zahlungsart übernehmen (z.B. ideal, creditcard, paypal).
+                    'payment_method' => $molliePayment->method ?: $booking->payment_method,
+                ]);
 
                 // Bestätigungsmail an den Gast (über CRM-Comms; inert ohne Channel).
                 BookingConfirmationMailer::send($booking);

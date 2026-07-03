@@ -341,21 +341,32 @@
                     </div>
                 </div>
 
-                {{-- Zahlart (Mock) --}}
-                <div>
-                    <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Zahlungsart</p>
-                    <div class="space-y-2">
-                        @foreach (['card' => '💳 Kredit-/Debitkarte', 'paypal' => '🅿️ PayPal', 'applepay' => ' Apple Pay'] as $method => $label)
-                            <label wire:key="pay-{{ $method }}"
-                                class="flex cursor-pointer items-center gap-3 rounded-xl border bg-white px-4 py-3 text-sm dark:bg-gray-900
-                                {{ $paymentMethod === $method ? 'border-[var(--ui-primary)] ring-1 ring-[var(--ui-primary)]' : 'border-gray-300 dark:border-gray-700' }}">
-                                <input type="radio" wire:model.live="paymentMethod" value="{{ $method }}" class="text-[var(--ui-primary)]" />
-                                <span class="dark:text-white">{{ $label }}</span>
-                            </label>
-                        @endforeach
+                {{-- Zahlungsart --}}
+                @if ($this->payViaMollie)
+                    <div class="flex items-start gap-3 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-muted-5)] p-3 text-sm">
+                        @svg('heroicon-o-lock-closed', 'w-5 h-5 shrink-0 text-[var(--ui-muted)]')
+                        <span class="text-[var(--ui-secondary)]">
+                            Die Bezahlung erfolgt sicher über <strong>Mollie</strong>. Nach „Weiter zur Zahlung“ werden Sie
+                            zur Bezahlseite weitergeleitet und wählen dort Ihre Zahlungsart (Karte, PayPal, Apple&nbsp;Pay …).
+                            Ihre Zahlungsdaten werden nicht bei uns gespeichert.
+                        </span>
                     </div>
-                    @error('paymentMethod') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
-                </div>
+                @else
+                    <div>
+                        <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Zahlungsart</p>
+                        <div class="space-y-2">
+                            @foreach (['card' => '💳 Kredit-/Debitkarte', 'paypal' => '🅿️ PayPal', 'applepay' => ' Apple Pay'] as $method => $label)
+                                <label wire:key="pay-{{ $method }}"
+                                    class="flex cursor-pointer items-center gap-3 rounded-xl border bg-white px-4 py-3 text-sm dark:bg-gray-900
+                                    {{ $paymentMethod === $method ? 'border-[var(--ui-primary)] ring-1 ring-[var(--ui-primary)]' : 'border-gray-300 dark:border-gray-700' }}">
+                                    <input type="radio" wire:model.live="paymentMethod" value="{{ $method }}" class="text-[var(--ui-primary)]" />
+                                    <span class="dark:text-white">{{ $label }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('paymentMethod') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                    </div>
+                @endif
 
                 {{-- 18+ (nur bei Alkohol) --}}
                 @if ($this->requiresAgeCheck)
@@ -383,13 +394,15 @@
                         class="flex-1 rounded-xl border py-3 text-base font-medium dark:border-gray-700 dark:text-white">Zurück</button>
                     <button wire:click="confirm" wire:loading.attr="disabled"
                         class="flex-1 rounded-xl bg-[var(--ui-primary)] py-3 text-base font-bold text-white hover:opacity-90 disabled:opacity-50">
-                        <span wire:loading.remove wire:target="confirm">Jetzt verbindlich bestellen</span>
-                        <span wire:loading wire:target="confirm">Wird gespeichert…</span>
+                        <span wire:loading.remove wire:target="confirm">{{ $this->payViaMollie ? 'Weiter zur Zahlung' : 'Jetzt verbindlich bestellen' }}</span>
+                        <span wire:loading wire:target="confirm">{{ $this->payViaMollie ? 'Weiterleitung …' : 'Wird gespeichert…' }}</span>
                     </button>
                 </div>
-                <p class="text-center text-xs text-gray-400">
-                    Demo-Modus: Es wird noch keine echte Zahlung ausgelöst.
-                </p>
+                @unless ($this->payViaMollie)
+                    <p class="text-center text-xs text-gray-400">
+                        Demo-Modus: Es wird noch keine echte Zahlung ausgelöst.
+                    </p>
+                @endunless
             </div>
         @endif
 

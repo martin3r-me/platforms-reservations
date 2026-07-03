@@ -210,6 +210,17 @@ class CheckoutWizard extends Component
             ->all();
     }
 
+    /**
+     * Läuft die Zahlung über Mollie (Hosted Checkout)? Dann wählt der Gast
+     * die Zahlungsart auf der Mollie-Seite – nicht bei uns.
+     */
+    #[Computed]
+    public function payViaMollie(): bool
+    {
+        return $this->orderTotal > 0
+            && app(MolliePaymentService::class)->isEnabledForTeam($this->event->team_id);
+    }
+
     // ── Navigation ───────────────────────────────────────────────
 
     public function nextStep(): void
@@ -312,13 +323,17 @@ class CheckoutWizard extends Component
 
     public function confirm(): void
     {
-        $this->validate([
-            'paymentMethod' => 'required|in:card,paypal,applepay',
-            'legalAccepted' => 'accepted',
-        ], [
-            'paymentMethod.required' => 'Bitte wählen Sie eine Zahlungsart.',
-            'legalAccepted.accepted' => 'Bitte bestätigen Sie die Hinweise.',
-        ]);
+        // Bei Mollie wählt der Gast die Zahlungsart erst auf der Mollie-Seite;
+        // im Demo-/Mock-Modus fragen wir sie vorab ab.
+        $rules = ['legalAccepted' => 'accepted'];
+        $messages = ['legalAccepted.accepted' => 'Bitte bestätigen Sie die Hinweise.'];
+
+        if (!$this->payViaMollie) {
+            $rules['paymentMethod'] = 'required|in:card,paypal,applepay';
+            $messages['paymentMethod.required'] = 'Bitte wählen Sie eine Zahlungsart.';
+        }
+
+        $this->validate($rules, $messages);
 
         if ($this->requiresAgeCheck && !$this->ageConfirmed) {
             $this->addError('ageConfirmed', 'Ihre Bestellung enthält alkoholische Getränke – bitte bestätigen Sie, dass Sie mindestens 18 Jahre alt sind.');
@@ -358,7 +373,8 @@ class CheckoutWizard extends Component
                 'time_start'             => $slot->time_start,
                 'time_end'               => $slot->time_end,
                 'status'                 => Booking::STATUS_PENDING,
-                'payment_method'         => $this->paymentMethod,
+                // Bei Mollie liefert der Webhook die echte Zahlungsart nach.
+                'payment_method'         => $this->payViaMollie ? null : $this->paymentMethod,
                 'age_check_confirmed_at' => $this->requiresAgeCheck ? now() : null,
                 'legal_accepted_at'      => now(),
             ]);
