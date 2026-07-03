@@ -210,6 +210,13 @@ class CheckoutWizard extends Component
             ->all();
     }
 
+    /** Konfigurierbare Checkout-Texte des Teams (mit Defaults). */
+    #[Computed]
+    public function checkoutTexts(): \Platform\Reservation\Models\CheckoutSetting
+    {
+        return \Platform\Reservation\Models\CheckoutSetting::forTeam($this->event->team_id);
+    }
+
     /**
      * Läuft die Zahlung über Mollie (Hosted Checkout)? Dann wählt der Gast
      * die Zahlungsart auf der Mollie-Seite – nicht bei uns.

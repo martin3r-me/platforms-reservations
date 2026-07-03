@@ -53,3 +53,6 @@ Route::get('/finance', \Platform\Reservation\Livewire\Finance::class)->name('res
 
 // Zahlungseinstellungen (Mollie)
 Route::get('/settings/payment', \Platform\Reservation\Livewire\PaymentSettings::class)->name('reservation.settings.payment');
+
+// Checkout-Texte (18+, Rechtstext, Datenschutz-Link)
+Route::get('/settings/checkout', \Platform\Reservation\Livewire\CheckoutSettings::class)->name('reservation.settings.checkout');

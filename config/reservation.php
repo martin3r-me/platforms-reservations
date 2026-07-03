@@ -46,13 +46,19 @@ return [
             'group' => 'Finanzen',
             'items' => [
                 ['label' => 'Umsatz', 'route' => 'reservation.finance.index', 'icon' => 'heroicon-o-banknotes'],
-                ['label' => 'Zahlungen', 'route' => 'reservation.settings.payment', 'icon' => 'heroicon-o-credit-card'],
             ],
         ],
         [
             'group' => 'Auswertung',
             'items' => [
                 ['label' => 'Export', 'route' => 'reservation.export', 'icon' => 'heroicon-o-arrow-down-tray'],
+            ],
+        ],
+        [
+            'group' => 'Einstellungen',
+            'items' => [
+                ['label' => 'Zahlungen', 'route' => 'reservation.settings.payment', 'icon' => 'heroicon-o-credit-card'],
+                ['label' => 'Checkout-Texte', 'route' => 'reservation.settings.checkout', 'icon' => 'heroicon-o-document-text'],
             ],
         ],
     ],
