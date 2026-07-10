@@ -27,7 +27,10 @@ class MolliePaymentService
 
     public function isEnabledForTeam(int $teamId): bool
     {
-        return $this->resolver->forTeam($teamId) !== null;
+        // Ohne installiertes SDK gilt Mollie als nicht aktiv – der Checkout
+        // fällt dann sauber auf den Mock/Bestätigungs-Flow zurück (kein Dead-End).
+        return class_exists(\Mollie\Api\MollieApiClient::class)
+            && $this->resolver->forTeam($teamId) !== null;
     }
 
     /**

@@ -340,6 +340,9 @@ class CheckoutWizard extends Component
 
         $this->resetErrorBag('selectedTableId');
         $this->selectedTableId = $tableId;
+
+        // Computed-Cache leeren, damit der gewählte Tisch sofort hervorgehoben wird.
+        unset($this->tableStates);
     }
 
     protected function autoSelectSingleRoom(): void
@@ -405,8 +408,18 @@ class CheckoutWizard extends Component
             return;
         }
 
-        $booking = DB::transaction(function () use ($event, $slot, $table) {
-            $booking = Booking::create([
+        // Idempotenz: eine bereits in diesem Wizard angelegte (noch offene)
+        // Buchung wiederverwenden, statt bei erneutem Absenden/Zurück eine
+        // zweite pending-Buchung anzulegen (die sonst Plätze doppelt binden würde).
+        $existing = $this->bookingUuid
+            ? Booking::where('uuid', $this->bookingUuid)
+                ->where('team_id', $event->team_id)
+                ->where('status', Booking::STATUS_PENDING)
+                ->first()
+            : null;
+
+        $booking = DB::transaction(function () use ($event, $slot, $table, $existing) {
+            $data = [
                 'team_id'                => $event->team_id,
                 'event_id'               => $event->id,
                 'event_slot_id'          => $slot->id,
@@ -424,7 +437,15 @@ class CheckoutWizard extends Component
                 'payment_method'         => null,
                 'age_check_confirmed_at' => $this->requiresAgeCheck ? now() : null,
                 'legal_accepted_at'      => now(),
-            ]);
+            ];
+
+            if ($existing) {
+                $existing->update($data);
+                $existing->items()->delete();
+                $booking = $existing;
+            } else {
+                $booking = Booking::create($data);
+            }
 
             foreach ($this->cartItems as $line) {
                 $booking->items()->create([
