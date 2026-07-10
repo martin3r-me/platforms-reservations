@@ -72,18 +72,19 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">E-Mail</label>
-                    <input wire:model="guestEmail" type="email" autocomplete="email"
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">E-Mail *</label>
+                    <input wire:model.blur="guestEmail" type="email" autocomplete="email" inputmode="email"
                         class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
                     @error('guestEmail') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
-                    <p class="mt-1 text-xs text-gray-500">Für Ihre Buchungsbestätigung.</p>
+                    <p class="mt-1 text-xs text-gray-500">Für Ihre Buchungsbestätigung – bitte gültige Adresse angeben.</p>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Telefon</label>
-                        <input wire:model="guestPhone" type="tel" autocomplete="tel"
+                        <input wire:model.blur="guestPhone" type="tel" autocomplete="tel" inputmode="tel"
                             class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                        @error('guestPhone') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Personen *</label>

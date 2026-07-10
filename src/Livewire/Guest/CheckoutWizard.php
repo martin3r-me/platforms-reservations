@@ -228,19 +228,43 @@ class CheckoutWizard extends Component
             && app(MolliePaymentService::class)->isEnabledForTeam($this->event->team_id);
     }
 
+    // Telefon optional, aber Formatprüfung: Ziffern, +, /, -, Klammern, Punkt, Leerzeichen.
+    private const PHONE_REGEX = '/^\+?[0-9 .\/()\-]{6,30}$/';
+
+    /**
+     * Validierungsregeln für die Gastdaten.
+     *
+     * @param bool $dns  E-Mail zusätzlich per DNS prüfen (Domain existiert /
+     *                   nimmt Mail an). In Step 1 an, im finalen confirm()-Guard
+     *                   aus, um keinen zweiten (langsamen) DNS-Lookup zu machen.
+     */
+    protected function guestRules(bool $dns = true): array
+    {
+        return [
+            'guestName'  => 'required|string|max:255',
+            'guestEmail' => 'required|email:rfc' . ($dns ? ',dns' : '') . '|max:255',
+            'guestPhone' => ['nullable', 'string', 'max:30', 'regex:' . self::PHONE_REGEX],
+            'guestCount' => 'required|integer|min:1|max:20',
+        ];
+    }
+
+    protected function guestMessages(): array
+    {
+        return [
+            'guestName.required'  => 'Bitte geben Sie Ihren Namen an.',
+            'guestEmail.required' => 'Bitte geben Sie Ihre E-Mail-Adresse an.',
+            'guestEmail.email'    => 'Bitte geben Sie eine gültige, existierende E-Mail-Adresse an.',
+            'guestPhone.regex'    => 'Bitte geben Sie eine gültige Telefonnummer an (Ziffern, +, /, -, Klammern).',
+            'guestCount.required' => 'Bitte geben Sie die Personenzahl an.',
+        ];
+    }
+
     // ── Navigation ───────────────────────────────────────────────
 
     public function nextStep(): void
     {
         if ($this->step === 1) {
-            $this->validate([
-                'guestName'  => 'required|string|max:255',
-                'guestEmail' => 'nullable|email|max:255',
-                'guestPhone' => 'nullable|string|max:30',
-                'guestCount' => 'required|integer|min:1|max:20',
-            ], [
-                'guestName.required' => 'Bitte geben Sie Ihren Namen an.',
-            ]);
+            $this->validate($this->guestRules(dns: true), $this->guestMessages());
         }
 
         if ($this->step === 2 && empty($this->selectedItems)) {
@@ -330,6 +354,29 @@ class CheckoutWizard extends Component
 
     public function confirm(): void
     {
+        // Härtung: Gastdaten final gegenprüfen (falls Step 1 umgangen wurde).
+        // DNS-Check hier aus – die Domain wurde in Step 1 bereits geprüft.
+        $guest = \Illuminate\Support\Facades\Validator::make(
+            [
+                'guestName'  => $this->guestName,
+                'guestEmail' => $this->guestEmail,
+                'guestPhone' => $this->guestPhone,
+                'guestCount' => $this->guestCount,
+            ],
+            $this->guestRules(dns: false),
+            $this->guestMessages(),
+        );
+
+        if ($guest->fails()) {
+            $this->step = 1;
+            foreach ($guest->errors()->messages() as $field => $msgs) {
+                foreach ($msgs as $msg) {
+                    $this->addError($field, $msg);
+                }
+            }
+            return;
+        }
+
         // Bei Mollie wählt der Gast die Zahlungsart erst auf der Mollie-Seite;
         // im Demo-/Mock-Modus fragen wir sie vorab ab.
         $rules = ['legalAccepted' => 'accepted'];
