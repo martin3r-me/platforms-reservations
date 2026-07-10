@@ -50,8 +50,7 @@ class CheckoutWizard extends Component
     public ?int $selectedRoomId = null;   // EventRoom-ID
     public ?int $selectedTableId = null;
 
-    // Step 4: Mock-Checkout
-    public string $paymentMethod = '';
+    // Step 4: Checkout (Zahlungsart wählt der Gast bei Mollie)
     public bool $ageConfirmed = false;
     public bool $legalAccepted = false;
 
@@ -377,17 +376,11 @@ class CheckoutWizard extends Component
             return;
         }
 
-        // Bei Mollie wählt der Gast die Zahlungsart erst auf der Mollie-Seite;
-        // im Demo-/Mock-Modus fragen wir sie vorab ab.
-        $rules = ['legalAccepted' => 'accepted'];
-        $messages = ['legalAccepted.accepted' => 'Bitte bestätigen Sie die Hinweise.'];
-
-        if (!$this->payViaMollie) {
-            $rules['paymentMethod'] = 'required|in:card,paypal,applepay';
-            $messages['paymentMethod.required'] = 'Bitte wählen Sie eine Zahlungsart.';
-        }
-
-        $this->validate($rules, $messages);
+        // Die Zahlungsart wählt der Gast auf der Mollie-Bezahlseite.
+        $this->validate(
+            ['legalAccepted' => 'accepted'],
+            ['legalAccepted.accepted' => 'Bitte bestätigen Sie die Hinweise.'],
+        );
 
         if ($this->requiresAgeCheck && !$this->ageConfirmed) {
             $this->addError('ageConfirmed', 'Ihre Bestellung enthält alkoholische Getränke – bitte bestätigen Sie, dass Sie mindestens 18 Jahre alt sind.');
@@ -427,8 +420,8 @@ class CheckoutWizard extends Component
                 'time_start'             => $slot->time_start,
                 'time_end'               => $slot->time_end,
                 'status'                 => Booking::STATUS_PENDING,
-                // Bei Mollie liefert der Webhook die echte Zahlungsart nach.
-                'payment_method'         => $this->payViaMollie ? null : $this->paymentMethod,
+                // Zahlungsart kommt von Mollie per Webhook (sonst null).
+                'payment_method'         => null,
                 'age_check_confirmed_at' => $this->requiresAgeCheck ? now() : null,
                 'legal_accepted_at'      => now(),
             ]);
@@ -459,7 +452,7 @@ class CheckoutWizard extends Component
                 return;
             } catch (\Throwable $e) {
                 report($e);
-                $this->addError('paymentMethod', 'Die Zahlung konnte nicht gestartet werden. Bitte versuchen Sie es erneut.');
+                $this->addError('payment', 'Die Zahlung konnte nicht gestartet werden. Bitte versuchen Sie es erneut.');
 
                 return;
             }

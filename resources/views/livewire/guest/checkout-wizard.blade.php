@@ -342,7 +342,7 @@
                     </div>
                 </div>
 
-                {{-- Zahlungsart --}}
+                {{-- Zahlung: die Zahlungsart wählt der Gast auf der Mollie-Bezahlseite. --}}
                 @if ($this->payViaMollie)
                     <div class="flex items-start gap-3 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-muted-5)] p-3 text-sm">
                         @svg('heroicon-o-lock-closed', 'w-5 h-5 shrink-0 text-[var(--ui-muted)]')
@@ -351,21 +351,6 @@
                             zur Bezahlseite weitergeleitet und wählen dort Ihre Zahlungsart (Karte, PayPal, Apple&nbsp;Pay …).
                             Ihre Zahlungsdaten werden nicht bei uns gespeichert.
                         </span>
-                    </div>
-                @else
-                    <div>
-                        <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Zahlungsart</p>
-                        <div class="space-y-2">
-                            @foreach (['card' => '💳 Kredit-/Debitkarte', 'paypal' => '🅿️ PayPal', 'applepay' => ' Apple Pay'] as $method => $label)
-                                <label wire:key="pay-{{ $method }}"
-                                    class="flex cursor-pointer items-center gap-3 rounded-xl border bg-white px-4 py-3 text-sm dark:bg-gray-900
-                                    {{ $paymentMethod === $method ? 'border-[var(--ui-primary)] ring-1 ring-[var(--ui-primary)]' : 'border-gray-300 dark:border-gray-700' }}">
-                                    <input type="radio" wire:model.live="paymentMethod" value="{{ $method }}" class="text-[var(--ui-primary)]" />
-                                    <span class="dark:text-white">{{ $label }}</span>
-                                </label>
-                            @endforeach
-                        </div>
-                        @error('paymentMethod') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                     </div>
                 @endif
 
@@ -390,6 +375,8 @@
                     </span>
                 </label>
                 @error('legalAccepted') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
+
+                @error('payment') <p class="text-sm text-red-500">{{ $message }}</p> @enderror
 
                 <div class="flex gap-3">
                     <button wire:click="prevStep"
