@@ -70,3 +70,42 @@ https://historische-stadthalle-wuppertal-culinaria.guestofy.events/#/
       Primärfarbe `#285567` (Petrol), Fonts Cormorant Garamond + Inter, Culinaria-Logo.
 - [ ] UAT mit Kunde, Lasttest Pausen-Peak, Clean Cut (Abschaltung Altsystem zur
       Sommerpause).
+
+## Architektur (später) – Gast-Frontend unter eigener Domain
+
+Ziel: Die Gast-/Bestellseiten unter eigener Domain je Kunde, z. B.
+`culinaria.pauseplus.de`, als **eigenständiges Laravel-Projekt** (eigenes
+GitHub-Repo), das die Plattform per **Bearer-Token-API** anspricht.
+
+Ergebnis der Core-Analyse (platforms-core, read-only – NICHT ändern):
+- **Auth = Laravel Passport (JWT-Bearer), pro *User*** – Middleware-Alias
+  `api.auth` (`Platform\Core\Http\Middleware\ApiAuthenticate`). Token erzeugen
+  via `php artisan api:token:create` oder im UI (ModalUser). **Kein** Login→Token-
+  Endpoint, **kein** Per-Team-Token. Achtung Sicherheits-Fallback in `api.auth`:
+  vertraut `X-User-Email`-Header (Teams-Embedding) – muss aus dem Internet
+  unerreichbar/abgesichert sein.
+- **Keine Per-Team-Custom-Domain im Core**: `teams` hat keine `domain`-Spalte,
+  keine `domains`-Tabelle, keine Host-Auflösung. `ModuleRouter` kann nur
+  `modul.basehost` (subdomain-Modus), nicht `kunde.pauseplus.de`.
+- **CORS ist im Repo nicht konfiguriert** (liegt in der Host-App).
+
+Empfohlener Weg (nutzt Bestehendes, **ohne** Core-Änderung):
+- Gast-Frontend als **server-gerendertes** eigenes Laravel-Projekt. Es hält
+  **serverseitig** einen Bearer-Token (Passport-PAT eines „Service-Users“, der
+  dem jeweiligen Kunden-Team zugeordnet ist) und ruft die Plattform-API
+  **server-zu-server** auf. Vorteile: Token bleibt geheim (nie im Browser),
+  Team-Scoping kommt aus dem Token, **kein CORS nötig** (kein Cross-Origin im
+  Browser), Domain→Kunde-Mapping lebt im Frontend-Projekt (Core braucht keine
+  Domain-Tabelle).
+- Neue, team-gescopte JSON-Endpoints im Modul (`routes/api.php`, hinter
+  `api.auth`, Team aus Token) – Logik aus den vorhandenen Livewire-Komponenten/
+  Services ziehen, `Platform\Core\Http\Controllers\ApiController` als Basis:
+  - `GET  /api/reservation/events` (published), `GET /events/{uuid}`
+    (Slots/Räume/Tische + Verfügbarkeit), `GET /events/{uuid}/products`
+    (Verkaufsliste), `GET /settings/checkout` (Texte)
+  - `POST /api/reservation/bookings` (Buchung anlegen),
+    `POST /bookings/{uuid}/payment` (Mollie-Checkout-URL),
+    `GET  /bookings/{uuid}/payment-status`
+  - Mollie-Webhook bleibt serverseitig wie bisher.
+- Falls später doch **Browser-Direktzugriff** aufs API gewünscht ist: dann CORS
+  in der Host-App konfigurieren + Endpoints public/uuid-gescoped absichern.
