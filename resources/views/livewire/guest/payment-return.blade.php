@@ -1,10 +1,13 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <div class="mx-auto max-w-lg px-4 py-12">
         @php
+            $B = \Platform\Reservation\Models\Booking::class;
             $booking = $this->booking;
-            $status = $booking?->payment?->status;
-            $isPaid = $booking && $booking->status === \Platform\Reservation\Models\Booking::STATUS_CONFIRMED;
-            $isFailed = in_array($status, ['failed', 'canceled', 'expired'], true);
+            $paymentStatus = $booking?->payment?->status;
+            $isPaid   = $booking && $booking->status === $B::STATUS_CONFIRMED;
+            $isFailed = $booking && ($booking->status === $B::STATUS_CANCELLED
+                        || in_array($paymentStatus, ['failed', 'canceled', 'expired'], true));
+            $hasMollie = $booking && $booking->mollie_payment_id;
         @endphp
 
         @if (!$booking)
@@ -36,6 +39,17 @@
                     Sie können es erneut versuchen.
                 </p>
                 <a href="{{ route('reservation.guest.checkout', $booking->event?->uuid) }}" class="mt-6 inline-block rounded-xl bg-[var(--ui-primary)] px-6 py-3 text-sm font-bold text-white hover:opacity-90">Erneut versuchen</a>
+            </div>
+        @elseif (!$hasMollie)
+            {{-- Buchung ohne Mollie-Zahlung (Demo/0 €) – kein Poll, neutrale Bestätigung --}}
+            <div class="rounded-2xl border border-[var(--ui-border)]/40 bg-white p-8 text-center shadow-sm dark:bg-gray-900">
+                <div class="text-5xl mb-4">✅</div>
+                <h1 class="text-xl font-bold text-[var(--ui-secondary)] m-0">Bestellung eingegangen</h1>
+                <p class="mt-2 text-sm text-[var(--ui-muted)]">
+                    Vielen Dank, {{ $booking->guest_name }}. Ihre Bestellung ist eingegangen.
+                </p>
+                <p class="mt-1 text-xs text-[var(--ui-muted)]">Buchungsnummer: <code class="rounded bg-[var(--ui-muted-5)] px-1.5 py-0.5">{{ $booking->uuid }}</code></p>
+                <a href="{{ route('reservation.guest.events.index') }}" class="mt-6 inline-block rounded-xl border border-[var(--ui-border)] px-6 py-3 text-sm font-medium text-[var(--ui-secondary)]">Zur Terminübersicht</a>
             </div>
         @else
             {{-- offen / in Bearbeitung – poll per kurzem Reload --}}

@@ -99,6 +99,14 @@ class MolliePaymentService
             'paid_at' => $molliePayment->paidAt ? Carbon::parse($molliePayment->paidAt) : null,
         ]);
 
+        // Vollständige Status-Behandlung (idempotent – nur aus pending heraus):
+        //   paid                        → bestätigt (+ Mail)
+        //   failed | canceled | expired → storniert (gibt Plätze wieder frei)
+        //   open | pending | authorized → bleibt pending (Return-Seite pollt weiter)
+        $isFailure = $molliePayment->isFailed()
+            || $molliePayment->isCanceled()
+            || $molliePayment->isExpired();
+
         if ($molliePayment->isPaid()) {
             if ($booking->status === Booking::STATUS_PENDING) {
                 $booking->update([
@@ -110,7 +118,7 @@ class MolliePaymentService
                 // Bestätigungsmail an den Gast (über CRM-Comms; inert ohne Channel).
                 BookingConfirmationMailer::send($booking);
             }
-        } elseif (in_array($molliePayment->status, ['failed', 'canceled', 'expired'], true)) {
+        } elseif ($isFailure) {
             if ($booking->status === Booking::STATUS_PENDING) {
                 $booking->update(['status' => Booking::STATUS_CANCELLED]);
             }
