@@ -89,22 +89,38 @@
             :style="`transform: scale(${scale}) translate(${panX / scale}px, ${panY / scale}px);`"
             style="will-change: transform;"
         >
-            {{-- Flache Plan-Fläche (Draufsicht) --}}
+            @php $bg = $backgroundUrl ?? null; @endphp
+            {{-- Flache Plan-Fläche (Draufsicht); optional mit Grundriss-Hintergrund --}}
             <div
                 class="relative"
-                style="
-                    width: 800px;
-                    height: 600px;
-                    background-color: #1e293b;
-                    background-image:
-                        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-                    background-size: 40px 40px;
-                    border-radius: 16px;
-                    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
-                "
+                @if ($bg)
+                    style="
+                        width: 800px;
+                        height: 600px;
+                        background-color: #1e293b;
+                        background-image: url('{{ $bg }}');
+                        background-size: contain;
+                        background-position: center;
+                        background-repeat: no-repeat;
+                        border-radius: 16px;
+                        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+                    "
+                @else
+                    style="
+                        width: 800px;
+                        height: 600px;
+                        background-color: #1e293b;
+                        background-image:
+                            linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+                        background-size: 40px 40px;
+                        border-radius: 16px;
+                        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+                    "
+                @endif
             >
-                {{-- Bühne / Referenzfläche oben --}}
+                {{-- Bühne / Referenzfläche oben (nur ohne Grundriss) --}}
+                @unless ($bg)
                 <div
                     class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-lg text-slate-400 text-xs font-medium uppercase"
                     style="
@@ -116,6 +132,7 @@
                         letter-spacing: 0.2em;
                     "
                 >Bühne</div>
+                @endunless
 
                 {{-- Tische --}}
                 @foreach ($tableStates as $info)

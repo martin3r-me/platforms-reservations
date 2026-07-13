@@ -80,24 +80,37 @@ class MenuManager extends Component
      * Bild via platform-core ContextFileService speichern und am Model
      * verknüpfen; ein vorhandenes Bild wird ersetzt (altes File gelöscht).
      */
-    protected function storeImage($model, $file, string $contextType): void
+    /**
+     * Bild speichern. Gibt true bei Erfolg zurück; ein Fehler beim Bild bricht
+     * NICHT das ganze Formular ab, sondern meldet die Ursache (session flash).
+     */
+    protected function storeImage($model, $file, string $contextType): bool
     {
-        $service = app(ContextFileService::class);
+        try {
+            $service = app(ContextFileService::class);
 
-        $uploaded = $service->uploadForContext($file, $contextType, $model->id, [
-            'team_id' => $this->getTeamId(),
-            'user_id' => Auth::id(),
-        ]);
+            $uploaded = $service->uploadForContext($file, $contextType, $model->id, [
+                'team_id' => $this->getTeamId(),
+                'user_id' => Auth::id(),
+            ]);
 
-        if ($model->image_context_file_id) {
-            try {
-                $service->delete($model->image_context_file_id, $this->getTeamId());
-            } catch (\Throwable $e) {
-                // Altes File fehlt bereits – Verknüpfung wird trotzdem ersetzt
+            if ($model->image_context_file_id) {
+                try {
+                    $service->delete($model->image_context_file_id, $this->getTeamId());
+                } catch (\Throwable $e) {
+                    // Altes File fehlt bereits – Verknüpfung wird trotzdem ersetzt
+                }
             }
-        }
 
-        $model->update(['image_context_file_id' => $uploaded['id']]);
+            $model->update(['image_context_file_id' => $uploaded['id']]);
+
+            return true;
+        } catch (\Throwable $e) {
+            report($e);
+            session()->flash('menu_error', 'Das Bild konnte nicht gespeichert werden: ' . $e->getMessage() . ' (Der Eintrag selbst wurde gespeichert.)');
+
+            return false;
+        }
     }
 
     protected function removeImage($model): void
@@ -136,7 +149,7 @@ class MenuManager extends Component
     {
         $this->validate([
             'categoryName'  => 'required|string|max:255',
-            'categoryImage' => 'nullable|image|max:10240',
+            'categoryImage' => 'nullable|image|max:20480',
         ]);
 
         $data = [
@@ -215,7 +228,7 @@ class MenuManager extends Component
             'itemCategoryId' => 'required|integer|exists:reservation_menu_categories,id',
             'itemName'       => 'required|string|max:255',
             'itemPrice'      => 'required|numeric|min:0',
-            'itemImage'      => 'nullable|image|max:10240',
+            'itemImage'      => 'nullable|image|max:20480',
         ]);
 
         $data = [

@@ -214,8 +214,9 @@
                             class="absolute right-2 top-2 rounded bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80">Entfernen</button>
                     </div>
                 @endif
-                <input type="file" wire:model="categoryImage" accept="image/*" class="w-full text-sm text-[var(--ui-muted)]" />
+                <input type="file" wire:model="categoryImage" accept="image/jpeg,image/png,image/webp" class="w-full text-sm text-[var(--ui-muted)]" />
                 <div wire:loading wire:target="categoryImage" class="mt-1 text-xs text-[var(--ui-muted)]">Wird hochgeladen…</div>
+                <p class="mt-1 text-[11px] text-[var(--ui-muted)]">JPG, PNG oder WebP · max. 20 MB.</p>
                 @error('categoryImage') <p class="mt-1 text-xs text-[var(--ui-danger)]">{{ $message }}</p> @enderror
             </div>
         </div>
@@ -291,8 +292,9 @@
                         </div>
                     @endif
                     <div class="flex-1">
-                        <input type="file" wire:model="itemImage" accept="image/*" class="w-full text-sm text-[var(--ui-muted)]" />
+                        <input type="file" wire:model="itemImage" accept="image/jpeg,image/png,image/webp" class="w-full text-sm text-[var(--ui-muted)]" />
                         <div wire:loading wire:target="itemImage" class="mt-1 text-xs text-[var(--ui-muted)]">Wird hochgeladen…</div>
+                        <p class="mt-1 text-[11px] text-[var(--ui-muted)]">JPG, PNG oder WebP · max. 20 MB (keine HEIC-Fotos vom iPhone).</p>
                         @error('itemImage') <p class="mt-1 text-xs text-[var(--ui-danger)]">{{ $message }}</p> @enderror
                     </div>
                 </div>

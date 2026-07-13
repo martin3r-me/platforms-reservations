@@ -236,7 +236,7 @@ class EventManager extends Component
             'eventVenueId'       => 'nullable|integer|exists:reservation_venues,id',
             'eventSalesListId'   => 'nullable|integer|exists:reservation_sales_lists,id',
             'eventReleaseMode'   => 'required|in:parallel,sequential',
-            'eventImage'         => 'nullable|image|max:10240',
+            'eventImage'         => 'nullable|image|max:20480',
             'slots'              => 'required|array|min:1',
             'slots.*.name'       => 'required|string|max:255',
             'slots.*.time_start' => 'required|date_format:H:i',

@@ -275,6 +275,7 @@
                                 @include('reservation::partials.floor-plan-svg', [
                                     'tableStates' => $this->tableStates,
                                     'clickAction' => 'selectTable',
+                                    'backgroundUrl' => $this->selectedRoom?->floorPlan?->backgroundUrl(),
                                 ])
                             </div>
                         </div>

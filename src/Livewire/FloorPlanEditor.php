@@ -4,6 +4,8 @@ namespace Platform\Reservation\Livewire;
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\WithFileUploads;
+use Platform\Core\Services\ContextFileService;
 use Platform\Reservation\Models\Venue;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\Table;
@@ -11,9 +13,14 @@ use Illuminate\Support\Facades\Auth;
 
 class FloorPlanEditor extends Component
 {
+    use WithFileUploads;
+
     public int $venueId;
     public ?int $floorPlanId = null;
     public string $floorPlanName = '';
+
+    // Grundriss-Upload
+    public $background = null;
 
     // Tisch-Formular
     public bool $showTableForm = false;
@@ -86,6 +93,68 @@ class FloorPlanEditor extends Component
         }
 
         $this->dispatch('floor-plan-saved');
+    }
+
+    /** Grundriss (Hintergrundbild) hochladen/ersetzen. */
+    public function updatedBackground(): void
+    {
+        if (!$this->floorPlanId) {
+            $this->addError('background', 'Bitte zuerst den Tischplan speichern.');
+            $this->background = null;
+            return;
+        }
+
+        $this->validate(['background' => 'image|max:20480'], [
+            'background.image' => 'Bitte ein Bild hochladen (JPG, PNG oder WebP).',
+            'background.max'   => 'Das Bild ist zu groß (max. 20 MB).',
+        ]);
+
+        $plan = FloorPlan::findOrFail($this->floorPlanId);
+
+        try {
+            $service = app(ContextFileService::class);
+            $uploaded = $service->uploadForContext($this->background, 'reservation.floor_plan.background', $plan->id, [
+                'team_id' => Auth::user()?->current_team_id,
+                'user_id' => Auth::id(),
+            ]);
+
+            if ($plan->background_context_file_id) {
+                try {
+                    $service->delete($plan->background_context_file_id, Auth::user()?->current_team_id);
+                } catch (\Throwable $e) {
+                    // altes File fehlt bereits
+                }
+            }
+
+            $plan->update(['background_context_file_id' => $uploaded['id']]);
+            $this->dispatch('floor-plan-saved');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->addError('background', 'Grundriss konnte nicht gespeichert werden: ' . $e->getMessage());
+        } finally {
+            $this->background = null;
+            unset($this->floorPlan);
+        }
+    }
+
+    public function removeBackground(): void
+    {
+        if (!$this->floorPlanId) {
+            return;
+        }
+
+        $plan = FloorPlan::findOrFail($this->floorPlanId);
+
+        if ($plan->background_context_file_id) {
+            try {
+                app(ContextFileService::class)->delete($plan->background_context_file_id, Auth::user()?->current_team_id);
+            } catch (\Throwable $e) {
+                // File bereits weg
+            }
+            $plan->update(['background_context_file_id' => null]);
+        }
+
+        unset($this->floorPlan);
     }
 
     public function openTableForm(?int $tableId = null): void

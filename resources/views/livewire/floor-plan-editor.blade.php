@@ -42,11 +42,27 @@
     </div>
 
     @if ($floorPlanId)
+        {{-- Grundriss-Upload --}}
+        <div class="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--ui-border)]/60 p-3">
+            <div class="flex items-center gap-2">
+                @svg('heroicon-o-map', 'w-5 h-5 text-[var(--ui-muted)]')
+                <span class="text-sm font-medium text-[var(--ui-secondary)]">Grundriss (Hintergrundbild)</span>
+            </div>
+            <input type="file" wire:model="background" accept="image/*" class="text-sm text-[var(--ui-muted)]" />
+            <div wire:loading wire:target="background" class="text-xs text-[var(--ui-muted)]">Wird hochgeladen…</div>
+            @if ($this->floorPlan?->background_context_file_id)
+                <button wire:click="removeBackground" wire:confirm="Grundriss entfernen?" type="button"
+                    class="text-xs text-[var(--ui-danger)] hover:underline">Grundriss entfernen</button>
+            @endif
+            <span class="w-full text-xs text-[var(--ui-muted)]">JPG, PNG oder WebP · max. 20 MB. Die Tische liegen darüber.</span>
+            @error('background') <p class="w-full text-xs text-[var(--ui-danger)]">{{ $message }}</p> @enderror
+        </div>
+
         {{-- Canvas: Tischplan --}}
         <div
             id="floor-plan-canvas"
-            class="relative w-full overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
-            style="height: 600px;"
+            class="relative w-full overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 bg-contain bg-center bg-no-repeat dark:border-gray-700 dark:bg-gray-900"
+            style="height: 600px; {{ $this->floorPlan?->backgroundUrl() ? "background-image: url('" . $this->floorPlan->backgroundUrl() . "');" : '' }}"
             x-data="floorPlanEditor()"
         >
             @foreach ($this->tables as $table)

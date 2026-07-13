@@ -50,6 +50,7 @@
                         'remaining' => null,
                     ])->all(),
                     'clickAction' => 'selectTable',
+                    'backgroundUrl' => $this->floorPlan?->backgroundUrl(),
                 ])
             </div>
         </section>

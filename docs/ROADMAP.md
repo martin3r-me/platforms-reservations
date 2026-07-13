@@ -64,7 +64,9 @@ https://historische-stadthalle-wuppertal-culinaria.guestofy.events/#/
 
 ## M3/M4 – Tischplan & CI
 
-- [ ] **Raum-Hintergrundbild** (Grundriss) im Tischplan-Editor und -Viewer.
+- [x] **Raum-Hintergrundbild** (Grundriss) im Tischplan-Editor und -Viewer
+      (`background_context_file_id`, Upload im Editor, Anzeige in Editor-Canvas +
+      Gast-Tischplan).
 - [ ] Tisch-**Rotation/Varianten**, konfigurierbare Tischfarben.
 - [ ] **CI-/Design-Pass** (Conny). Branding-Referenz aus dem Altsystem:
       Primärfarbe `#285567` (Petrol), Fonts Cormorant Garamond + Inter, Culinaria-Logo.
