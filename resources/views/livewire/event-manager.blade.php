@@ -344,10 +344,10 @@
                 @elseif ($editingEvent?->image_context_file_id && $editingEvent->imageFile)
                     <img src="{{ $editingEvent->imageUrl('medium_16_9') }}" alt="" class="mb-2 aspect-video w-full rounded-lg object-cover" />
                 @endif
-                <input type="file" wire:model="eventImage" accept="image/*"
-                    class="w-full text-sm text-[var(--ui-muted)]" />
-                <div wire:loading wire:target="eventImage" class="mt-1 text-xs text-[var(--ui-muted)]">Wird hochgeladen…</div>
-                @error('eventImage') <p class="mt-1 text-xs text-[var(--ui-danger)]">{{ $message }}</p> @enderror
+                @include('reservation::partials.image-upload', [
+                    'model' => 'eventImage',
+                    'hint'  => '16:9 empfohlen · JPG, PNG oder WebP · max. 20 MB.',
+                ])
             </div>
         </div>
 
