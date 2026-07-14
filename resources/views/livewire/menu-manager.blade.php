@@ -103,6 +103,9 @@
                         <div class="flex-1 min-w-0">
                             <div class="flex flex-wrap items-center gap-1.5">
                                 <span class="text-sm font-medium text-[var(--ui-secondary)]">{{ $item->name }}</span>
+                                @if ($item->portion_size)
+                                    <span class="text-xs text-[var(--ui-muted)]">{{ $item->portion_size }}</span>
+                                @endif
 
                                 @php
                                     [$approvalLabel, $approvalVariant] = [
@@ -263,6 +266,9 @@
                 </div>
                 <div class="sm:col-span-2">
                     <x-ui-input-textarea name="itemDescription" label="Beschreibung" wire:model="itemDescription" rows="2" />
+                </div>
+                <div class="sm:col-span-2">
+                    <x-ui-input-text name="itemPortionSize" label="Portionsgröße" wire:model="itemPortionSize" placeholder="z.B. 0,2 l · 0,5 l · 250 g" errorKey="itemPortionSize" />
                 </div>
                 <x-ui-input-number name="itemPrice" label="Preis (€)" step="0.01" min="0" wire:model="itemPrice" required errorKey="itemPrice" />
                 <x-ui-input-select

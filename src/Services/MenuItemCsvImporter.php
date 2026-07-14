@@ -12,7 +12,7 @@ use Platform\Reservation\Models\MenuItem;
  * CSV-Import für Artikel (Dry-Run-Vorschau + Import).
  *
  * Erwartete Spalten (Header-Zeile, Reihenfolge egal):
- * name; beschreibung; kategorie; preis; mwst; allergene; zusatzstoffe;
+ * name; beschreibung; portionsgroesse; kategorie; preis; mwst; allergene; zusatzstoffe;
  * vegetarisch; vegan; alkohol; verfuegbar
  *
  * Allergene als Buchstaben-Codes ("A,C,G"), Zusatzstoffe als Nummern ("1,2").
@@ -26,7 +26,7 @@ class MenuItemCsvImporter
     public const STATUS_ERROR   = 'error';
 
     protected const KNOWN_COLUMNS = [
-        'name', 'beschreibung', 'kategorie', 'preis', 'mwst',
+        'name', 'beschreibung', 'portionsgroesse', 'kategorie', 'preis', 'mwst',
         'allergene', 'zusatzstoffe', 'vegetarisch', 'vegan', 'alkohol', 'verfuegbar',
     ];
 
@@ -107,6 +107,7 @@ class MenuItemCsvImporter
                     'category_id'     => $category->id,
                     'name'            => $row['name'],
                     'description'     => $row['description'] ?: null,
+                    'portion_size'    => $row['portion_size'] ?: null,
                     'price'           => $row['price'],
                     'tax_rate'        => $row['tax_rate'],
                     'available'       => $row['available'],
@@ -194,6 +195,7 @@ class MenuItemCsvImporter
             'duplicate'     => $duplicate,
             'name'          => $name,
             'description'   => $data['beschreibung'] ?? '',
+            'portion_size'  => $data['portionsgroesse'] ?? '',
             'category'      => ($data['kategorie'] ?? '') !== '' ? $data['kategorie'] : 'Sonstiges',
             'price'         => $price,
             'tax_rate'      => $taxRate,

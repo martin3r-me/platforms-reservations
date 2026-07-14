@@ -1,11 +1,11 @@
-name;beschreibung;kategorie;preis;mwst;allergene;zusatzstoffe;vegetarisch;vegan;alkohol;verfuegbar
-Brezel;Ofenfrisch mit Butter;Snacks;3,50;7;A,G;;ja;nein;nein;ja
-Käsewürfel;Mit Trauben und Crackern;Snacks;6,50;7;A,G;;ja;nein;nein;ja
-Antipasti-Teller;Mediterranes Gemüse, Oliven, Ciabatta;Snacks;8,90;7;A;;ja;ja;nein;ja
-Schokoladen-Brownie;Hausgemacht;Süßes;4,00;7;A,C,G,H;;ja;nein;nein;ja
-Obstsalat;Saisonale Früchte;Süßes;4,50;7;;;ja;ja;nein;ja
-Mineralwasser 0,25l;Still oder spritzig;Getränke;2,80;19;;;ja;ja;nein;ja
-Cola 0,2l;;Getränke;3,20;19;;1,2,11;ja;ja;nein;ja
-Riesling 0,2l;Trocken, von der Mosel;Getränke;6,90;19;L;;ja;ja;ja;ja
-Pils 0,33l;Frisch gezapft;Getränke;4,20;19;A;;ja;ja;ja;ja
-Kaffee;Aus der Siebträgermaschine;Getränke;2,90;19;;;ja;ja;nein;ja
+name;beschreibung;portionsgroesse;kategorie;preis;mwst;allergene;zusatzstoffe;vegetarisch;vegan;alkohol;verfuegbar
+Brezel;Ofenfrisch mit Butter;100 g;Snacks;3,50;7;A,G;;ja;nein;nein;ja
+Käsewürfel;Mit Trauben und Crackern;150 g;Snacks;6,50;7;A,G;;ja;nein;nein;ja
+Antipasti-Teller;Mediterranes Gemüse, Oliven, Ciabatta;250 g;Snacks;8,90;7;A;;ja;ja;nein;ja
+Schokoladen-Brownie;Hausgemacht;120 g;Süßes;4,00;7;A,C,G,H;;ja;nein;nein;ja
+Obstsalat;Saisonale Früchte;200 g;Süßes;4,50;7;;;ja;ja;nein;ja
+Mineralwasser;Still oder spritzig;0,25 l;Getränke;2,80;19;;;ja;ja;nein;ja
+Cola;;0,2 l;Getränke;3,20;19;;1,2,11;ja;ja;nein;ja
+Riesling;Trocken, von der Mosel;0,2 l;Getränke;6,90;19;L;;ja;ja;ja;ja
+Pils;Frisch gezapft;0,33 l;Getränke;4,20;19;A;;ja;ja;ja;ja
+Kaffee;Aus der Siebträgermaschine;0,2 l;Getränke;2,90;19;;;ja;ja;nein;ja

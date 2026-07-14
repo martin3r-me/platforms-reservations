@@ -28,6 +28,7 @@ class MenuManager extends Component
     public ?int $itemCategoryId = null;
     public string $itemName = '';
     public string $itemDescription = '';
+    public string $itemPortionSize = '';
     public string $itemPrice = '';
     public string $itemTaxRate = '7.00';
     public bool $itemAvailable = true;
@@ -194,6 +195,7 @@ class MenuManager extends Component
             $this->itemCategoryId    = $item->category_id;
             $this->itemName          = $item->name;
             $this->itemDescription   = $item->description ?? '';
+            $this->itemPortionSize   = $item->portion_size ?? '';
             $this->itemPrice         = (string) $item->price;
             $this->itemTaxRate       = $item->tax_rate;
             $this->itemAvailable     = $item->available;
@@ -212,6 +214,7 @@ class MenuManager extends Component
         $this->itemCategoryId  = $categoryId;
         $this->itemName        = '';
         $this->itemDescription = '';
+        $this->itemPortionSize = '';
         $this->itemPrice       = '';
         $this->itemTaxRate     = '7.00';
         $this->itemAvailable   = true;
@@ -226,9 +229,10 @@ class MenuManager extends Component
     {
         $this->validate([
             'itemCategoryId' => 'required|integer|exists:reservation_menu_categories,id',
-            'itemName'       => 'required|string|max:255',
-            'itemPrice'      => 'required|numeric|min:0',
-            'itemImage'      => 'nullable|image|max:20480',
+            'itemName'        => 'required|string|max:255',
+            'itemPortionSize' => 'nullable|string|max:50',
+            'itemPrice'       => 'required|numeric|min:0',
+            'itemImage'       => 'nullable|image|max:20480',
         ]);
 
         $data = [
@@ -236,6 +240,7 @@ class MenuManager extends Component
             'category_id'   => $this->itemCategoryId,
             'name'          => $this->itemName,
             'description'   => $this->itemDescription,
+            'portion_size'  => $this->itemPortionSize ?: null,
             'price'         => $this->itemPrice,
             'tax_rate'      => $this->itemTaxRate,
             'available'     => $this->itemAvailable,
@@ -248,7 +253,7 @@ class MenuManager extends Component
             $item = MenuItem::findOrFail($this->editingItemId);
             $item->update($data);
             $contentChanged = $item->wasChanged([
-                'name', 'description', 'price', 'tax_rate',
+                'name', 'description', 'portion_size', 'price', 'tax_rate',
                 'is_vegetarian', 'is_vegan', 'is_alcoholic',
             ]);
         } else {

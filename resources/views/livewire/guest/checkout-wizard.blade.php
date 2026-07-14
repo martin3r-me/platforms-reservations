@@ -144,6 +144,9 @@
                                     <div class="min-w-0 flex-1">
                                         <div class="flex flex-wrap items-center gap-1.5">
                                             <p class="text-sm font-medium dark:text-white">{{ $item->name }}</p>
+                                            @if ($item->portion_size)
+                                                <span class="text-xs text-gray-500">{{ $item->portion_size }}</span>
+                                            @endif
                                             @if ($item->is_vegan)
                                                 <span title="Vegan">🌱</span>
                                             @elseif ($item->is_vegetarian)
