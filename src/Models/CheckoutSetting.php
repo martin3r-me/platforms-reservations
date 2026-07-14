@@ -21,6 +21,7 @@ class CheckoutSetting extends Model
         'age_check_text',
         'legal_text',
         'privacy_url',
+        'default_room_release_mode',
     ];
 
     public function team(): BelongsTo
@@ -42,5 +43,13 @@ class CheckoutSetting extends Model
     public function legalText(): string
     {
         return trim((string) $this->legal_text) ?: self::DEFAULT_LEGAL_TEXT;
+    }
+
+    /** Standard-Raumfreigabe für neue Termine (parallel|sequential). */
+    public function defaultRoomReleaseMode(): string
+    {
+        return in_array($this->default_room_release_mode, ['parallel', 'sequential'], true)
+            ? $this->default_room_release_mode
+            : 'parallel';
     }
 }

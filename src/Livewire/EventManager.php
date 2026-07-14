@@ -165,8 +165,9 @@ class EventManager extends Component
             $this->eventDeadline      = '';
             $this->eventVenueId       = null;
             $this->eventSalesListId   = null;
-            $this->eventReleaseMode   = Event::RELEASE_PARALLEL;
             $this->eventEventsEventId = null;
+            // Standard-Raumfreigabe aus den Einstellungen vorbelegen.
+            $this->eventReleaseMode = \Platform\Reservation\Models\CheckoutSetting::forTeam($this->getTeamId())->defaultRoomReleaseMode();
             $this->slots = [['id' => null, 'name' => 'Pause', 'time_start' => '', 'time_end' => '']];
             $this->rooms = [];
             $this->disabledTableIds = [];
