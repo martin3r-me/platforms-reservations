@@ -1,12 +1,12 @@
 <x-ui-page>
     <x-slot name="navbar">
-        <x-ui-page-navbar title="Menü-Verwaltung" icon="heroicon-o-rectangle-stack" />
+        <x-ui-page-navbar title="Produkte" icon="heroicon-o-rectangle-stack" />
     </x-slot>
 
     <x-slot name="actionbar">
         <x-ui-page-actionbar :breadcrumbs="[
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
-            ['label' => 'Menü'],
+            ['label' => 'Produkte'],
         ]">
             <div class="flex items-center gap-2">
                 <div class="w-40">
@@ -56,7 +56,7 @@
             <div class="flex flex-col items-center justify-center py-16 text-[var(--ui-muted)]">
                 @svg('heroicon-o-rectangle-stack', 'w-10 h-10 mb-3 opacity-40')
                 <span class="text-sm font-medium text-[var(--ui-secondary)]">Noch keine Kategorien</span>
-                <span class="text-xs mt-1 opacity-70">Lege zuerst eine Kategorie an, dann Gerichte.</span>
+                <span class="text-xs mt-1 opacity-70">Lege zuerst eine Kategorie an, dann Produkte.</span>
             </div>
         </section>
     @endif
@@ -70,7 +70,7 @@
                 <div class="ml-auto flex items-center gap-1.5">
                     <x-ui-button variant="primary" size="sm" wire:click="openItemForm(null, {{ $category->id }})">
                         @svg('heroicon-o-plus', 'w-4 h-4')
-                        <span>Gericht</span>
+                        <span>Produkt</span>
                     </x-ui-button>
                     <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openCategoryForm({{ $category->id }})" title="Kategorie bearbeiten">
                         @svg('heroicon-o-pencil', 'w-4 h-4')
@@ -177,7 +177,7 @@
                 @if ($category->menuItems->isEmpty())
                     <div class="flex flex-col items-center justify-center py-6 text-[var(--ui-muted)]">
                         @svg('heroicon-o-inbox', 'w-6 h-6 mb-1 opacity-40')
-                        <span class="text-xs">{{ $approvalFilter !== '' ? 'Keine Gerichte mit diesem Status.' : 'Keine Gerichte vorhanden.' }}</span>
+                        <span class="text-xs">{{ $approvalFilter !== '' ? 'Keine Produkte mit diesem Status.' : 'Keine Produkte vorhanden.' }}</span>
                     </div>
                 @endif
             </div>
@@ -229,7 +229,7 @@
         </x-slot>
     </x-ui-modal>
 
-    {{-- Menüpunkt-Modal --}}
+    {{-- Produkt-Modal --}}
     <x-ui-modal size="md" wire:model="showItemForm">
         <x-slot name="header">
             <div class="flex items-center gap-3">
@@ -238,7 +238,7 @@
                 </div>
                 <div class="min-w-0">
                     <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">
-                        {{ $editingItemId ? 'Gericht bearbeiten' : 'Neues Gericht' }}
+                        {{ $editingItemId ? 'Produkt bearbeiten' : 'Neues Produkt' }}
                     </h3>
                     <p class="text-[12px] text-[var(--ui-muted)] m-0 mt-0.5">Keine Pflichtfelder bei Allergenen/MwSt – Verantwortung beim Bearbeiter</p>
                 </div>

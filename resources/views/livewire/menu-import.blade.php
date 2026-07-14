@@ -1,12 +1,12 @@
 <x-ui-page>
     <x-slot name="navbar">
-        <x-ui-page-navbar title="Artikel-Import" icon="heroicon-o-arrow-up-tray" />
+        <x-ui-page-navbar title="Produkt-Import" icon="heroicon-o-arrow-up-tray" />
     </x-slot>
 
     <x-slot name="actionbar">
         <x-ui-page-actionbar :breadcrumbs="[
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
-            ['label' => 'Menü', 'href' => route('reservation.menu.index')],
+            ['label' => 'Produkte', 'href' => route('reservation.menu.index')],
             ['label' => 'Import'],
         ]" />
     </x-slot>
@@ -18,13 +18,13 @@
     @if ($createdCount !== null)
         <section class="rounded-xl border border-[var(--ui-success)]/30 bg-[var(--ui-success-10)] p-4">
             <p class="font-semibold text-[var(--ui-success)] m-0">
-                Import abgeschlossen: {{ $createdCount }} Artikel angelegt{{ $skippedCount ? ", {$skippedCount} übersprungen" : '' }}.
+                Import abgeschlossen: {{ $createdCount }} Produkte angelegt{{ $skippedCount ? ", {$skippedCount} übersprungen" : '' }}.
             </p>
             <p class="mt-1 text-sm text-[var(--ui-secondary)] m-0">
-                Alle importierten Artikel stehen auf „Entwurf“ und durchlaufen die Vier-Augen-Freigabe.
+                Alle importierten Produkte stehen auf „Entwurf“ und durchlaufen die Vier-Augen-Freigabe.
             </p>
             <div class="mt-3 flex gap-2">
-                <x-ui-button variant="primary" size="sm" :href="route('reservation.menu.index')" wire:navigate>Zur Menü-Verwaltung</x-ui-button>
+                <x-ui-button variant="primary" size="sm" :href="route('reservation.menu.index')" wire:navigate>Zu den Produkten</x-ui-button>
                 <x-ui-button variant="secondary-outline" size="sm" wire:click="resetImport">Weitere Datei importieren</x-ui-button>
             </div>
         </section>
@@ -85,7 +85,7 @@
             <div class="flex gap-2">
                 <x-ui-button variant="secondary-outline" size="sm" wire:click="resetImport">Abbrechen</x-ui-button>
                 <x-ui-button variant="primary" size="sm" wire:click="import" wire:loading.attr="disabled" :disabled="$okCount === 0">
-                    {{ $okCount }} Artikel importieren
+                    {{ $okCount }} Produkte importieren
                 </x-ui-button>
             </div>
         </div>

@@ -35,7 +35,7 @@
             <p class="m-0 mt-1 text-lg font-bold tabular-nums text-[var(--ui-secondary)]">{{ $totals?->guests ?? 0 }}</p>
         </div>
         <div class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm p-3">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">Bestellte Artikel</span>
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">Bestellte Produkte</span>
             <p class="m-0 mt-1 text-lg font-bold tabular-nums text-[var(--ui-secondary)]">{{ $this->totalQuantity }}</p>
         </div>
     </div>
@@ -60,7 +60,7 @@
             </div>
             <x-ui-table compact="true">
                 <x-ui-table-header>
-                    <x-ui-table-header-cell compact="true">Artikel</x-ui-table-header-cell>
+                    <x-ui-table-header-cell compact="true">Produkt</x-ui-table-header-cell>
                     @foreach ($this->event->slots as $slot)
                         <x-ui-table-header-cell compact="true" align="center">
                             {{ $slot->name }}<br>

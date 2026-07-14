@@ -31,11 +31,11 @@
         </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.menu.index')">
             @svg('heroicon-o-rectangle-stack', 'w-4 h-4 text-[var(--ui-secondary)]')
-            <span class="ml-2 text-sm">Menü</span>
+            <span class="ml-2 text-sm">Produkte</span>
         </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.menu.import')">
             @svg('heroicon-o-arrow-up-tray', 'w-4 h-4 text-[var(--ui-secondary)]')
-            <span class="ml-2 text-sm">Artikel-Import</span>
+            <span class="ml-2 text-sm">Produkt-Import</span>
         </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.dropoff.index')">
             @svg('heroicon-o-clock', 'w-4 h-4 text-[var(--ui-secondary)]')

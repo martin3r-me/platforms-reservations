@@ -28,7 +28,7 @@
             <div>
                 <x-ui-input-textarea
                     name="ageCheckText"
-                    label="18+-Hinweis (erscheint nur bei alkoholischen Artikeln)"
+                    label="18+-Hinweis (erscheint nur bei alkoholischen Produkten)"
                     wire:model="ageCheckText"
                     rows="3"
                     :placeholder="$defaultAge"

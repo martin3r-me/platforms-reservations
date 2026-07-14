@@ -63,7 +63,7 @@
                                     @foreach ($booking->items as $item)
                                         <tr>
                                             <td style="padding:8px 0; border-bottom:1px solid #f3f4f6;">
-                                                {{ $item->quantity }}× {{ $item->menuItem?->name ?? 'Artikel' }}
+                                                {{ $item->quantity }}× {{ $item->menuItem?->name ?? 'Produkt' }}
                                             </td>
                                             <td style="padding:8px 0; border-bottom:1px solid #f3f4f6; text-align:right; white-space:nowrap;">
                                                 {{ $fmt($item->quantity * $item->unit_price) }}

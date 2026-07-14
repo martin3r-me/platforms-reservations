@@ -205,7 +205,7 @@
                 <div class="sticky bottom-0 -mx-4 border-t bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
                     <div class="mx-auto flex max-w-3xl items-center justify-between gap-3">
                         <div>
-                            <p class="text-xs text-gray-500">{{ collect($selectedItems)->sum() }} Artikel</p>
+                            <p class="text-xs text-gray-500">{{ collect($selectedItems)->sum() }} Produkte</p>
                             <p class="text-lg font-bold dark:text-white">{{ number_format($this->orderTotal, 2, ',', '.') }} €</p>
                         </div>
                         <div class="flex gap-2">
