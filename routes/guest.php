@@ -9,6 +9,10 @@ use Platform\Reservation\Livewire\Guest\PaymentReturn;
 // Öffentliche Gast-Routen (ohne Auth) – via ModuleRouter::group(..., requireAuth: false).
 // Pfade müssen disjunkt zu den Admin-Routen sein (Admin: /events, Gast: /termine).
 
+// Marken-Logo (gebündeltes Modul-Asset)
+Route::get('/brand/logo', [\Platform\Reservation\Http\Controllers\BrandAssetController::class, 'logo'])
+    ->name('reservation.guest.brand.logo');
+
 // Termin-Übersicht für Endkunden
 Route::get('/termine', EventOverview::class)->name('reservation.guest.events.index');
 

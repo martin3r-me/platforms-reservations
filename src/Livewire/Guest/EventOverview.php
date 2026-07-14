@@ -14,14 +14,24 @@ use Platform\Reservation\Models\Event;
  */
 class EventOverview extends Component
 {
+    public string $search = '';
+    public string $filterDate = '';
+
     #[Computed]
     public function events(): \Illuminate\Database\Eloquent\Collection
     {
         return Event::published()
             ->upcoming()
+            ->when($this->search !== '', fn ($q) => $q->where('name', 'like', '%' . $this->search . '%'))
+            ->when($this->filterDate !== '', fn ($q) => $q->whereDate('date', $this->filterDate))
             ->with(['venue', 'slots', 'imageFile.variants'])
             ->orderBy('date')
             ->get();
+    }
+
+    public function resetFilters(): void
+    {
+        $this->reset('search', 'filterDate');
     }
 
     public function render()

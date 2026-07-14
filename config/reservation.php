@@ -77,4 +77,15 @@ return [
 
     // Standard-Währung für Buchungen
     'currency' => env('RESERVATION_CURRENCY', 'EUR'),
+
+    /**
+     * Gäste-Terminübersicht (Kopfbereich). Logo/Text/Farbe je Kunde anpassbar.
+     */
+    'guest' => [
+        // Logo: leer = gebündeltes Culinaria-Logo (Route reservation.guest.brand.logo).
+        'logo_url' => env('RESERVATION_GUEST_LOGO', ''),
+        'eyebrow'  => env('RESERVATION_GUEST_EYEBROW', 'PausePlus'),
+        'intro'    => env('RESERVATION_GUEST_INTRO', 'Drinks & Snacks vorbestellen und die Veranstaltungspausen in der Stadthalle genießen.'),
+        'accent'   => env('RESERVATION_GUEST_ACCENT', '#285567'),
+    ],
 ];
