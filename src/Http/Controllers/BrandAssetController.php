@@ -12,10 +12,10 @@ class BrandAssetController
 {
     public function logo(): BinaryFileResponse
     {
-        $path = __DIR__ . '/../../../resources/brand/culinaria-logo.png';
+        $path = __DIR__ . '/../../../resources/brand/culinaria-logo.svg';
 
         return response()->file($path, [
-            'Content-Type'  => 'image/png',
+            'Content-Type'  => 'image/svg+xml',
             'Cache-Control' => 'public, max-age=86400',
         ]);
     }

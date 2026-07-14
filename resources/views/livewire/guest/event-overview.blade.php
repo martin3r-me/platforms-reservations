@@ -9,29 +9,26 @@
     {{-- Cormorant Garamond für den Hero (Culinaria-Look) --}}
     <style>@import url('https://fonts.bunny.net/css?family=cormorant-garamond:600i,700i&display=swap');</style>
 
-    {{-- Sticky-Navigation: Logo + Suche --}}
+    {{-- Sticky-Navigation: Suche + Datum --}}
     <header class="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur">
-        <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
-            <img src="{{ $logoUrl }}" alt="Culinaria" class="h-9 w-auto shrink-0" />
-
-            <div class="ml-auto flex flex-1 flex-wrap items-center justify-end gap-2">
-                <div class="relative min-w-[180px] flex-1 sm:max-w-xs">
-                    @svg('heroicon-o-magnifying-glass', 'pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400')
-                    <input type="search" wire:model.live.debounce.300ms="search" placeholder="Veranstaltung suchen…"
-                        class="w-full rounded-full border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-                </div>
-                <input type="date" wire:model.live="filterDate"
-                    class="rounded-full border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-                @if ($search !== '' || $filterDate !== '')
-                    <button wire:click="resetFilters" class="text-sm text-gray-500 hover:text-gray-800">Zurücksetzen</button>
-                @endif
+        <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-end gap-2 px-4 py-3">
+            <div class="relative min-w-[180px] flex-1 sm:max-w-xs">
+                @svg('heroicon-o-magnifying-glass', 'pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400')
+                <input type="search" wire:model.live.debounce.300ms="search" placeholder="Veranstaltung suchen…"
+                    class="w-full rounded-full border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]" />
             </div>
+            <input type="date" wire:model.live="filterDate"
+                class="rounded-full border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]" />
+            @if ($search !== '' || $filterDate !== '')
+                <button wire:click="resetFilters" class="text-sm text-gray-500 hover:text-gray-800">Zurücksetzen</button>
+            @endif
         </div>
     </header>
 
-    {{-- Hero --}}
+    {{-- Hero: Logo → Text --}}
     <section class="mx-auto max-w-3xl px-4 pt-12 pb-8 text-center sm:pt-16">
-        <p class="text-xs font-semibold uppercase tracking-[0.2em]" style="color: var(--accent);">{{ $eyebrow }}</p>
+        <img src="{{ $logoUrl }}" alt="Culinaria" class="mx-auto h-auto w-[250px] max-w-[70%]" />
+        <p class="mt-8 text-xs font-semibold uppercase tracking-[0.2em]" style="color: var(--accent);">{{ $eyebrow }}</p>
         <h1 class="mx-auto mt-3 max-w-2xl text-3xl italic leading-tight sm:text-4xl md:text-[2.75rem]"
             style="font-family: 'Cormorant Garamond', Georgia, serif; color: var(--accent);">
             {{ $intro }}
