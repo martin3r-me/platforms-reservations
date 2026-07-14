@@ -54,7 +54,7 @@
                 'href'  => route('reservation.finance.index'),
             ],
             [
-                'label' => 'Freigegebene Produkte',
+                'label' => 'Freigegebene Artikel',
                 'value' => $this->stats->approved_items . ' / ' . $this->stats->total_items,
                 'hint'  => 'Vier-Augen-Freigabe',
                 'icon'  => 'heroicon-o-rectangle-stack',

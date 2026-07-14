@@ -54,14 +54,14 @@
                                 @if ($list->is_default)
                                     <x-ui-badge variant="primary" size="xs">Team-Standard</x-ui-badge>
                                 @endif
-                                <span class="text-[11px] text-[var(--ui-muted)]">{{ $list->menu_items_count }} Produkte</span>
+                                <span class="text-[11px] text-[var(--ui-muted)]">{{ $list->menu_items_count }} Artikel</span>
                             </div>
                             @if ($list->description)
                                 <p class="text-xs text-[var(--ui-muted)] m-0 mt-0.5">{{ $list->description }}</p>
                             @endif
                         </div>
                         <div class="flex shrink-0 items-center justify-end gap-1.5">
-                            <x-ui-button variant="primary" size="sm" wire:click="openAssignment({{ $list->id }})">Produkte zuordnen</x-ui-button>
+                            <x-ui-button variant="primary" size="sm" wire:click="openAssignment({{ $list->id }})">Artikel zuordnen</x-ui-button>
                             <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openListForm({{ $list->id }})" title="Bearbeiten">
                                 @svg('heroicon-o-pencil', 'w-4 h-4')
                             </x-ui-button>
@@ -148,7 +148,7 @@
         </x-slot>
     </x-ui-modal>
 
-    {{-- Modal: Produkte zuordnen --}}
+    {{-- Modal: Artikel zuordnen --}}
     <x-ui-modal size="md" wire:model="showAssignForm">
         <x-slot name="header">
             <div class="flex items-center gap-3">
@@ -156,14 +156,14 @@
                     @svg('heroicon-o-squares-plus', 'w-5 h-5 text-[var(--ui-primary)]')
                 </div>
                 <div class="min-w-0 flex-1">
-                    <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">Produkte zuordnen</h3>
+                    <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">Artikel zuordnen</h3>
                     <p class="text-[12px] text-[var(--ui-muted)] m-0 mt-0.5">{{ count($assignedItemIds) }} ausgewählt</p>
                 </div>
             </div>
         </x-slot>
 
         <div class="space-y-4">
-            <x-ui-input-text name="itemSearch" size="sm" wire:model.live.debounce.300ms="itemSearch" placeholder="Produkt suchen…" />
+            <x-ui-input-text name="itemSearch" size="sm" wire:model.live.debounce.300ms="itemSearch" placeholder="Artikel suchen…" />
 
             <div class="max-h-[50vh] space-y-4 overflow-y-auto pr-1">
                 @forelse ($this->categoriesWithItems as $category)
@@ -188,7 +188,7 @@
                 @empty
                     <div class="flex flex-col items-center justify-center py-8 text-[var(--ui-muted)]">
                         @svg('heroicon-o-inbox', 'w-8 h-8 mb-2 opacity-40')
-                        <span class="text-xs">Keine Produkte gefunden</span>
+                        <span class="text-xs">Keine Artikel gefunden</span>
                     </div>
                 @endforelse
             </div>

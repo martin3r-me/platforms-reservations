@@ -15,7 +15,7 @@
     <div class="mx-auto max-w-lg pt-4">
     {{-- Step Indicator --}}
     <div class="mb-6 flex items-center justify-between">
-        @foreach(['Termin', 'Gast', 'Produkte', 'Bestätigung'] as $i => $label)
+        @foreach(['Termin', 'Gast', 'Artikel', 'Bestätigung'] as $i => $label)
             <div class="flex flex-col items-center">
                 <div class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold
                     {{ $step > $i + 1 ? 'bg-green-500 text-white' : ($step === $i + 1 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-500') }}">

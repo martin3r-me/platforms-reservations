@@ -197,7 +197,7 @@
                                     <div class="min-w-0">
                                         <span class="text-[var(--ui-secondary)]">
                                             <span class="font-semibold tabular-nums">{{ $item->quantity }}×</span>
-                                            {{ $item->menuItem?->name ?? 'Gelöschtes Produkt' }}
+                                            {{ $item->menuItem?->name ?? 'Gelöschter Artikel' }}
                                         </span>
                                         @if ($item->notes)
                                             <p class="text-xs text-[var(--ui-muted)] m-0">{{ $item->notes }}</p>
