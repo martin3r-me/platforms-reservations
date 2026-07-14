@@ -10,10 +10,16 @@ class Allergen extends Model
     protected $table = 'reservation_allergens';
 
     protected $fillable = [
+        'team_id',
         'name',
         'code',
         'icon',
     ];
+
+    public function scopeForTeam($query, int $teamId)
+    {
+        return $query->where('team_id', $teamId);
+    }
 
     public function menuItems(): BelongsToMany
     {

@@ -62,6 +62,10 @@
             @svg('heroicon-o-document-text', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Checkout-Texte</span>
         </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('reservation.settings.declarations')">
+            @svg('heroicon-o-beaker', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Allergene &amp; Zusatzstoffe</span>
+        </x-ui-sidebar-item>
     </x-ui-sidebar-list>
     </div>
 

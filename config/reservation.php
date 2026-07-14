@@ -58,6 +58,7 @@ return [
             'items' => [
                 ['label' => 'Zahlungen', 'route' => 'reservation.settings.payment', 'icon' => 'heroicon-o-credit-card'],
                 ['label' => 'Checkout-Texte', 'route' => 'reservation.settings.checkout', 'icon' => 'heroicon-o-document-text'],
+                ['label' => 'Allergene & Zusatzstoffe', 'route' => 'reservation.settings.declarations', 'icon' => 'heroicon-o-beaker'],
             ],
         ],
     ],

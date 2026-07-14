@@ -30,7 +30,8 @@ class DemoSeeder extends Seeder
             return;
         }
 
-        $this->call([AllergenSeeder::class, AdditiveSeeder::class]);
+        // Team-bezogene Standard-Legende (Allergene/Zusatzstoffe) bereitstellen.
+        \Platform\Reservation\Support\FoodDeclarations::ensureForTeam($teamId);
 
         // ── Venue + Räume mit Tischen ────────────────────────────
         $venue = Venue::firstOrCreate(
@@ -63,8 +64,8 @@ class DemoSeeder extends Seeder
         }
 
         // ── Artikel ──────────────────────────────────────────────
-        $allergens = \Platform\Reservation\Models\Allergen::pluck('id', 'code');
-        $additives = \Platform\Reservation\Models\Additive::pluck('id', 'code');
+        $allergens = \Platform\Reservation\Models\Allergen::forTeam($teamId)->pluck('id', 'code');
+        $additives = \Platform\Reservation\Models\Additive::forTeam($teamId)->pluck('id', 'code');
 
         $catalog = [
             'Snacks' => [

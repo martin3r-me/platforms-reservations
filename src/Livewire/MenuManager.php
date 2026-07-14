@@ -68,13 +68,27 @@ class MenuManager extends Component
     #[Computed]
     public function allergens(): \Illuminate\Database\Eloquent\Collection
     {
-        return Allergen::orderBy('code')->get();
+        return Allergen::forTeam($this->getTeamId())->orderBy('code')->get();
     }
 
     #[Computed]
     public function additives(): \Illuminate\Database\Eloquent\Collection
     {
-        return Additive::orderByRaw('CAST(code AS UNSIGNED)')->get();
+        return Additive::forTeam($this->getTeamId())->orderByRaw('CAST(code AS UNSIGNED), code')->get();
+    }
+
+    public function toggleAllergen(int $id): void
+    {
+        $this->itemAllergenIds = in_array($id, $this->itemAllergenIds)
+            ? array_values(array_diff($this->itemAllergenIds, [$id]))
+            : [...$this->itemAllergenIds, $id];
+    }
+
+    public function toggleAdditive(int $id): void
+    {
+        $this->itemAdditiveIds = in_array($id, $this->itemAdditiveIds)
+            ? array_values(array_diff($this->itemAdditiveIds, [$id]))
+            : [...$this->itemAdditiveIds, $id];
     }
 
     /**

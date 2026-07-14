@@ -324,29 +324,27 @@
             {{-- Allergene --}}
             <div>
                 <label class="block text-[12px] font-medium text-[var(--ui-muted)] mb-1">Allergene</label>
-                <div class="flex flex-wrap gap-1.5">
-                    @foreach ($this->allergens as $allergen)
-                        <label class="inline-flex cursor-pointer items-center gap-1 rounded-full border px-2 py-1 text-xs transition-colors
-                            {{ in_array($allergen->id, $itemAllergenIds) ? 'border-[var(--ui-warning)]/40 bg-[var(--ui-warning-10)] text-[var(--ui-warning)]' : 'border-[var(--ui-border)]/60 text-[var(--ui-muted)]' }}">
-                            <input type="checkbox" wire:model.live="itemAllergenIds" value="{{ $allergen->id }}" class="sr-only" />
-                            {{ $allergen->code ? "({$allergen->code})" : '' }} {{ $allergen->name }}
-                        </label>
-                    @endforeach
-                </div>
+                @include('reservation::partials.tag-select', [
+                    'options'     => $this->allergens,
+                    'selected'    => $itemAllergenIds,
+                    'toggle'      => 'toggleAllergen',
+                    'accent'      => 'warning',
+                    'placeholder' => 'Allergene auswählen…',
+                    'key'         => 'allergens',
+                ])
             </div>
 
             {{-- Zusatzstoffe --}}
             <div>
                 <label class="block text-[12px] font-medium text-[var(--ui-muted)] mb-1">Zusatzstoffe</label>
-                <div class="flex flex-wrap gap-1.5">
-                    @foreach ($this->additives as $additive)
-                        <label class="inline-flex cursor-pointer items-center gap-1 rounded-full border px-2 py-1 text-xs transition-colors
-                            {{ in_array($additive->id, $itemAdditiveIds) ? 'border-[var(--ui-info)]/40 bg-[var(--ui-info-10)] text-[var(--ui-info)]' : 'border-[var(--ui-border)]/60 text-[var(--ui-muted)]' }}">
-                            <input type="checkbox" wire:model.live="itemAdditiveIds" value="{{ $additive->id }}" class="sr-only" />
-                            {{ $additive->code ? "({$additive->code})" : '' }} {{ $additive->name }}
-                        </label>
-                    @endforeach
-                </div>
+                @include('reservation::partials.tag-select', [
+                    'options'     => $this->additives,
+                    'selected'    => $itemAdditiveIds,
+                    'toggle'      => 'toggleAdditive',
+                    'accent'      => 'info',
+                    'placeholder' => 'Zusatzstoffe auswählen…',
+                    'key'         => 'additives',
+                ])
             </div>
         </div>
 
