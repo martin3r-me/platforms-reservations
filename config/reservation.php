@@ -56,7 +56,6 @@ return [
         [
             'group' => 'Einstellungen',
             'items' => [
-                ['label' => 'Zahlungen', 'route' => 'reservation.settings.payment', 'icon' => 'heroicon-o-credit-card'],
                 ['label' => 'Einstellungen', 'route' => 'reservation.settings.checkout', 'icon' => 'heroicon-o-cog-6-tooth'],
                 ['label' => 'Allergene & Zusatzstoffe', 'route' => 'reservation.settings.declarations', 'icon' => 'heroicon-o-beaker'],
             ],

@@ -41,6 +41,60 @@
         </div>
     </section>
 
+    {{-- Zahlung (Mollie) --}}
+    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+            @svg('heroicon-o-credit-card', 'w-4 h-4 text-[var(--ui-muted)]')
+            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Zahlung (Mollie)</h2>
+            @if ($payReady)
+                <span class="ml-auto inline-flex items-center gap-1 rounded-full bg-[var(--ui-success-10)] px-2 py-0.5 text-[11px] font-medium text-[var(--ui-success)]">
+                    @svg('heroicon-o-check', 'w-3.5 h-3.5') aktiv ({{ $payMode === 'live' ? 'Live' : 'Test' }})
+                </span>
+            @else
+                <span class="ml-auto text-[11px] text-[var(--ui-muted)]">nicht aktiv – Checkout im Demo-Modus</span>
+            @endif
+        </div>
+        <div class="p-5 space-y-4">
+            <label class="flex items-center gap-2 text-sm text-[var(--ui-secondary)] cursor-pointer">
+                <input wire:model="payEnabled" type="checkbox" class="rounded border-[var(--ui-border)]" />
+                Mollie-Zahlungen aktivieren
+            </label>
+
+            <x-ui-input-select
+                name="payMode"
+                label="Modus"
+                :options="[
+                    ['value' => 'test', 'label' => 'Test (Sandbox)'],
+                    ['value' => 'live', 'label' => 'Live (echte Zahlungen)'],
+                ]"
+                wire:model="payMode"
+            />
+
+            <x-ui-input-text
+                type="password"
+                name="testApiKey"
+                label="Test-API-Key"
+                wire:model="testApiKey"
+                :placeholder="$testKeySet ? '•••••••• (gespeichert – zum Ändern neuen Key eingeben)' : 'test_...'"
+                autocomplete="off"
+            />
+            <x-ui-input-text
+                type="password"
+                name="liveApiKey"
+                label="Live-API-Key"
+                wire:model="liveApiKey"
+                :placeholder="$liveKeySet ? '•••••••• (gespeichert – zum Ändern neuen Key eingeben)' : 'live_...'"
+                autocomplete="off"
+            />
+
+            <div>
+                <p class="m-0 text-[12px] font-medium text-[var(--ui-muted)]">Webhook-URL (im Mollie-Dashboard)</p>
+                <code class="mt-1 block break-all rounded-lg bg-[var(--ui-muted-5)] px-3 py-2 text-xs text-[var(--ui-secondary)]">{{ $webhookUrl }}</code>
+                <p class="mt-1 text-[11px] text-[var(--ui-muted)]">Muss öffentlich erreichbar sein (auf localhost erhält Mollie keinen Callback).</p>
+            </div>
+        </div>
+    </section>
+
     {{-- Gast-Checkout --}}
     <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">

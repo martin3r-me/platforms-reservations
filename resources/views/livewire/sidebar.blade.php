@@ -54,10 +54,6 @@
     </x-ui-sidebar-list>
 
     <x-ui-sidebar-list label="Einstellungen">
-        <x-ui-sidebar-item :href="route('reservation.settings.payment')">
-            @svg('heroicon-o-credit-card', 'w-4 h-4 text-[var(--ui-secondary)]')
-            <span class="ml-2 text-sm">Zahlungen</span>
-        </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.settings.checkout')">
             @svg('heroicon-o-cog-6-tooth', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Einstellungen</span>
@@ -89,9 +85,6 @@
             </a>
             <a href="{{ route('reservation.finance.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
                 @svg('heroicon-o-banknotes', 'w-5 h-5')
-            </a>
-            <a href="{{ route('reservation.settings.payment') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
-                @svg('heroicon-o-credit-card', 'w-5 h-5')
             </a>
             <a href="{{ route('reservation.settings.checkout') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
                 @svg('heroicon-o-cog-6-tooth', 'w-5 h-5')

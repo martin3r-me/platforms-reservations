@@ -52,8 +52,8 @@ Route::get('/export', Export::class)->name('reservation.export');
 // Finanzen (Umsatz nach Monaten/Terminen)
 Route::get('/finance', \Platform\Reservation\Livewire\Finance::class)->name('reservation.finance.index');
 
-// Zahlungseinstellungen (Mollie)
-Route::get('/settings/payment', \Platform\Reservation\Livewire\PaymentSettings::class)->name('reservation.settings.payment');
+// Zahlungseinstellungen sind in die allgemeinen Einstellungen integriert (Alt-Link umgeleitet).
+Route::get('/settings/payment', fn () => redirect()->route('reservation.settings.checkout'))->name('reservation.settings.payment');
 
 // Checkout-Texte (18+, Rechtstext, Datenschutz-Link)
 Route::get('/settings/checkout', \Platform\Reservation\Livewire\CheckoutSettings::class)->name('reservation.settings.checkout');
