@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithFileUploads;
-use Platform\Core\Services\ContextFileService;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\EventRoom;
 use Platform\Reservation\Models\EventSlot;
@@ -292,21 +291,7 @@ class EventManager extends Component
         $this->syncRooms($event);
 
         if ($this->eventImage) {
-            $service = app(ContextFileService::class);
-            $uploaded = $service->uploadForContext($this->eventImage, 'reservation.event.image', $event->id, [
-                'team_id' => $this->getTeamId(),
-                'user_id' => Auth::id(),
-            ]);
-
-            if ($event->image_context_file_id) {
-                try {
-                    $service->delete($event->image_context_file_id, $this->getTeamId());
-                } catch (\Throwable $e) {
-                    // Altes File fehlt bereits
-                }
-            }
-
-            $event->update(['image_context_file_id' => $uploaded['id']]);
+            $event->setContextImage($this->eventImage, 'reservation.event.image', $this->getTeamId(), Auth::id());
             $this->eventImage = null;
         }
 

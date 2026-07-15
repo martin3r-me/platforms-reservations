@@ -5,10 +5,12 @@ namespace Platform\Reservation\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Platform\Core\Models\ContextFile;
+use Platform\Reservation\Models\Concerns\HasContextImage;
 
 class FloorPlan extends Model
 {
+    use HasContextImage;
+
     protected $table = 'reservation_floor_plans';
 
     protected $fillable = [
@@ -43,29 +45,20 @@ class FloorPlan extends Model
         return $this->belongsTo(SalesList::class, 'default_sales_list_id');
     }
 
-    /** Grundriss-/Hintergrundbild (ContextFile aus platform-core). */
-    public function backgroundFile(): BelongsTo
+    /** Grundriss-/Hintergrundbild liegt in einer eigenen Spalte. */
+    protected function contextImageColumn(): string
     {
-        return $this->belongsTo(ContextFile::class, 'background_context_file_id');
+        return 'background_context_file_id';
     }
 
     /**
-     * Signierte URL des Grundrisses. Große Formate über Varianten, sonst
-     * Original als Fallback (Varianten entstehen asynchron).
+     * Signierte URL des Grundrisses. Standard: ungeschnittenes Original-Ratio
+     * (kein Crop), Fallback auf das Original (Varianten entstehen asynchron).
+     * Delegiert an {@see HasContextImage::imageUrl()}.
      */
     public function backgroundUrl(string $variant = 'large_original'): ?string
     {
-        $file = $this->backgroundFile;
-
-        if (!$file) {
-            return null;
-        }
-
-        $match = $file->variants->firstWhere('variant_type', $variant)
-            ?? $file->variants->first(fn ($v) => str_starts_with($v->variant_type, 'large_'))
-            ?? $file->variants->first(fn ($v) => str_starts_with($v->variant_type, 'medium_'));
-
-        return $match?->url ?? $file->url;
+        return $this->imageUrl($variant);
     }
 
     public function scopeActive($query)

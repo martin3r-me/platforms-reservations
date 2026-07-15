@@ -5,7 +5,6 @@ namespace Platform\Reservation\Livewire;
 use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Livewire\WithFileUploads;
-use Platform\Core\Services\ContextFileService;
 use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Allergen;
@@ -38,7 +37,7 @@ class MenuManager extends Component
     public array $itemAllergenIds = [];
     public array $itemAdditiveIds = [];
 
-    // Bild-Uploads (ContextFileService aus platform-core)
+    // Bild-Uploads (via HasContextImage-Trait → platform-core ContextFileService)
     public $itemImage = null;       // 1:1 Produktbild
     public $categoryImage = null;   // 16:9 Kategoriebild
 
@@ -92,32 +91,14 @@ class MenuManager extends Component
     }
 
     /**
-     * Bild via platform-core ContextFileService speichern und am Model
-     * verknüpfen; ein vorhandenes Bild wird ersetzt (altes File gelöscht).
-     */
-    /**
-     * Bild speichern. Gibt true bei Erfolg zurück; ein Fehler beim Bild bricht
-     * NICHT das ganze Formular ab, sondern meldet die Ursache (session flash).
+     * Bild speichern (via HasContextImage-Trait). Gibt true bei Erfolg zurück;
+     * ein Fehler beim Bild bricht NICHT das ganze Formular ab, sondern meldet
+     * die Ursache (session flash).
      */
     protected function storeImage($model, $file, string $contextType): bool
     {
         try {
-            $service = app(ContextFileService::class);
-
-            $uploaded = $service->uploadForContext($file, $contextType, $model->id, [
-                'team_id' => $this->getTeamId(),
-                'user_id' => Auth::id(),
-            ]);
-
-            if ($model->image_context_file_id) {
-                try {
-                    $service->delete($model->image_context_file_id, $this->getTeamId());
-                } catch (\Throwable $e) {
-                    // Altes File fehlt bereits – Verknüpfung wird trotzdem ersetzt
-                }
-            }
-
-            $model->update(['image_context_file_id' => $uploaded['id']]);
+            $model->setContextImage($file, $contextType, $this->getTeamId(), Auth::id());
 
             return true;
         } catch (\Throwable $e) {
@@ -130,17 +111,7 @@ class MenuManager extends Component
 
     protected function removeImage($model): void
     {
-        if (!$model->image_context_file_id) {
-            return;
-        }
-
-        try {
-            app(ContextFileService::class)->delete($model->image_context_file_id, $this->getTeamId());
-        } catch (\Throwable $e) {
-            // File bereits weg – Verknüpfung trotzdem lösen
-        }
-
-        $model->update(['image_context_file_id' => null]);
+        $model->clearContextImage($this->getTeamId());
     }
 
     // Kategorie-Aktionen

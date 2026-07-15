@@ -5,7 +5,6 @@ namespace Platform\Reservation\Livewire;
 use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Livewire\WithFileUploads;
-use Platform\Core\Services\ContextFileService;
 use Platform\Reservation\Models\Venue;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\Table;
@@ -112,21 +111,12 @@ class FloorPlanEditor extends Component
         $plan = FloorPlan::findOrFail($this->floorPlanId);
 
         try {
-            $service = app(ContextFileService::class);
-            $uploaded = $service->uploadForContext($this->background, 'reservation.floor_plan.background', $plan->id, [
-                'team_id' => Auth::user()?->current_team_id,
-                'user_id' => Auth::id(),
-            ]);
-
-            if ($plan->background_context_file_id) {
-                try {
-                    $service->delete($plan->background_context_file_id, Auth::user()?->current_team_id);
-                } catch (\Throwable $e) {
-                    // altes File fehlt bereits
-                }
-            }
-
-            $plan->update(['background_context_file_id' => $uploaded['id']]);
+            $plan->setContextImage(
+                $this->background,
+                'reservation.floor_plan.background',
+                Auth::user()?->current_team_id,
+                Auth::id(),
+            );
             $this->dispatch('floor-plan-saved');
         } catch (\Throwable $e) {
             report($e);
@@ -158,16 +148,8 @@ class FloorPlanEditor extends Component
             return;
         }
 
-        $plan = FloorPlan::findOrFail($this->floorPlanId);
-
-        if ($plan->background_context_file_id) {
-            try {
-                app(ContextFileService::class)->delete($plan->background_context_file_id, Auth::user()?->current_team_id);
-            } catch (\Throwable $e) {
-                // File bereits weg
-            }
-            $plan->update(['background_context_file_id' => null]);
-        }
+        FloorPlan::findOrFail($this->floorPlanId)
+            ->clearContextImage(Auth::user()?->current_team_id);
 
         unset($this->floorPlan);
     }
