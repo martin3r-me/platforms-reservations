@@ -165,6 +165,17 @@
         <div class="space-y-4">
             <x-ui-input-text name="itemSearch" size="sm" wire:model.live.debounce.300ms="itemSearch" placeholder="Artikel suchen…" />
 
+            @if ($this->categoriesWithItems->isNotEmpty())
+                <div class="flex items-center justify-between">
+                    <button type="button" wire:click="toggleAllVisible"
+                        class="text-xs font-medium text-[var(--ui-primary)] hover:underline">
+                        {{ $this->allVisibleSelected() ? 'Alle abwählen' : 'Alle auswählen' }}
+                        @if ($itemSearch !== '') <span class="text-[var(--ui-muted)]">(Suchergebnisse)</span> @endif
+                    </button>
+                    <span class="text-[11px] text-[var(--ui-muted)]">{{ count($assignedItemIds) }} ausgewählt</span>
+                </div>
+            @endif
+
             <div class="max-h-[50vh] space-y-4 overflow-y-auto pr-1">
                 @forelse ($this->categoriesWithItems as $category)
                     <div wire:key="assign-cat-{{ $category->id }}">

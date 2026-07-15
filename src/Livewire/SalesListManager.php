@@ -135,6 +135,36 @@ class SalesListManager extends Component
         $this->itemSearch = '';
     }
 
+    /** IDs aller aktuell sichtbaren (ggf. gefilterten) Artikel als Strings. */
+    protected function visibleItemIds(): array
+    {
+        return $this->categoriesWithItems
+            ->flatMap(fn ($category) => $category->menuItems->pluck('id'))
+            ->map(fn ($id) => (string) $id)
+            ->values()
+            ->all();
+    }
+
+    /** Sind alle sichtbaren Artikel bereits ausgewählt? (für Button-Label + Toggle) */
+    public function allVisibleSelected(): bool
+    {
+        $visible = $this->visibleItemIds();
+
+        return $visible !== [] && array_diff($visible, $this->assignedItemIds) === [];
+    }
+
+    /** Alle sichtbaren Artikel auswählen bzw. – wenn schon alle gewählt – abwählen. */
+    public function toggleAllVisible(): void
+    {
+        $visible = $this->visibleItemIds();
+
+        if ($this->allVisibleSelected()) {
+            $this->assignedItemIds = array_values(array_diff($this->assignedItemIds, $visible));
+        } else {
+            $this->assignedItemIds = array_values(array_unique(array_merge($this->assignedItemIds, $visible)));
+        }
+    }
+
     public function saveAssignment(): void
     {
         if (!$this->assigningListId) {
