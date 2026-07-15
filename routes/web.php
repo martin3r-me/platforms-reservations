@@ -29,7 +29,6 @@ Route::get('/events/{eventId}/orders', EventOrders::class)->name('reservation.ev
 
 // Venues & Tischpläne verwalten
 Route::get('/venues', VenueManager::class)->name('reservation.venues.index');
-Route::get('/venues/import', \Platform\Reservation\Livewire\GuestofyImport::class)->name('reservation.venues.import');
 
 // Tischplan (Admin)
 Route::get('/floor-plan/{venueId}/edit/{floorPlanId?}', FloorPlanEditor::class)

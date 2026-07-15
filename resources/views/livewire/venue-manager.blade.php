@@ -9,10 +9,6 @@
             ['label' => 'Venues & Tischpläne'],
         ]">
             <div class="flex items-center gap-2">
-                <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.venues.import')" wire:navigate>
-                    @svg('heroicon-o-arrow-down-on-square', 'w-4 h-4')
-                    <span>Aus Alt-System</span>
-                </x-ui-button>
                 <x-ui-button variant="primary" size="sm" wire:click="openVenueForm()">
                     @svg('heroicon-o-plus', 'w-4 h-4')
                     <span>Venue anlegen</span>
