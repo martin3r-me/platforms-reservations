@@ -109,7 +109,10 @@
 
         {{-- ── Schritt 2: Produktauswahl ───────────────────────── --}}
         @if ($step === 2)
-            <div class="space-y-4">
+            <style>[x-cloak]{display:none!important}</style>
+            <div class="space-y-4"
+                x-data="cart(@js($selectedItems), @js($this->itemPrices))">
+
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <h2 class="text-lg font-semibold dark:text-white">Was darf es in der Pause sein?</h2>
                     <div class="flex gap-2">
@@ -169,15 +172,14 @@
                                         </p>
                                     </div>
                                     <div class="flex shrink-0 items-center gap-2">
-                                        @if (($selectedItems[$item->id] ?? 0) > 0)
-                                            <button wire:click="decrementItem({{ $item->id }})"
-                                                class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-white">−</button>
-                                            <span class="w-6 text-center text-sm font-medium dark:text-white">
-                                                {{ $selectedItems[$item->id] }}
-                                            </span>
-                                        @endif
-                                        <button wire:click="incrementItem({{ $item->id }})"
-                                            class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--ui-primary-10)] text-[var(--ui-primary)]">+</button>
+                                        <button type="button" x-show="(qty[{{ $item->id }}] || 0) > 0" x-cloak
+                                            x-on:click="dec({{ $item->id }})"
+                                            class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 text-gray-700 transition active:scale-90 dark:bg-gray-700 dark:text-white">−</button>
+                                        <span x-show="(qty[{{ $item->id }}] || 0) > 0" x-cloak
+                                            class="w-6 text-center text-sm font-medium tabular-nums dark:text-white"
+                                            x-text="qty[{{ $item->id }}] || 0"></span>
+                                        <button type="button" x-on:click="inc({{ $item->id }})"
+                                            class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--ui-primary-10)] text-[var(--ui-primary)] transition active:scale-90">+</button>
                                     </div>
                                 </div>
                             @endforeach
@@ -208,14 +210,14 @@
                 <div class="sticky bottom-0 -mx-4 border-t bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
                     <div class="mx-auto flex max-w-3xl items-center justify-between gap-3">
                         <div>
-                            <p class="text-xs text-gray-500">{{ collect($selectedItems)->sum() }} Produkte</p>
-                            <p class="text-lg font-bold dark:text-white">{{ number_format($this->orderTotal, 2, ',', '.') }} €</p>
+                            <p class="text-xs text-gray-500"><span x-text="count"></span> Produkte</p>
+                            <p class="text-lg font-bold dark:text-white"><span x-text="euro(total)"></span> €</p>
                         </div>
                         <div class="flex gap-2">
-                            <button wire:click="prevStep"
+                            <button type="button" x-on:click="navigate('prevStep')"
                                 class="rounded-xl border px-4 py-3 text-sm font-medium dark:border-gray-700 dark:text-white">Zurück</button>
-                            <button wire:click="nextStep"
-                                class="rounded-xl bg-[var(--ui-primary)] px-5 py-3 text-sm font-bold text-white hover:opacity-90">
+                            <button type="button" x-on:click="navigate('nextStep')"
+                                class="rounded-xl bg-[var(--ui-primary)] px-5 py-3 text-sm font-bold text-white transition hover:opacity-90 active:scale-95">
                                 Weiter zur Sitzplatzwahl
                             </button>
                         </div>
@@ -427,3 +429,48 @@
         @endif
     </div>
 </div>
+
+@script
+<script>
+// Optimistischer Warenkorb: Menge/Summe rein clientseitig (0 ms), Server-Sync
+// erst bei der Navigation (deferred -> ein Request). Preise nur für die Anzeige;
+// der verbindliche Preis wird beim confirm() serverseitig neu berechnet.
+Alpine.data('cart', (initial, prices) => ({
+    qty: Object.assign({}, initial || {}),
+    prices: prices || {},
+
+    inc(id) {
+        this.qty[id] = (this.qty[id] || 0) + 1;
+    },
+    dec(id) {
+        const n = (this.qty[id] || 0) - 1;
+        if (n <= 0) {
+            delete this.qty[id];
+        } else {
+            this.qty[id] = n;
+        }
+    },
+
+    get count() {
+        return Object.values(this.qty).reduce((sum, n) => sum + n, 0);
+    },
+    get total() {
+        let sum = 0;
+        for (const id in this.qty) {
+            sum += (this.prices[id] || 0) * this.qty[id];
+        }
+        return sum;
+    },
+    euro(value) {
+        return value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
+
+    // Client-Stand deferred an den Server hängen und die Wizard-Navigation
+    // auslösen – beides in EINEM Request (kein Zwischen-Render/Flackern).
+    navigate(method) {
+        this.$wire.set('selectedItems', this.qty, false);
+        this.$wire[method]();
+    },
+}));
+</script>
+@endscript

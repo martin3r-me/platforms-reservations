@@ -105,6 +105,19 @@ class CheckoutWizard extends Component
         ];
     }
 
+    /**
+     * Preise (id => €) aller gast-sichtbaren Artikel der freigegebenen Liste –
+     * für die sofortige Client-Anzeige (Alpine). Der verbindliche Preis wird
+     * beim confirm() serverseitig autoritativ neu berechnet.
+     */
+    #[Computed]
+    public function itemPrices(): array
+    {
+        $items = $this->event->resolveSalesList()?->guestVisibleItems() ?? collect();
+
+        return $items->mapWithKeys(fn (MenuItem $item) => [$item->id => (float) $item->price])->all();
+    }
+
     #[Computed]
     public function cartItems(): \Illuminate\Support\Collection
     {
