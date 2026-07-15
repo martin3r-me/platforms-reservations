@@ -19,6 +19,9 @@ class FloorPlanEditor extends Component
     public ?int $floorPlanId = null;
     public string $floorPlanName = '';
 
+    /** Darstellungsvariante: false = klassisch (Bild), true = Blueprint-Style. */
+    public bool $blueprint = false;
+
     // Grundriss-Upload
     public $background = null;
 

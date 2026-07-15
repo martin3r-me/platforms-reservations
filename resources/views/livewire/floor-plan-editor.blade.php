@@ -41,6 +41,22 @@
         @enderror
     </div>
 
+    {{-- Darstellungs-Reiter: Klassisch (Bild) vs. Blueprint (moderner Stil) --}}
+    <div class="inline-flex rounded-lg border border-[var(--ui-border)] bg-white p-0.5 text-sm">
+        <a wire:navigate href="{{ route('reservation.floor-plan.editor', ['venueId' => $venueId, 'floorPlanId' => $floorPlanId]) }}"
+            @class([
+                'rounded-md px-3 py-1.5 font-medium transition',
+                'bg-gray-900 text-white' => !$blueprint,
+                'text-[var(--ui-secondary)] hover:bg-gray-50' => $blueprint,
+            ])>Klassisch</a>
+        <a wire:navigate href="{{ route('reservation.floor-plan.editor.blueprint', ['venueId' => $venueId, 'floorPlanId' => $floorPlanId]) }}"
+            @class([
+                'rounded-md px-3 py-1.5 font-medium transition',
+                'bg-gray-900 text-white' => $blueprint,
+                'text-[var(--ui-secondary)] hover:bg-gray-50' => !$blueprint,
+            ])>Blueprint</a>
+    </div>
+
     @if ($floorPlanId)
         {{-- Grundriss-Upload --}}
         <div class="rounded-lg border border-[var(--ui-border)]/60 p-3 space-y-2">
@@ -72,18 +88,27 @@
         {{-- Canvas: Tischplan --}}
         <div
             id="floor-plan-canvas"
-            class="relative w-full overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
-            style="height: 600px;"
+            @if ($blueprint)
+                class="relative w-full overflow-hidden rounded-2xl ring-1 ring-[#285567]/15 bg-white"
+                style="height: 600px;
+                    background-image:
+                        linear-gradient(rgba(40,85,103,0.06) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(40,85,103,0.06) 1px, transparent 1px);
+                    background-size: 32px 32px;"
+            @else
+                class="relative w-full overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
+                style="height: 600px;"
+            @endif
             x-data="floorPlanEditor()"
         >
             @if ($this->floorPlan?->backgroundUrl())
                 @php $rot = (int) ($this->floorPlan->background_rotation ?? 0); @endphp
                 {{-- Grundriss-Layer (rotierbar); Tische liegen darüber --}}
                 <img
-                    wire:key="bg-{{ $rot }}"
+                    wire:key="bg-{{ $rot }}-{{ $blueprint ? 'bp' : 'cl' }}"
                     src="{{ $this->floorPlan->backgroundUrl() }}"
                     alt="Grundriss"
-                    x-data="rotatableBg({{ $rot }})"
+                    x-data="rotatableBg({{ $rot }}, {{ $blueprint ? 'true' : 'false' }})"
                     :style="style"
                 />
             @endif
@@ -201,8 +226,9 @@ Alpine.data('floorPlanEditor', () => ({
 
 // Grundriss-Bild als rotierbarer Layer: passt sich bei 90°/270° an (Breite/Höhe getauscht),
 // zentriert, object-contain – füllt den Canvas wie ein CSS-Background.
-Alpine.data('rotatableBg', (rotation) => ({
+Alpine.data('rotatableBg', (rotation, blueprint = false) => ({
     rot: ((rotation % 360) + 360) % 360,
+    blueprint,
     w: 0,
     h: 0,
     init() {
@@ -220,9 +246,14 @@ Alpine.data('rotatableBg', (rotation) => ({
         if (this._ro) this._ro.disconnect();
     },
     get style() {
+        // Blueprint: Grundriss als blasse Blaupause (Graustufe + reduzierte Deckkraft),
+        // damit die Tische darüber klar dominieren.
+        const filter = this.blueprint
+            ? 'filter:grayscale(1) contrast(1.15) opacity(0.35);'
+            : '';
         return `position:absolute; left:50%; top:50%; width:${this.w}px; height:${this.h}px;`
             + `object-fit:contain; transform:translate(-50%,-50%) rotate(${this.rot}deg);`
-            + `pointer-events:none; user-select:none;`;
+            + `pointer-events:none; user-select:none;` + filter;
     },
 }));
 

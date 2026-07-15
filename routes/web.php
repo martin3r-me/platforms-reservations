@@ -34,6 +34,10 @@ Route::get('/venues', VenueManager::class)->name('reservation.venues.index');
 Route::get('/floor-plan/{venueId}/edit/{floorPlanId?}', FloorPlanEditor::class)
     ->name('reservation.floor-plan.editor');
 
+// Tischplan – Blueprint-Variante (moderne Darstellung; klassischer Stand bleibt erhalten)
+Route::get('/floor-plan-blueprint/{venueId}/edit/{floorPlanId?}', \Platform\Reservation\Livewire\FloorPlanEditorBlueprint::class)
+    ->name('reservation.floor-plan.editor.blueprint');
+
 // Verkaufslisten (segmentierte Sortimente)
 Route::get('/sales-lists', SalesListManager::class)->name('reservation.sales-lists.index');
 
