@@ -19,9 +19,6 @@ class FloorPlanEditor extends Component
     public ?int $floorPlanId = null;
     public string $floorPlanName = '';
 
-    /** Darstellungsvariante: false = klassisch (Bild), true = Blueprint-Style. */
-    public bool $blueprint = false;
-
     // Grundriss-Upload
     public $background = null;
 
@@ -207,6 +204,11 @@ class FloorPlanEditor extends Component
             'tableHeight'   => 'required|numeric|min:30',
         ]);
 
+        // Runde Tische bleiben kreisrund: Höhe = Breite.
+        if ($this->tableShape === 'round') {
+            $this->tableHeight = $this->tableWidth;
+        }
+
         $data = [
             'floor_plan_id' => $this->floorPlanId,
             'label'         => $this->tableLabel,
@@ -239,10 +241,16 @@ class FloorPlanEditor extends Component
 
     public function updateTableSize(int $tableId, float $width, float $height): void
     {
-        Table::findOrFail($tableId)->update([
-            'width'  => max(30, round($width)),
-            'height' => max(30, round($height)),
-        ]);
+        $table = Table::findOrFail($tableId);
+        $w = max(30, round($width));
+        $h = max(30, round($height));
+
+        // Runde Tische bleiben kreisrund (gleichmäßig skalieren).
+        if ($table->shape === 'round') {
+            $h = $w;
+        }
+
+        $table->update(['width' => $w, 'height' => $h]);
         unset($this->tables);
     }
 

@@ -41,22 +41,6 @@
         @enderror
     </div>
 
-    {{-- Darstellungs-Reiter: Klassisch (Bild) vs. Blueprint (moderner Stil) --}}
-    <div class="inline-flex rounded-lg border border-[var(--ui-border)] bg-white p-0.5 text-sm">
-        <a wire:navigate href="{{ route('reservation.floor-plan.editor', ['venueId' => $venueId, 'floorPlanId' => $floorPlanId]) }}"
-            @class([
-                'rounded-md px-3 py-1.5 font-medium transition',
-                'bg-gray-900 text-white' => !$blueprint,
-                'text-[var(--ui-secondary)] hover:bg-gray-50' => $blueprint,
-            ])>Klassisch</a>
-        <a wire:navigate href="{{ route('reservation.floor-plan.editor.blueprint', ['venueId' => $venueId, 'floorPlanId' => $floorPlanId]) }}"
-            @class([
-                'rounded-md px-3 py-1.5 font-medium transition',
-                'bg-gray-900 text-white' => $blueprint,
-                'text-[var(--ui-secondary)] hover:bg-gray-50' => !$blueprint,
-            ])>Blueprint</a>
-    </div>
-
     @if ($floorPlanId)
         {{-- Grundriss-Upload --}}
         <div class="rounded-lg border border-[var(--ui-border)]/60 p-3 space-y-2">
@@ -88,27 +72,18 @@
         {{-- Canvas: Tischplan --}}
         <div
             id="floor-plan-canvas"
-            @if ($blueprint)
-                class="relative w-full overflow-hidden rounded-2xl ring-1 ring-[#285567]/15 bg-white"
-                style="height: 600px;
-                    background-image:
-                        linear-gradient(rgba(40,85,103,0.06) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(40,85,103,0.06) 1px, transparent 1px);
-                    background-size: 32px 32px;"
-            @else
-                class="relative w-full overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
-                style="height: 600px;"
-            @endif
+            class="relative w-full overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
+            style="height: 600px;"
             x-data="floorPlanEditor()"
         >
             @if ($this->floorPlan?->backgroundUrl())
                 @php $rot = (int) ($this->floorPlan->background_rotation ?? 0); @endphp
                 {{-- Grundriss-Layer (rotierbar); Tische liegen darüber --}}
                 <img
-                    wire:key="bg-{{ $rot }}-{{ $blueprint ? 'bp' : 'cl' }}"
+                    wire:key="bg-{{ $rot }}"
                     src="{{ $this->floorPlan->backgroundUrl() }}"
                     alt="Grundriss"
-                    x-data="rotatableBg({{ $rot }}, {{ $blueprint ? 'true' : 'false' }})"
+                    x-data="rotatableBg({{ $rot }})"
                     :style="style"
                 />
             @endif
@@ -126,7 +101,7 @@
                         border-radius: {{ $table->shape === 'round' ? '50%' : '8px' }};
                     "
                     x-on:dblclick="$wire.openTableForm({{ $table->id }})"
-                    x-data="draggable({{ $table->id }}, {{ $table->x }}, {{ $table->y }}, {{ $table->width }}, {{ $table->height }})"
+                    x-data="draggable({{ $table->id }}, {{ $table->x }}, {{ $table->y }}, {{ $table->width }}, {{ $table->height }}, {{ $table->shape === 'round' ? 'true' : 'false' }})"
                 >
                     <div class="pointer-events-none text-center leading-tight">
                         <div>{{ $table->label }}</div>
@@ -249,9 +224,8 @@ Alpine.data('floorPlanEditor', () => ({
 
 // Grundriss-Bild als rotierbarer Layer: passt sich bei 90°/270° an (Breite/Höhe getauscht),
 // zentriert, object-contain – füllt den Canvas wie ein CSS-Background.
-Alpine.data('rotatableBg', (rotation, blueprint = false) => ({
+Alpine.data('rotatableBg', (rotation) => ({
     rot: ((rotation % 360) + 360) % 360,
-    blueprint,
     w: 0,
     h: 0,
     init() {
@@ -269,23 +243,19 @@ Alpine.data('rotatableBg', (rotation, blueprint = false) => ({
         if (this._ro) this._ro.disconnect();
     },
     get style() {
-        // Blueprint: Grundriss als blasse Blaupause (Graustufe + reduzierte Deckkraft),
-        // damit die Tische darüber klar dominieren.
-        const filter = this.blueprint
-            ? 'filter:grayscale(1) contrast(1.15) opacity(0.35);'
-            : '';
         return `position:absolute; left:50%; top:50%; width:${this.w}px; height:${this.h}px;`
             + `object-fit:contain; transform:translate(-50%,-50%) rotate(${this.rot}deg);`
-            + `pointer-events:none; user-select:none;` + filter;
+            + `pointer-events:none; user-select:none;`;
     },
 }));
 
-Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH) => ({
+Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, uniform = false) => ({
     tableId,
     x: initialX,
     y: initialY,
     w: initialW,
     h: initialH,
+    uniform,              // runde Tische: gleichmäßig skalieren (w = h)
     mode: null,           // null | 'move' | 'resize'
     sx: 0, sy: 0,         // Start-Mausposition
     ox: 0, oy: 0,         // Start x/y
@@ -303,8 +273,14 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH) => ({
                 this.y = Math.max(0, Math.min(r.height - el.offsetHeight, this.oy + (cy - this.sy)));
                 el.style.left = this.x + 'px'; el.style.top = this.y + 'px';
             } else if (this.mode === 'resize') {
-                this.w = Math.max(30, Math.min(r.width  - this.x, this.ow + (cx - this.sx)));
-                this.h = Math.max(30, Math.min(r.height - this.y, this.oh + (cy - this.sy)));
+                let nw = Math.max(30, Math.min(r.width  - this.x, this.ow + (cx - this.sx)));
+                let nh = Math.max(30, Math.min(r.height - this.y, this.oh + (cy - this.sy)));
+                if (this.uniform) {
+                    // Kreis bleibt Kreis: gemeinsame Kantenlänge, begrenzt auf beide Achsen.
+                    const size = Math.min(Math.max(nw, nh), r.width - this.x, r.height - this.y);
+                    nw = nh = Math.max(30, size);
+                }
+                this.w = nw; this.h = nh;
                 el.style.width = this.w + 'px'; el.style.height = this.h + 'px';
             }
         };
