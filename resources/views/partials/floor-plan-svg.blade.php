@@ -89,19 +89,21 @@
             :style="`transform: scale(${scale}) translate(${panX / scale}px, ${panY / scale}px);`"
             style="will-change: transform;"
         >
-            @php $bg = $backgroundUrl ?? null; @endphp
+            @php
+                $bg  = $backgroundUrl ?? null;
+                $rot = ((((int) ($rotation ?? 0)) % 360) + 360) % 360;
+                // Bei 90°/270° Breite/Höhe tauschen, damit object-contain nach der Drehung passt.
+                $bgW = $rot % 180 === 0 ? 800 : 600;
+                $bgH = $rot % 180 === 0 ? 600 : 800;
+            @endphp
             {{-- Flache Plan-Fläche (Draufsicht); optional mit Grundriss-Hintergrund --}}
             <div
-                class="relative"
+                class="relative overflow-hidden"
                 @if ($bg)
                     style="
                         width: 800px;
                         height: 600px;
                         background-color: #1e293b;
-                        background-image: url('{{ $bg }}');
-                        background-size: contain;
-                        background-position: center;
-                        background-repeat: no-repeat;
                         border-radius: 16px;
                         box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
                     "
@@ -119,6 +121,24 @@
                     "
                 @endif
             >
+                @if ($bg)
+                    {{-- Grundriss-Layer (rotiert); Tische liegen darüber --}}
+                    <img
+                        src="{{ $bg }}"
+                        alt="Grundriss"
+                        style="
+                            position: absolute;
+                            left: 50%;
+                            top: 50%;
+                            width: {{ $bgW }}px;
+                            height: {{ $bgH }}px;
+                            object-fit: contain;
+                            transform: translate(-50%, -50%) rotate({{ $rot }}deg);
+                            pointer-events: none;
+                            user-select: none;
+                        "
+                    />
+                @endif
                 {{-- Bühne / Referenzfläche oben (nur ohne Grundriss) --}}
                 @unless ($bg)
                 <div

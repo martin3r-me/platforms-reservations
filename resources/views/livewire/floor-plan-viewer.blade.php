@@ -51,6 +51,7 @@
                     ])->all(),
                     'clickAction' => 'selectTable',
                     'backgroundUrl' => $this->floorPlan?->backgroundUrl(),
+                    'rotation' => $this->floorPlan?->background_rotation ?? 0,
                 ])
             </div>
         </section>

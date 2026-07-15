@@ -137,6 +137,21 @@ class FloorPlanEditor extends Component
         }
     }
 
+    /** Grundriss um 90° drehen (delta = +90 im Uhrzeigersinn, -90 gegen den Uhrzeigersinn). */
+    public function rotateBackground(int $delta): void
+    {
+        if (!$this->floorPlanId) {
+            return;
+        }
+
+        $plan = FloorPlan::findOrFail($this->floorPlanId);
+        $rotation = ((($plan->background_rotation ?? 0) + $delta) % 360 + 360) % 360;
+        $plan->update(['background_rotation' => $rotation]);
+
+        unset($this->floorPlan);
+        $this->dispatch('floor-plan-saved');
+    }
+
     public function removeBackground(): void
     {
         if (!$this->floorPlanId) {

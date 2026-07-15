@@ -48,8 +48,19 @@
                 @svg('heroicon-o-map', 'w-5 h-5 text-[var(--ui-muted)]')
                 <span class="text-sm font-medium text-[var(--ui-secondary)]">Grundriss (Hintergrundbild)</span>
                 @if ($this->floorPlan?->background_context_file_id)
-                    <button wire:click="removeBackground" wire:confirm="Grundriss entfernen?" type="button"
-                        class="ml-auto text-xs text-[var(--ui-danger)] hover:underline">Grundriss entfernen</button>
+                    <div class="ml-auto flex items-center gap-2">
+                        <span class="text-xs text-[var(--ui-muted)]">{{ (int) $this->floorPlan->background_rotation }}°</span>
+                        <button wire:click="rotateBackground(-90)" type="button" title="Nach links drehen"
+                            class="inline-flex items-center justify-center rounded-md border border-[var(--ui-border)] p-1.5 text-[var(--ui-secondary)] hover:bg-gray-50">
+                            @svg('heroicon-o-arrow-uturn-left', 'w-4 h-4')
+                        </button>
+                        <button wire:click="rotateBackground(90)" type="button" title="Nach rechts drehen"
+                            class="inline-flex items-center justify-center rounded-md border border-[var(--ui-border)] p-1.5 text-[var(--ui-secondary)] hover:bg-gray-50">
+                            @svg('heroicon-o-arrow-uturn-right', 'w-4 h-4')
+                        </button>
+                        <button wire:click="removeBackground" wire:confirm="Grundriss entfernen?" type="button"
+                            class="text-xs text-[var(--ui-danger)] hover:underline">Grundriss entfernen</button>
+                    </div>
                 @endif
             </div>
             @include('reservation::partials.image-upload', [
@@ -61,10 +72,22 @@
         {{-- Canvas: Tischplan --}}
         <div
             id="floor-plan-canvas"
-            class="relative w-full overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 bg-contain bg-center bg-no-repeat dark:border-gray-700 dark:bg-gray-900"
-            style="height: 600px; {{ $this->floorPlan?->backgroundUrl() ? "background-image: url('" . $this->floorPlan->backgroundUrl() . "');" : '' }}"
+            class="relative w-full overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
+            style="height: 600px;"
             x-data="floorPlanEditor()"
         >
+            @if ($this->floorPlan?->backgroundUrl())
+                @php $rot = (int) ($this->floorPlan->background_rotation ?? 0); @endphp
+                {{-- Grundriss-Layer (rotierbar); Tische liegen darüber --}}
+                <img
+                    wire:key="bg-{{ $rot }}"
+                    src="{{ $this->floorPlan->backgroundUrl() }}"
+                    alt="Grundriss"
+                    x-data="rotatableBg({{ $rot }})"
+                    :style="style"
+                />
+            @endif
+
             @foreach ($this->tables as $table)
                 <div
                     wire:key="table-{{ $table->id }}"
@@ -174,6 +197,33 @@
 <script>
 Alpine.data('floorPlanEditor', () => ({
     init() {}
+}));
+
+// Grundriss-Bild als rotierbarer Layer: passt sich bei 90°/270° an (Breite/Höhe getauscht),
+// zentriert, object-contain – füllt den Canvas wie ein CSS-Background.
+Alpine.data('rotatableBg', (rotation) => ({
+    rot: ((rotation % 360) + 360) % 360,
+    w: 0,
+    h: 0,
+    init() {
+        const parent = this.$el.parentElement;
+        const fit = () => {
+            const cw = parent.clientWidth, ch = parent.clientHeight;
+            if (this.rot % 180 === 0) { this.w = cw; this.h = ch; }
+            else { this.w = ch; this.h = cw; }
+        };
+        fit();
+        this._ro = new ResizeObserver(fit);
+        this._ro.observe(parent);
+    },
+    destroy() {
+        if (this._ro) this._ro.disconnect();
+    },
+    get style() {
+        return `position:absolute; left:50%; top:50%; width:${this.w}px; height:${this.h}px;`
+            + `object-fit:contain; transform:translate(-50%,-50%) rotate(${this.rot}deg);`
+            + `pointer-events:none; user-select:none;`;
+    },
 }));
 
 Alpine.data('draggable', (tableId, initialX, initialY) => ({

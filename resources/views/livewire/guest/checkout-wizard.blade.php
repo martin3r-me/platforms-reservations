@@ -279,6 +279,7 @@
                                     'tableStates' => $this->tableStates,
                                     'clickAction' => 'selectTable',
                                     'backgroundUrl' => $this->selectedRoom?->floorPlan?->backgroundUrl(),
+                                    'rotation' => $this->selectedRoom?->floorPlan?->background_rotation ?? 0,
                                 ])
                             </div>
                         </div>

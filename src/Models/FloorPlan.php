@@ -17,12 +17,14 @@ class FloorPlan extends Model
         'layout_json',
         'default_sales_list_id',
         'background_context_file_id',
+        'background_rotation',
         'is_active',
     ];
 
     protected $casts = [
-        'layout_json' => 'array',
-        'is_active'   => 'boolean',
+        'layout_json'         => 'array',
+        'is_active'           => 'boolean',
+        'background_rotation' => 'integer',
     ];
 
     public function venue(): BelongsTo
