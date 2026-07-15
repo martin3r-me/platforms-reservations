@@ -237,6 +237,15 @@ class FloorPlanEditor extends Component
         unset($this->tables);
     }
 
+    public function updateTableSize(int $tableId, float $width, float $height): void
+    {
+        Table::findOrFail($tableId)->update([
+            'width'  => max(30, round($width)),
+            'height' => max(30, round($height)),
+        ]);
+        unset($this->tables);
+    }
+
     public function deleteTable(int $tableId): void
     {
         Table::findOrFail($tableId)->delete();

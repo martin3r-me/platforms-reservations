@@ -116,7 +116,7 @@
             @foreach ($this->tables as $table)
                 <div
                     wire:key="table-{{ $table->id }}"
-                    class="absolute flex cursor-move select-none items-center justify-center text-xs font-bold text-white shadow-md transition"
+                    class="group absolute flex cursor-move select-none items-center justify-center text-xs font-bold text-white shadow-md transition"
                     style="
                         left: {{ $table->x }}px;
                         top: {{ $table->y }}px;
@@ -126,13 +126,21 @@
                         border-radius: {{ $table->shape === 'round' ? '50%' : '8px' }};
                     "
                     x-on:dblclick="$wire.openTableForm({{ $table->id }})"
-                    x-data="draggable({{ $table->id }}, {{ $table->x }}, {{ $table->y }})"
-                    x-init="init()"
+                    x-data="draggable({{ $table->id }}, {{ $table->x }}, {{ $table->y }}, {{ $table->width }}, {{ $table->height }})"
                 >
-                    <div class="text-center leading-tight">
+                    <div class="pointer-events-none text-center leading-tight">
                         <div>{{ $table->label }}</div>
                         <div class="opacity-75">{{ $table->capacity }}P</div>
                     </div>
+
+                    {{-- Resize-Griff (unten rechts) --}}
+                    <div
+                        data-resize-handle
+                        title="Größe ändern"
+                        class="absolute -bottom-1 -right-1 h-3.5 w-3.5 cursor-se-resize rounded-full bg-white opacity-0 shadow ring-2 ring-indigo-500 transition group-hover:opacity-100"
+                        x-on:mousedown.stop.prevent="startResize($event.clientX, $event.clientY)"
+                        x-on:touchstart.stop="startResize($event.touches[0].clientX, $event.touches[0].clientY)"
+                    ></div>
                 </div>
             @endforeach
 
@@ -175,6 +183,21 @@
                                     <option value="rectangle">Rechteck</option>
                                     <option value="round">Rund</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm text-gray-700 dark:text-gray-300">Breite (px)</label>
+                                <input wire:model="tableWidth" type="number" min="30" max="600" step="1"
+                                    class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                                @error('tableWidth') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700 dark:text-gray-300">Höhe (px)</label>
+                                <input wire:model="tableHeight" type="number" min="30" max="600" step="1"
+                                    class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                                @error('tableHeight') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
                             </div>
                         </div>
 
@@ -257,61 +280,74 @@ Alpine.data('rotatableBg', (rotation, blueprint = false) => ({
     },
 }));
 
-Alpine.data('draggable', (tableId, initialX, initialY) => ({
+Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH) => ({
     tableId,
     x: initialX,
     y: initialY,
-    dragging: false,
-    startMouseX: 0,
-    startMouseY: 0,
-    startX: 0,
-    startY: 0,
+    w: initialW,
+    h: initialH,
+    mode: null,           // null | 'move' | 'resize'
+    sx: 0, sy: 0,         // Start-Mausposition
+    ox: 0, oy: 0,         // Start x/y
+    ow: 0, oh: 0,         // Start w/h
 
     init() {
         const el     = this.$el;
         const canvas = () => document.getElementById('floor-plan-canvas');
         const getRect = () => { const c = canvas(); return c ? c.getBoundingClientRect() : { left: 0, top: 0, width: 800, height: 600 }; };
 
+        const onMove = (cx, cy) => {
+            const r = getRect();
+            if (this.mode === 'move') {
+                this.x = Math.max(0, Math.min(r.width  - el.offsetWidth,  this.ox + (cx - this.sx)));
+                this.y = Math.max(0, Math.min(r.height - el.offsetHeight, this.oy + (cy - this.sy)));
+                el.style.left = this.x + 'px'; el.style.top = this.y + 'px';
+            } else if (this.mode === 'resize') {
+                this.w = Math.max(30, Math.min(r.width  - this.x, this.ow + (cx - this.sx)));
+                this.h = Math.max(30, Math.min(r.height - this.y, this.oh + (cy - this.sy)));
+                el.style.width = this.w + 'px'; el.style.height = this.h + 'px';
+            }
+        };
+        const onEnd = () => {
+            if (!this.mode) return;
+            const m = this.mode; this.mode = null;
+            if (m === 'move') {
+                this.$wire.updateTablePosition(this.tableId, Math.round(this.x), Math.round(this.y));
+            } else {
+                this.$wire.updateTableSize(this.tableId, Math.round(this.w), Math.round(this.h));
+            }
+        };
+
+        // Verschieben (Klick auf den Tisch selbst, nicht auf den Resize-Griff)
         el.addEventListener('mousedown', (e) => {
             if (e.detail > 1 || e.button !== 0) return;
-            this.dragging = true;
-            this.startMouseX = e.clientX; this.startMouseY = e.clientY;
-            this.startX = this.x; this.startY = this.y;
+            if (e.target.dataset.resizeHandle !== undefined) return;
+            this.mode = 'move';
+            this.sx = e.clientX; this.sy = e.clientY;
+            this.ox = this.x; this.oy = this.y;
             e.preventDefault();
         });
-        document.addEventListener('mousemove', (e) => {
-            if (!this.dragging) return;
-            const r = getRect();
-            this.x = Math.max(0, Math.min(r.width  - el.offsetWidth,  this.startX + (e.clientX - this.startMouseX)));
-            this.y = Math.max(0, Math.min(r.height - el.offsetHeight, this.startY + (e.clientY - this.startMouseY)));
-            el.style.left = this.x + 'px'; el.style.top = this.y + 'px';
-        });
-        document.addEventListener('mouseup', () => {
-            if (!this.dragging) return;
-            this.dragging = false;
-            this.$wire.updateTablePosition(this.tableId, Math.round(this.x), Math.round(this.y));
-        });
-
         el.addEventListener('touchstart', (e) => {
             if (e.touches.length !== 1) return;
+            if (e.target.dataset.resizeHandle !== undefined) return;
             const t = e.touches[0];
-            this.dragging = true;
-            this.startMouseX = t.clientX; this.startMouseY = t.clientY;
-            this.startX = this.x; this.startY = this.y;
+            this.mode = 'move';
+            this.sx = t.clientX; this.sy = t.clientY;
+            this.ox = this.x; this.oy = this.y;
         }, { passive: true });
-        document.addEventListener('touchmove', (e) => {
-            if (!this.dragging) return;
-            const t = e.touches[0]; const r = getRect();
-            this.x = Math.max(0, Math.min(r.width  - el.offsetWidth,  this.startX + (t.clientX - this.startMouseX)));
-            this.y = Math.max(0, Math.min(r.height - el.offsetHeight, this.startY + (t.clientY - this.startMouseY)));
-            el.style.left = this.x + 'px'; el.style.top = this.y + 'px';
-        }, { passive: true });
-        document.addEventListener('touchend', () => {
-            if (!this.dragging) return;
-            this.dragging = false;
-            this.$wire.updateTablePosition(this.tableId, Math.round(this.x), Math.round(this.y));
-        });
-    }
+
+        document.addEventListener('mousemove', (e) => { if (this.mode) onMove(e.clientX, e.clientY); });
+        document.addEventListener('mouseup', onEnd);
+        document.addEventListener('touchmove', (e) => { if (this.mode) onMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+        document.addEventListener('touchend', onEnd);
+    },
+
+    // Vom Resize-Griff aufgerufen
+    startResize(cx, cy) {
+        this.mode = 'resize';
+        this.sx = cx; this.sy = cy;
+        this.ow = this.w; this.oh = this.h;
+    },
 }));
 </script>
 @endscript
