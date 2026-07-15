@@ -69,63 +69,64 @@
             ])
         </div>
 
-        {{-- Canvas: Tischplan --}}
-        <div
-            id="floor-plan-canvas"
-            class="relative w-full overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
-            style="height: 600px;"
-            x-data="floorPlanEditor()"
-        >
-            @if ($this->floorPlan?->backgroundUrl())
-                @php $rot = (int) ($this->floorPlan->background_rotation ?? 0); @endphp
-                {{-- Grundriss-Layer (rotierbar); Tische liegen darüber --}}
-                <img
-                    wire:key="bg-{{ $rot }}"
-                    src="{{ $this->floorPlan->backgroundUrl() }}"
-                    alt="Grundriss"
-                    x-data="rotatableBg({{ $rot }})"
-                    :style="style"
-                />
-            @endif
-
-            @foreach ($this->tables as $table)
-                <div
-                    wire:key="table-{{ $table->id }}"
-                    class="group absolute flex cursor-move select-none items-center justify-center text-xs font-bold text-white shadow-md transition"
-                    style="
-                        left: {{ $table->x }}px;
-                        top: {{ $table->y }}px;
-                        width: {{ $table->width }}px;
-                        height: {{ $table->height }}px;
-                        background-color: {{ $table->color ?? '#4F46E5' }};
-                        border-radius: {{ $table->shape === 'round' ? '50%' : '8px' }};
-                    "
-                    x-on:dblclick="$wire.openTableForm({{ $table->id }})"
-                    x-data="draggable({{ $table->id }}, {{ $table->x }}, {{ $table->y }}, {{ $table->width }}, {{ $table->height }}, {{ $table->shape === 'round' ? 'true' : 'false' }})"
-                >
-                    <div class="pointer-events-none text-center leading-tight">
-                        <div>{{ $table->label }}</div>
-                        <div class="opacity-75">{{ $table->capacity }}P</div>
-                    </div>
-
-                    {{-- Resize-Griff (unten rechts) --}}
-                    <div
-                        data-resize-handle
-                        title="Größe ändern"
-                        class="absolute -bottom-1 -right-1 h-3.5 w-3.5 cursor-se-resize rounded-full bg-white opacity-0 shadow ring-2 ring-indigo-500 transition group-hover:opacity-100"
-                        x-on:mousedown.stop.prevent="startResize($event.clientX, $event.clientY)"
-                        x-on:touchstart.stop="startResize($event.touches[0].clientX, $event.touches[0].clientY)"
-                    ></div>
-                </div>
-            @endforeach
-
-            {{-- Neuen Tisch hinzufügen --}}
-            <button
-                wire:click="openTableForm()"
-                class="absolute bottom-4 right-4 flex items-center gap-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700"
+        {{-- Canvas: Tischplan – Seitenverhältnis folgt dem Grundriss (kein Letterbox);
+             Tische in normalisierten Koordinaten -> identisch zur Gast-Ansicht. --}}
+        <div class="mx-auto w-full max-w-3xl">
+            <div
+                id="floor-plan-canvas"
+                class="relative w-full overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
+                style="aspect-ratio: {{ $this->floorPlan?->displayAspect() ?? (4 / 3) }};"
+                x-data="floorPlanEditor()"
             >
-                + Tisch
-            </button>
+                @if ($this->floorPlan?->backgroundUrl())
+                    @php $rot = (int) ($this->floorPlan->background_rotation ?? 0); @endphp
+                    {{-- Grundriss-Layer (rotierbar); Tische liegen darüber --}}
+                    <img
+                        wire:key="bg-{{ $rot }}"
+                        src="{{ $this->floorPlan->backgroundUrl() }}"
+                        alt="Grundriss"
+                        x-data="rotatableBg({{ $rot }})"
+                        :style="style"
+                    />
+                @endif
+
+                @foreach ($this->tables as $table)
+                    <div
+                        wire:key="table-{{ $table->id }}"
+                        class="group absolute flex cursor-move select-none items-center justify-center text-xs font-bold text-white shadow-md transition"
+                        style="
+                            {{ $table->surfaceStyle() }}
+                            background-color: {{ $table->color ?? '#4F46E5' }};
+                            border-radius: {{ $table->shape === 'round' ? '50%' : '8px' }};
+                        "
+                        x-on:dblclick="$wire.openTableForm({{ $table->id }})"
+                        x-data="draggable({{ $table->id }}, {{ $table->x_pct }}, {{ $table->y_pct }}, {{ $table->w_pct }}, {{ $table->h_pct }}, {{ $table->shape === 'round' ? 'true' : 'false' }})"
+                    >
+                        <div class="pointer-events-none text-center leading-tight">
+                            <div>{{ $table->label }}</div>
+                            <div class="opacity-75">{{ $table->capacity }}P</div>
+                        </div>
+
+                        {{-- Resize-Griff (unten rechts) --}}
+                        <div
+                            data-resize-handle
+                            title="Größe ändern"
+                            class="absolute -bottom-1 -right-1 h-3.5 w-3.5 cursor-se-resize rounded-full bg-white opacity-0 shadow ring-2 ring-indigo-500 transition group-hover:opacity-100"
+                            x-on:mousedown.stop.prevent="startResize($event.clientX, $event.clientY)"
+                            x-on:touchstart.stop.prevent="startResize($event.touches[0].clientX, $event.touches[0].clientY)"
+                        ></div>
+                    </div>
+                @endforeach
+
+                {{-- Neuen Tisch hinzufügen --}}
+                <button
+                    wire:click="openTableForm()"
+                    class="absolute bottom-4 right-4 flex items-center gap-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700"
+                >
+                    + Tisch
+                </button>
+            </div>
+            <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">Tische ziehen zum Positionieren · Ecke ziehen zum Skalieren · Doppelklick zum Bearbeiten</p>
         </div>
 
         {{-- Tisch-Formular Modal --}}
@@ -158,21 +159,6 @@
                                     <option value="rectangle">Rechteck</option>
                                     <option value="round">Rund</option>
                                 </select>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-sm text-gray-700 dark:text-gray-300">Breite (px)</label>
-                                <input wire:model="tableWidth" type="number" min="30" max="600" step="1"
-                                    class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                                @error('tableWidth') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-700 dark:text-gray-300">Höhe (px)</label>
-                                <input wire:model="tableHeight" type="number" min="30" max="600" step="1"
-                                    class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                                @error('tableHeight') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
                             </div>
                         </div>
 
@@ -249,48 +235,57 @@ Alpine.data('rotatableBg', (rotation) => ({
     },
 }));
 
+// Tisch verschieben/skalieren in NORMALISIERTEN Koordinaten (0…1).
+// x/y = Mittelpunkt (Anteil der Flächenbreite/-höhe), w/h = Größe (Anteil).
+// Deltas werden über die aktuelle Canvas-Pixelgröße in Anteile umgerechnet –
+// dadurch stimmen die Positionen unabhängig von Bildschirm/Zoom.
 Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, uniform = false) => ({
     tableId,
-    x: initialX,
-    y: initialY,
-    w: initialW,
-    h: initialH,
-    uniform,              // runde Tische: gleichmäßig skalieren (w = h)
-    mode: null,           // null | 'move' | 'resize'
-    sx: 0, sy: 0,         // Start-Mausposition
-    ox: 0, oy: 0,         // Start x/y
-    ow: 0, oh: 0,         // Start w/h
+    x: initialX, y: initialY,   // Mittelpunkt (0…1)
+    w: initialW, h: initialH,   // Größe (Anteil 0…1)
+    uniform,                    // runde Tische: pixel-quadratisch skalieren (Kreis bleibt Kreis)
+    mode: null,                 // null | 'move' | 'resize'
+    sx: 0, sy: 0,               // Start-Mausposition (px)
+    ox: 0, oy: 0, ow: 0, oh: 0, // Start x/y/w/h (Anteile)
 
     init() {
         const el     = this.$el;
         const canvas = () => document.getElementById('floor-plan-canvas');
-        const getRect = () => { const c = canvas(); return c ? c.getBoundingClientRect() : { left: 0, top: 0, width: 800, height: 600 }; };
+        const getRect = () => { const c = canvas(); return c ? c.getBoundingClientRect() : { width: 1, height: 1 }; };
+
+        const apply = () => {
+            el.style.left   = ((this.x - this.w / 2) * 100) + '%';
+            el.style.top    = ((this.y - this.h / 2) * 100) + '%';
+            el.style.width  = (this.w * 100) + '%';
+            el.style.height = (this.h * 100) + '%';
+        };
 
         const onMove = (cx, cy) => {
             const r = getRect();
+            const dxp = (cx - this.sx) / r.width;
+            const dyp = (cy - this.sy) / r.height;
             if (this.mode === 'move') {
-                this.x = Math.max(0, Math.min(r.width  - el.offsetWidth,  this.ox + (cx - this.sx)));
-                this.y = Math.max(0, Math.min(r.height - el.offsetHeight, this.oy + (cy - this.sy)));
-                el.style.left = this.x + 'px'; el.style.top = this.y + 'px';
+                this.x = Math.min(1, Math.max(0, this.ox + dxp));
+                this.y = Math.min(1, Math.max(0, this.oy + dyp));
             } else if (this.mode === 'resize') {
-                let nw = Math.max(30, Math.min(r.width  - this.x, this.ow + (cx - this.sx)));
-                let nh = Math.max(30, Math.min(r.height - this.y, this.oh + (cy - this.sy)));
                 if (this.uniform) {
-                    // Kreis bleibt Kreis: gemeinsame Kantenlänge, begrenzt auf beide Achsen.
-                    const size = Math.min(Math.max(nw, nh), r.width - this.x, r.height - this.y);
-                    nw = nh = Math.max(30, size);
+                    const dPx = cx - this.sx; // gleicher Pixel-Zuwachs auf beiden Achsen
+                    this.w = Math.min(1, Math.max(0.03, this.ow + dPx / r.width));
+                    this.h = Math.min(1, Math.max(0.03, this.oh + dPx / r.height));
+                } else {
+                    this.w = Math.min(1, Math.max(0.03, this.ow + dxp));
+                    this.h = Math.min(1, Math.max(0.03, this.oh + dyp));
                 }
-                this.w = nw; this.h = nh;
-                el.style.width = this.w + 'px'; el.style.height = this.h + 'px';
             }
+            apply();
         };
         const onEnd = () => {
             if (!this.mode) return;
             const m = this.mode; this.mode = null;
             if (m === 'move') {
-                this.$wire.updateTablePosition(this.tableId, Math.round(this.x), Math.round(this.y));
+                this.$wire.updateTablePosition(this.tableId, this.x, this.y);
             } else {
-                this.$wire.updateTableSize(this.tableId, Math.round(this.w), Math.round(this.h));
+                this.$wire.updateTableSize(this.tableId, this.w, this.h);
             }
         };
 
@@ -314,7 +309,7 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, unifo
 
         document.addEventListener('mousemove', (e) => { if (this.mode) onMove(e.clientX, e.clientY); });
         document.addEventListener('mouseup', onEnd);
-        document.addEventListener('touchmove', (e) => { if (this.mode) onMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+        document.addEventListener('touchmove', (e) => { if (this.mode) { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
         document.addEventListener('touchend', onEnd);
     },
 

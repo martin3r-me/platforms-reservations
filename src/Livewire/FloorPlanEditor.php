@@ -28,20 +28,12 @@ class FloorPlanEditor extends Component
     public int $tableCapacity = 2;
     public string $tableShape = 'square';
     public string $tableColor = '';
-    public float $tableX = 50;
-    public float $tableY = 50;
-    public float $tableWidth = 80;
-    public float $tableHeight = 80;
 
     protected $rules = [
         'floorPlanName'  => 'required|string|max:255',
         'tableLabel'     => 'required|string|max:50',
         'tableCapacity'  => 'required|integer|min:1|max:50',
         'tableShape'     => 'required|in:round,square,rectangle',
-        'tableX'         => 'required|numeric',
-        'tableY'         => 'required|numeric',
-        'tableWidth'     => 'required|numeric|min:30',
-        'tableHeight'    => 'required|numeric|min:30',
     ];
 
     public function mount(int $venueId, ?int $floorPlanId = null): void
@@ -165,10 +157,6 @@ class FloorPlanEditor extends Component
             $this->tableCapacity = $table->capacity;
             $this->tableShape    = $table->shape;
             $this->tableColor    = $table->color ?? '';
-            $this->tableX        = $table->x;
-            $this->tableY        = $table->y;
-            $this->tableWidth    = $table->width;
-            $this->tableHeight   = $table->height;
         } else {
             $this->resetTableForm();
         }
@@ -180,33 +168,32 @@ class FloorPlanEditor extends Component
             'tableLabel'    => 'required|string|max:50',
             'tableCapacity' => 'required|integer|min:1|max:50',
             'tableShape'    => 'required|in:round,square,rectangle',
-            'tableX'        => 'required|numeric',
-            'tableY'        => 'required|numeric',
-            'tableWidth'    => 'required|numeric|min:30',
-            'tableHeight'   => 'required|numeric|min:30',
         ]);
 
-        // Runde Tische bleiben kreisrund: Höhe = Breite.
-        if ($this->tableShape === 'round') {
-            $this->tableHeight = $this->tableWidth;
-        }
-
         $data = [
-            'floor_plan_id' => $this->floorPlanId,
-            'label'         => $this->tableLabel,
-            'capacity'      => $this->tableCapacity,
-            'shape'         => $this->tableShape,
-            'color'         => $this->tableColor ?: null,
-            'x'             => $this->tableX,
-            'y'             => $this->tableY,
-            'width'         => $this->tableWidth,
-            'height'        => $this->tableHeight,
+            'label'    => $this->tableLabel,
+            'capacity' => $this->tableCapacity,
+            'shape'    => $this->tableShape,
+            'color'    => $this->tableColor ?: null,
         ];
 
         if ($this->editingTableId) {
+            // Position/Größe bleiben unangetastet (werden per Drag/Resize gepflegt).
             Table::findOrFail($this->editingTableId)->update($data);
         } else {
-            Table::create($data);
+            // Neuer Tisch: mittig, dezente Standardgröße. Höhe an Seitenverhältnis
+            // angepasst, damit ein runder Tisch auch kreisrund erscheint.
+            $aspect = $this->floorPlan?->displayAspect() ?? (4 / 3);
+            $wPct = 0.10;
+            $hPct = min(0.9, $wPct * $aspect);
+
+            Table::create($data + [
+                'floor_plan_id' => $this->floorPlanId,
+                'x_pct' => 0.5,
+                'y_pct' => 0.5,
+                'w_pct' => $wPct,
+                'h_pct' => $hPct,
+            ]);
         }
 
         $this->showTableForm = false;
@@ -215,24 +202,23 @@ class FloorPlanEditor extends Component
         unset($this->tables);
     }
 
-    public function updateTablePosition(int $tableId, float $x, float $y): void
+    /** Position (Mittelpunkt) als Anteil 0…1 speichern. */
+    public function updateTablePosition(int $tableId, float $xPct, float $yPct): void
     {
-        Table::findOrFail($tableId)->update(['x' => $x, 'y' => $y]);
+        Table::findOrFail($tableId)->update([
+            'x_pct' => min(1, max(0, $xPct)),
+            'y_pct' => min(1, max(0, $yPct)),
+        ]);
         unset($this->tables);
     }
 
-    public function updateTableSize(int $tableId, float $width, float $height): void
+    /** Größe als Anteil 0…1 speichern (Breite anteilig zur Fläche). */
+    public function updateTableSize(int $tableId, float $wPct, float $hPct): void
     {
-        $table = Table::findOrFail($tableId);
-        $w = max(30, round($width));
-        $h = max(30, round($height));
-
-        // Runde Tische bleiben kreisrund (gleichmäßig skalieren).
-        if ($table->shape === 'round') {
-            $h = $w;
-        }
-
-        $table->update(['width' => $w, 'height' => $h]);
+        Table::findOrFail($tableId)->update([
+            'w_pct' => min(1, max(0.02, $wPct)),
+            'h_pct' => min(1, max(0.02, $hPct)),
+        ]);
         unset($this->tables);
     }
 
@@ -248,10 +234,6 @@ class FloorPlanEditor extends Component
         $this->tableCapacity = 2;
         $this->tableShape    = 'square';
         $this->tableColor    = '';
-        $this->tableX        = 50;
-        $this->tableY        = 50;
-        $this->tableWidth    = 80;
-        $this->tableHeight   = 80;
     }
 
     public function render()

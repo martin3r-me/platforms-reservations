@@ -52,6 +52,7 @@
                     'clickAction' => 'selectTable',
                     'backgroundUrl' => $this->floorPlan?->backgroundUrl(),
                     'rotation' => $this->floorPlan?->background_rotation ?? 0,
+                    'aspect' => $this->floorPlan?->displayAspect() ?? (4 / 3),
                 ])
             </div>
         </section>

@@ -84,77 +84,50 @@
         </div>
     @else
     {{-- Pan + Zoom wrapper (zentriert) --}}
-    <div class="absolute inset-0 flex items-center justify-center p-6">
+    <div class="absolute inset-0 flex items-center justify-center p-4 sm:p-6">
         <div
-            :style="`transform: scale(${scale}) translate(${panX / scale}px, ${panY / scale}px);`"
-            style="will-change: transform;"
+            class="w-full"
+            style="max-width: 900px;"
+            :style="`transform: scale(${scale}) translate(${panX / scale}px, ${panY / scale}px); will-change: transform;`"
         >
             @php
                 $bg  = $backgroundUrl ?? null;
                 $rot = ((((int) ($rotation ?? 0)) % 360) + 360) % 360;
-                // Bei 90°/270° Breite/Höhe tauschen, damit object-contain nach der Drehung passt.
-                $bgW = $rot % 180 === 0 ? 800 : 600;
-                $bgH = $rot % 180 === 0 ? 600 : 800;
+                // Seitenverhältnis der Fläche = angezeigtes Grundriss-Verhältnis (rotationsbewusst).
+                $aspect = $aspect ?? (4 / 3);
             @endphp
-            {{-- Flache Plan-Fläche (Draufsicht); optional mit Grundriss-Hintergrund --}}
+            {{-- Plan-Fläche mit Bild-Seitenverhältnis (kein Letterbox); responsiv --}}
             <div
-                class="relative overflow-hidden"
+                class="relative w-full overflow-hidden"
                 @if ($bg)
-                    style="
-                        width: 800px;
-                        height: 600px;
-                        background-color: #1e293b;
-                        border-radius: 16px;
-                        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
-                    "
+                    style="aspect-ratio: {{ $aspect }}; background-color:#1e293b; border-radius:16px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);"
                 @else
-                    style="
-                        width: 800px;
-                        height: 600px;
-                        background-color: #1e293b;
+                    style="aspect-ratio: {{ $aspect }}; background-color:#1e293b; border-radius:16px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
                         background-image:
                             linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
                             linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-                        background-size: 40px 40px;
-                        border-radius: 16px;
-                        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
-                    "
+                        background-size: 5% 6.66%;"
                 @endif
             >
                 @if ($bg)
-                    {{-- Grundriss-Layer (rotiert); Tische liegen darüber --}}
+                    {{-- Grundriss-Layer (rotationsbewusst, füllt die Fläche) --}}
                     <img
                         src="{{ $bg }}"
                         alt="Grundriss"
-                        style="
-                            position: absolute;
-                            left: 50%;
-                            top: 50%;
-                            width: {{ $bgW }}px;
-                            height: {{ $bgH }}px;
-                            object-fit: contain;
-                            transform: translate(-50%, -50%) rotate({{ $rot }}deg);
-                            pointer-events: none;
-                            user-select: none;
-                        "
+                        x-data="{ rot: {{ $rot }}, w: 0, h: 0, fit() { const p = $el.parentElement; const cw = p.clientWidth, ch = p.clientHeight; if (this.rot % 180 === 0) { this.w = cw; this.h = ch; } else { this.w = ch; this.h = cw; } } }"
+                        x-init="fit(); new ResizeObserver(() => fit()).observe($el.parentElement)"
+                        :style="`position:absolute; left:50%; top:50%; width:${w}px; height:${h}px; object-fit:contain; transform:translate(-50%,-50%) rotate(${rot}deg); pointer-events:none; user-select:none;`"
                     />
                 @endif
                 {{-- Bühne / Referenzfläche oben (nur ohne Grundriss) --}}
                 @unless ($bg)
                 <div
-                    class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-lg text-slate-400 text-xs font-medium uppercase"
-                    style="
-                        top: 16px;
-                        width: 320px;
-                        height: 34px;
-                        background: rgba(255,255,255,0.04);
-                        border: 1px solid rgba(255,255,255,0.08);
-                        letter-spacing: 0.2em;
-                    "
+                    class="absolute left-1/2 top-[3%] h-[6%] w-[40%] -translate-x-1/2 flex items-center justify-center rounded-lg text-slate-400 text-xs font-medium uppercase"
+                    style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); letter-spacing: 0.2em;"
                 >Bühne</div>
                 @endunless
 
-                {{-- Tische --}}
+                {{-- Tische (normalisierte Koordinaten -> identisch zum Editor) --}}
                 @foreach ($tableStates as $info)
                     @php
                         $table = $info['table'];
@@ -178,10 +151,7 @@
                         @endif
                         class="absolute flex flex-col items-center justify-center text-white transition-all duration-150 select-none {{ $cursor }}"
                         style="
-                            left: {{ $table->x }}px;
-                            top: {{ $table->y }}px;
-                            width: {{ $table->width }}px;
-                            height: {{ $table->height }}px;
+                            {{ $table->surfaceStyle() }}
                             background: {{ $bgColor }};
                             border-radius: {{ $radius }};
                             box-shadow:
