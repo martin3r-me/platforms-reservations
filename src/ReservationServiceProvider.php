@@ -112,6 +112,16 @@ class ReservationServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Reservation\Tools\SalesListUpdateTool());
             $registry->register(new \Platform\Reservation\Tools\SalesListDeleteTool());
             $registry->register(new \Platform\Reservation\Tools\SalesListAssignItemsTool());
+
+            // Tischpläne & Tische (CRUD)
+            $registry->register(new \Platform\Reservation\Tools\FloorPlanListTool());
+            $registry->register(new \Platform\Reservation\Tools\FloorPlanCreateTool());
+            $registry->register(new \Platform\Reservation\Tools\FloorPlanUpdateTool());
+            $registry->register(new \Platform\Reservation\Tools\FloorPlanDeleteTool());
+            $registry->register(new \Platform\Reservation\Tools\TableListTool());
+            $registry->register(new \Platform\Reservation\Tools\TableCreateTool());
+            $registry->register(new \Platform\Reservation\Tools\TableUpdateTool());
+            $registry->register(new \Platform\Reservation\Tools\TableDeleteTool());
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning(
                 'Reservation: Tool-Registrierung fehlgeschlagen',
