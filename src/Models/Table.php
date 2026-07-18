@@ -5,13 +5,17 @@ namespace Platform\Reservation\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Platform\Reservation\Models\Concerns\BelongsToTeam;
 
 class Table extends Model
 {
+    use BelongsToTeam;
+
     protected $table = 'reservation_tables';
 
     protected $fillable = [
         'floor_plan_id',
+        'team_id',
         'label',
         'capacity',
         'x',
@@ -57,6 +61,24 @@ class Table extends Model
             $this->w_pct * 100,
             $this->h_pct * 100,
         );
+    }
+
+    protected static function booted(): void
+    {
+        // team_id autoritativ aus dem Tischplan ableiten (auch ohne Auth),
+        // damit der globale Team-Scope auch für neu angelegte Tische greift.
+        static::creating(function (self $model) {
+            if (! $model->team_id && $model->floor_plan_id) {
+                $model->team_id = FloorPlan::withoutGlobalScope('team')
+                    ->whereKey($model->floor_plan_id)
+                    ->value('team_id');
+            }
+        });
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(\Platform\Core\Models\Team::class, 'team_id');
     }
 
     public function floorPlan(): BelongsTo

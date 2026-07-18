@@ -5,16 +5,19 @@ namespace Platform\Reservation\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Platform\Reservation\Models\Concerns\HasContextImage;
 
 class FloorPlan extends Model
 {
+    use BelongsToTeam;
     use HasContextImage;
 
     protected $table = 'reservation_floor_plans';
 
     protected $fillable = [
         'venue_id',
+        'team_id',
         'name',
         'layout_json',
         'default_sales_list_id',
@@ -28,6 +31,24 @@ class FloorPlan extends Model
         'is_active'           => 'boolean',
         'background_rotation' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        // team_id autoritativ aus dem Venue ableiten (auch ohne Auth, z.B. Seeder),
+        // damit der globale Team-Scope auch für neu angelegte Pläne greift.
+        static::creating(function (self $model) {
+            if (! $model->team_id && $model->venue_id) {
+                $model->team_id = Venue::withoutGlobalScope('team')
+                    ->whereKey($model->venue_id)
+                    ->value('team_id');
+            }
+        });
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(\Platform\Core\Models\Team::class, 'team_id');
+    }
 
     public function venue(): BelongsTo
     {
