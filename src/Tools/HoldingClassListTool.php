@@ -53,6 +53,7 @@ class HoldingClassListTool implements ToolContract, ToolMetadataContract
                     'name'        => $c->name,
                     'description' => $c->description,
                     'color'       => $c->color,
+                    'lead_time_minutes' => $c->lead_time_minutes,
                     'sort_order'  => $c->sort_order,
                     'is_active'   => $c->is_active,
                     'items_count' => $c->menu_items_count,

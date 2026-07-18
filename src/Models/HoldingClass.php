@@ -25,14 +25,22 @@ class HoldingClass extends Model
         'name',
         'description',
         'color',
+        'lead_time_minutes',
         'sort_order',
         'is_active',
     ];
 
     protected $casts = [
-        'sort_order' => 'integer',
-        'is_active'  => 'boolean',
+        'lead_time_minutes' => 'integer',
+        'sort_order'        => 'integer',
+        'is_active'         => 'boolean',
     ];
+
+    /** Zeitunkritisch (Vorlaufzeit nicht gesetzt) – kann vorab platziert werden. */
+    public function isTimeFlexible(): bool
+    {
+        return $this->lead_time_minutes === null;
+    }
 
     public function team(): BelongsTo
     {

@@ -21,7 +21,7 @@ class HoldingClassBulkCreateTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'POST /reservation/holding-classes/bulk - Legt mehrere Standzeit-Klassen an. REST-Parameter: classes '
-            . '(Array von Objekten mit name, optional description, color, sort_order, is_active).';
+            . '(Array von Objekten mit name, optional description, color, lead_time_minutes (null = egal), sort_order, is_active).';
     }
 
     public function getSchema(): array
@@ -37,6 +37,7 @@ class HoldingClassBulkCreateTool implements ToolContract, ToolMetadataContract
                             'name'        => ['type' => 'string'],
                             'description' => ['type' => 'string'],
                             'color'       => ['type' => 'string'],
+                            'lead_time_minutes' => ['type' => 'integer'],
                             'sort_order'  => ['type' => 'integer'],
                             'is_active'   => ['type' => 'boolean'],
                         ],
@@ -73,12 +74,15 @@ class HoldingClassBulkCreateTool implements ToolContract, ToolMetadataContract
                 }
 
                 $class = HoldingClass::create([
-                    'team_id'     => $teamId,
-                    'name'        => $name,
-                    'description' => $row['description'] ?? null,
-                    'color'       => $row['color'] ?? null,
-                    'sort_order'  => (int) ($row['sort_order'] ?? (($i + 1) * 10)),
-                    'is_active'   => $row['is_active'] ?? true,
+                    'team_id'           => $teamId,
+                    'name'              => $name,
+                    'description'       => $row['description'] ?? null,
+                    'color'             => $row['color'] ?? null,
+                    'lead_time_minutes' => isset($row['lead_time_minutes']) && $row['lead_time_minutes'] !== null
+                        ? (int) $row['lead_time_minutes']
+                        : null,
+                    'sort_order'        => (int) ($row['sort_order'] ?? (($i + 1) * 10)),
+                    'is_active'         => $row['is_active'] ?? true,
                 ]);
 
                 $created[] = ['id' => $class->id, 'name' => $class->name];

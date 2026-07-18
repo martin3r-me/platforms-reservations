@@ -16,21 +16,23 @@ class HoldingClassSettings extends Component
 {
     /** Standard-Stufen beim ersten Besuch (frei änderbar/erweiterbar). */
     public const DEFAULTS = [
-        ['name' => 'Unbedenklich',      'description' => 'Zeitunkritisch, früh platzierbar (z. B. Brezel, Gummibärchen).', 'color' => '#16a34a'],
-        ['name' => 'Sollte kalt sein',  'description' => 'Wird mit der Zeit wärmer (z. B. Kaltgetränk).',                    'color' => '#0ea5e9'],
-        ['name' => 'Sollte heiß sein',  'description' => 'Kühlt schnell aus, verliert Qualität (z. B. Suppe, Currywurst).', 'color' => '#dc2626'],
+        ['name' => 'Unbedenklich',      'description' => 'Zeitunkritisch, früh platzierbar (z. B. Brezel, Gummibärchen).', 'color' => '#16a34a', 'lead' => null],
+        ['name' => 'Sollte kalt sein',  'description' => 'Wird mit der Zeit wärmer (z. B. Kaltgetränk).',                    'color' => '#0ea5e9', 'lead' => 15],
+        ['name' => 'Sollte heiß sein',  'description' => 'Kühlt schnell aus, verliert Qualität (z. B. Suppe, Currywurst).', 'color' => '#dc2626', 'lead' => 5],
     ];
 
     // Inline-Anlegen
     public string $newName = '';
     public string $newDescription = '';
     public string $newColor = '#64748b';
+    public string $newLeadTime = '';
 
     // Inline-Bearbeiten
     public ?int $editingId = null;
     public string $editName = '';
     public string $editDescription = '';
     public string $editColor = '#64748b';
+    public string $editLeadTime = '';
 
     protected function getTeamId(): int
     {
@@ -49,12 +51,13 @@ class HoldingClassSettings extends Component
         $teamId = $this->getTeamId();
         foreach (self::DEFAULTS as $i => $default) {
             HoldingClass::create([
-                'team_id'     => $teamId,
-                'name'        => $default['name'],
-                'description' => $default['description'],
-                'color'       => $default['color'],
-                'sort_order'  => ($i + 1) * 10,
-                'is_active'   => true,
+                'team_id'           => $teamId,
+                'name'              => $default['name'],
+                'description'       => $default['description'],
+                'color'             => $default['color'],
+                'lead_time_minutes' => $default['lead'] ?? null,
+                'sort_order'        => ($i + 1) * 10,
+                'is_active'         => true,
             ]);
         }
     }
@@ -82,20 +85,22 @@ class HoldingClassSettings extends Component
             'newName'        => 'required|string|max:255',
             'newDescription' => 'nullable|string|max:1000',
             'newColor'       => 'nullable|string|max:7',
-        ], [], ['newName' => 'Bezeichnung']);
+            'newLeadTime'    => 'nullable|integer|min:0|max:1440',
+        ], [], ['newName' => 'Bezeichnung', 'newLeadTime' => 'Vorlaufzeit']);
 
         $nextOrder = ((int) HoldingClass::forTeam($this->getTeamId())->max('sort_order')) + 10;
 
         HoldingClass::create([
-            'team_id'     => $this->getTeamId(),
-            'name'        => trim($this->newName),
-            'description' => trim($this->newDescription) ?: null,
-            'color'       => trim($this->newColor) ?: null,
-            'sort_order'  => $nextOrder,
-            'is_active'   => true,
+            'team_id'           => $this->getTeamId(),
+            'name'              => trim($this->newName),
+            'description'       => trim($this->newDescription) ?: null,
+            'color'             => trim($this->newColor) ?: null,
+            'lead_time_minutes' => $this->newLeadTime !== '' ? (int) $this->newLeadTime : null,
+            'sort_order'        => $nextOrder,
+            'is_active'         => true,
         ]);
 
-        $this->reset('newName', 'newDescription');
+        $this->reset('newName', 'newDescription', 'newLeadTime');
         $this->newColor = '#64748b';
         unset($this->classes);
     }
@@ -107,6 +112,7 @@ class HoldingClassSettings extends Component
         $this->editName        = $c->name;
         $this->editDescription = $c->description ?? '';
         $this->editColor       = $c->color ?: '#64748b';
+        $this->editLeadTime    = $c->lead_time_minutes !== null ? (string) $c->lead_time_minutes : '';
     }
 
     public function cancelEdit(): void
@@ -120,12 +126,14 @@ class HoldingClassSettings extends Component
             'editName'        => 'required|string|max:255',
             'editDescription' => 'nullable|string|max:1000',
             'editColor'       => 'nullable|string|max:7',
-        ], [], ['editName' => 'Bezeichnung']);
+            'editLeadTime'    => 'nullable|integer|min:0|max:1440',
+        ], [], ['editName' => 'Bezeichnung', 'editLeadTime' => 'Vorlaufzeit']);
 
         HoldingClass::forTeam($this->getTeamId())->whereKey($this->editingId)->first()?->update([
-            'name'        => trim($this->editName),
-            'description' => trim($this->editDescription) ?: null,
-            'color'       => trim($this->editColor) ?: null,
+            'name'              => trim($this->editName),
+            'description'       => trim($this->editDescription) ?: null,
+            'color'             => trim($this->editColor) ?: null,
+            'lead_time_minutes' => $this->editLeadTime !== '' ? (int) $this->editLeadTime : null,
         ]);
 
         $this->editingId = null;

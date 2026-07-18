@@ -22,7 +22,7 @@ class HoldingClassUpdateTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'PATCH /reservation/holding-classes - Aktualisiert eine Standzeit-Klasse. REST-Parameter: '
-            . 'id (Pflicht); name, description, color, sort_order, is_active (jeweils optional).';
+            . 'id (Pflicht); name, description, color, lead_time_minutes (null = egal), sort_order, is_active (jeweils optional).';
     }
 
     public function getSchema(): array
@@ -34,6 +34,7 @@ class HoldingClassUpdateTool implements ToolContract, ToolMetadataContract
                 'name'        => ['type' => 'string'],
                 'description' => ['type' => 'string'],
                 'color'       => ['type' => 'string', 'description' => 'Hex-Farbe #rrggbb.'],
+                'lead_time_minutes' => ['type' => ['integer', 'null'], 'description' => 'Vorlaufzeit (Min.) vor Pausenbeginn; null = egal.'],
                 'sort_order'  => ['type' => 'integer'],
                 'is_active'   => ['type' => 'boolean'],
             ],
@@ -55,6 +56,7 @@ class HoldingClassUpdateTool implements ToolContract, ToolMetadataContract
                 'name'        => 'sometimes|string|max:255',
                 'description' => 'nullable|string',
                 'color'       => 'nullable|string|max:7',
+                'lead_time_minutes' => 'sometimes|nullable|integer|min:0|max:1440',
                 'sort_order'  => 'sometimes|integer',
                 'is_active'   => 'sometimes|boolean',
             ]);
@@ -72,7 +74,7 @@ class HoldingClassUpdateTool implements ToolContract, ToolMetadataContract
             }
 
             $class->update(
-                collect($validator->validated())->only(['name', 'description', 'color', 'sort_order', 'is_active'])->all()
+                collect($validator->validated())->only(['name', 'description', 'color', 'lead_time_minutes', 'sort_order', 'is_active'])->all()
             );
 
             return ToolResult::success([

@@ -22,8 +22,9 @@ class HoldingClassCreateTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'POST /reservation/holding-classes - Legt eine Standzeit-Klasse an. REST-Parameter: '
-            . 'name (Pflicht), description (optional), color (optional, Hex #rrggbb), sort_order (optional int, '
-            . 'kleiner = früher/unkritischer), is_active (optional bool).';
+            . 'name (Pflicht), description (optional), color (optional, Hex #rrggbb), lead_time_minutes (optional int, '
+            . 'Vorlaufzeit in Minuten vor Pausenbeginn; null = egal/zeitunkritisch), sort_order (optional int), '
+            . 'is_active (optional bool).';
     }
 
     public function getSchema(): array
@@ -34,6 +35,7 @@ class HoldingClassCreateTool implements ToolContract, ToolMetadataContract
                 'name'        => ['type' => 'string', 'description' => 'z.B. "Sollte heiß sein".'],
                 'description' => ['type' => 'string', 'description' => 'Optionale Beschreibung.'],
                 'color'       => ['type' => 'string', 'description' => 'Hex-Farbe #rrggbb (optional).'],
+                'lead_time_minutes' => ['type' => 'integer', 'description' => 'Vorlaufzeit in Minuten vor Pausenbeginn; weglassen/null = egal.'],
                 'sort_order'  => ['type' => 'integer', 'description' => 'Reihenfolge (kleiner = früher).'],
                 'is_active'   => ['type' => 'boolean', 'description' => 'Aktiv (Default true).'],
             ],
@@ -54,6 +56,7 @@ class HoldingClassCreateTool implements ToolContract, ToolMetadataContract
                 'name'        => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'color'       => 'nullable|string|max:7',
+                'lead_time_minutes' => 'nullable|integer|min:0|max:1440',
                 'sort_order'  => 'nullable|integer',
                 'is_active'   => 'nullable|boolean',
             ]);

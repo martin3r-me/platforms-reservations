@@ -26,7 +26,7 @@
     @endif
 
     <p class="text-sm text-[var(--ui-muted)] m-0">
-        Standzeit-/Zeitkritikalitäts-Stufen (z. B. „Unbedenklich", „Sollte kalt sein", „Sollte heiß sein"). Sie werden im Artikel zugewiesen; die <strong>Reihenfolge</strong> steuert später die Laufrunden-Zuordnung im Function Sheet.
+        Standzeit-/Zeitkritikalitäts-Stufen (z. B. „Unbedenklich", „Sollte kalt sein", „Sollte heiß sein"). Sie werden im Artikel zugewiesen; die <strong>Vorlaufzeit</strong> (Minuten vor Pausenbeginn) bestimmt Ziel-Uhrzeit und Reihenfolge der Laufrunde im Function Sheet. <strong>Leer = egal</strong> (zeitunkritisch, vorab platzierbar).
     </p>
 
     <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
@@ -48,6 +48,9 @@
             <div class="flex-1">
                 <x-ui-input-text name="newDescription" label="Beschreibung (optional)" size="sm" wire:model="newDescription" placeholder="Kühlt schnell aus …" errorKey="newDescription" />
             </div>
+            <div class="w-28">
+                <x-ui-input-text type="number" name="newLeadTime" label="Vorlauf (Min.)" size="sm" wire:model="newLeadTime" placeholder="leer = egal" errorKey="newLeadTime" />
+            </div>
             <x-ui-button variant="primary" size="sm" wire:click="add">Hinzufügen</x-ui-button>
         </div>
 
@@ -58,6 +61,7 @@
                         <input type="color" wire:model="editColor" class="h-8 w-10 shrink-0 cursor-pointer rounded-md border border-[var(--ui-border)] bg-white p-0.5" />
                         <input wire:model="editName" class="w-44 rounded-md border border-[var(--ui-border)] px-2 py-1 text-sm dark:bg-gray-800 dark:text-white" />
                         <input wire:model="editDescription" class="flex-1 rounded-md border border-[var(--ui-border)] px-2 py-1 text-sm dark:bg-gray-800 dark:text-white" />
+                        <input type="number" wire:model="editLeadTime" placeholder="egal" title="Vorlaufzeit in Minuten (leer = egal)" class="w-20 shrink-0 rounded-md border border-[var(--ui-border)] px-2 py-1 text-sm dark:bg-gray-800 dark:text-white" />
                         <x-ui-button variant="primary" size="sm" wire:click="update">Speichern</x-ui-button>
                         <x-ui-button variant="secondary-ghost" size="sm" wire:click="cancelEdit">Abbrechen</x-ui-button>
                     @else
@@ -68,6 +72,9 @@
                                 <span class="ml-2 text-xs text-[var(--ui-muted)]">{{ $c->description }}</span>
                             @endif
                         </div>
+                        <span class="shrink-0 rounded-full bg-[var(--ui-muted-5)] px-2 py-0.5 text-[11px] font-medium text-[var(--ui-muted)]" title="Vorlaufzeit vor Pausenbeginn">
+                            {{ $c->lead_time_minutes !== null ? $c->lead_time_minutes . ' min vor' : 'egal' }}
+                        </span>
                         <span class="shrink-0 text-[11px] text-[var(--ui-muted)]" title="zugeordnete Artikel">{{ $c->menu_items_count }} Art.</span>
                         <div class="flex shrink-0 items-center">
                             <x-ui-button variant="secondary-ghost" size="sm" :iconOnly="true" wire:click="moveUp({{ $c->id }})" title="Nach oben" @disabled($index === 0)>
