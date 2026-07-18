@@ -56,6 +56,10 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
                         'required'   => ['category_id', 'name', 'price'],
                     ],
                 ],
+                'approved' => [
+                    'type'        => 'boolean',
+                    'description' => 'true = Artikel direkt freigeben (gast-sichtbar), statt als Entwurf. Default false.',
+                ],
             ],
             'required'   => ['items'],
         ];
@@ -82,6 +86,8 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
             $allergenMap = Allergen::where('team_id', $teamId)->pluck('id', 'code'); // code => id
             $additiveMap = Additive::where('team_id', $teamId)->pluck('id', 'code');
 
+            $approve = (bool) ($arguments['approved'] ?? false);
+
             $created = [];
             $failed  = [];
 
@@ -105,7 +111,7 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
                     continue;
                 }
 
-                $item = MenuItem::create([
+                $data = [
                     'team_id'       => $teamId,
                     'category_id'   => $categoryId,
                     'name'          => $name,
@@ -117,7 +123,15 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
                     'is_vegetarian' => $row['is_vegetarian'] ?? false,
                     'is_vegan'      => $row['is_vegan'] ?? false,
                     'is_alcoholic'  => $row['is_alcoholic'] ?? false,
-                ]);
+                ];
+
+                if ($approve) {
+                    $data['approval_status'] = MenuItem::APPROVAL_APPROVED;
+                    $data['approved_by']     = $context->user?->id;
+                    $data['approved_at']     = now();
+                }
+
+                $item = MenuItem::create($data);
 
                 // Allergene/Zusatzstoffe per Code zuordnen (unbekannte Codes ignorieren).
                 if (!empty($row['allergen_codes']) && is_array($row['allergen_codes'])) {
