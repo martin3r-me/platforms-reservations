@@ -5,6 +5,7 @@ namespace Platform\Reservation\Http\Controllers\Api;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Platform\Reservation\Exceptions\GuestOrderException;
+use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Order;
 use Platform\Reservation\Services\GuestOrderService;
 
@@ -17,14 +18,17 @@ class GuestBookingController extends GuestApiController
     /** POST /guest/bookings – Bestellung anlegen. */
     public function store(Request $request, GuestOrderService $service): JsonResponse
     {
+        // #520/#521: Pflicht/optional der Kontaktfelder kommt aus den Team-Settings.
+        $settings = CheckoutSetting::forTeam($this->guestTeamId());
+
         $data = $request->validate([
             'event_uuid'       => 'required|string',
             'guest'            => 'required|array',
-            'guest.name'       => 'required|string|max:255',
-            'guest.email'      => 'nullable|email|max:255',
-            'guest.phone'      => 'nullable|string|max:30',
-            'guest.count'      => 'required|integer|min:1|max:20',
-            'guest.notes'      => 'nullable|string',
+            'guest.name'       => ['required', 'string', 'max:255'],
+            'guest.email'      => $settings->guestFieldRule('email', ['email', 'max:255']),
+            'guest.phone'      => $settings->guestFieldRule('phone', ['string', 'max:30']),
+            'guest.count'      => ['required', 'integer', 'min:1', 'max:20'],
+            'guest.notes'      => $settings->guestFieldRule('notes', ['string']),
             'legal_accepted'   => 'accepted',
             'age_confirmed'    => 'nullable|boolean',
             'slots'            => 'required|array|min:1',

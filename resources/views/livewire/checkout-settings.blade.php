@@ -41,6 +41,30 @@
         </div>
     </section>
 
+    {{-- Anmeldefelder (Gast-Checkout) --}}
+    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+            @svg('heroicon-o-identification', 'w-4 h-4 text-[var(--ui-muted)]')
+            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Anmeldefelder im Gast-Checkout</h2>
+        </div>
+        <div class="p-5 space-y-4">
+            <p class="text-[11px] text-[var(--ui-muted)] m-0">Steuert je Feld, ob es im Gast-Checkout abgefragt wird. <strong>Name</strong> und <strong>Personenzahl</strong> sind immer Pflicht.</p>
+            @php
+                $fieldModeOptions = [
+                    ['value' => 'required', 'label' => 'Pflicht'],
+                    ['value' => 'optional', 'label' => 'Optional'],
+                    ['value' => 'hidden',   'label' => 'Ausgeblendet'],
+                ];
+            @endphp
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <x-ui-input-select name="fieldEmail" label="E-Mail" :options="$fieldModeOptions" wire:model="fieldEmail" />
+                <x-ui-input-select name="fieldPhone" label="Rufnummer" :options="$fieldModeOptions" wire:model="fieldPhone" />
+                <x-ui-input-select name="fieldNotes" label="Anmerkungen" :options="$fieldModeOptions" wire:model="fieldNotes" />
+            </div>
+            <p class="text-[11px] text-[var(--ui-muted)] m-0">Hinweis: Wird die E-Mail ausgeblendet oder optional gesetzt, kann für diese Bestellung keine automatische Bestätigungs-E-Mail versendet werden.</p>
+        </div>
+    </section>
+
     {{-- Zahlung (Mollie) --}}
     <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">

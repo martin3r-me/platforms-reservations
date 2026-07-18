@@ -4,6 +4,7 @@ namespace Platform\Reservation\Http\Controllers\Api;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\MenuItem;
@@ -49,6 +50,8 @@ class GuestEventController extends GuestApiController
             return response()->json(['message' => 'Termin nicht gefunden.'], 404);
         }
 
+        $settings = CheckoutSetting::forTeam($this->guestTeamId());
+
         return response()->json([
             'uuid'         => $event->uuid,
             'name'         => $event->name,
@@ -56,6 +59,15 @@ class GuestEventController extends GuestApiController
             'date'         => $event->date?->toDateString(),
             'orderable'    => $event->isOrderable(),
             'venue'        => $event->venue?->name,
+            // #520/#521: welche Anmeldefelder das Frontend abfragt (required|optional|hidden).
+            // name & count sind stets Pflicht.
+            'guest_fields' => [
+                'name'  => 'required',
+                'count' => 'required',
+                'email' => $settings->fieldMode('email'),
+                'phone' => $settings->fieldMode('phone'),
+                'notes' => $settings->fieldMode('notes'),
+            ],
             'slots'        => $event->slots->map(fn ($s) => [
                 'id'         => $s->id,
                 'name'       => $s->name,

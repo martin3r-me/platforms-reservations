@@ -8,6 +8,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Platform\Reservation\Models\Booking;
+use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\EventRoom;
 use Platform\Reservation\Models\EventSlot;
@@ -82,6 +83,13 @@ class CheckoutWizard extends Component
             ->published()
             ->with(['venue', 'slots', 'eventRooms.floorPlan'])
             ->firstOrFail();
+    }
+
+    /** Team-Checkout-Einstellungen (u. a. Anmeldefeld-Modi, #520/#521). */
+    #[Computed]
+    public function checkoutSettings(): CheckoutSetting
+    {
+        return CheckoutSetting::forTeam((int) $this->event->team_id);
     }
 
     /** Artikel der Event-Verkaufsliste (Gast-sichtbar), optional gefiltert. */
@@ -273,12 +281,32 @@ class CheckoutWizard extends Component
      */
     protected function guestRules(bool $dns = true): array
     {
+        // #520/#521: E-Mail/Telefon/Notiz sind per Team-Setting Pflicht/optional/aus.
+        $settings = $this->checkoutSettings;
+
         return [
-            'guestName'  => 'required|string|max:255',
-            'guestEmail' => 'required|email:rfc' . ($dns ? ',dns' : '') . '|max:255',
-            'guestPhone' => ['nullable', 'string', 'max:30', 'regex:' . self::PHONE_REGEX],
-            'guestCount' => 'required|integer|min:1|max:20',
+            'guestName'  => ['required', 'string', 'max:255'],
+            'guestEmail' => $settings->guestFieldRule('email', ['email:rfc' . ($dns ? ',dns' : ''), 'max:255']),
+            'guestPhone' => $settings->guestFieldRule('phone', ['string', 'max:30', 'regex:' . self::PHONE_REGEX]),
+            'guestCount' => ['required', 'integer', 'min:1', 'max:20'],
+            'notes'      => $settings->guestFieldRule('notes', ['string', 'max:2000']),
         ];
+    }
+
+    /** Ausgeblendete Felder auf Leerwert setzen, damit kein Streuwert einfließt. */
+    protected function normalizeHiddenGuestFields(): void
+    {
+        $settings = $this->checkoutSettings;
+
+        if ($settings->fieldIsHidden('email')) {
+            $this->guestEmail = '';
+        }
+        if ($settings->fieldIsHidden('phone')) {
+            $this->guestPhone = '';
+        }
+        if ($settings->fieldIsHidden('notes')) {
+            $this->notes = '';
+        }
     }
 
     protected function guestMessages(): array
@@ -297,6 +325,7 @@ class CheckoutWizard extends Component
     public function nextStep(): void
     {
         if ($this->step === 1) {
+            $this->normalizeHiddenGuestFields();
             $this->validate($this->guestRules(dns: true), $this->guestMessages());
         }
 
@@ -422,12 +451,14 @@ class CheckoutWizard extends Component
     public function confirm(): void
     {
         // Härtung: Gastdaten final gegenprüfen (falls Step 1 umgangen wurde).
+        $this->normalizeHiddenGuestFields();
         $guest = \Illuminate\Support\Facades\Validator::make(
             [
                 'guestName'  => $this->guestName,
                 'guestEmail' => $this->guestEmail,
                 'guestPhone' => $this->guestPhone,
                 'guestCount' => $this->guestCount,
+                'notes'      => $this->notes,
             ],
             $this->guestRules(dns: false),
             $this->guestMessages(),

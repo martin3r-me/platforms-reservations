@@ -70,34 +70,48 @@
                     @error('guestName') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">E-Mail *</label>
-                    <input wire:model.blur="guestEmail" type="email" autocomplete="email" inputmode="email"
-                        class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                    @error('guestEmail') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
-                    <p class="mt-1 text-xs text-gray-500">Für Ihre Buchungsbestätigung – bitte gültige Adresse angeben.</p>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
+                @if ($this->checkoutSettings->fieldIsVisible('email'))
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Telefon</label>
-                        <input wire:model.blur="guestPhone" type="tel" autocomplete="tel" inputmode="tel"
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">E-Mail{{ $this->checkoutSettings->fieldIsRequired('email') ? ' *' : '' }}</label>
+                        <input wire:model.blur="guestEmail" type="email" autocomplete="email" inputmode="email"
                             class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                        @error('guestPhone') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                        @error('guestEmail') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                        <p class="mt-1 text-xs text-gray-500">Für Ihre Buchungsbestätigung – bitte gültige Adresse angeben.</p>
                     </div>
+                @endif
+
+                @if ($this->checkoutSettings->fieldIsVisible('phone'))
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Telefon{{ $this->checkoutSettings->fieldIsRequired('phone') ? ' *' : '' }}</label>
+                            <input wire:model.blur="guestPhone" type="tel" autocomplete="tel" inputmode="tel"
+                                class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                            @error('guestPhone') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Personen *</label>
+                            <input wire:model="guestCount" type="number" min="1" max="20"
+                                class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                            @error('guestCount') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                @else
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Personen *</label>
                         <input wire:model="guestCount" type="number" min="1" max="20"
                             class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
                         @error('guestCount') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                     </div>
-                </div>
+                @endif
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Anmerkungen</label>
-                    <textarea wire:model="notes" rows="2"
-                        class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
-                </div>
+                @if ($this->checkoutSettings->fieldIsVisible('notes'))
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Anmerkungen{{ $this->checkoutSettings->fieldIsRequired('notes') ? ' *' : '' }}</label>
+                        <textarea wire:model="notes" rows="2"
+                            class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
+                        @error('notes') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                    </div>
+                @endif
 
                 <button wire:click="nextStep"
                     class="mt-2 w-full rounded-xl bg-[var(--ui-primary)] py-3 text-base font-bold text-white hover:opacity-90">
