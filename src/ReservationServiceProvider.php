@@ -99,6 +99,9 @@ class ReservationServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Reservation\Tools\EventSlotCreateTool());
             $registry->register(new \Platform\Reservation\Tools\EventSlotUpdateTool());
             $registry->register(new \Platform\Reservation\Tools\EventSlotDeleteTool());
+            $registry->register(new \Platform\Reservation\Tools\EventRoomListTool());
+            $registry->register(new \Platform\Reservation\Tools\EventRoomCreateTool());
+            $registry->register(new \Platform\Reservation\Tools\EventRoomDeleteTool());
 
             // Venues (CRUD)
             $registry->register(new \Platform\Reservation\Tools\VenueListTool());
