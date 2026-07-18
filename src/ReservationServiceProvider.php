@@ -69,6 +69,16 @@ class ReservationServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Reservation\Tools\ListEventsTool());
             $registry->register(new \Platform\Reservation\Tools\ListBookingsTool());
             $registry->register(new \Platform\Reservation\Tools\RevenueSummaryTool());
+
+            // Allergene & Zusatzstoffe (CRUD)
+            $registry->register(new \Platform\Reservation\Tools\AllergenListTool());
+            $registry->register(new \Platform\Reservation\Tools\AllergenCreateTool());
+            $registry->register(new \Platform\Reservation\Tools\AllergenUpdateTool());
+            $registry->register(new \Platform\Reservation\Tools\AllergenDeleteTool());
+            $registry->register(new \Platform\Reservation\Tools\AdditiveListTool());
+            $registry->register(new \Platform\Reservation\Tools\AdditiveCreateTool());
+            $registry->register(new \Platform\Reservation\Tools\AdditiveUpdateTool());
+            $registry->register(new \Platform\Reservation\Tools\AdditiveDeleteTool());
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning(
                 'Reservation: Tool-Registrierung fehlgeschlagen',
