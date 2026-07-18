@@ -60,20 +60,31 @@
                 </h2>
                 <span class="ml-auto text-[11px] text-[var(--ui-muted)]">{{ $this->events->count() }}</span>
             </div>
+
+            {{-- Filter: Status (Default veröffentlicht) + Zeit (Default kommend) --}}
+            <div class="flex flex-wrap items-center gap-1.5 border-b border-[var(--ui-border)]/30 px-4 py-2 text-[11px]">
+                <span class="text-[var(--ui-muted)]">Status:</span>
+                @foreach (['published' => 'Veröffentlicht', 'draft' => 'Entwurf', 'closed' => 'Bestellschluss', 'cancelled' => 'Abgesagt', 'all' => 'Alle'] as $val => $label)
+                    <button type="button" wire:click="$set('statusFilter', '{{ $val }}')"
+                        class="rounded-full px-2.5 py-0.5 transition-colors {{ $statusFilter === $val ? 'bg-[var(--ui-primary)] font-medium text-white' : 'text-[var(--ui-muted)] hover:bg-[var(--ui-muted-5)]' }}">{{ $label }}</button>
+                @endforeach
+                <span class="ml-2 text-[var(--ui-muted)]">Zeit:</span>
+                @foreach (['upcoming' => 'Kommend', 'past' => 'Vergangen', 'all' => 'Alle'] as $val => $label)
+                    <button type="button" wire:click="$set('timeFilter', '{{ $val }}')"
+                        class="rounded-full px-2.5 py-0.5 transition-colors {{ $timeFilter === $val ? 'bg-[var(--ui-primary)] font-medium text-white' : 'text-[var(--ui-muted)] hover:bg-[var(--ui-muted-5)]' }}">{{ $label }}</button>
+                @endforeach
+            </div>
+
             <div class="divide-y divide-[var(--ui-border)]/30">
                 @foreach ($this->events as $event)
                     <div wire:key="event-{{ $event->id }}" class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-[var(--ui-muted-5)] transition-colors">
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="text-sm font-medium text-[var(--ui-secondary)]">{{ $event->name }}</span>
-                                @php
-                                    [$statusLabel, $statusVariant] = [
-                                        'draft'     => ['Entwurf', 'muted'],
-                                        'published' => ['Veröffentlicht', 'success'],
-                                        'closed'    => ['Geschlossen', 'danger'],
-                                    ][$event->status] ?? ['Entwurf', 'muted'];
-                                @endphp
-                                <x-ui-badge :variant="$statusVariant" size="xs">{{ $statusLabel }}</x-ui-badge>
+                                <x-ui-badge :variant="$event->status->badgeVariant()" size="xs">{{ $event->status->label() }}</x-ui-badge>
+                                @if ($event->date->isPast())
+                                    <x-ui-badge variant="muted" size="xs">Vergangen</x-ui-badge>
+                                @endif
                                 @if ($event->room_release_mode === 'sequential')
                                     <x-ui-badge variant="info" size="xs">Sequentielle Freigabe</x-ui-badge>
                                 @endif
@@ -90,7 +101,7 @@
                             </p>
                         </div>
                         <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                            @if ($event->status !== 'published')
+                            @if ($event->status->value !== 'published')
                                 <x-ui-button variant="primary" size="sm" wire:click="publish({{ $event->id }})">
                                     @svg('heroicon-o-rocket-launch', 'w-4 h-4')
                                     <span>Veröffentlichen</span>
@@ -102,7 +113,7 @@
                                     <span>Küche</span>
                                 </x-ui-button>
                             @endif
-                            @if ($event->status === 'published')
+                            @if ($event->status->value === 'published')
                                 @if (\Illuminate\Support\Facades\Route::has('reservation.guest.checkout'))
                                     <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.guest.checkout', $event->uuid)" target="_blank">
                                         @svg('heroicon-o-eye', 'w-4 h-4')
@@ -110,6 +121,10 @@
                                     </x-ui-button>
                                 @endif
                                 <x-ui-button variant="secondary-outline" size="sm" wire:click="unpublish({{ $event->id }})">Zurückziehen</x-ui-button>
+                                <x-ui-button variant="secondary-outline" size="sm" wire:click="close({{ $event->id }})" title="Bestellschluss setzen">Bestellschluss</x-ui-button>
+                            @endif
+                            @if (in_array($event->status->value, ['published', 'closed'], true))
+                                <x-ui-button variant="secondary-outline" size="sm" wire:click="cancel({{ $event->id }})" title="Termin absagen">Absagen</x-ui-button>
                             @endif
                             <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openForm({{ $event->id }})" title="Bearbeiten">
                                 @svg('heroicon-o-pencil', 'w-4 h-4')

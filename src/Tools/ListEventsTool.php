@@ -82,7 +82,7 @@ class ListEventsTool implements ToolContract, ToolMetadataContract
                 'uuid'           => $event->uuid,
                 'name'           => $event->name,
                 'date'           => $event->date?->toDateString(),
-                'status'         => $event->status,
+                'status'         => $event->status->value,
                 'venue'          => $event->venue?->name,
                 'slots_count'    => $event->slots_count,
                 'bookings_count' => $event->bookings_count,

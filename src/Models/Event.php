@@ -5,6 +5,7 @@ namespace Platform\Reservation\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Platform\Reservation\Enums\EventStatus;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Platform\Reservation\Models\Concerns\HasContextImage;
 use Symfony\Component\Uid\UuidV7;
@@ -23,6 +24,7 @@ class Event extends Model
     public const STATUS_DRAFT     = 'draft';
     public const STATUS_PUBLISHED = 'published';
     public const STATUS_CLOSED    = 'closed';
+    public const STATUS_CANCELLED = 'cancelled';
 
     public const RELEASE_PARALLEL   = 'parallel';
     public const RELEASE_SEQUENTIAL = 'sequential';
@@ -50,6 +52,7 @@ class Event extends Model
         'date'               => 'date',
         'order_deadline_at'  => 'datetime',
         'disabled_table_ids' => 'array',
+        'status'             => EventStatus::class,
     ];
 
     protected static function booted(): void
@@ -109,7 +112,7 @@ class Event extends Model
     /** Bestellschluss erreicht? (kein Deadline gesetzt = offen) */
     public function isOrderable(): bool
     {
-        if ($this->status !== self::STATUS_PUBLISHED) {
+        if ($this->status !== EventStatus::Published) {
             return false;
         }
 

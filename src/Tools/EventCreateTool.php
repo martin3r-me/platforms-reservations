@@ -86,7 +86,7 @@ class EventCreateTool implements ToolContract, ToolMetadataContract
                 'uuid'   => $event->uuid,
                 'name'   => $event->name,
                 'date'   => $event->date?->toDateString(),
-                'status' => $event->status,
+                'status' => $event->status->value,
             ], ['created' => true]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Anlegen des Termins: ' . $e->getMessage(), 'EXECUTION_ERROR');

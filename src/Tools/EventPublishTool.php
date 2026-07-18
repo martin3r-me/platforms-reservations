@@ -65,7 +65,7 @@ class EventPublishTool implements ToolContract, ToolMetadataContract
 
             return ToolResult::success([
                 'uuid'   => $event->uuid,
-                'status' => $event->status,
+                'status' => $event->status->value,
             ], ['updated' => true]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Setzen des Termin-Status: ' . $e->getMessage(), 'EXECUTION_ERROR');

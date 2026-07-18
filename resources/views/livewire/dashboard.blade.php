@@ -90,7 +90,7 @@
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-medium text-[var(--ui-secondary)] truncate">{{ $event->name }}</span>
-                                @if ($event->status !== 'published')
+                                @if ($event->status->value !== 'published')
                                     <x-ui-badge variant="muted" size="xs">Entwurf</x-ui-badge>
                                 @endif
                             </div>

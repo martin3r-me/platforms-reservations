@@ -21,6 +21,10 @@ class EventManager extends Component
     public bool $showForm = false;
     public ?int $editingEventId = null;
 
+    // Übersichts-Filter (Default: veröffentlichte, kommende Termine)
+    public string $statusFilter = 'published'; // draft|published|closed|cancelled|all
+    public string $timeFilter   = 'upcoming';  // upcoming|past|all
+
     // Stammdaten
     public string $eventName = '';
     public string $eventDescription = '';
@@ -50,9 +54,14 @@ class EventManager extends Component
     #[Computed]
     public function events(): \Illuminate\Database\Eloquent\Collection
     {
+        $today = now()->toDateString();
+
         return Event::forTeam($this->getTeamId())
             ->with(['venue', 'salesList', 'slots'])
             ->withCount(['eventRooms', 'bookings'])
+            ->when($this->statusFilter !== 'all', fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->timeFilter === 'upcoming', fn ($q) => $q->whereDate('date', '>=', $today))
+            ->when($this->timeFilter === 'past', fn ($q) => $q->whereDate('date', '<', $today))
             ->orderBy('date')
             ->get();
     }
@@ -383,6 +392,12 @@ class EventManager extends Component
     public function close(int $id): void
     {
         Event::findOrFail($id)->update(['status' => Event::STATUS_CLOSED]);
+        unset($this->events);
+    }
+
+    public function cancel(int $id): void
+    {
+        Event::findOrFail($id)->update(['status' => Event::STATUS_CANCELLED]);
         unset($this->events);
     }
 

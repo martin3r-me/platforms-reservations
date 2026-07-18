@@ -97,7 +97,7 @@ class EventUpdateTool implements ToolContract, ToolMetadataContract
                 'uuid'   => $event->uuid,
                 'name'   => $event->name,
                 'date'   => $event->date?->toDateString(),
-                'status' => $event->status,
+                'status' => $event->status->value,
             ], ['updated' => true]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Aktualisieren des Termins: ' . $e->getMessage(), 'EXECUTION_ERROR');
