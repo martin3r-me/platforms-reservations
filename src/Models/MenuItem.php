@@ -43,6 +43,7 @@ class MenuItem extends Model
 
     protected $casts = [
         'price'         => 'decimal:2',
+        'tax_rate'      => 'decimal:2',
         'available'     => 'boolean',
         'sort_order'    => 'integer',
         'is_vegetarian' => 'boolean',
