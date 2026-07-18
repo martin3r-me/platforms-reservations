@@ -21,7 +21,7 @@ class EventSlotBulkCreateTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'POST /reservation/event-slots/bulk - Legt denselben Slot bei mehreren Terminen an. '
-            . 'REST-Parameter: event_uuids (Array), name (Pflicht, z.B. "Pause"), time_start (Pflicht, HH:MM), '
+            . 'REST-Parameter: event_uuids (Array), name (Pflicht, z.B. "Pause"), time_start (optional, HH:MM), '
             . 'time_end (optional, HH:MM), sort_order (optional).';
     }
 
@@ -32,11 +32,11 @@ class EventSlotBulkCreateTool implements ToolContract, ToolMetadataContract
             'properties' => [
                 'event_uuids' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'name'        => ['type' => 'string'],
-                'time_start'  => ['type' => 'string', 'description' => 'HH:MM.'],
+                'time_start'  => ['type' => 'string', 'description' => 'HH:MM (optional).'],
                 'time_end'    => ['type' => 'string', 'description' => 'HH:MM (optional).'],
                 'sort_order'  => ['type' => 'integer'],
             ],
-            'required'   => ['event_uuids', 'name', 'time_start'],
+            'required'   => ['event_uuids', 'name'],
         ];
     }
 
@@ -55,14 +55,17 @@ class EventSlotBulkCreateTool implements ToolContract, ToolMetadataContract
             }
 
             $name  = trim((string) ($arguments['name'] ?? ''));
-            $start = (string) ($arguments['time_start'] ?? '');
-            if ($name === '' || !preg_match('/^\d{1,2}:\d{2}$/', $start)) {
-                return ToolResult::error('name und time_start (HH:MM) sind erforderlich.', 'VALIDATION_ERROR');
+            $start = trim((string) ($arguments['time_start'] ?? ''));
+            if ($name === '') {
+                return ToolResult::error('Parameter "name" ist erforderlich.', 'VALIDATION_ERROR');
+            }
+            if ($start !== '' && !preg_match('/^\d{1,2}:\d{2}$/', $start)) {
+                return ToolResult::error('time_start muss im Format HH:MM sein.', 'VALIDATION_ERROR');
             }
 
             $slotData = [
                 'name'       => $name,
-                'time_start' => $start,
+                'time_start' => $start !== '' ? $start : null,
                 'time_end'   => $arguments['time_end'] ?? null,
                 'sort_order' => (int) ($arguments['sort_order'] ?? 0),
             ];

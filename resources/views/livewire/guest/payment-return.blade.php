@@ -25,7 +25,7 @@
                 <p class="mt-2 text-sm text-[var(--ui-muted)]">
                     Vielen Dank, {{ $booking?->guest_name }}. Ihre Bestellung für
                     <strong>{{ $booking?->event?->name }}</strong> am {{ $booking?->date?->format('d.m.Y') }}
-                    @if ($booking?->slot) ({{ $booking->slot->name }}, {{ substr($booking->slot->time_start, 0, 5) }} Uhr) @endif
+                    @if ($booking?->slot) ({{ $booking->slot->displayLabel() }}) @endif
                     ist bezahlt und bestätigt.
                 </p>
                 <p class="mt-1 text-xs text-[var(--ui-muted)]">Buchungsnummer: <code class="rounded bg-[var(--ui-muted-5)] px-1.5 py-0.5">{{ $reference }}</code></p>

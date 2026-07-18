@@ -92,7 +92,7 @@
                             <p class="mt-0.5 text-xs text-[var(--ui-muted)] m-0">
                                 {{ $event->date->format('d.m.Y') }}
                                 @if ($event->slots->isNotEmpty())
-                                    · {{ $event->slots->map(fn ($s) => $s->name . ' ' . substr($s->time_start, 0, 5))->implode(', ') }}
+                                    · {{ $event->slots->map(fn ($s) => $s->displayLabel())->implode(', ') }}
                                 @endif
                                 @if ($event->venue) · {{ $event->venue->name }} @endif
                                 · {{ $event->event_rooms_count }} {{ $event->event_rooms_count === 1 ? 'Raum' : 'Räume' }}
@@ -228,6 +228,7 @@
                     </div>
                 </div>
                 <div class="p-3 space-y-2">
+                    <p class="text-[11px] text-[var(--ui-muted)] m-0">Pausen sind optional. Zeiten können leer bleiben – ein Termin ist auch ohne Pausenangabe speicherbar (zum Veröffentlichen wird jedoch mindestens eine Pause benötigt).</p>
                     @error('slots') <p class="text-xs text-[var(--ui-danger)] m-0">{{ $message }}</p> @enderror
                     @foreach ($slots as $i => $slot)
                         <div wire:key="slot-row-{{ $i }}" class="flex items-end gap-2">
@@ -235,7 +236,7 @@
                                 <x-ui-input-text name="slots.{{ $i }}.name" label="Name" size="sm" wire:model="slots.{{ $i }}.name" />
                             </div>
                             <div class="w-28">
-                                <x-ui-input-text type="time" name="slots.{{ $i }}.time_start" label="Von *" size="sm" wire:model="slots.{{ $i }}.time_start" errorKey="slots.{{ $i }}.time_start" />
+                                <x-ui-input-text type="time" name="slots.{{ $i }}.time_start" label="Von" size="sm" wire:model="slots.{{ $i }}.time_start" errorKey="slots.{{ $i }}.time_start" />
                             </div>
                             <div class="w-28">
                                 <x-ui-input-text type="time" name="slots.{{ $i }}.time_end" label="Bis" size="sm" wire:model="slots.{{ $i }}.time_end" />

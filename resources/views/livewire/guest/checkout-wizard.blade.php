@@ -120,7 +120,7 @@
                                 @php $count = array_sum($carts[$slot->id] ?? []); @endphp
                                 <button wire:key="tab2-{{ $slot->id }}" wire:click="selectSlot({{ $slot->id }})"
                                     class="flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm {{ $currentSlotId === $slot->id ? 'border-[var(--ui-primary)] bg-[var(--ui-primary-10)] font-semibold text-[var(--ui-primary)]' : 'border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-300' }}">
-                                    {{ $slot->name }} · {{ substr($slot->time_start, 0, 5) }}
+                                    {{ $slot->displayLabel() }}
                                     @if ($count > 0)
                                         <span class="rounded-full bg-[var(--ui-primary)] px-1.5 text-[10px] font-bold text-white">{{ $count }}</span>
                                     @endif
@@ -257,7 +257,7 @@
                                 @php $hasTable = !empty($slotTables[$slot->id]); @endphp
                                 <button wire:key="tab3-{{ $slot->id }}" wire:click="selectSlot({{ $slot->id }})"
                                     class="flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm {{ $currentSlotId === $slot->id ? 'border-[var(--ui-primary)] bg-[var(--ui-primary-10)] font-semibold text-[var(--ui-primary)]' : 'border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-300' }}">
-                                    {{ $slot->name }} · {{ substr($slot->time_start, 0, 5) }}
+                                    {{ $slot->displayLabel() }}
                                     @if ($hasTable) @svg('heroicon-o-check', 'w-4 h-4 text-emerald-500') @endif
                                 </button>
                             @endforeach
@@ -287,7 +287,7 @@
                 {{-- Tischplan der aktuellen Pause --}}
                 @if ($this->selectedRoom)
                     <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Tisch für {{ $this->currentSlot?->name }} ({{ substr($this->currentSlot?->time_start, 0, 5) }} Uhr)
+                        Tisch für {{ $this->currentSlot?->displayLabel() }}
                     </p>
                     <div class="overflow-hidden rounded-2xl bg-slate-900">
                         <div class="flex items-center justify-center gap-4 border-b border-slate-700 bg-slate-800 py-2 text-xs text-slate-300">
@@ -344,7 +344,7 @@
                     @endphp
                     <div wire:key="sum-{{ $slotId }}" class="rounded-xl border bg-white dark:border-gray-700 dark:bg-gray-900">
                         <div class="flex items-center justify-between border-b px-4 py-2 text-sm font-semibold dark:border-gray-700 dark:text-white">
-                            <span>{{ $slot?->name }} · {{ substr($slot?->time_start, 0, 5) }} Uhr</span>
+                            <span>{{ $slot?->displayLabel() }}</span>
                             @if ($table) <span class="text-xs font-normal text-gray-500">Tisch {{ $table->label }}</span> @endif
                         </div>
                         <div class="divide-y dark:divide-gray-700">

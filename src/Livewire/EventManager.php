@@ -247,18 +247,27 @@ class EventManager extends Component
             'eventSalesListId'   => ['nullable', 'integer', Rule::exists('reservation_sales_lists', 'id')->where('team_id', $this->getTeamId())],
             'eventReleaseMode'   => 'required|in:parallel,sequential',
             'eventImage'         => 'nullable|image|max:20480',
-            'slots'              => 'required|array|min:1',
+            // #518: Pausen sind optional – ein Termin ist auch ohne Pausenangabe speicherbar.
+            'slots'              => 'nullable|array',
             'slots.*.name'       => 'required|string|max:255',
-            'slots.*.time_start' => 'required|date_format:H:i',
+            'slots.*.time_start' => 'nullable|date_format:H:i',
             'slots.*.time_end'   => 'nullable|date_format:H:i',
             'rooms.*.floor_plan_id' => ['required', 'integer', Rule::exists('reservation_floor_plans', 'id')->where('team_id', $this->getTeamId())],
             'rooms.*.fill_threshold_percent' => 'required|integer|min:1|max:100',
             'rooms.*.capacity_override' => 'nullable|integer|min:1',
         ], [
-            'slots.required' => 'Mindestens ein Pausen-Slot ist erforderlich.',
-            'slots.*.time_start.required' => 'Jeder Slot braucht eine Beginn-Uhrzeit.',
+            'slots.*.name.required' => 'Jede Pause braucht einen Namen.',
             'rooms.*.floor_plan_id.required' => 'Jeder Raum braucht einen Tischplan.',
         ]);
+
+        // #518: Wenn beide Zeiten gesetzt sind, muss das Ende nach dem Beginn liegen.
+        foreach ($this->slots as $i => $slot) {
+            if (! empty($slot['time_start']) && ! empty($slot['time_end']) && $slot['time_end'] <= $slot['time_start']) {
+                $this->addError("slots.$i.time_end", 'Das Pausenende muss nach dem Beginn liegen.');
+
+                return;
+            }
+        }
 
         // Gesperrte Tische auf die Tische der aktuell gewählten Räume eingrenzen
         // (entfernt verwaiste IDs, wenn ein Raum wieder entfernt wurde).
@@ -326,7 +335,7 @@ class EventManager extends Component
         foreach (array_values($this->slots) as $sortOrder => $slot) {
             $attributes = [
                 'name'       => $slot['name'],
-                'time_start' => $slot['time_start'],
+                'time_start' => $slot['time_start'] ?: null,
                 'time_end'   => $slot['time_end'] ?: null,
                 'sort_order' => $sortOrder,
             ];

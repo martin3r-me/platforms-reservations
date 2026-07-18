@@ -38,7 +38,7 @@
                                 @if ($booking->slot)
                                     <tr>
                                         <td style="padding:6px 0; color:#6b7280;">Pause</td>
-                                        <td style="padding:6px 0;">{{ $booking->slot->name }} · {{ substr($booking->slot->time_start, 0, 5) }} Uhr</td>
+                                        <td style="padding:6px 0;">{{ $booking->slot->displayLabel() }}</td>
                                     </tr>
                                 @endif
                                 @if ($booking->table)

@@ -61,7 +61,7 @@
                 @forelse ($this->bookings as $booking)
                     <x-ui-table-row compact="true" wire:key="booking-{{ $booking->id }}">
                         <x-ui-table-cell compact="true">{{ $booking->date->format('d.m.Y') }}</x-ui-table-cell>
-                        <x-ui-table-cell compact="true">{{ $booking->time_start }}</x-ui-table-cell>
+                        <x-ui-table-cell compact="true">{{ $booking->time_start ? substr($booking->time_start, 0, 5) : '–' }}</x-ui-table-cell>
                         <x-ui-table-cell compact="true">{{ $booking->table?->label }}</x-ui-table-cell>
                         <x-ui-table-cell compact="true">
                             <span class="font-medium text-[var(--ui-secondary)]">{{ $booking->guest_name }}</span>
@@ -150,7 +150,7 @@
                     </h3>
                     @if ($this->detailBooking)
                         <p class="text-[12px] text-[var(--ui-muted)] m-0 mt-0.5">
-                            {{ $this->detailBooking->date->format('d.m.Y') }} · {{ substr($this->detailBooking->time_start, 0, 5) }} Uhr
+                            {{ $this->detailBooking->date->format('d.m.Y') }}@if ($this->detailBooking->time_start) · {{ substr($this->detailBooking->time_start, 0, 5) }} Uhr @endif
                             @if ($this->detailBooking->table) · Tisch {{ $this->detailBooking->table->label }} @endif
                         </p>
                     @endif
@@ -166,7 +166,7 @@
                     @if ($detail->event)
                         <p class="m-0 text-[var(--ui-secondary)]">
                             <span class="font-medium">{{ $detail->event->name }}</span>
-                            @if ($detail->slot) · {{ $detail->slot->name }} ({{ substr($detail->slot->time_start, 0, 5) }} Uhr) @endif
+                            @if ($detail->slot) · {{ $detail->slot->displayLabel() }} @endif
                             @if ($detail->table?->floorPlan) · {{ $detail->table->floorPlan->name }} @endif
                         </p>
                     @endif

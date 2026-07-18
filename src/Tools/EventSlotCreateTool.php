@@ -22,7 +22,7 @@ class EventSlotCreateTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'POST /reservation/event-slots - Legt einen Pausen-Slot an. REST-Parameter: event_uuid (Pflicht), '
-            . 'name (Pflicht, z.B. "Pause 1"), time_start (Pflicht, HH:MM), time_end (HH:MM), sort_order (int).';
+            . 'name (Pflicht, z.B. "Pause 1"), time_start (optional, HH:MM), time_end (optional, HH:MM), sort_order (int).';
     }
 
     public function getSchema(): array
@@ -32,11 +32,11 @@ class EventSlotCreateTool implements ToolContract, ToolMetadataContract
             'properties' => [
                 'event_uuid' => ['type' => 'string'],
                 'name'       => ['type' => 'string'],
-                'time_start' => ['type' => 'string', 'description' => 'HH:MM, z.B. "20:15".'],
+                'time_start' => ['type' => 'string', 'description' => 'HH:MM, z.B. "20:15" (optional).'],
                 'time_end'   => ['type' => 'string', 'description' => 'HH:MM (optional).'],
                 'sort_order' => ['type' => 'integer'],
             ],
-            'required'   => ['event_uuid', 'name', 'time_start'],
+            'required'   => ['event_uuid', 'name'],
         ];
     }
 
@@ -52,7 +52,7 @@ class EventSlotCreateTool implements ToolContract, ToolMetadataContract
             $validator = Validator::make($arguments, [
                 'event_uuid' => 'required|string',
                 'name'       => 'required|string|max:255',
-                'time_start' => 'required|date_format:H:i',
+                'time_start' => 'nullable|date_format:H:i',
                 'time_end'   => 'nullable|date_format:H:i',
                 'sort_order' => 'nullable|integer',
             ]);
@@ -72,7 +72,7 @@ class EventSlotCreateTool implements ToolContract, ToolMetadataContract
 
             $slot = $event->slots()->create([
                 'name'       => $arguments['name'],
-                'time_start' => $arguments['time_start'],
+                'time_start' => $arguments['time_start'] ?? null,
                 'time_end'   => $arguments['time_end'] ?? null,
                 'sort_order' => (int) ($arguments['sort_order'] ?? 0),
             ]);

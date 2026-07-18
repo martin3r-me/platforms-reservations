@@ -64,7 +64,7 @@
                     @foreach ($this->event->slots as $slot)
                         <x-ui-table-header-cell compact="true" align="center">
                             {{ $slot->name }}<br>
-                            <span class="font-normal normal-case">{{ substr($slot->time_start, 0, 5) }} Uhr</span>
+                            @if ($slot->time_range)<span class="font-normal normal-case">{{ $slot->time_range }} Uhr</span>@endif
                         </x-ui-table-header-cell>
                     @endforeach
                     <x-ui-table-header-cell compact="true" align="center">Gesamt</x-ui-table-header-cell>

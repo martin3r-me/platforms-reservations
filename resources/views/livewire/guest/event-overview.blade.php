@@ -88,7 +88,7 @@
                             @endif
                             @if ($event->slots->isNotEmpty())
                                 <p class="mt-2 text-xs text-gray-500">
-                                    {{ $event->slots->map(fn ($s) => $s->name . ' ' . substr($s->time_start, 0, 5) . ' Uhr')->implode(' · ') }}
+                                    {{ $event->slots->map(fn ($s) => $s->displayLabel())->implode(' · ') }}
                                 </p>
                             @endif
                             @if (!$event->isOrderable())
