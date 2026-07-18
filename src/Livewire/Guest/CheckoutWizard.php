@@ -128,7 +128,7 @@ class CheckoutWizard extends Component
     #[Computed]
     public function cartItems(): \Illuminate\Support\Collection
     {
-        return $this->calc()->lines($this->selectedItems);
+        return $this->calc()->lines($this->selectedItems, $this->event);
     }
 
     #[Computed]
@@ -306,7 +306,10 @@ class CheckoutWizard extends Component
 
     public function incrementItem(int $itemId): void
     {
-        $this->selectedItems[$itemId] = ($this->selectedItems[$itemId] ?? 0) + 1;
+        $this->selectedItems[$itemId] = min(
+            CartCalculator::MAX_QUANTITY_PER_ITEM,
+            ($this->selectedItems[$itemId] ?? 0) + 1,
+        );
     }
 
     public function decrementItem(int $itemId): void
@@ -393,6 +396,14 @@ class CheckoutWizard extends Component
 
         if ($this->requiresAgeCheck && !$this->ageConfirmed) {
             $this->addError('ageConfirmed', 'Ihre Bestellung enthält alkoholische Getränke – bitte bestätigen Sie, dass Sie mindestens 18 Jahre alt sind.');
+            return;
+        }
+
+        // Nach der autoritativen Filterung (Verkaufsliste/Mengen) muss noch
+        // mindestens eine gültige Position übrig sein.
+        if ($this->cartItems->isEmpty()) {
+            $this->step = 2;
+            $this->addError('selectedItems', 'Bitte wählen Sie mindestens ein gültiges Produkt für Ihre Pause.');
             return;
         }
 

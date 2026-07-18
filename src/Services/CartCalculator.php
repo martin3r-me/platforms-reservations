@@ -3,6 +3,7 @@
 namespace Platform\Reservation\Services;
 
 use Illuminate\Support\Collection;
+use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Support\Vat;
 
@@ -18,26 +19,56 @@ use Platform\Reservation\Support\Vat;
  */
 class CartCalculator
 {
+    /** Obergrenze je Position (Manipulations-/Missbrauchsschutz). */
+    public const MAX_QUANTITY_PER_ITEM = 99;
+
     /**
-     * Warenkorb-Positionen für eine Auswahl (menu_item_id => Menge).
+     * Autoritative Warenkorb-Positionen für eine Auswahl (menu_item_id => Menge).
+     *
+     * Nur Artikel aus der freigegebenen Verkaufsliste des Events werden
+     * berücksichtigt (fremde/unbekannte/nicht sichtbare IDs verworfen); Mengen
+     * werden auf ganze Zahlen in [1, MAX_QUANTITY_PER_ITEM] begrenzt. Preis und
+     * Steuer stammen aus der DB.
      *
      * @param array<int, int> $selection
      * @return Collection<int, array{item: MenuItem, quantity: int, total: float}>
      */
-    public function lines(array $selection): Collection
+    public function lines(array $selection, Event $event): Collection
     {
         if (empty($selection)) {
             return collect();
         }
 
-        return MenuItem::with('category')
-            ->whereIn('id', array_keys($selection))
-            ->get()
-            ->map(fn (MenuItem $item) => [
+        $allowed = $this->allowedItems($event);
+        $lines   = collect();
+
+        foreach ($selection as $id => $quantity) {
+            $item = $allowed->get((int) $id);
+            if (!$item) {
+                continue; // nicht in der freigegebenen Verkaufsliste → verworfen
+            }
+
+            $quantity = (int) $quantity;
+            if ($quantity < 1) {
+                continue;
+            }
+            $quantity = min(self::MAX_QUANTITY_PER_ITEM, $quantity);
+
+            $lines->push([
                 'item'     => $item,
-                'quantity' => $selection[$item->id],
-                'total'    => $item->price * $selection[$item->id],
+                'quantity' => $quantity,
+                'total'    => $item->price * $quantity,
             ]);
+        }
+
+        return $lines->values();
+    }
+
+    /** Gast-sichtbare Artikel der Event-Verkaufsliste, nach ID indiziert. */
+    protected function allowedItems(Event $event): Collection
+    {
+        return ($event->resolveSalesList()?->guestVisibleItems() ?? collect())
+            ->keyBy('id');
     }
 
     /** Bruttosumme aller Positionen. */
