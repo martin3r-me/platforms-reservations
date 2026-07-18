@@ -89,6 +89,16 @@ class ReservationServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Reservation\Tools\MenuItemCreateTool());
             $registry->register(new \Platform\Reservation\Tools\MenuItemUpdateTool());
             $registry->register(new \Platform\Reservation\Tools\MenuItemDeleteTool());
+
+            // Termine & Pausen-Slots (CRUD + publish)
+            $registry->register(new \Platform\Reservation\Tools\EventCreateTool());
+            $registry->register(new \Platform\Reservation\Tools\EventUpdateTool());
+            $registry->register(new \Platform\Reservation\Tools\EventDeleteTool());
+            $registry->register(new \Platform\Reservation\Tools\EventPublishTool());
+            $registry->register(new \Platform\Reservation\Tools\EventSlotListTool());
+            $registry->register(new \Platform\Reservation\Tools\EventSlotCreateTool());
+            $registry->register(new \Platform\Reservation\Tools\EventSlotUpdateTool());
+            $registry->register(new \Platform\Reservation\Tools\EventSlotDeleteTool());
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning(
                 'Reservation: Tool-Registrierung fehlgeschlagen',
