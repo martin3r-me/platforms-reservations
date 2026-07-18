@@ -10,21 +10,21 @@ use Platform\Reservation\Enums\EventStatus;
 use Platform\Reservation\Models\Event;
 
 /**
- * Datawarehouse-API-Controller für Termine (Veranstaltungen).
+ * Token-gesicherte Read-API für Termine (Veranstaltungen).
  *
- * Stellt – wie helpdesk/planner – eine token-gesicherte Read-API bereit, die vom
- * zentralen Datawarehouse abgeholt wird. Standardmäßig werden alle zukünftigen und
- * nicht geschlossenen Termine geliefert, inkl. Anzahl Pausen sowie den zu buchenden
- * Räumen mit Kapazitäten.
+ * Gleiches Grundmuster wie helpdesk/planner (ApiController + Passport api.auth),
+ * jedoch ein fachlicher Events-Endpunkt (kein Datawarehouse-Feed). Standardmäßig
+ * werden alle zukünftigen und nicht geschlossenen Termine geliefert, inkl. Anzahl
+ * Pausen sowie den zu buchenden Räumen mit Kapazitäten.
  *
  * Team-Scoping bewusst ohne Auth-Global-Scope (withoutGlobalScope), da im
- * api.auth-Kontext Auth::user()->currentTeam abweichen kann; gefiltert wird –
- * wie im üblichen Muster – optional per team_id (inkl. Kind-Teams).
+ * api.auth-Kontext Auth::user()->currentTeam abweichen kann; gefiltert wird
+ * optional per team_id (inkl. Kind-Teams).
  */
-class EventDatawarehouseController extends ApiController
+class EventController extends ApiController
 {
     /**
-     * Flexibler Datawarehouse-Endpunkt für Termine.
+     * GET /events – Liste der Termine (paginiert, gefiltert).
      */
     public function index(Request $request)
     {
@@ -91,7 +91,7 @@ class EventDatawarehouseController extends ApiController
             $query->whereDate('date', '<=', $request->date_to);
         }
 
-        // Status: standardmäßig "not closed" ausschließen; per status-Parameter überschreibbar.
+        // Status: standardmäßig geschlossene ("closed") ausschließen; per status-Parameter überschreibbar.
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         } elseif (! $request->boolean('include_closed')) {
@@ -100,7 +100,7 @@ class EventDatawarehouseController extends ApiController
     }
 
     /**
-     * Datawarehouse-freundliches, denormalisiertes Format eines Termins.
+     * Denormalisiertes Format eines Termins inkl. Pausen und buchbarer Räume.
      */
     protected function formatEvent(Event $event): array
     {
@@ -136,33 +136,5 @@ class EventDatawarehouseController extends ApiController
             'created_at'        => $event->created_at?->toIso8601String(),
             'updated_at'        => $event->updated_at?->toIso8601String(),
         ];
-    }
-
-    /**
-     * Health-Check: liefert einen Beispiel-Datensatz für Tests.
-     */
-    public function health(Request $request)
-    {
-        try {
-            $example = Event::withoutGlobalScope('team')
-                ->with([
-                    'venue'                => fn ($q) => $q->withoutGlobalScope('team'),
-                    'eventRooms.floorPlan' => fn ($q) => $q->withoutGlobalScope('team'),
-                    'eventRooms.floorPlan.tables' => fn ($q) => $q->withoutGlobalScope('team')->where('is_active', true),
-                ])
-                ->withCount(['slots', 'eventRooms'])
-                ->whereDate('date', '>=', Carbon::today())
-                ->orderBy('date')
-                ->first();
-
-            return $this->success([
-                'status'    => 'ok',
-                'message'   => $example ? 'API ist erreichbar' : 'API ist erreichbar, aber keine zukünftigen Termine vorhanden',
-                'example'   => $example ? $this->formatEvent($example) : null,
-                'timestamp' => now()->toIso8601String(),
-            ], 'Health Check');
-        } catch (\Throwable $e) {
-            return $this->error('Health Check fehlgeschlagen: ' . $e->getMessage(), null, 500);
-        }
     }
 }

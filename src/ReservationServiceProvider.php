@@ -190,9 +190,9 @@ class ReservationServiceProvider extends ServiceProvider
                         $this->loadRoutesFrom(__DIR__ . '/../routes/guest-api.php');
                     }, requireAuth: true);
 
-                    // Token-gesicherte Datawarehouse-API – /api/reservation/events/datawarehouse, Passport (api.auth)
+                    // Token-gesicherte Events-API – /api/reservation/events, Passport (api.auth)
                     \Platform\Core\Routing\ModuleRouter::apiGroup('reservation', function () {
-                        $this->loadRoutesFrom(__DIR__ . '/../routes/datawarehouse-api.php');
+                        $this->loadRoutesFrom(__DIR__ . '/../routes/events-api.php');
                     }, requireAuth: true);
                 }
             }
