@@ -9,6 +9,7 @@ use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Allergen;
 use Platform\Reservation\Models\Additive;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
@@ -164,7 +165,18 @@ class MenuManager extends Component
 
     public function deleteCategory(int $id): void
     {
-        MenuCategory::findOrFail($id)->delete();
+        $category = MenuCategory::findOrFail($id);
+
+        try {
+            $category->delete();
+        } catch (QueryException $e) {
+            // Kategorie kaskadiert auf ihre Artikel; enthält sie bereits
+            // bestellte Artikel, greift deren restrictOnDelete.
+            session()->flash('menu_error', 'Die Kategorie enthält bereits bestellte Artikel und kann nicht gelöscht werden. Bitte die betroffenen Artikel zuerst deaktivieren.');
+
+            return;
+        }
+
         unset($this->categories);
     }
 
@@ -287,7 +299,17 @@ class MenuManager extends Component
 
     public function deleteItem(int $id): void
     {
-        MenuItem::findOrFail($id)->delete();
+        $item = MenuItem::findOrFail($id);
+
+        try {
+            $item->delete();
+        } catch (QueryException $e) {
+            // Artikel hat Bestellhistorie (restrictOnDelete) → nicht löschbar.
+            session()->flash('menu_error', 'Der Artikel wurde bereits bestellt und kann nicht gelöscht werden. Bitte stattdessen deaktivieren.');
+
+            return;
+        }
+
         unset($this->categories);
     }
 
