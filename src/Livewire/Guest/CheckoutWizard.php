@@ -12,6 +12,7 @@ use Platform\Reservation\Models\EventRoom;
 use Platform\Reservation\Models\EventSlot;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Table;
+use Platform\Reservation\Services\CartCalculator;
 use Platform\Reservation\Services\MolliePaymentService;
 use Platform\Reservation\Services\RoomReleaseService;
 use Platform\Reservation\Services\SeatAvailabilityService;
@@ -118,43 +119,35 @@ class CheckoutWizard extends Component
         return $items->mapWithKeys(fn (MenuItem $item) => [$item->id => (float) $item->price])->all();
     }
 
+    /** Autoritative Warenkorb-Kalkulation (auch von der künftigen Gast-API genutzt). */
+    protected function calc(): CartCalculator
+    {
+        return app(CartCalculator::class);
+    }
+
     #[Computed]
     public function cartItems(): \Illuminate\Support\Collection
     {
-        if (empty($this->selectedItems)) {
-            return collect();
-        }
-
-        return MenuItem::with('category')
-            ->whereIn('id', array_keys($this->selectedItems))
-            ->get()
-            ->map(fn (MenuItem $item) => [
-                'item'     => $item,
-                'quantity' => $this->selectedItems[$item->id],
-                'total'    => $item->price * $this->selectedItems[$item->id],
-            ]);
+        return $this->calc()->lines($this->selectedItems);
     }
 
     #[Computed]
     public function orderTotal(): float
     {
-        return (float) $this->cartItems->sum('total');
+        return $this->calc()->total($this->cartItems);
     }
 
     /** Summen je MwSt-Satz für die Checkout-Zusammenfassung. */
     #[Computed]
     public function totalsByTaxRate(): \Illuminate\Support\Collection
     {
-        return $this->cartItems
-            ->groupBy(fn ($line) => $line['item']->tax_rate)
-            ->map(fn ($lines) => $lines->sum('total'))
-            ->sortKeysDesc();
+        return $this->calc()->totalsByTaxRate($this->cartItems);
     }
 
     #[Computed]
     public function requiresAgeCheck(): bool
     {
-        return $this->cartItems->contains(fn ($line) => $line['item']->is_alcoholic);
+        return $this->calc()->containsAgeRestricted($this->cartItems);
     }
 
     #[Computed]
@@ -460,13 +453,8 @@ class CheckoutWizard extends Component
                 $booking = Booking::create($data);
             }
 
-            foreach ($this->cartItems as $line) {
-                $booking->items()->create([
-                    'menu_item_id' => $line['item']->id,
-                    'quantity'     => $line['quantity'],
-                    'unit_price'   => $line['item']->price,   // Preis einfrieren
-                    'tax_rate'     => $line['item']->tax_rate, // Steuersatz einfrieren
-                ]);
+            foreach ($this->calc()->frozenItemAttributes($this->cartItems) as $attributes) {
+                $booking->items()->create($attributes);
             }
 
             return $booking;
