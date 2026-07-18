@@ -48,6 +48,33 @@ class ReservationServiceProvider extends ServiceProvider
 
         // Livewire-Komponenten registrieren
         $this->registerLivewireComponents();
+
+        // MCP-Tools registrieren (read-only)
+        $this->registerTools();
+    }
+
+    /**
+     * MCP-Tools des Moduls bei der zentralen ToolRegistry anmelden.
+     * Läuft inert, wenn platform-core (Registry) nicht vorhanden ist.
+     */
+    protected function registerTools(): void
+    {
+        try {
+            if (!class_exists(\Platform\Core\Tools\ToolRegistry::class)) {
+                return;
+            }
+
+            $registry = resolve(\Platform\Core\Tools\ToolRegistry::class);
+            $registry->register(new \Platform\Reservation\Tools\ReservationOverviewTool());
+            $registry->register(new \Platform\Reservation\Tools\ListEventsTool());
+            $registry->register(new \Platform\Reservation\Tools\ListBookingsTool());
+            $registry->register(new \Platform\Reservation\Tools\RevenueSummaryTool());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning(
+                'Reservation: Tool-Registrierung fehlgeschlagen',
+                ['error' => $e->getMessage()],
+            );
+        }
     }
 
     protected function registerModule(): void
