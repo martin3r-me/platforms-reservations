@@ -3,6 +3,7 @@
 namespace Platform\Reservation\Livewire;
 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -233,15 +234,15 @@ class EventManager extends Component
         $this->validate([
             'eventName'          => 'required|string|max:255',
             'eventDate'          => 'required|date',
-            'eventVenueId'       => 'nullable|integer|exists:reservation_venues,id',
-            'eventSalesListId'   => 'nullable|integer|exists:reservation_sales_lists,id',
+            'eventVenueId'       => ['nullable', 'integer', Rule::exists('reservation_venues', 'id')->where('team_id', $this->getTeamId())],
+            'eventSalesListId'   => ['nullable', 'integer', Rule::exists('reservation_sales_lists', 'id')->where('team_id', $this->getTeamId())],
             'eventReleaseMode'   => 'required|in:parallel,sequential',
             'eventImage'         => 'nullable|image|max:20480',
             'slots'              => 'required|array|min:1',
             'slots.*.name'       => 'required|string|max:255',
             'slots.*.time_start' => 'required|date_format:H:i',
             'slots.*.time_end'   => 'nullable|date_format:H:i',
-            'rooms.*.floor_plan_id' => 'required|integer|exists:reservation_floor_plans,id',
+            'rooms.*.floor_plan_id' => ['required', 'integer', Rule::exists('reservation_floor_plans', 'id')->where('team_id', $this->getTeamId())],
             'rooms.*.fill_threshold_percent' => 'required|integer|min:1|max:100',
             'rooms.*.capacity_override' => 'nullable|integer|min:1',
         ], [

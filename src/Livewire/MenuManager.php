@@ -10,6 +10,7 @@ use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Allergen;
 use Platform\Reservation\Models\Additive;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class MenuManager extends Component
 {
@@ -213,7 +214,7 @@ class MenuManager extends Component
     public function saveItem(bool $createAnother = false): void
     {
         $this->validate([
-            'itemCategoryId' => 'required|integer|exists:reservation_menu_categories,id',
+            'itemCategoryId' => ['required', 'integer', Rule::exists('reservation_menu_categories', 'id')->where('team_id', $this->getTeamId())],
             'itemName'        => 'required|string|max:255',
             'itemPortionSize' => 'nullable|string|max:50',
             'itemPrice'       => 'required|numeric|min:0',
@@ -251,8 +252,18 @@ class MenuManager extends Component
             $this->itemImage = null;
         }
 
-        $allergenChanges = $item->allergens()->sync($this->itemAllergenIds);
-        $additiveChanges = $item->additives()->sync($this->itemAdditiveIds);
+        // Nur team-eigene Allergene/Zusatzstoffe zulassen (identisch zum Picker),
+        // damit keine fremden IDs über einen manipulierten Request eingeschleust werden.
+        $teamId = $this->getTeamId();
+        $allowedAllergenIds = Allergen::forTeam($teamId)->pluck('id')->all();
+        $allowedAdditiveIds = Additive::forTeam($teamId)->pluck('id')->all();
+
+        $allergenChanges = $item->allergens()->sync(
+            array_intersect(array_map('intval', $this->itemAllergenIds), $allowedAllergenIds)
+        );
+        $additiveChanges = $item->additives()->sync(
+            array_intersect(array_map('intval', $this->itemAdditiveIds), $allowedAdditiveIds)
+        );
         $pivotChanged = count($allergenChanges['attached']) || count($allergenChanges['detached'])
             || count($additiveChanges['attached']) || count($additiveChanges['detached']);
 

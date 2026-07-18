@@ -10,6 +10,7 @@ use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Table;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class BookingCreate extends Component
 {
@@ -41,7 +42,7 @@ class BookingCreate extends Component
                 'date'       => 'required|date|after_or_equal:today',
                 'timeStart'  => 'required|date_format:H:i',
                 'guestCount' => 'required|integer|min:1|max:20',
-                'tableId'    => 'nullable|integer|exists:reservation_tables,id',
+                'tableId'    => ['nullable', 'integer', Rule::exists('reservation_tables', 'id')->where('team_id', $this->teamId)],
             ],
             2 => [
                 'guestName'  => 'required|string|max:255',
@@ -131,7 +132,7 @@ class BookingCreate extends Component
             'guestName'  => 'required|string|max:255',
             'date'       => 'required|date',
             'timeStart'  => 'required|date_format:H:i',
-            'tableId'    => 'nullable|integer|exists:reservation_tables,id',
+            'tableId'    => ['nullable', 'integer', Rule::exists('reservation_tables', 'id')->where('team_id', $this->teamId)],
         ]);
 
         $booking = Booking::create([

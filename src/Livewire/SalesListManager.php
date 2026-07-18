@@ -7,6 +7,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\MenuCategory;
+use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\SalesList;
 
 class SalesListManager extends Component
@@ -172,7 +173,12 @@ class SalesListManager extends Component
         }
 
         $list = SalesList::findOrFail($this->assigningListId);
-        $list->menuItems()->sync(array_map('intval', $this->assignedItemIds));
+
+        // Nur team-eigene Artikel zuordnen: MenuItem ist global team-gescoped,
+        // fremde IDs fallen hier automatisch raus (kein Cross-Tenant-Pivot).
+        $allowedItemIds = MenuItem::whereIn('id', array_map('intval', $this->assignedItemIds))
+            ->pluck('id')->all();
+        $list->menuItems()->sync($allowedItemIds);
 
         $this->assigningListId = null;
         $this->showAssignForm = false;
