@@ -57,3 +57,4 @@ Route::get('/settings/payment', fn () => redirect()->route('reservation.settings
 // Checkout-Texte (18+, Rechtstext, Datenschutz-Link)
 Route::get('/settings/checkout', \Platform\Reservation\Livewire\CheckoutSettings::class)->name('reservation.settings.checkout');
 Route::get('/settings/declarations', \Platform\Reservation\Livewire\DeclarationSettings::class)->name('reservation.settings.declarations');
+Route::get('/settings/holding-classes', \Platform\Reservation\Livewire\HoldingClassSettings::class)->name('reservation.settings.holding-classes');

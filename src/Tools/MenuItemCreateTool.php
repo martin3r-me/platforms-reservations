@@ -7,6 +7,7 @@ use Platform\Core\Contracts\ToolContext;
 use Platform\Core\Contracts\ToolContract;
 use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
+use Platform\Reservation\Models\HoldingClass;
 use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
 
@@ -24,7 +25,8 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
     {
         return 'POST /reservation/menu-items - Legt einen Artikel an (Freigabestatus: Entwurf). REST-Parameter: '
             . 'category_id (Pflicht), name (Pflicht), price (Pflicht, brutto), tax_rate (7 oder 19, Default 7), '
-            . 'description, portion_size, available (bool), is_vegetarian, is_vegan, is_alcoholic (bool).';
+            . 'holding_class_id (optional, Standzeit-Klasse), description, portion_size, available (bool), '
+            . 'is_vegetarian, is_vegan, is_alcoholic (bool).';
     }
 
     public function getSchema(): array
@@ -32,7 +34,8 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
         return [
             'type'       => 'object',
             'properties' => [
-                'category_id'   => ['type' => 'integer', 'description' => 'ID der Kategorie (des Teams).'],
+                'category_id'      => ['type' => 'integer', 'description' => 'ID der Kategorie (des Teams).'],
+                'holding_class_id' => ['type' => 'integer', 'description' => 'ID der Standzeit-Klasse (optional, des Teams).'],
                 'name'          => ['type' => 'string'],
                 'price'         => ['type' => 'number', 'description' => 'Bruttopreis in Euro.'],
                 'tax_rate'      => ['type' => 'number', 'enum' => [7, 19], 'description' => 'MwSt-Satz (7 oder 19).'],
@@ -57,7 +60,8 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
             }
 
             $validator = Validator::make($arguments, [
-                'category_id'   => 'required|integer',
+                'category_id'      => 'required|integer',
+                'holding_class_id' => 'nullable|integer',
                 'name'          => 'required|string|max:255',
                 'price'         => 'required|numeric|min:0',
                 'tax_rate'      => ['nullable', fn ($a, $v, $fail) => in_array((float) $v, MenuItem::TAX_RATES, true) ?: $fail('tax_rate muss 7 oder 19 sein.')],
@@ -82,6 +86,10 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('Kategorie nicht gefunden (oder gehört nicht zum Team).', 'CATEGORY_NOT_FOUND');
             }
 
+            if (!empty($arguments['holding_class_id']) && !$this->ownsHoldingClass($teamId, (int) $arguments['holding_class_id'])) {
+                return ToolResult::error('Standzeit-Klasse nicht gefunden (oder gehört nicht zum Team).', 'HOLDING_CLASS_NOT_FOUND');
+            }
+
             $data              = $validator->validated();
             $data['team_id']   = $teamId;
             $data['tax_rate']  = number_format((float) ($arguments['tax_rate'] ?? 7.0), 2, '.', '');
@@ -98,6 +106,11 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Anlegen des Artikels: ' . $e->getMessage(), 'EXECUTION_ERROR');
         }
+    }
+
+    protected function ownsHoldingClass(int $teamId, int $id): bool
+    {
+        return HoldingClass::withoutGlobalScope('team')->where('team_id', $teamId)->where('id', $id)->exists();
     }
 
     public function getMetadata(): array

@@ -49,7 +49,7 @@ class MenuItemListTool implements ToolContract, ToolMetadataContract
 
             $query = MenuItem::withoutGlobalScope('team')
                 ->where('team_id', $teamId)
-                ->with('category');
+                ->with(['category', 'holdingClass']);
 
             if (!empty($arguments['category_id'])) {
                 $query->where('category_id', (int) $arguments['category_id']);
@@ -60,6 +60,8 @@ class MenuItemListTool implements ToolContract, ToolMetadataContract
                 'name'            => $item->name,
                 'category'        => $item->category?->name,
                 'category_id'     => $item->category_id,
+                'holding_class'    => $item->holdingClass?->name,
+                'holding_class_id' => $item->holding_class_id,
                 'portion_size'    => $item->portion_size,
                 'price'           => (float) $item->price,
                 'tax_rate'        => (float) $item->tax_rate,

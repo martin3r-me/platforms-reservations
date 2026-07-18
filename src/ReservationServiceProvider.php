@@ -85,6 +85,10 @@ class ReservationServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Reservation\Tools\MenuCategoryCreateTool());
             $registry->register(new \Platform\Reservation\Tools\MenuCategoryUpdateTool());
             $registry->register(new \Platform\Reservation\Tools\MenuCategoryDeleteTool());
+            $registry->register(new \Platform\Reservation\Tools\HoldingClassListTool());
+            $registry->register(new \Platform\Reservation\Tools\HoldingClassCreateTool());
+            $registry->register(new \Platform\Reservation\Tools\HoldingClassUpdateTool());
+            $registry->register(new \Platform\Reservation\Tools\HoldingClassDeleteTool());
             $registry->register(new \Platform\Reservation\Tools\MenuItemListTool());
             $registry->register(new \Platform\Reservation\Tools\MenuItemCreateTool());
             $registry->register(new \Platform\Reservation\Tools\MenuItemUpdateTool());
@@ -113,6 +117,7 @@ class ReservationServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Reservation\Tools\AllergenBulkCreateTool());
             $registry->register(new \Platform\Reservation\Tools\AdditiveBulkCreateTool());
             $registry->register(new \Platform\Reservation\Tools\MenuCategoryBulkCreateTool());
+            $registry->register(new \Platform\Reservation\Tools\HoldingClassBulkCreateTool());
             $registry->register(new \Platform\Reservation\Tools\MenuItemBulkCreateTool());
             $registry->register(new \Platform\Reservation\Tools\MenuItemApproveBulkTool());
             $registry->register(new \Platform\Reservation\Tools\SalesListBulkCreateTool());

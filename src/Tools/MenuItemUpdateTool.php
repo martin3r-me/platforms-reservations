@@ -7,6 +7,7 @@ use Platform\Core\Contracts\ToolContext;
 use Platform\Core\Contracts\ToolContract;
 use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
+use Platform\Reservation\Models\HoldingClass;
 use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
 
@@ -23,8 +24,8 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'PATCH /reservation/menu-items - Aktualisiert einen Artikel. REST-Parameter: id (Pflicht); '
-            . 'category_id, name, price, tax_rate (7|19), description, portion_size, available, '
-            . 'is_vegetarian, is_vegan, is_alcoholic (jeweils optional).';
+            . 'category_id, holding_class_id (null zum Entfernen), name, price, tax_rate (7|19), description, '
+            . 'portion_size, available, is_vegetarian, is_vegan, is_alcoholic (jeweils optional).';
     }
 
     public function getSchema(): array
@@ -34,6 +35,7 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
             'properties' => [
                 'id'            => ['type' => 'integer'],
                 'category_id'   => ['type' => 'integer'],
+                'holding_class_id' => ['type' => ['integer', 'null'], 'description' => 'Standzeit-Klasse; null entfernt die Zuordnung.'],
                 'name'          => ['type' => 'string'],
                 'price'         => ['type' => 'number'],
                 'tax_rate'      => ['type' => 'number', 'enum' => [7, 19]],
@@ -60,6 +62,7 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
             $validator = Validator::make($arguments, [
                 'id'            => 'required|integer',
                 'category_id'   => 'sometimes|integer',
+                'holding_class_id' => 'sometimes|nullable|integer',
                 'name'          => 'sometimes|string|max:255',
                 'price'         => 'sometimes|numeric|min:0',
                 'tax_rate'      => ['sometimes', fn ($a, $v, $fail) => in_array((float) $v, MenuItem::TAX_RATES, true) ?: $fail('tax_rate muss 7 oder 19 sein.')],
@@ -94,8 +97,13 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
                 }
             }
 
+            if (!empty($arguments['holding_class_id'])
+                && !HoldingClass::withoutGlobalScope('team')->where('team_id', $teamId)->where('id', (int) $arguments['holding_class_id'])->exists()) {
+                return ToolResult::error('Standzeit-Klasse nicht gefunden (oder gehört nicht zum Team).', 'HOLDING_CLASS_NOT_FOUND');
+            }
+
             $data = collect($validator->validated())->only([
-                'category_id', 'name', 'price', 'tax_rate', 'description',
+                'category_id', 'holding_class_id', 'name', 'price', 'tax_rate', 'description',
                 'portion_size', 'available', 'is_vegetarian', 'is_vegan', 'is_alcoholic',
             ])->all();
 

@@ -58,6 +58,7 @@ return [
             'items' => [
                 ['label' => 'Einstellungen', 'route' => 'reservation.settings.checkout', 'icon' => 'heroicon-o-cog-6-tooth'],
                 ['label' => 'Allergene & Zusatzstoffe', 'route' => 'reservation.settings.declarations', 'icon' => 'heroicon-o-beaker'],
+                ['label' => 'Standzeit-Klassen', 'route' => 'reservation.settings.holding-classes', 'icon' => 'heroicon-o-fire'],
             ],
         ],
     ],

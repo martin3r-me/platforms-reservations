@@ -7,6 +7,7 @@ use Livewire\Attributes\Computed;
 use Livewire\WithFileUploads;
 use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
+use Platform\Reservation\Models\HoldingClass;
 use Platform\Reservation\Models\Allergen;
 use Platform\Reservation\Models\Additive;
 use Illuminate\Database\QueryException;
@@ -27,6 +28,7 @@ class MenuManager extends Component
     public bool $showItemForm = false;
     public ?int $editingItemId = null;
     public ?int $itemCategoryId = null;
+    public ?int $itemHoldingClassId = null;
     public string $itemName = '';
     public string $itemDescription = '';
     public string $itemPortionSize = '';
@@ -64,6 +66,12 @@ class MenuManager extends Component
             ->where('team_id', $this->getTeamId())
             ->orderBy('sort_order')
             ->get();
+    }
+
+    #[Computed]
+    public function holdingClasses(): \Illuminate\Database\Eloquent\Collection
+    {
+        return HoldingClass::forTeam($this->getTeamId())->active()->get();
     }
 
     #[Computed]
@@ -190,7 +198,8 @@ class MenuManager extends Component
 
         if ($id) {
             $item = MenuItem::with(['allergens', 'additives'])->findOrFail($id);
-            $this->itemCategoryId    = $item->category_id;
+            $this->itemCategoryId     = $item->category_id;
+            $this->itemHoldingClassId = $item->holding_class_id;
             $this->itemName          = $item->name;
             $this->itemDescription   = $item->description ?? '';
             $this->itemPortionSize   = $item->portion_size ?? '';
@@ -209,7 +218,8 @@ class MenuManager extends Component
 
     protected function resetItemForm(?int $categoryId = null): void
     {
-        $this->itemCategoryId  = $categoryId;
+        $this->itemCategoryId     = $categoryId;
+        $this->itemHoldingClassId = null;
         $this->itemName        = '';
         $this->itemDescription = '';
         $this->itemPortionSize = '';
@@ -227,6 +237,7 @@ class MenuManager extends Component
     {
         $this->validate([
             'itemCategoryId' => ['required', 'integer', Rule::exists('reservation_menu_categories', 'id')->where('team_id', $this->getTeamId())],
+            'itemHoldingClassId' => ['nullable', 'integer', Rule::exists('reservation_holding_classes', 'id')->where('team_id', $this->getTeamId())],
             'itemName'        => 'required|string|max:255',
             'itemPortionSize' => 'nullable|string|max:50',
             'itemPrice'       => 'required|numeric|min:0',
@@ -239,8 +250,9 @@ class MenuManager extends Component
         ]);
 
         $data = [
-            'team_id'       => $this->getTeamId(),
-            'category_id'   => $this->itemCategoryId,
+            'team_id'          => $this->getTeamId(),
+            'category_id'      => $this->itemCategoryId,
+            'holding_class_id' => $this->itemHoldingClassId ?: null,
             'name'          => $this->itemName,
             'description'   => $this->itemDescription,
             'portion_size'  => $this->itemPortionSize ?: null,

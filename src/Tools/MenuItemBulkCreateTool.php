@@ -8,6 +8,7 @@ use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
 use Platform\Reservation\Models\Additive;
 use Platform\Reservation\Models\Allergen;
+use Platform\Reservation\Models\HoldingClass;
 use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
 
@@ -26,8 +27,8 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
     {
         return 'POST /reservation/menu-items/bulk - Legt mehrere Artikel an (Freigabestatus draft). '
             . 'REST-Parameter: items (Array). Je Item: category_id (Pflicht), name (Pflicht), price (Pflicht, brutto), '
-            . 'tax_rate (7|19, Default 7), description, portion_size, available, is_vegetarian, is_vegan, is_alcoholic, '
-            . 'allergen_codes (Array von Codes), additive_codes (Array von Codes).';
+            . 'tax_rate (7|19, Default 7), holding_class_id (optional, Standzeit-Klasse), description, portion_size, '
+            . 'available, is_vegetarian, is_vegan, is_alcoholic, allergen_codes (Array von Codes), additive_codes (Array von Codes).';
     }
 
     public function getSchema(): array
@@ -41,6 +42,7 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
                         'type'       => 'object',
                         'properties' => [
                             'category_id'    => ['type' => 'integer'],
+                            'holding_class_id' => ['type' => 'integer', 'description' => 'Standzeit-Klasse (optional).'],
                             'name'           => ['type' => 'string'],
                             'price'          => ['type' => 'number'],
                             'tax_rate'       => ['type' => 'number', 'enum' => [7, 19]],
@@ -82,7 +84,8 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('Maximal 500 Artikel je Aufruf.', 'TOO_MANY');
             }
 
-            $categoryIds = MenuCategory::withoutGlobalScope('team')->where('team_id', $teamId)->pluck('id')->flip();
+            $categoryIds     = MenuCategory::withoutGlobalScope('team')->where('team_id', $teamId)->pluck('id')->flip();
+            $holdingClassIds = HoldingClass::withoutGlobalScope('team')->where('team_id', $teamId)->pluck('id')->flip();
             $allergenMap = Allergen::where('team_id', $teamId)->pluck('id', 'code'); // code => id
             $additiveMap = Additive::where('team_id', $teamId)->pluck('id', 'code');
 
@@ -111,9 +114,18 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
                     continue;
                 }
 
+                $holdingClassId = isset($row['holding_class_id']) && $row['holding_class_id'] !== null
+                    ? (int) $row['holding_class_id']
+                    : null;
+                if ($holdingClassId !== null && !$holdingClassIds->has($holdingClassId)) {
+                    $failed[] = ['index' => $i, 'name' => $name, 'error' => 'holding_class_id gehört nicht zum Team'];
+                    continue;
+                }
+
                 $data = [
-                    'team_id'       => $teamId,
-                    'category_id'   => $categoryId,
+                    'team_id'          => $teamId,
+                    'category_id'      => $categoryId,
+                    'holding_class_id' => $holdingClassId,
                     'name'          => $name,
                     'description'   => $row['description'] ?? null,
                     'portion_size'  => $row['portion_size'] ?? null,

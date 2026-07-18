@@ -29,6 +29,7 @@ class MenuItem extends Model
     protected $fillable = [
         'team_id',
         'category_id',
+        'holding_class_id',
         'name',
         'description',
         'portion_size',
@@ -65,6 +66,12 @@ class MenuItem extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(MenuCategory::class, 'category_id');
+    }
+
+    /** Standzeit-/Zeitkritikalitäts-Klasse (#523), optional. */
+    public function holdingClass(): BelongsTo
+    {
+        return $this->belongsTo(HoldingClass::class, 'holding_class_id');
     }
 
     public function allergens(): BelongsToMany

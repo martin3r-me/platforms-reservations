@@ -261,6 +261,22 @@
                         errorKey="itemCategoryId"
                     />
                 </div>
+                <div class="sm:col-span-2">
+                    <x-ui-input-select
+                        name="itemHoldingClassId"
+                        label="Standzeit / Zeitkritikalität"
+                        :options="$this->holdingClasses"
+                        optionValue="id"
+                        optionLabel="name"
+                        :nullable="true"
+                        nullLabel="— keine —"
+                        wire:model="itemHoldingClassId"
+                        errorKey="itemHoldingClassId"
+                    />
+                    @if ($this->holdingClasses->isEmpty())
+                        <p class="mt-1 text-[11px] text-[var(--ui-muted)]">Noch keine Stufen angelegt – unter <a href="{{ route('reservation.settings.holding-classes') }}" class="underline" wire:navigate>Einstellungen → Standzeit-Klassen</a>.</p>
+                    @endif
+                </div>
                 <div class="sm:col-span-2" x-ref="itemName">
                     <x-ui-input-text name="itemName" label="Name" wire:model="itemName" required errorKey="itemName" />
                 </div>
