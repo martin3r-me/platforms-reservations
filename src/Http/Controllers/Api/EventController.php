@@ -143,8 +143,9 @@ class EventController extends ApiController
      *
      * Liefert die buchbaren Räume des Termins mit Tischplan und Tischen sowie die
      * freien Plätze JE PAUSE (Slot) und Tisch. Optional filterbar per room
-     * (event_room_id oder floor_plan_id) und slot (Slot-ID).
-     * {event} = UUID oder numerische ID.
+     * (event_room_id oder floor_plan_id) und slot (Slot-ID). Mit ?party=N wird
+     * je Pause/Tisch zusätzlich ein bookable-Flag berechnet (weiche Kapazität +
+     * Limit berücksichtigt). {event} = UUID oder numerische ID.
      */
     public function floorPlan(Request $request, string $event)
     {
@@ -161,8 +162,12 @@ class EventController extends ApiController
         ]);
 
         $checkout   = CheckoutSetting::forTeam((int) $model->team_id);
+        $soft       = $checkout->softTableCapacity();
+        $maxGroup   = $checkout->maxGroupEmptyTable();
         $roomFilter = $request->filled('room') ? (int) $request->room : null;
         $slotFilter = $request->filled('slot') ? (int) $request->slot : null;
+        // Optional: fuer eine Gruppengroesse je Tisch/Pause ein "bookable"-Flag mitliefern.
+        $party      = $request->filled('party') ? max(1, (int) $request->party) : null;
 
         $slots = $model->slots
             ->when($slotFilter, fn ($c) => $c->where('id', $slotFilter))
@@ -175,7 +180,7 @@ class EventController extends ApiController
             ->when($roomFilter, fn ($c) => $c->filter(
                 fn ($room) => $room->id === $roomFilter || $room->floor_plan_id === $roomFilter
             ))
-            ->map(fn ($room) => $this->formatRoomAvailability($room, $model, $slots, $seats))
+            ->map(fn ($room) => $this->formatRoomAvailability($room, $model, $slots, $seats, $soft, $maxGroup, $party))
             ->filter()
             ->values();
 
@@ -189,8 +194,9 @@ class EventController extends ApiController
             // Weiche Kapazität: Großgruppe darf einen leeren Tisch (remaining == capacity)
             // über die Platzzahl hinaus belegen (bis max_group_empty_table, null = unbegrenzt);
             // sonst muss die Gruppe in remaining passen.
-            'soft_table_capacity'   => $checkout->softTableCapacity(),
-            'max_group_empty_table' => $checkout->maxGroupEmptyTable(),
+            'soft_table_capacity'   => $soft,
+            'max_group_empty_table' => $maxGroup,
+            'party'                 => $party, // Gruppengröße, für die "bookable" berechnet wurde (null = nicht angefragt)
             'slots' => $slots->map(fn ($s) => [
                 'id'         => $s->id,
                 'name'       => $s->name,
@@ -299,8 +305,13 @@ class EventController extends ApiController
 
     /**
      * Ein Raum mit Tischplan, Tischen und Verfügbarkeit je Pause.
+     *
+     * Bei gesetzter Gruppengröße ($party) liefert das Ergebnis zusätzlich ein
+     * "bookable"-Flag je Pause/Tisch – serverseitig nach derselben Regel wie
+     * die Buchung (freie Plätze ODER leerer Tisch bei weicher Kapazität bis
+     * $maxGroupEmptyTable). So muss das Frontend die Logik nicht nachbauen.
      */
-    protected function formatRoomAvailability($room, Event $event, $slots, SeatAvailabilityService $seats): ?array
+    protected function formatRoomAvailability($room, Event $event, $slots, SeatAvailabilityService $seats, bool $softCapacity = false, ?int $maxGroupEmptyTable = null, ?int $party = null): ?array
     {
         $floorPlan = $room->floorPlan;
 
@@ -310,18 +321,28 @@ class EventController extends ApiController
 
         $tables = $floorPlan->tables;
 
-        // Restplätze je Pause und Tisch.
+        // Restplätze (und optional Buchbarkeit für eine Gruppe) je Pause und Tisch.
         $availability = [];
+        $bookable     = [];
         foreach ($slots as $slot) {
             $bookedByTable = $seats->bookedSeatsByTable($floorPlan, $slot);
             foreach ($tables as $table) {
-                $availability[$slot->id][$table->id] = $event->isTableDisabled($table->id)
-                    ? 0
-                    : max(0, (int) $table->capacity - (int) $bookedByTable->get($table->id, 0));
+                $disabled  = $event->isTableDisabled($table->id);
+                $booked    = (int) $bookedByTable->get($table->id, 0);
+                $remaining = $disabled ? 0 : max(0, (int) $table->capacity - $booked);
+
+                $availability[$slot->id][$table->id] = $remaining;
+
+                if ($party !== null) {
+                    $bookable[$slot->id][$table->id] = ! $disabled && (
+                        $party <= $remaining
+                        || ($softCapacity && $booked === 0 && ($maxGroupEmptyTable === null || $party <= $maxGroupEmptyTable))
+                    );
+                }
             }
         }
 
-        return [
+        $result = [
             'event_room_id' => $room->id,
             'floor_plan_id' => $room->floor_plan_id,
             'name'          => $floorPlan->name,
@@ -344,6 +365,12 @@ class EventController extends ApiController
             ])->values()->all(),
             'availability' => $availability, // { slot_id: { table_id: remaining } }
         ];
+
+        if ($party !== null) {
+            $result['bookable'] = $bookable; // { slot_id: { table_id: bool } } für party=N
+        }
+
+        return $result;
     }
 
     /**
