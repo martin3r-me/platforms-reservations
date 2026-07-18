@@ -7,9 +7,13 @@ use Illuminate\Http\Request;
 use Platform\Core\Http\Controllers\ApiController;
 use Platform\Core\Models\Team;
 use Platform\Reservation\Enums\EventStatus;
+use Platform\Reservation\Exceptions\GuestOrderException;
+use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
+use Platform\Reservation\Models\Order;
 use Platform\Reservation\Models\SalesList;
+use Platform\Reservation\Services\GuestOrderService;
 use Platform\Reservation\Services\SeatAvailabilityService;
 
 /**
@@ -149,6 +153,102 @@ class EventController extends ApiController
             ])->values()->all(),
             'rooms' => $rooms->all(),
         ], 'Tischplan/Verfügbarkeit geladen');
+    }
+
+    /**
+     * POST /events/{event}/orders – Bestellung anlegen (Order + N Slot-Buchungen).
+     *
+     * Preise/Steuer werden serverseitig aus der DB eingefroren, Artikel auf die
+     * Verkaufsliste beschränkt, Mengen begrenzt und Plätze je Pause geprüft
+     * (autoritativ via GuestOrderService). {event} = UUID oder numerische ID.
+     * Antwort enthält ggf. eine checkout_url (Online-Zahlung).
+     */
+    public function createOrder(Request $request, string $event, GuestOrderService $service)
+    {
+        $model = $this->resolveEvent($event);
+
+        if (! $model) {
+            return $this->notFound('Termin nicht gefunden.');
+        }
+
+        // #520/#521: Pflicht/optional der Kontaktfelder aus den Team-Settings des Termins.
+        $settings = CheckoutSetting::forTeam((int) $model->team_id);
+
+        $data = $request->validate([
+            'guest'            => 'required|array',
+            'guest.name'       => ['required', 'string', 'max:255'],
+            'guest.email'      => $settings->guestFieldRule('email', ['email', 'max:255']),
+            'guest.phone'      => $settings->guestFieldRule('phone', ['string', 'max:30']),
+            'guest.count'      => ['required', 'integer', 'min:1', 'max:20'],
+            'guest.notes'      => $settings->guestFieldRule('notes', ['string']),
+            'legal_accepted'   => 'accepted',
+            'age_confirmed'    => 'nullable|boolean',
+            'slots'            => 'required|array|min:1',
+            'slots.*.slot_id'  => 'required|integer',
+            'slots.*.table_id' => 'required|integer',
+            'slots.*.items'    => 'required|array|min:1',
+        ]);
+
+        $model->loadMissing(['slots', 'eventRooms']);
+
+        try {
+            $result = $service->place(
+                $model,
+                [
+                    'name'  => $data['guest']['name'],
+                    'email' => $data['guest']['email'] ?? null,
+                    'phone' => $data['guest']['phone'] ?? null,
+                    'count' => (int) $data['guest']['count'],
+                    'notes' => $data['guest']['notes'] ?? null,
+                ],
+                $data['slots'],
+                (bool) ($data['age_confirmed'] ?? false),
+            );
+        } catch (GuestOrderException $e) {
+            return $this->error($e->getMessage(), ['code' => $e->errorCode], 422);
+        }
+
+        return $this->created([
+            'order_uuid'   => $result['order']->uuid,
+            'total_amount' => round((float) $result['order']->total_amount, 2),
+            'status'       => $result['order']->status,
+            'checkout_url' => $result['checkout_url'], // null = keine Online-Zahlung nötig
+        ], 'Bestellung angelegt');
+    }
+
+    /**
+     * GET /events/{event}/orders/{order} – Status einer Bestellung.
+     */
+    public function orderStatus(string $event, string $order)
+    {
+        $model = $this->resolveEvent($event);
+
+        if (! $model) {
+            return $this->notFound('Termin nicht gefunden.');
+        }
+
+        $orderModel = Order::withoutGlobalScope('team')
+            ->where('team_id', $model->team_id)
+            ->where('event_id', $model->id)
+            ->where('uuid', $order)
+            ->with(['payment', 'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'items'])])
+            ->first();
+
+        if (! $orderModel) {
+            return $this->notFound('Bestellung nicht gefunden.');
+        }
+
+        return $this->success([
+            'order_uuid'     => $orderModel->uuid,
+            'status'         => $orderModel->status,
+            'total_amount'   => round((float) $orderModel->total_amount, 2),
+            'payment_status' => $orderModel->payment?->status,
+            'bookings'       => $orderModel->bookings->map(fn ($b) => [
+                'uuid'   => $b->uuid,
+                'slot'   => $b->slot?->name,
+                'status' => $b->status,
+            ])->values()->all(),
+        ], 'Bestellstatus geladen');
     }
 
     /**

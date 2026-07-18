@@ -19,3 +19,9 @@ Route::get('/events/{event}/products', [EventController::class, 'products'])
 // Tischplan(e) + Verfuegbarkeit je Pause (optional ?room=&slot=).
 Route::get('/events/{event}/floor-plan', [EventController::class, 'floorPlan'])
     ->name('reservation.api.events.floor-plan');
+
+// Bestellung anlegen (Order + N Slot-Buchungen) und Status abfragen.
+Route::post('/events/{event}/orders', [EventController::class, 'createOrder'])
+    ->name('reservation.api.events.orders.store');
+Route::get('/events/{event}/orders/{order}', [EventController::class, 'orderStatus'])
+    ->name('reservation.api.events.orders.show');
