@@ -57,10 +57,11 @@ class SeatAvailabilityService
      * Normal: die Gruppe muss in die freien Plätze passen (Tische teilbar).
      * Weiche Kapazität ($softCapacity): zusätzlich darf eine Gruppe einen
      * KOMPLETT LEEREN Tisch über die Platzzahl hinaus belegen (Großgruppe →
-     * leerer Tisch). Ein bereits (teil-)belegter Tisch bleibt für zu große
-     * Gruppen gesperrt.
+     * leerer Tisch) – höchstens jedoch bis $maxGroupEmptyTable Personen
+     * (null = unbegrenzt). Ein bereits (teil-)belegter Tisch bleibt für zu
+     * große Gruppen gesperrt.
      */
-    public function canSeat(Table $table, EventSlot $slot, int $partySize, bool $softCapacity = false): bool
+    public function canSeat(Table $table, EventSlot $slot, int $partySize, bool $softCapacity = false, ?int $maxGroupEmptyTable = null): bool
     {
         $booked    = $this->bookedSeatsForTable($table, $slot);
         $remaining = max(0, $table->capacity - $booked);
@@ -69,7 +70,9 @@ class SeatAvailabilityService
             return true;
         }
 
-        return $softCapacity && $booked === 0;
+        return $softCapacity
+            && $booked === 0
+            && ($maxGroupEmptyTable === null || $partySize <= $maxGroupEmptyTable);
     }
 
     /** free | partial | full – für die Färbung im Tischplan. */

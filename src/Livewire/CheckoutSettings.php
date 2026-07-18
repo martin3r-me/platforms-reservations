@@ -19,6 +19,7 @@ class CheckoutSettings extends Component
     public string $privacyUrl = '';
     public string $defaultRoomReleaseMode = 'parallel';
     public bool $softTableCapacity = false;
+    public ?int $maxGroupEmptyTable = null;
 
     // #520/#521: Anmeldefelder (required|optional|hidden)
     public string $fieldEmail = 'required';
@@ -47,6 +48,7 @@ class CheckoutSettings extends Component
         $this->privacyUrl             = (string) ($setting->privacy_url ?? '');
         $this->defaultRoomReleaseMode = $setting->defaultRoomReleaseMode();
         $this->softTableCapacity      = $setting->softTableCapacity();
+        $this->maxGroupEmptyTable     = $setting->maxGroupEmptyTable();
         $this->fieldEmail             = $setting->fieldMode('email');
         $this->fieldPhone             = $setting->fieldMode('phone');
         $this->fieldNotes             = $setting->fieldMode('notes');
@@ -68,6 +70,7 @@ class CheckoutSettings extends Component
             'privacyUrl'             => 'nullable|url|max:255',
             'defaultRoomReleaseMode' => 'required|in:parallel,sequential',
             'softTableCapacity'      => 'boolean',
+            'maxGroupEmptyTable'     => 'nullable|integer|min:1|max:200',
             'fieldEmail'             => 'required|in:required,optional,hidden',
             'fieldPhone'             => 'required|in:required,optional,hidden',
             'fieldNotes'             => 'required|in:required,optional,hidden',
@@ -85,6 +88,7 @@ class CheckoutSettings extends Component
             'privacy_url'               => trim($this->privacyUrl) ?: null,
             'default_room_release_mode' => $this->defaultRoomReleaseMode,
             'soft_table_capacity'       => $this->softTableCapacity,
+            'max_group_empty_table'     => $this->softTableCapacity ? $this->maxGroupEmptyTable : null,
             'field_email'               => $this->fieldEmail,
             'field_phone'               => $this->fieldPhone,
             'field_notes'               => $this->fieldNotes,

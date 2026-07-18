@@ -45,10 +45,12 @@ class CheckoutSetting extends Model
         'field_phone',
         'field_notes',
         'soft_table_capacity',
+        'max_group_empty_table',
     ];
 
     protected $casts = [
-        'soft_table_capacity' => 'boolean',
+        'soft_table_capacity'   => 'boolean',
+        'max_group_empty_table' => 'integer',
     ];
 
     public function team(): BelongsTo
@@ -140,6 +142,12 @@ class CheckoutSetting extends Model
     public function softTableCapacity(): bool
     {
         return (bool) $this->soft_table_capacity;
+    }
+
+    /** Max. Gruppengröße auf einem leeren Tisch (null = unbegrenzt). */
+    public function maxGroupEmptyTable(): ?int
+    {
+        return $this->max_group_empty_table !== null ? (int) $this->max_group_empty_table : null;
     }
 
     /** Standard-Raumfreigabe für neue Termine (parallel|sequential). */

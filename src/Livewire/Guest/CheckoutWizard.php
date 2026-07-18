@@ -215,9 +215,10 @@ class CheckoutWizard extends Component
         $event           = $this->event;
         $selectedTableId = $this->slotTables[$this->currentSlotId] ?? null;
         $soft            = $this->checkoutSettings->softTableCapacity();
+        $maxGroup        = $this->checkoutSettings->maxGroupEmptyTable();
 
         return $room->floorPlan->tables()->where('is_active', true)->get()
-            ->map(function (Table $table) use ($bookedByTable, $seats, $event, $selectedTableId, $soft) {
+            ->map(function (Table $table) use ($bookedByTable, $seats, $event, $selectedTableId, $soft, $maxGroup) {
                 $booked    = $bookedByTable->get($table->id, 0);
                 $remaining = max(0, $table->capacity - $booked);
 
@@ -226,8 +227,9 @@ class CheckoutWizard extends Component
                     return ['table' => $table, 'state' => 'full', 'remaining' => 0, 'bookable' => false];
                 }
 
-                // Gruppe passt in freie Plätze – oder (weiche Kapazität) leerer Tisch für Großgruppe.
-                $fits = $this->guestCount <= $remaining || ($soft && $booked === 0);
+                // Gruppe passt in freie Plätze – oder (weiche Kapazität) leerer Tisch für Großgruppe (bis Limit).
+                $fits = $this->guestCount <= $remaining
+                    || ($soft && $booked === 0 && ($maxGroup === null || $this->guestCount <= $maxGroup));
 
                 $state = $selectedTableId === $table->id
                     ? 'selected'
@@ -502,8 +504,9 @@ class CheckoutWizard extends Component
         }
 
         // Je Pause: Tisch gesetzt und genügend Restplätze (M1 ohne Locking).
-        $seats = app(SeatAvailabilityService::class);
-        $soft  = $this->checkoutSettings->softTableCapacity();
+        $seats    = app(SeatAvailabilityService::class);
+        $soft     = $this->checkoutSettings->softTableCapacity();
+        $maxGroup = $this->checkoutSettings->maxGroupEmptyTable();
         foreach ($slotCarts->keys() as $slotId) {
             $tableId = $this->slotTables[$slotId] ?? null;
             $slot    = $event->slots->firstWhere('id', $slotId);
@@ -516,7 +519,7 @@ class CheckoutWizard extends Component
             }
 
             $table = Table::find($tableId);
-            if (!$table || ! $seats->canSeat($table, $slot, $this->guestCount, $soft)) {
+            if (!$table || ! $seats->canSeat($table, $slot, $this->guestCount, $soft, $maxGroup)) {
                 unset($this->slotTables[$slotId]);
                 $this->currentSlotId = $slotId;
                 $this->step = 3;
