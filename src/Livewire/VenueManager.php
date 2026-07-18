@@ -4,12 +4,16 @@ namespace Platform\Reservation\Livewire;
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\Venue;
 use Illuminate\Support\Facades\Auth;
 
 class VenueManager extends Component
 {
+    // Aus Auth im mount abgeleitet – darf clientseitig nicht überschrieben
+    // werden, sonst würde eine Venue unter fremdem Team angelegt.
+    #[Locked]
     public int $teamId;
 
     // Venue-Formular

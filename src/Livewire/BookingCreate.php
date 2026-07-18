@@ -4,6 +4,7 @@ namespace Platform\Reservation\Livewire;
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\FloorPlan;
@@ -14,7 +15,11 @@ use Illuminate\Validation\Rule;
 
 class BookingCreate extends Component
 {
+    // Aus Auth im mount abgeleitet – darf clientseitig nicht überschrieben
+    // werden, sonst würde eine Buchung unter fremdem Team angelegt.
+    #[Locked]
     public int $teamId;
+
     public ?int $tableId = null;
 
     // Schritt-Wizard: 1 = Datum/Zeit, 2 = Gastdaten, 3 = Menü, 4 = Bestätigung

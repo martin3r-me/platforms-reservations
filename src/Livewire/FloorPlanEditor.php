@@ -4,6 +4,7 @@ namespace Platform\Reservation\Livewire;
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\WithFileUploads;
 use Platform\Reservation\Models\Venue;
 use Platform\Reservation\Models\FloorPlan;
@@ -14,8 +15,15 @@ class FloorPlanEditor extends Component
 {
     use WithFileUploads;
 
+    // Aus den Route-Parametern; dürfen clientseitig nicht manipulierbar sein,
+    // sonst könnte über saveFloorPlan/saveTable unter fremder venue_id angelegt
+    // werden (der globale Team-Scope greift bei create nicht).
+    #[Locked]
     public int $venueId;
+
+    #[Locked]
     public ?int $floorPlanId = null;
+
     public string $floorPlanName = '';
 
     // Grundriss-Upload
@@ -38,6 +46,10 @@ class FloorPlanEditor extends Component
 
     public function mount(int $venueId, ?int $floorPlanId = null): void
     {
+        // Ownership-Guard: fremde Venue (anderes Team) -> 404 statt Editor.
+        // Venue ist global team-gescoped, findOrFail wirft bei fremder ID.
+        Venue::findOrFail($venueId);
+
         $this->venueId = $venueId;
         $this->floorPlanId = $floorPlanId;
 
