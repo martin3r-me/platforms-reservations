@@ -144,6 +144,10 @@ class ReservationServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Reservation\Tools\TableCreateTool());
             $registry->register(new \Platform\Reservation\Tools\TableUpdateTool());
             $registry->register(new \Platform\Reservation\Tools\TableDeleteTool());
+
+            // Checkout-/Buchungs-Einstellungen
+            $registry->register(new \Platform\Reservation\Tools\CheckoutSettingsGetTool());
+            $registry->register(new \Platform\Reservation\Tools\CheckoutSettingsUpdateTool());
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning(
                 'Reservation: Tool-Registrierung fehlgeschlagen',
