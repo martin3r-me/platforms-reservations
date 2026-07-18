@@ -15,3 +15,7 @@ Route::get('/events', [EventController::class, 'index'])
 // Artikel eines Termins (aus dessen Verkaufsliste; slot-unabhaengig).
 Route::get('/events/{event}/products', [EventController::class, 'products'])
     ->name('reservation.api.events.products');
+
+// Tischplan(e) + Verfuegbarkeit je Pause (optional ?room=&slot=).
+Route::get('/events/{event}/floor-plan', [EventController::class, 'floorPlan'])
+    ->name('reservation.api.events.floor-plan');

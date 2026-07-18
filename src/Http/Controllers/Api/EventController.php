@@ -10,6 +10,7 @@ use Platform\Reservation\Enums\EventStatus;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\SalesList;
+use Platform\Reservation\Services\SeatAvailabilityService;
 
 /**
  * Token-gesicherte Read-API für Termine (Veranstaltungen).
@@ -91,6 +92,112 @@ class EventController extends ApiController
             'products_count' => $products->count(),
             'products'      => $products->values()->all(),
         ], 'Artikel erfolgreich geladen');
+    }
+
+    /**
+     * GET /events/{event}/floor-plan – Tischplan(e) und Verfügbarkeit je Pause.
+     *
+     * Liefert die buchbaren Räume des Termins mit Tischplan und Tischen sowie die
+     * freien Plätze JE PAUSE (Slot) und Tisch. Optional filterbar per room
+     * (event_room_id oder floor_plan_id) und slot (Slot-ID).
+     * {event} = UUID oder numerische ID.
+     */
+    public function floorPlan(Request $request, string $event)
+    {
+        $model = $this->resolveEvent($event);
+
+        if (! $model) {
+            return $this->notFound('Termin nicht gefunden.');
+        }
+
+        $model->loadMissing([
+            'slots',
+            'eventRooms.floorPlan'        => fn ($q) => $q->withoutGlobalScope('team'),
+            'eventRooms.floorPlan.tables' => fn ($q) => $q->withoutGlobalScope('team')->where('is_active', true),
+        ]);
+
+        $roomFilter = $request->filled('room') ? (int) $request->room : null;
+        $slotFilter = $request->filled('slot') ? (int) $request->slot : null;
+
+        $slots = $model->slots
+            ->when($slotFilter, fn ($c) => $c->where('id', $slotFilter))
+            ->sortBy('sort_order')
+            ->values();
+
+        $seats = app(SeatAvailabilityService::class);
+
+        $rooms = $model->eventRooms
+            ->when($roomFilter, fn ($c) => $c->filter(
+                fn ($room) => $room->id === $roomFilter || $room->floor_plan_id === $roomFilter
+            ))
+            ->map(fn ($room) => $this->formatRoomAvailability($room, $model, $slots, $seats))
+            ->filter()
+            ->values();
+
+        return $this->success([
+            'event' => [
+                'id'   => $model->id,
+                'uuid' => $model->uuid,
+                'name' => $model->name,
+                'date' => $model->date?->format('Y-m-d'),
+            ],
+            'slots' => $slots->map(fn ($s) => [
+                'id'         => $s->id,
+                'name'       => $s->name,
+                'time_start' => $s->time_start,
+                'time_end'   => $s->time_end,
+            ])->values()->all(),
+            'rooms' => $rooms->all(),
+        ], 'Tischplan/Verfügbarkeit geladen');
+    }
+
+    /**
+     * Ein Raum mit Tischplan, Tischen und Verfügbarkeit je Pause.
+     */
+    protected function formatRoomAvailability($room, Event $event, $slots, SeatAvailabilityService $seats): ?array
+    {
+        $floorPlan = $room->floorPlan;
+
+        if (! $floorPlan) {
+            return null;
+        }
+
+        $tables = $floorPlan->tables;
+
+        // Restplätze je Pause und Tisch.
+        $availability = [];
+        foreach ($slots as $slot) {
+            $bookedByTable = $seats->bookedSeatsByTable($floorPlan, $slot);
+            foreach ($tables as $table) {
+                $availability[$slot->id][$table->id] = $event->isTableDisabled($table->id)
+                    ? 0
+                    : max(0, (int) $table->capacity - (int) $bookedByTable->get($table->id, 0));
+            }
+        }
+
+        return [
+            'event_room_id' => $room->id,
+            'floor_plan_id' => $room->floor_plan_id,
+            'name'          => $floorPlan->name,
+            'capacity'      => $room->capacity_override ?? (int) $tables->sum('capacity'),
+            'floor_plan'    => [
+                'background_url'      => $floorPlan->backgroundUrl(),
+                'background_rotation' => $floorPlan->background_rotation,
+                'aspect'             => $floorPlan->displayAspect(),
+            ],
+            'tables' => $tables->map(fn ($t) => [
+                'id'          => $t->id,
+                'label'       => $t->label,
+                'capacity'    => (int) $t->capacity,
+                'shape'       => $t->shape,
+                'x_pct'       => (float) $t->x_pct,
+                'y_pct'       => (float) $t->y_pct,
+                'w_pct'       => (float) $t->w_pct,
+                'h_pct'       => (float) $t->h_pct,
+                'is_disabled' => $event->isTableDisabled($t->id),
+            ])->values()->all(),
+            'availability' => $availability, // { slot_id: { table_id: remaining } }
+        ];
     }
 
     /**
