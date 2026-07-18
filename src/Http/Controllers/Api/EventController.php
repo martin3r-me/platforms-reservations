@@ -8,6 +8,8 @@ use Platform\Core\Http\Controllers\ApiController;
 use Platform\Core\Models\Team;
 use Platform\Reservation\Enums\EventStatus;
 use Platform\Reservation\Models\Event;
+use Platform\Reservation\Models\MenuItem;
+use Platform\Reservation\Models\SalesList;
 
 /**
  * Token-gesicherte Read-API für Termine (Veranstaltungen).
@@ -58,6 +60,106 @@ class EventController extends ApiController
             $events->setCollection($formatted),
             'Termine erfolgreich geladen'
         );
+    }
+
+    /**
+     * GET /events/{event}/products – buchbare Artikel eines Termins.
+     *
+     * Die Artikel ergeben sich aus der Verkaufsliste des Termins (bzw. dem
+     * Team-Default) und sind für alle Pausen des Termins identisch – daher ist
+     * keine Slot-ID nötig. {event} kann UUID oder numerische ID sein.
+     */
+    public function products(Request $request, string $event)
+    {
+        $model = $this->resolveEvent($event);
+
+        if (! $model) {
+            return $this->notFound('Termin nicht gefunden.');
+        }
+
+        $salesList = $this->resolveSalesList($model);
+        $products  = $this->visibleItems($salesList)->map(fn (MenuItem $item) => $this->formatProduct($item));
+
+        return $this->success([
+            'event' => [
+                'id'   => $model->id,
+                'uuid' => $model->uuid,
+                'name' => $model->name,
+                'date' => $model->date?->format('Y-m-d'),
+            ],
+            'sales_list'    => $salesList?->name,
+            'products_count' => $products->count(),
+            'products'      => $products->values()->all(),
+        ], 'Artikel erfolgreich geladen');
+    }
+
+    /**
+     * Termin scope-sicher per UUID oder numerischer ID auflösen.
+     */
+    protected function resolveEvent(string $key): ?Event
+    {
+        $query = Event::withoutGlobalScope('team');
+
+        return ctype_digit($key)
+            ? $query->find((int) $key)
+            : $query->where('uuid', $key)->first();
+    }
+
+    /**
+     * Verkaufsliste des Termins (explizit oder Team-Default), scope-sicher.
+     */
+    protected function resolveSalesList(Event $event): ?SalesList
+    {
+        return $event->sales_list_id
+            ? SalesList::withoutGlobalScope('team')->find($event->sales_list_id)
+            : SalesList::withoutGlobalScope('team')
+                ->where('team_id', $event->team_id)
+                ->where('is_default', true)
+                ->first();
+    }
+
+    /**
+     * Gast-sichtbare Artikel (freigegeben + verfügbar) der Verkaufsliste.
+     */
+    protected function visibleItems(?SalesList $salesList)
+    {
+        if (! $salesList) {
+            return collect();
+        }
+
+        return $salesList->menuItems()
+            ->withoutGlobalScope('team')
+            ->where('approval_status', MenuItem::APPROVAL_APPROVED)
+            ->where('available', true)
+            ->with(['allergens', 'additives', 'category', 'holdingClass', 'imageFile.variants'])
+            ->orderBy('sort_order')
+            ->get();
+    }
+
+    /**
+     * Denormalisiertes Format eines Artikels.
+     */
+    protected function formatProduct(MenuItem $item): array
+    {
+        return [
+            'id'               => $item->id,
+            'name'             => $item->name,
+            'description'      => $item->description,
+            'portion_size'     => $item->portion_size,
+            'price'            => (float) $item->price,
+            'tax_rate'         => (float) $item->tax_rate,
+            'category'         => $item->category?->name,
+            'category_id'      => $item->category_id,
+            'holding_class'    => $item->holdingClass?->name,
+            'holding_class_id' => $item->holding_class_id,
+            'is_vegetarian'    => $item->is_vegetarian,
+            'is_vegan'         => $item->is_vegan,
+            'is_alcoholic'     => $item->is_alcoholic,
+            'allergens'        => $item->allergens->pluck('code')->values(),
+            'additives'        => $item->additives->pluck('code')->values(),
+            'image_url'        => $item->image_context_file_id ? $item->imageUrl('medium_1_1') : null,
+            'sort_order'       => $item->sort_order,
+        ];
     }
 
     /**

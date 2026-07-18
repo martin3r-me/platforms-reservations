@@ -11,3 +11,7 @@ use Platform\Reservation\Http\Controllers\Api\EventController;
  */
 Route::get('/events', [EventController::class, 'index'])
     ->name('reservation.api.events.index');
+
+// Artikel eines Termins (aus dessen Verkaufsliste; slot-unabhaengig).
+Route::get('/events/{event}/products', [EventController::class, 'products'])
+    ->name('reservation.api.events.products');
