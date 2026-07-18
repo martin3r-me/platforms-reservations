@@ -109,9 +109,15 @@
             </div>
             <div class="divide-y divide-[var(--ui-border)]/30">
                 @forelse ($this->taxBreakdown as $tax)
-                    <div class="flex items-center justify-between px-4 py-2.5 text-sm">
-                        <span class="text-[var(--ui-muted)]">{{ rtrim(rtrim($tax->tax_rate, '0'), '.') }} % MwSt.</span>
-                        <span class="whitespace-nowrap font-semibold tabular-nums text-[var(--ui-secondary)]">{{ number_format($tax->revenue, 2, ',', '.') }} €</span>
+                    <div class="px-4 py-2.5 text-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[var(--ui-muted)]">{{ rtrim(rtrim($tax->tax_rate, '0'), '.') }} % MwSt.</span>
+                            <span class="whitespace-nowrap font-semibold tabular-nums text-[var(--ui-secondary)]">{{ number_format($tax->gross, 2, ',', '.') }} €</span>
+                        </div>
+                        <div class="mt-0.5 flex items-center justify-between text-[11px] text-[var(--ui-muted)] tabular-nums">
+                            <span>Netto {{ number_format($tax->net, 2, ',', '.') }} €</span>
+                            <span>MwSt {{ number_format($tax->vat, 2, ',', '.') }} €</span>
+                        </div>
                     </div>
                 @empty
                     <div class="px-4 py-6 text-center text-xs text-[var(--ui-muted)]">Keine Daten</div>

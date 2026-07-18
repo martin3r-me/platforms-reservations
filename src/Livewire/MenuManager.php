@@ -230,6 +230,11 @@ class MenuManager extends Component
             'itemName'        => 'required|string|max:255',
             'itemPortionSize' => 'nullable|string|max:50',
             'itemPrice'       => 'required|numeric|min:0',
+            'itemTaxRate'     => ['required', function ($attribute, $value, $fail) {
+                if (!in_array((float) $value, MenuItem::TAX_RATES, true)) {
+                    $fail('Ungültiger MwSt-Satz. Erlaubt sind 7 % oder 19 %.');
+                }
+            }],
             'itemImage'       => 'nullable|image|max:20480',
         ]);
 

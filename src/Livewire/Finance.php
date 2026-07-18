@@ -9,6 +9,7 @@ use Livewire\Component;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\Event;
+use Platform\Reservation\Support\Vat;
 
 /**
  * Finanzen: Umsatz nach Monaten und Terminen mit frei wählbarem Zeitraum.
@@ -157,7 +158,12 @@ class Finance extends Component
                 SUM(reservation_booking_items.quantity * reservation_booking_items.unit_price) as revenue')
             ->orderByDesc('revenue')
             ->get()
-            ->map(fn ($r) => (object) ['tax_rate' => $r->tax_rate, 'revenue' => (float) $r->revenue]);
+            ->map(function ($r) {
+                // unit_price ist brutto → Netto-/Steueranteil je Satz extrahieren.
+                $split = Vat::fromGross((float) $r->revenue, (float) $r->tax_rate);
+
+                return (object) (['tax_rate' => $r->tax_rate] + $split);
+            });
     }
 
     #[Computed]

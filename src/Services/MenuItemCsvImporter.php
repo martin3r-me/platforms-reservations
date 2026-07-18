@@ -172,6 +172,10 @@ class MenuItemCsvImporter
             $taxRate = '7.00';
         } elseif (is_numeric($taxRaw)) {
             $taxRate = number_format((float) $taxRaw, 2, '.', '');
+            if (!in_array((float) $taxRate, MenuItem::TAX_RATES, true)) {
+                $warn("MwSt-Satz {$taxRate} % nicht zulässig (nur 7 % oder 19 %) – 7 % übernommen.");
+                $taxRate = '7.00';
+            }
         } else {
             $warn("MwSt „{$data['mwst']}“ nicht lesbar – 7 % übernommen.");
             $taxRate = '7.00';

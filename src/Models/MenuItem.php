@@ -19,6 +19,11 @@ class MenuItem extends Model
     public const APPROVAL_REVIEW   = 'review';
     public const APPROVAL_APPROVED = 'approved';
 
+    /** Erlaubte MwSt-Sätze (DE-Gastronomie): 7 % ermäßigt, 19 % regulär. */
+    public const TAX_RATES = [7.0, 19.0];
+
+    // Hinweis: price ist ein BRUTTOPREIS (inkl. MwSt); siehe Support\Vat.
+
     protected $table = 'reservation_menu_items';
 
     protected $fillable = [
