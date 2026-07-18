@@ -36,15 +36,40 @@ class SeatAvailabilityService
             ->map(fn ($seats) => (int) $seats);
     }
 
-    public function remainingSeats(Table $table, EventSlot $slot): int
+    /** Bereits belegte Plätze eines Tisches in diesem Slot. */
+    public function bookedSeatsForTable(Table $table, EventSlot $slot): int
     {
-        $booked = (int) Booking::withoutGlobalScope('team')
+        return (int) Booking::withoutGlobalScope('team')
             ->where('event_slot_id', $slot->id)
             ->where('table_id', $table->id)
             ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
             ->sum('guest_count');
+    }
 
-        return max(0, $table->capacity - $booked);
+    public function remainingSeats(Table $table, EventSlot $slot): int
+    {
+        return max(0, $table->capacity - $this->bookedSeatsForTable($table, $slot));
+    }
+
+    /**
+     * Passt eine Gruppe an diesen Tisch (in diesem Slot)?
+     *
+     * Normal: die Gruppe muss in die freien Plätze passen (Tische teilbar).
+     * Weiche Kapazität ($softCapacity): zusätzlich darf eine Gruppe einen
+     * KOMPLETT LEEREN Tisch über die Platzzahl hinaus belegen (Großgruppe →
+     * leerer Tisch). Ein bereits (teil-)belegter Tisch bleibt für zu große
+     * Gruppen gesperrt.
+     */
+    public function canSeat(Table $table, EventSlot $slot, int $partySize, bool $softCapacity = false): bool
+    {
+        $booked    = $this->bookedSeatsForTable($table, $slot);
+        $remaining = max(0, $table->capacity - $booked);
+
+        if ($partySize <= $remaining) {
+            return true;
+        }
+
+        return $softCapacity && $booked === 0;
     }
 
     /** free | partial | full – für die Färbung im Tischplan. */

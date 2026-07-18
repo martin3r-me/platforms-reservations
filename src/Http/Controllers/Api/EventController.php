@@ -185,6 +185,9 @@ class EventController extends ApiController
                 'name' => $model->name,
                 'date' => $model->date?->format('Y-m-d'),
             ],
+            // Weiche Kapazität: Großgruppe darf einen leeren Tisch (remaining == capacity)
+            // über die Platzzahl hinaus belegen; sonst muss die Gruppe in remaining passen.
+            'soft_table_capacity' => CheckoutSetting::forTeam((int) $model->team_id)->softTableCapacity(),
             'slots' => $slots->map(fn ($s) => [
                 'id'         => $s->id,
                 'name'       => $s->name,

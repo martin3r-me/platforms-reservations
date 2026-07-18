@@ -18,6 +18,7 @@ class CheckoutSettings extends Component
     public string $legalText = '';
     public string $privacyUrl = '';
     public string $defaultRoomReleaseMode = 'parallel';
+    public bool $softTableCapacity = false;
 
     // #520/#521: Anmeldefelder (required|optional|hidden)
     public string $fieldEmail = 'required';
@@ -45,6 +46,7 @@ class CheckoutSettings extends Component
         $this->legalText              = (string) ($setting->legal_text ?? '');
         $this->privacyUrl             = (string) ($setting->privacy_url ?? '');
         $this->defaultRoomReleaseMode = $setting->defaultRoomReleaseMode();
+        $this->softTableCapacity      = $setting->softTableCapacity();
         $this->fieldEmail             = $setting->fieldMode('email');
         $this->fieldPhone             = $setting->fieldMode('phone');
         $this->fieldNotes             = $setting->fieldMode('notes');
@@ -65,6 +67,7 @@ class CheckoutSettings extends Component
             'legalText'              => 'nullable|string|max:1000',
             'privacyUrl'             => 'nullable|url|max:255',
             'defaultRoomReleaseMode' => 'required|in:parallel,sequential',
+            'softTableCapacity'      => 'boolean',
             'fieldEmail'             => 'required|in:required,optional,hidden',
             'fieldPhone'             => 'required|in:required,optional,hidden',
             'fieldNotes'             => 'required|in:required,optional,hidden',
@@ -81,6 +84,7 @@ class CheckoutSettings extends Component
             'legal_text'                => trim($this->legalText) ?: null,
             'privacy_url'               => trim($this->privacyUrl) ?: null,
             'default_room_release_mode' => $this->defaultRoomReleaseMode,
+            'soft_table_capacity'       => $this->softTableCapacity,
             'field_email'               => $this->fieldEmail,
             'field_phone'               => $this->fieldPhone,
             'field_notes'               => $this->fieldNotes,

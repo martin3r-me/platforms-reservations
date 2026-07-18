@@ -45,6 +45,9 @@ class GuestOrderService
 
         $allowedFloorPlanIds = $event->eventRooms->pluck('floor_plan_id')->all();
 
+        // Weiche Tisch-Kapazität (Großgruppen auf leere Tische) je Team-Setting.
+        $softCapacity = \Platform\Reservation\Models\CheckoutSetting::forTeam((int) $event->team_id)->softTableCapacity();
+
         // Vorbereiten & validieren je Pause (ohne zu schreiben).
         $prepared = [];  // [ ['slot'=>EventSlot, 'table'=>Table, 'lines'=>Collection], ... ]
         $allLines = collect();
@@ -65,7 +68,7 @@ class GuestOrderService
                 throw new GuestOrderException('Der gewählte Tisch gehört nicht zu diesem Termin.', 'TABLE_NOT_IN_EVENT');
             }
 
-            if ($this->seats->remainingSeats($table, $slot) < (int) $guest['count']) {
+            if (! $this->seats->canSeat($table, $slot, (int) $guest['count'], $softCapacity)) {
                 throw new GuestOrderException('Ein gewählter Tisch hat nicht genügend freie Plätze.', 'TABLE_FULL');
             }
 

@@ -214,26 +214,28 @@ class CheckoutWizard extends Component
         $bookedByTable   = $seats->bookedSeatsByTable($room->floorPlan, $slot);
         $event           = $this->event;
         $selectedTableId = $this->slotTables[$this->currentSlotId] ?? null;
+        $soft            = $this->checkoutSettings->softTableCapacity();
 
         return $room->floorPlan->tables()->where('is_active', true)->get()
-            ->map(function (Table $table) use ($bookedByTable, $seats, $event, $selectedTableId) {
+            ->map(function (Table $table) use ($bookedByTable, $seats, $event, $selectedTableId, $soft) {
                 $booked    = $bookedByTable->get($table->id, 0);
                 $remaining = max(0, $table->capacity - $booked);
 
                 // Pro Termin gesperrte Tische sind nicht buchbar
                 if ($event->isTableDisabled($table->id)) {
-                    return ['table' => $table, 'state' => 'full', 'remaining' => 0];
+                    return ['table' => $table, 'state' => 'full', 'remaining' => 0, 'bookable' => false];
                 }
+
+                // Gruppe passt in freie Plätze – oder (weiche Kapazität) leerer Tisch für Großgruppe.
+                $fits = $this->guestCount <= $remaining || ($soft && $booked === 0);
 
                 $state = $selectedTableId === $table->id
                     ? 'selected'
-                    : ($remaining === 0
-                        ? 'full'
-                        : ($remaining < $this->guestCount
-                            ? 'full' // zu klein für die Gruppe → nicht wählbar
-                            : $seats->tableStatus($table, $booked)));
+                    : (! $fits
+                        ? 'full' // nicht wählbar für diese Gruppe
+                        : $seats->tableStatus($table, $booked));
 
-                return ['table' => $table, 'state' => $state, 'remaining' => $remaining];
+                return ['table' => $table, 'state' => $state, 'remaining' => $remaining, 'bookable' => $fits];
             })
             ->all();
     }
@@ -424,7 +426,7 @@ class CheckoutWizard extends Component
     {
         $state = collect($this->tableStates)->first(fn ($s) => $s['table']->id === $tableId);
 
-        if (!$state || $state['remaining'] < $this->guestCount) {
+        if (!$state || empty($state['bookable'])) {
             $this->addError('slotTables', 'Dieser Tisch hat nicht genug freie Plätze für Ihre Gruppe.');
             return;
         }
@@ -501,6 +503,7 @@ class CheckoutWizard extends Component
 
         // Je Pause: Tisch gesetzt und genügend Restplätze (M1 ohne Locking).
         $seats = app(SeatAvailabilityService::class);
+        $soft  = $this->checkoutSettings->softTableCapacity();
         foreach ($slotCarts->keys() as $slotId) {
             $tableId = $this->slotTables[$slotId] ?? null;
             $slot    = $event->slots->firstWhere('id', $slotId);
@@ -513,7 +516,7 @@ class CheckoutWizard extends Component
             }
 
             $table = Table::find($tableId);
-            if (!$table || $seats->remainingSeats($table, $slot) < $this->guestCount) {
+            if (!$table || ! $seats->canSeat($table, $slot, $this->guestCount, $soft)) {
                 unset($this->slotTables[$slotId]);
                 $this->currentSlotId = $slotId;
                 $this->step = 3;

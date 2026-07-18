@@ -44,6 +44,11 @@ class CheckoutSetting extends Model
         'field_email',
         'field_phone',
         'field_notes',
+        'soft_table_capacity',
+    ];
+
+    protected $casts = [
+        'soft_table_capacity' => 'boolean',
     ];
 
     public function team(): BelongsTo
@@ -129,6 +134,12 @@ class CheckoutSetting extends Model
     public function legalText(): string
     {
         return trim((string) $this->legal_text) ?: self::DEFAULT_LEGAL_TEXT;
+    }
+
+    /** Weiche Tisch-Kapazität: Großgruppen dürfen leere Tische überbelegen. */
+    public function softTableCapacity(): bool
+    {
+        return (bool) $this->soft_table_capacity;
     }
 
     /** Standard-Raumfreigabe für neue Termine (parallel|sequential). */
