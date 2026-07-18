@@ -4,6 +4,7 @@ namespace Platform\Reservation\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Platform\Reservation\Models\Concerns\BelongsToTeam;
 
 /**
  * Pro-Team-Zahlungseinstellungen (aktuell Mollie). API-Keys werden
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class PaymentSetting extends Model
 {
+    use BelongsToTeam;
+
     public const MODE_TEST = 'test';
     public const MODE_LIVE = 'live';
 

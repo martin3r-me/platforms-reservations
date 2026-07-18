@@ -4,9 +4,12 @@ namespace Platform\Reservation\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Platform\Reservation\Models\Concerns\BelongsToTeam;
 
 class DropoffSlot extends Model
 {
+    use BelongsToTeam;
+
     protected $table = 'reservation_dropoff_slots';
 
     protected $fillable = [

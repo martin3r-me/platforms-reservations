@@ -5,9 +5,12 @@ namespace Platform\Reservation\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Platform\Reservation\Models\Concerns\BelongsToTeam;
 
 class SalesList extends Model
 {
+    use BelongsToTeam;
+
     protected $table = 'reservation_sales_lists';
 
     protected $fillable = [

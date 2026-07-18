@@ -5,6 +5,7 @@ namespace Platform\Reservation\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Platform\Reservation\Models\Concerns\HasContextImage;
 use Symfony\Component\Uid\UuidV7;
 
@@ -16,6 +17,7 @@ use Symfony\Component\Uid\UuidV7;
  */
 class Event extends Model
 {
+    use BelongsToTeam;
     use HasContextImage;
 
     public const STATUS_DRAFT     = 'draft';

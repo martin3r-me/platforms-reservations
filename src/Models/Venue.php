@@ -5,10 +5,13 @@ namespace Platform\Reservation\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Symfony\Component\Uid\UuidV7;
 
 class Venue extends Model
 {
+    use BelongsToTeam;
+
     protected $table = 'reservation_venues';
 
     protected $fillable = [

@@ -4,6 +4,7 @@ namespace Platform\Reservation\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Platform\Reservation\Models\Concerns\BelongsToTeam;
 
 /**
  * Pro-Team konfigurierbare Checkout-Texte (18+-Hinweis, Rechtstext,
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class CheckoutSetting extends Model
 {
+    use BelongsToTeam;
+
     public const DEFAULT_AGE_TEXT = 'Ihre Bestellung enthält alkoholische Getränke. Ich bestätige, dass ich mindestens 18 Jahre alt bin. Das Servicepersonal kann vor Ort einen Altersnachweis verlangen.';
     public const DEFAULT_LEGAL_TEXT = 'Ich habe die Hinweise zu Allergenen und Zusatzstoffen zur Kenntnis genommen und bestelle zahlungspflichtig.';
 

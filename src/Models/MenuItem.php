@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Platform\Core\Models\User;
+use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Platform\Reservation\Models\Concerns\HasContextImage;
 
 class MenuItem extends Model
 {
+    use BelongsToTeam;
     use HasContextImage;
 
     public const APPROVAL_DRAFT    = 'draft';

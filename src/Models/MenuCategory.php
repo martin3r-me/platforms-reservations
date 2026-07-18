@@ -5,10 +5,12 @@ namespace Platform\Reservation\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Platform\Reservation\Models\Concerns\HasContextImage;
 
 class MenuCategory extends Model
 {
+    use BelongsToTeam;
     use HasContextImage;
 
     protected $table = 'reservation_menu_categories';
