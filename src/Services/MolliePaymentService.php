@@ -73,7 +73,8 @@ class MolliePaymentService
         );
 
         // Referenz auf die Buchungen spiegeln (Export/Anzeige nutzen es weiter).
-        $order->bookings()->update(['mollie_payment_id' => $molliePayment->id]);
+        // withoutGlobalScope, damit es auch im authentifizierten API-Kontext greift.
+        $order->bookings()->withoutGlobalScope('team')->update(['mollie_payment_id' => $molliePayment->id]);
 
         return $molliePayment->getCheckoutUrl();
     }

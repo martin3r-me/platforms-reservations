@@ -162,6 +162,11 @@ class ReservationServiceProvider extends ServiceProvider
                     \Platform\Core\Routing\ModuleRouter::apiGroup('reservation', function () {
                         $this->loadRoutesFrom(__DIR__ . '/../routes/api.php');
                     }, requireAuth: false);
+
+                    // Token-gesicherte Gast-API – /api/reservation/guest/*, Passport (api.auth)
+                    \Platform\Core\Routing\ModuleRouter::apiGroup('reservation', function () {
+                        $this->loadRoutesFrom(__DIR__ . '/../routes/guest-api.php');
+                    }, requireAuth: true);
                 }
             }
         } catch (\Throwable $e) {

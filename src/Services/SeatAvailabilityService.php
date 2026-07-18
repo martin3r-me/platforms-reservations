@@ -26,9 +26,9 @@ class SeatAvailabilityService
     /** Belegte Plätze je Tisch-ID für einen Slot (ein Query pro Plan). */
     public function bookedSeatsByTable(FloorPlan $floorPlan, EventSlot $slot): Collection
     {
-        return Booking::query()
+        return Booking::withoutGlobalScope('team')
             ->where('event_slot_id', $slot->id)
-            ->whereIn('table_id', $floorPlan->tables()->pluck('id'))
+            ->whereIn('table_id', $floorPlan->tables()->withoutGlobalScope('team')->pluck('id'))
             ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
             ->groupBy('table_id')
             ->selectRaw('table_id, SUM(guest_count) as seats')
@@ -38,7 +38,7 @@ class SeatAvailabilityService
 
     public function remainingSeats(Table $table, EventSlot $slot): int
     {
-        $booked = (int) Booking::query()
+        $booked = (int) Booking::withoutGlobalScope('team')
             ->where('event_slot_id', $slot->id)
             ->where('table_id', $table->id)
             ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])

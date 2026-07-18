@@ -79,6 +79,16 @@ return [
     'currency' => env('RESERVATION_CURRENCY', 'EUR'),
 
     /**
+     * Gast-API (/api/reservation/guest/*): token-gesichert (Passport/api.auth).
+     * Das Team kommt NICHT aus dem Token, sondern fest aus der Office-Config –
+     * eine Instanz bedient genau ein Team. Ohne gesetztes Team ist die API
+     * inaktiv (503).
+     */
+    'guest_api' => [
+        'team_id' => env('RESERVATION_GUEST_TEAM_ID'),
+    ],
+
+    /**
      * Gäste-Terminübersicht (Kopfbereich). Logo/Text/Farbe je Kunde anpassbar.
      */
     'guest' => [

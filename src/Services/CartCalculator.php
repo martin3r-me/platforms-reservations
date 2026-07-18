@@ -5,6 +5,7 @@ namespace Platform\Reservation\Services;
 use Illuminate\Support\Collection;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
+use Platform\Reservation\Models\SalesList;
 use Platform\Reservation\Support\Vat;
 
 /**
@@ -64,10 +65,32 @@ class CartCalculator
         return $lines->values();
     }
 
-    /** Gast-sichtbare Artikel der Event-Verkaufsliste, nach ID indiziert. */
+    /**
+     * Gast-sichtbare Artikel der Event-Verkaufsliste, nach ID indiziert.
+     *
+     * Bewusst scope-sicher (withoutGlobalScope + explizites Team des Events),
+     * damit die Kalkulation auch im authentifizierten API-Kontext (Gast-API,
+     * Service-Token-User) auf das richtige Team auflöst – nicht nur im
+     * auth-losen Livewire-Gastflow.
+     */
     protected function allowedItems(Event $event): Collection
     {
-        return ($event->resolveSalesList()?->guestVisibleItems() ?? collect())
+        $salesList = $event->sales_list_id
+            ? SalesList::withoutGlobalScope('team')->find($event->sales_list_id)
+            : SalesList::withoutGlobalScope('team')
+                ->where('team_id', $event->team_id)
+                ->where('is_default', true)
+                ->first();
+
+        if (!$salesList) {
+            return collect();
+        }
+
+        return $salesList->menuItems()
+            ->withoutGlobalScope('team')
+            ->where('approval_status', MenuItem::APPROVAL_APPROVED)
+            ->where('available', true)
+            ->get()
             ->keyBy('id');
     }
 
