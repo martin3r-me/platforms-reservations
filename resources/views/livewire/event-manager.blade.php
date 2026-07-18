@@ -112,6 +112,10 @@
                                     @svg('heroicon-o-fire', 'w-4 h-4')
                                     <span>Küche</span>
                                 </x-ui-button>
+                                <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.events.function-sheet', $event->id)" target="_blank">
+                                    @svg('heroicon-o-clipboard-document-list', 'w-4 h-4')
+                                    <span>Laufzettel</span>
+                                </x-ui-button>
                             @endif
                             @if ($event->status->value === 'published')
                                 @if (\Illuminate\Support\Facades\Route::has('reservation.guest.checkout'))
