@@ -27,6 +27,7 @@ Route::get('/events', EventManager::class)->name('reservation.events.index');
 // Küchen-Übersicht: Gesamtbestellungen eines Termins je Pause
 Route::get('/events/{eventId}/orders', EventOrders::class)->name('reservation.events.orders');
 Route::get('/events/{eventId}/function-sheet', \Platform\Reservation\Http\Controllers\FunctionSheetController::class)->name('reservation.events.function-sheet');
+Route::get('/events/{eventId}/briefing', \Platform\Reservation\Http\Controllers\EventBriefingController::class)->name('reservation.events.briefing');
 
 // Venues & Tischpläne verwalten
 Route::get('/venues', VenueManager::class)->name('reservation.venues.index');
