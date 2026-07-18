@@ -2,6 +2,7 @@
 
 namespace Platform\Reservation\Livewire\Guest;
 
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -21,11 +22,15 @@ use Platform\Reservation\Services\SeatAvailabilityService;
 /**
  * Öffentlicher Buchungs-Wizard für einen Termin (ohne Auth).
  *
- * Steps lt. Kundentermin: 1 Gastdaten → 2 Produktauswahl → 3 Sitzplatz
- * (Slot/Raum/Tisch) → 4 Checkout → 5 Bestätigung.
+ * Multi-Slot: der Gast bestellt je Pause eigene Produkte und wählt je Pause
+ * Raum/Tisch; alles läuft in EINER Order mit einer Zahlung zusammen. Eine Pause
+ * ohne Produkte wird nicht gebucht.
  *
- * M1: Mock-Checkout (Zahlartauswahl ohne echte Zahlung); Mollie folgt in M2.
- * Team-Kontext kommt ausschließlich aus dem Event (kein Auth-Kontext!).
+ * Steps: 1 Gastdaten → 2 Produkte je Pause → 3 Sitzplatz je Pause → 4 Checkout
+ * → 5 Bestätigung. Team-Kontext kommt ausschließlich aus dem Event.
+ *
+ * In-App-Klickdummy (auch für Tests gegen den Mollie-Test-Key); die
+ * produktive Gast-UX zieht später ins eigene Frontend über die Gast-API.
  */
 class CheckoutWizard extends Component
 {
@@ -34,23 +39,27 @@ class CheckoutWizard extends Component
 
     public int $step = 1;
 
-    // Step 1: Gastdaten
+    // Step 1: Gastdaten (gelten für die ganze Bestellung)
     public string $guestName = '';
     public string $guestEmail = '';
     public string $guestPhone = '';
     public int $guestCount = 2;
     public string $notes = '';
 
-    // Step 2: Produktauswahl
-    /** @var array<int, int> menu_item_id => Menge */
-    public array $selectedItems = [];
+    // Step 2: Produkte je Pause – slotId => (menu_item_id => Menge)
+    /** @var array<int, array<int, int>> */
+    public array $carts = [];
     public bool $filterVegetarian = false;
     public bool $filterVegan = false;
 
-    // Step 3: Sitzplatz
-    public ?int $selectedSlotId = null;
-    public ?int $selectedRoomId = null;   // EventRoom-ID
-    public ?int $selectedTableId = null;
+    // Welche Pause wird gerade bearbeitet (Step 2/3)?
+    public ?int $currentSlotId = null;
+
+    // Step 3: Sitzplatz je Pause
+    /** @var array<int, int> slotId => EventRoom-ID */
+    public array $slotRooms = [];
+    /** @var array<int, int> slotId => Table-ID */
+    public array $slotTables = [];
 
     // Step 4: Checkout (Zahlungsart wählt der Gast bei Mollie)
     public bool $ageConfirmed = false;
@@ -63,12 +72,7 @@ class CheckoutWizard extends Component
     public function mount(string $uuid): void
     {
         $this->uuid = $uuid;
-
-        $event = $this->event;
-
-        if ($event->slots->count() === 1) {
-            $this->selectedSlotId = $event->slots->first()->id;
-        }
+        $this->currentSlotId = $this->event->slots->first()?->id;
     }
 
     #[Computed]
@@ -82,7 +86,7 @@ class CheckoutWizard extends Component
 
     /** Artikel der Event-Verkaufsliste (Gast-sichtbar), optional gefiltert. */
     #[Computed]
-    public function menuItems(): \Illuminate\Support\Collection
+    public function menuItems(): Collection
     {
         $salesList = $this->event->resolveSalesList();
 
@@ -108,95 +112,104 @@ class CheckoutWizard extends Component
         ];
     }
 
-    /**
-     * Preise (id => €) aller gast-sichtbaren Artikel der freigegebenen Liste –
-     * für die sofortige Client-Anzeige (Alpine). Der verbindliche Preis wird
-     * beim confirm() serverseitig autoritativ neu berechnet.
-     */
-    #[Computed]
-    public function itemPrices(): array
-    {
-        $items = $this->event->resolveSalesList()?->guestVisibleItems() ?? collect();
-
-        return $items->mapWithKeys(fn (MenuItem $item) => [$item->id => (float) $item->price])->all();
-    }
-
     /** Autoritative Warenkorb-Kalkulation (auch von der künftigen Gast-API genutzt). */
     protected function calc(): CartCalculator
     {
         return app(CartCalculator::class);
     }
 
+    /**
+     * Gültige Positionen JE Pause (nur Slots mit Produkten), keyed by slotId.
+     * @return Collection<int, Collection<int, array{item: MenuItem, quantity: int, total: float}>>
+     */
     #[Computed]
-    public function cartItems(): \Illuminate\Support\Collection
+    public function slotCarts(): Collection
     {
-        return $this->calc()->lines($this->selectedItems, $this->event);
+        return collect($this->event->slots)
+            ->mapWithKeys(fn (EventSlot $slot) => [
+                $slot->id => $this->calc()->lines($this->carts[$slot->id] ?? [], $this->event),
+            ])
+            ->filter(fn (Collection $lines) => $lines->isNotEmpty());
+    }
+
+    /** Positionen der aktuell bearbeiteten Pause (für die Produkt-Ansicht). */
+    #[Computed]
+    public function cartItems(): Collection
+    {
+        return $this->calc()->lines($this->carts[$this->currentSlotId] ?? [], $this->event);
+    }
+
+    /** Alle Positionen aller bestellten Pausen zusammengeführt. */
+    protected function allLines(): Collection
+    {
+        return $this->slotCarts->flatten(1);
     }
 
     #[Computed]
     public function orderTotal(): float
     {
-        return $this->calc()->total($this->cartItems);
+        return $this->calc()->total($this->allLines());
     }
 
-    /** Summen je MwSt-Satz für die Checkout-Zusammenfassung. */
+    /** Summen je MwSt-Satz über ALLE Pausen (gemischte MwSt). */
     #[Computed]
-    public function totalsByTaxRate(): \Illuminate\Support\Collection
+    public function totalsByTaxRate(): Collection
     {
-        return $this->calc()->totalsByTaxRate($this->cartItems);
+        return $this->calc()->totalsByTaxRate($this->allLines());
     }
 
     #[Computed]
     public function requiresAgeCheck(): bool
     {
-        return $this->calc()->containsAgeRestricted($this->cartItems);
+        return $this->calc()->containsAgeRestricted($this->allLines());
     }
 
     #[Computed]
-    public function selectedSlot(): ?EventSlot
+    public function currentSlot(): ?EventSlot
     {
-        return $this->selectedSlotId
-            ? $this->event->slots->firstWhere('id', $this->selectedSlotId)
+        return $this->currentSlotId
+            ? $this->event->slots->firstWhere('id', $this->currentSlotId)
             : null;
     }
 
-    /** @return \Illuminate\Support\Collection<int, EventRoom> */
+    /** @return Collection<int, EventRoom> */
     #[Computed]
-    public function openRooms(): \Illuminate\Support\Collection
+    public function openRooms(): Collection
     {
-        if (!$this->selectedSlot) {
+        if (!$this->currentSlot) {
             return collect();
         }
 
-        return app(RoomReleaseService::class)->openRooms($this->event, $this->selectedSlot);
+        return app(RoomReleaseService::class)->openRooms($this->event, $this->currentSlot);
     }
 
     #[Computed]
     public function selectedRoom(): ?EventRoom
     {
-        return $this->selectedRoomId
-            ? $this->openRooms->firstWhere('id', $this->selectedRoomId)
-            : null;
+        $roomId = $this->slotRooms[$this->currentSlotId] ?? null;
+
+        return $roomId ? $this->openRooms->firstWhere('id', $roomId) : null;
     }
 
-    /** Tisch-Status für das Tischplan-Partial (platzgenau je Slot). */
+    /** Tisch-Status für das Tischplan-Partial (platzgenau je Pause). */
     #[Computed]
     public function tableStates(): array
     {
         $room = $this->selectedRoom;
-        $slot = $this->selectedSlot;
+        $slot = $this->currentSlot;
 
         if (!$room || !$slot) {
             return [];
         }
 
-        $seats = app(SeatAvailabilityService::class);
-        $bookedByTable = $seats->bookedSeatsByTable($room->floorPlan, $slot);
-        $event = $this->event;
+        $seats           = app(SeatAvailabilityService::class);
+        $bookedByTable   = $seats->bookedSeatsByTable($room->floorPlan, $slot);
+        $event           = $this->event;
+        $selectedTableId = $this->slotTables[$this->currentSlotId] ?? null;
 
         return $room->floorPlan->tables()->where('is_active', true)->get()
-            ->map(function (Table $table) use ($bookedByTable, $seats, $event) {
-                $booked = $bookedByTable->get($table->id, 0);
+            ->map(function (Table $table) use ($bookedByTable, $seats, $event, $selectedTableId) {
+                $booked    = $bookedByTable->get($table->id, 0);
                 $remaining = max(0, $table->capacity - $booked);
 
                 // Pro Termin gesperrte Tische sind nicht buchbar
@@ -204,7 +217,7 @@ class CheckoutWizard extends Component
                     return ['table' => $table, 'state' => 'full', 'remaining' => 0];
                 }
 
-                $state = $this->selectedTableId === $table->id
+                $state = $selectedTableId === $table->id
                     ? 'selected'
                     : ($remaining === 0
                         ? 'full'
@@ -215,6 +228,19 @@ class CheckoutWizard extends Component
                 return ['table' => $table, 'state' => $state, 'remaining' => $remaining];
             })
             ->all();
+    }
+
+    /** Gewählte Tische je bestellter Pause (für die Zusammenfassung), keyed by Table-ID. */
+    #[Computed]
+    public function chosenTables(): Collection
+    {
+        $ids = collect($this->slotTables)->filter()->values();
+
+        if ($ids->isEmpty()) {
+            return collect();
+        }
+
+        return Table::whereIn('id', $ids)->get()->keyBy('id');
     }
 
     /** Konfigurierbare Checkout-Texte des Teams (mit Defaults). */
@@ -274,26 +300,33 @@ class CheckoutWizard extends Component
             $this->validate($this->guestRules(dns: true), $this->guestMessages());
         }
 
-        if ($this->step === 2 && empty($this->selectedItems)) {
-            $this->addError('selectedItems', 'Bitte wählen Sie mindestens ein Produkt für Ihre Pause.');
+        if ($this->step === 2 && $this->slotCarts->isEmpty()) {
+            $this->addError('carts', 'Bitte wählen Sie für mindestens eine Pause ein Produkt.');
             return;
         }
 
         if ($this->step === 3) {
-            if (!$this->selectedSlotId) {
-                $this->addError('selectedSlotId', 'Bitte wählen Sie eine Pause.');
-                return;
-            }
-            if (!$this->selectedTableId) {
-                $this->addError('selectedTableId', 'Bitte wählen Sie einen Tisch im Plan.');
-                return;
+            // Jede bestellte Pause braucht einen Tisch.
+            foreach ($this->slotCarts->keys() as $slotId) {
+                if (empty($this->slotTables[$slotId])) {
+                    $this->currentSlotId = $slotId;
+                    unset($this->openRooms, $this->selectedRoom, $this->tableStates);
+                    $this->addError('slotTables', 'Bitte wählen Sie für jede Pause einen Tisch.');
+                    return;
+                }
             }
         }
 
         $this->resetErrorBag();
         $this->step = min(4, $this->step + 1);
 
-        if ($this->step === 3 && $this->selectedSlotId && !$this->selectedRoomId) {
+        if ($this->step === 3) {
+            // Auf die erste bestellte Pause springen und Raum ggf. automatisch wählen.
+            $orderedIds = $this->slotCarts->keys()->all();
+            if ($orderedIds && !in_array($this->currentSlotId, $orderedIds, true)) {
+                $this->currentSlotId = $orderedIds[0];
+                unset($this->openRooms, $this->selectedRoom, $this->tableStates);
+            }
             $this->autoSelectSingleRoom();
         }
     }
@@ -304,71 +337,91 @@ class CheckoutWizard extends Component
         $this->step = max(1, $this->step - 1);
     }
 
-    // ── Step 2: Produkte ─────────────────────────────────────────
+    // ── Step 2/3: Pause wechseln ─────────────────────────────────
+
+    public function selectSlot(int $slotId): void
+    {
+        $this->currentSlotId = $slotId;
+        // Computeds für die neue Pause neu berechnen.
+        unset($this->cartItems, $this->currentSlot, $this->openRooms, $this->selectedRoom, $this->tableStates);
+        $this->autoSelectSingleRoom();
+    }
+
+    // ── Step 2: Produkte (server-seitig je aktueller Pause) ───────
 
     public function incrementItem(int $itemId): void
     {
-        $this->selectedItems[$itemId] = min(
+        if (!$this->currentSlotId) {
+            return;
+        }
+
+        $current = $this->carts[$this->currentSlotId][$itemId] ?? 0;
+        $this->carts[$this->currentSlotId][$itemId] = min(
             CartCalculator::MAX_QUANTITY_PER_ITEM,
-            ($this->selectedItems[$itemId] ?? 0) + 1,
+            $current + 1,
         );
+        unset($this->cartItems, $this->slotCarts);
     }
 
     public function decrementItem(int $itemId): void
     {
-        if (($this->selectedItems[$itemId] ?? 0) <= 1) {
-            unset($this->selectedItems[$itemId]);
-        } else {
-            $this->selectedItems[$itemId]--;
+        if (!$this->currentSlotId) {
+            return;
         }
+
+        $current = $this->carts[$this->currentSlotId][$itemId] ?? 0;
+        if ($current <= 1) {
+            unset($this->carts[$this->currentSlotId][$itemId]);
+        } else {
+            $this->carts[$this->currentSlotId][$itemId] = $current - 1;
+        }
+        unset($this->cartItems, $this->slotCarts);
     }
 
-    // ── Step 3: Sitzplatz ────────────────────────────────────────
-
-    public function selectSlot(int $slotId): void
-    {
-        $this->selectedSlotId = $slotId;
-        $this->selectedRoomId = null;
-        $this->selectedTableId = null;
-        $this->autoSelectSingleRoom();
-    }
+    // ── Step 3: Sitzplatz (je aktueller Pause) ───────────────────
 
     public function selectRoom(int $eventRoomId): void
     {
-        $this->selectedRoomId = $eventRoomId;
-        $this->selectedTableId = null;
+        if (!$this->currentSlotId) {
+            return;
+        }
+
+        $this->slotRooms[$this->currentSlotId] = $eventRoomId;
+        unset($this->slotTables[$this->currentSlotId]); // Tisch bei Raumwechsel zurücksetzen
+        unset($this->selectedRoom, $this->tableStates);
     }
 
     public function selectTable(int $tableId): void
     {
-        $states = collect($this->tableStates);
-        $state = $states->first(fn ($s) => $s['table']->id === $tableId);
+        $state = collect($this->tableStates)->first(fn ($s) => $s['table']->id === $tableId);
 
         if (!$state || $state['remaining'] < $this->guestCount) {
-            $this->addError('selectedTableId', 'Dieser Tisch hat nicht genug freie Plätze für Ihre Gruppe.');
+            $this->addError('slotTables', 'Dieser Tisch hat nicht genug freie Plätze für Ihre Gruppe.');
             return;
         }
 
-        $this->resetErrorBag('selectedTableId');
-        $this->selectedTableId = $tableId;
-
-        // Computed-Cache leeren, damit der gewählte Tisch sofort hervorgehoben wird.
+        $this->resetErrorBag('slotTables');
+        $this->slotTables[$this->currentSlotId] = $tableId;
         unset($this->tableStates);
     }
 
     protected function autoSelectSingleRoom(): void
     {
-        if ($this->openRooms->count() === 1) {
-            $this->selectedRoomId = $this->openRooms->first()->id;
+        if (!$this->currentSlotId) {
+            return;
+        }
+
+        if (empty($this->slotRooms[$this->currentSlotId]) && $this->openRooms->count() === 1) {
+            $this->slotRooms[$this->currentSlotId] = $this->openRooms->first()->id;
+            unset($this->selectedRoom, $this->tableStates);
         }
     }
 
-    // ── Step 4: Mock-Checkout ────────────────────────────────────
+    // ── Step 4: Checkout ─────────────────────────────────────────
 
     public function confirm(): void
     {
         // Härtung: Gastdaten final gegenprüfen (falls Step 1 umgangen wurde).
-        // DNS-Check hier aus – die Domain wurde in Step 1 bereits geprüft.
         $guest = \Illuminate\Support\Facades\Validator::make(
             [
                 'guestName'  => $this->guestName,
@@ -401,35 +454,44 @@ class CheckoutWizard extends Component
             return;
         }
 
-        // Nach der autoritativen Filterung (Verkaufsliste/Mengen) muss noch
-        // mindestens eine gültige Position übrig sein.
-        if ($this->cartItems->isEmpty()) {
+        $event      = $this->event;
+        $slotCarts  = $this->slotCarts; // slotId => lines (nur Pausen mit Produkten)
+
+        if ($slotCarts->isEmpty()) {
             $this->step = 2;
-            $this->addError('selectedItems', 'Bitte wählen Sie mindestens ein gültiges Produkt für Ihre Pause.');
+            $this->addError('carts', 'Bitte wählen Sie für mindestens eine Pause ein gültiges Produkt.');
             return;
         }
-
-        $event = $this->event;
-        $slot = $this->selectedSlot;
-        $table = Table::findOrFail($this->selectedTableId);
 
         if (!$event->isOrderable()) {
-            $this->addError('selectedItems', 'Der Bestellschluss für diesen Termin ist leider erreicht.');
+            $this->addError('carts', 'Der Bestellschluss für diesen Termin ist leider erreicht.');
             return;
         }
 
-        // Finale Platzprüfung (M1 ohne Locking – Härtung in M2)
-        $remaining = app(SeatAvailabilityService::class)->remainingSeats($table, $slot);
-        if ($remaining < $this->guestCount) {
-            $this->selectedTableId = null;
-            $this->step = 3;
-            $this->addError('selectedTableId', 'Der gewählte Tisch wurde zwischenzeitlich belegt – bitte wählen Sie einen anderen.');
-            return;
+        // Je Pause: Tisch gesetzt und genügend Restplätze (M1 ohne Locking).
+        $seats = app(SeatAvailabilityService::class);
+        foreach ($slotCarts->keys() as $slotId) {
+            $tableId = $this->slotTables[$slotId] ?? null;
+            $slot    = $event->slots->firstWhere('id', $slotId);
+
+            if (!$tableId || !$slot) {
+                $this->currentSlotId = $slotId;
+                $this->step = 3;
+                $this->addError('slotTables', 'Bitte wählen Sie für jede Pause einen Tisch.');
+                return;
+            }
+
+            $table = Table::find($tableId);
+            if (!$table || $seats->remainingSeats($table, $slot) < $this->guestCount) {
+                unset($this->slotTables[$slotId]);
+                $this->currentSlotId = $slotId;
+                $this->step = 3;
+                $this->addError('slotTables', 'Ein gewählter Tisch wurde zwischenzeitlich belegt – bitte wählen Sie einen anderen.');
+                return;
+            }
         }
 
-        // Idempotenz: eine bereits in diesem Wizard angelegte (noch offene)
-        // Order wiederverwenden, statt bei erneutem Absenden/Zurück eine zweite
-        // pending-Buchung anzulegen (die sonst Plätze doppelt binden würde).
+        // Idempotenz: eine bereits angelegte (noch offene) Order wiederverwenden.
         $existingOrder = $this->orderUuid
             ? Order::where('uuid', $this->orderUuid)
                 ->where('team_id', $event->team_id)
@@ -437,46 +499,45 @@ class CheckoutWizard extends Component
                 ->first()
             : null;
 
-        $order = DB::transaction(function () use ($event, $slot, $table, $existingOrder) {
+        $order = DB::transaction(function () use ($event, $slotCarts, $existingOrder) {
             $order = $existingOrder ?? Order::create([
                 'team_id'  => $event->team_id,
                 'event_id' => $event->id,
                 'status'   => Order::STATUS_PENDING,
             ]);
 
-            $data = [
-                'order_id'               => $order->id,
-                'team_id'                => $event->team_id,
-                'event_id'               => $event->id,
-                'event_slot_id'          => $slot->id,
-                'table_id'               => $table->id,
-                'guest_name'             => $this->guestName,
-                'guest_email'            => $this->guestEmail ?: null,
-                'guest_phone'            => $this->guestPhone ?: null,
-                'guest_count'            => $this->guestCount,
-                'notes'                  => $this->notes ?: null,
-                'date'                   => $event->date->toDateString(),
-                'time_start'             => $slot->time_start,
-                'time_end'               => $slot->time_end,
-                'status'                 => Booking::STATUS_PENDING,
-                // Zahlungsart kommt von Mollie per Webhook (sonst null).
-                'payment_method'         => null,
-                'age_check_confirmed_at' => $this->requiresAgeCheck ? now() : null,
-                'legal_accepted_at'      => now(),
-            ];
-
-            // 2a: genau eine (Slot-)Buchung je Order; vorhandene pending-Buchung
-            // der Order wiederverwenden. (Multi-Slot folgt in 2b.)
-            $booking = $order->bookings()->where('status', Booking::STATUS_PENDING)->first();
-            if ($booking) {
-                $booking->update($data);
-                $booking->items()->delete();
-            } else {
-                $booking = Booking::create($data);
+            // Bei erneutem Absenden: bestehende Buchungen der Order neu aufbauen.
+            foreach ($order->bookings as $old) {
+                $old->delete(); // booking_items kaskadieren über booking_id
             }
 
-            foreach ($this->calc()->frozenItemAttributes($this->cartItems) as $attributes) {
-                $booking->items()->create($attributes);
+            foreach ($slotCarts as $slotId => $lines) {
+                $slot  = $event->slots->firstWhere('id', $slotId);
+                $table = Table::find($this->slotTables[$slotId]);
+
+                $booking = Booking::create([
+                    'order_id'               => $order->id,
+                    'team_id'                => $event->team_id,
+                    'event_id'               => $event->id,
+                    'event_slot_id'          => $slot->id,
+                    'table_id'               => $table->id,
+                    'guest_name'             => $this->guestName,
+                    'guest_email'            => $this->guestEmail ?: null,
+                    'guest_phone'            => $this->guestPhone ?: null,
+                    'guest_count'            => $this->guestCount,
+                    'notes'                  => $this->notes ?: null,
+                    'date'                   => $event->date->toDateString(),
+                    'time_start'             => $slot->time_start,
+                    'time_end'               => $slot->time_end,
+                    'status'                 => Booking::STATUS_PENDING,
+                    'payment_method'         => null,
+                    'age_check_confirmed_at' => $this->requiresAgeCheck ? now() : null,
+                    'legal_accepted_at'      => now(),
+                ]);
+
+                foreach ($this->calc()->frozenItemAttributes($lines) as $attributes) {
+                    $booking->items()->create($attributes);
+                }
             }
 
             return $order;
