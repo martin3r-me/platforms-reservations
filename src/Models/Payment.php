@@ -10,7 +10,7 @@ class Payment extends Model
     protected $table = 'reservation_payments';
 
     protected $fillable = [
-        'booking_id',
+        'order_id',
         'mollie_id',
         'amount',
         'currency',
@@ -30,9 +30,9 @@ class Payment extends Model
         'metadata'        => 'array',
     ];
 
-    public function booking(): BelongsTo
+    public function order(): BelongsTo
     {
-        return $this->belongsTo(Booking::class, 'booking_id');
+        return $this->belongsTo(Order::class, 'order_id');
     }
 
     public function isPaid(): bool

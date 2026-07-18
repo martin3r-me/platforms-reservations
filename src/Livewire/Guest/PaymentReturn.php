@@ -5,13 +5,14 @@ namespace Platform\Reservation\Livewire\Guest;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
-use Platform\Reservation\Models\Booking;
+use Platform\Reservation\Models\Order;
 use Platform\Reservation\Services\MolliePaymentService;
 
 /**
- * Rückkehr-Seite von Mollie. Da der Redirect keinen verlässlichen End-Status
- * garantiert, gleichen wir beim Laden aktiv mit Mollie ab und zeigen dann den
- * Status der Buchung (bezahlt / in Bearbeitung / fehlgeschlagen).
+ * Rückkehr-Seite von Mollie (per Order-UUID). Da der Redirect keinen
+ * verlässlichen End-Status garantiert, gleichen wir beim Laden aktiv mit Mollie
+ * ab und zeigen dann den Status der Bestellung (bezahlt / in Bearbeitung /
+ * fehlgeschlagen).
  */
 class PaymentReturn extends Component
 {
@@ -21,38 +22,38 @@ class PaymentReturn extends Component
     public function mount(string $uuid): void
     {
         $this->uuid = $uuid;
-
-        $booking = $this->booking;
-
-        if ($booking?->mollie_payment_id) {
-            try {
-                app(MolliePaymentService::class)->syncFromMollie($booking->mollie_payment_id);
-            } catch (\Throwable $e) {
-                report($e);
-            }
-        }
+        $this->syncPayment();
     }
 
     /** Vom wire:poll auf der „in Bearbeitung“-Seite aufgerufen. */
     public function refresh(): void
     {
-        $booking = $this->booking;
-
-        if ($booking?->mollie_payment_id && $booking->status === Booking::STATUS_PENDING) {
-            try {
-                app(MolliePaymentService::class)->syncFromMollie($booking->mollie_payment_id);
-            } catch (\Throwable $e) {
-                report($e);
-            }
-            unset($this->booking);
+        if ($this->order?->status === Order::STATUS_PENDING) {
+            $this->syncPayment();
         }
     }
 
-    #[Computed]
-    public function booking(): ?Booking
+    /** Status aktiv mit Mollie abgleichen und den Computed-Cache erneuern. */
+    protected function syncPayment(): void
     {
-        return Booking::where('uuid', $this->uuid)
-            ->with(['event', 'slot', 'payment'])
+        $mollieId = $this->order?->payment?->mollie_id;
+
+        if ($mollieId) {
+            try {
+                app(MolliePaymentService::class)->syncFromMollie($mollieId);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        unset($this->order);
+    }
+
+    #[Computed]
+    public function order(): ?Order
+    {
+        return Order::where('uuid', $this->uuid)
+            ->with(['payment', 'bookings.event', 'bookings.slot'])
             ->first();
     }
 

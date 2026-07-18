@@ -6,6 +6,7 @@ use Illuminate\Support\Carbon;
 use Mollie\Api\MollieApiClient;
 use Platform\Reservation\Contracts\MollieCredentialResolver;
 use Platform\Reservation\Models\Booking;
+use Platform\Reservation\Models\Order;
 use Platform\Reservation\Models\Payment;
 use Platform\Reservation\Services\BookingConfirmationMailer;
 use Platform\Reservation\Support\MollieCredentials;
@@ -34,11 +35,12 @@ class MolliePaymentService
     }
 
     /**
-     * Mollie-Zahlung für eine Buchung anlegen und Checkout-URL zurückgeben.
+     * Mollie-Zahlung für eine Order (eine oder mehrere Slot-Buchungen) anlegen
+     * und Checkout-URL zurückgeben. Betrag = Summe aller Buchungen der Order.
      */
-    public function createForBooking(Booking $booking): string
+    public function createForOrder(Order $order): string
     {
-        $creds = $this->resolver->forTeam($booking->team_id);
+        $creds = $this->resolver->forTeam($order->team_id);
 
         if (!$creds) {
             throw new \RuntimeException('Keine Mollie-Zugangsdaten für dieses Team hinterlegt.');
@@ -46,31 +48,32 @@ class MolliePaymentService
 
         $client   = $this->client($creds);
         $currency = strtoupper((string) config('reservation.currency', 'EUR'));
-        $value    = number_format((float) $booking->total_amount, 2, '.', '');
+        $value    = number_format((float) $order->total_amount, 2, '.', '');
 
         $molliePayment = $client->payments->create([
             'amount'      => ['currency' => $currency, 'value' => $value],
-            'description' => 'PausePlus Bestellung ' . $booking->uuid,
-            'redirectUrl' => route('reservation.guest.payment.return', $booking->uuid),
+            'description' => 'PausePlus Bestellung ' . $order->uuid,
+            'redirectUrl' => route('reservation.guest.payment.return', $order->uuid),
             'webhookUrl'  => route('reservation.api.payment.webhook'),
             'metadata'    => [
-                'booking_id'   => $booking->id,
-                'booking_uuid' => $booking->uuid,
+                'order_id'   => $order->id,
+                'order_uuid' => $order->uuid,
             ],
         ]);
 
         Payment::updateOrCreate(
-            ['booking_id' => $booking->id],
+            ['order_id' => $order->id],
             [
                 'mollie_id' => $molliePayment->id,
-                'amount'    => $booking->total_amount,
+                'amount'    => $order->total_amount,
                 'currency'  => $currency,
                 'status'    => $molliePayment->status,
                 'metadata'  => ['mode' => $creds->mode],
             ],
         );
 
-        $booking->update(['mollie_payment_id' => $molliePayment->id]);
+        // Referenz auf die Buchungen spiegeln (Export/Anzeige nutzen es weiter).
+        $order->bookings()->update(['mollie_payment_id' => $molliePayment->id]);
 
         return $molliePayment->getCheckoutUrl();
     }
@@ -83,13 +86,13 @@ class MolliePaymentService
     public function syncFromMollie(string $molliePaymentId): void
     {
         $payment = Payment::where('mollie_id', $molliePaymentId)->first();
-        $booking = $payment?->booking;
+        $order   = $payment?->order;
 
-        if (!$payment || !$booking) {
+        if (!$payment || !$order) {
             return;
         }
 
-        $creds = $this->resolver->forTeam($booking->team_id);
+        $creds = $this->resolver->forTeam($order->team_id);
         if (!$creds) {
             return;
         }
@@ -103,7 +106,7 @@ class MolliePaymentService
         ]);
 
         // Vollständige Status-Behandlung (idempotent – nur aus pending heraus):
-        //   paid                        → bestätigt (+ Mail)
+        //   paid                        → alle Buchungen der Order bestätigt (+ Mail)
         //   failed | canceled | expired → storniert (gibt Plätze wieder frei)
         //   open | pending | authorized → bleibt pending (Return-Seite pollt weiter)
         $isFailure = $molliePayment->isFailed()
@@ -111,19 +114,33 @@ class MolliePaymentService
             || $molliePayment->isExpired();
 
         if ($molliePayment->isPaid()) {
-            if ($booking->status === Booking::STATUS_PENDING) {
-                $booking->update([
-                    'status'         => Booking::STATUS_CONFIRMED,
-                    // Von Mollie gemeldete echte Zahlungsart übernehmen (z.B. ideal, creditcard, paypal).
-                    'payment_method' => $molliePayment->method ?: $booking->payment_method,
-                ]);
+            if ($order->status === Order::STATUS_PENDING) {
+                $order->update(['status' => Order::STATUS_CONFIRMED]);
 
-                // Bestätigungsmail an den Gast (über CRM-Comms; inert ohne Channel).
-                BookingConfirmationMailer::send($booking);
+                foreach ($order->bookings as $booking) {
+                    if ($booking->status !== Booking::STATUS_PENDING) {
+                        continue;
+                    }
+
+                    $booking->update([
+                        'status'         => Booking::STATUS_CONFIRMED,
+                        // Von Mollie gemeldete echte Zahlungsart übernehmen (z.B. ideal, creditcard, paypal).
+                        'payment_method' => $molliePayment->method ?: $booking->payment_method,
+                    ]);
+
+                    // Bestätigungsmail an den Gast (über CRM-Comms; inert ohne Channel).
+                    BookingConfirmationMailer::send($booking);
+                }
             }
         } elseif ($isFailure) {
-            if ($booking->status === Booking::STATUS_PENDING) {
-                $booking->update(['status' => Booking::STATUS_CANCELLED]);
+            if ($order->status === Order::STATUS_PENDING) {
+                $order->update(['status' => Order::STATUS_CANCELLED]);
+
+                foreach ($order->bookings as $booking) {
+                    if ($booking->status === Booking::STATUS_PENDING) {
+                        $booking->update(['status' => Booking::STATUS_CANCELLED]);
+                    }
+                }
             }
         }
     }

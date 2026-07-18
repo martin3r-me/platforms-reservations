@@ -26,7 +26,7 @@ class BookingList extends Component
         $user   = Auth::user();
         $teamId = $user?->current_team_id;
 
-        $query = Booking::with(['table.floorPlan.venue', 'payment', 'event', 'slot'])
+        $query = Booking::with(['table.floorPlan.venue', 'order.payment', 'event', 'slot'])
             ->withCount('items')
             ->where('team_id', $teamId)
             ->orderByDesc('date')
@@ -57,7 +57,7 @@ class BookingList extends Component
             return null;
         }
 
-        return Booking::with(['items.menuItem', 'table.floorPlan.venue', 'event', 'slot', 'payment'])
+        return Booking::with(['items.menuItem', 'table.floorPlan.venue', 'event', 'slot', 'order.payment'])
             ->where('team_id', Auth::user()?->current_team_id)
             ->find($this->detailBookingId);
     }

@@ -11,6 +11,7 @@ use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\EventRoom;
 use Platform\Reservation\Models\EventSlot;
 use Platform\Reservation\Models\MenuItem;
+use Platform\Reservation\Models\Order;
 use Platform\Reservation\Models\Table;
 use Platform\Reservation\Services\CartCalculator;
 use Platform\Reservation\Services\MolliePaymentService;
@@ -56,7 +57,8 @@ class CheckoutWizard extends Component
     public bool $legalAccepted = false;
 
     // Step 5: Bestätigung
-    public ?string $bookingUuid = null;
+    #[Locked]
+    public ?string $orderUuid = null;
 
     public function mount(string $uuid): void
     {
@@ -426,17 +428,24 @@ class CheckoutWizard extends Component
         }
 
         // Idempotenz: eine bereits in diesem Wizard angelegte (noch offene)
-        // Buchung wiederverwenden, statt bei erneutem Absenden/Zurück eine
-        // zweite pending-Buchung anzulegen (die sonst Plätze doppelt binden würde).
-        $existing = $this->bookingUuid
-            ? Booking::where('uuid', $this->bookingUuid)
+        // Order wiederverwenden, statt bei erneutem Absenden/Zurück eine zweite
+        // pending-Buchung anzulegen (die sonst Plätze doppelt binden würde).
+        $existingOrder = $this->orderUuid
+            ? Order::where('uuid', $this->orderUuid)
                 ->where('team_id', $event->team_id)
-                ->where('status', Booking::STATUS_PENDING)
+                ->where('status', Order::STATUS_PENDING)
                 ->first()
             : null;
 
-        $booking = DB::transaction(function () use ($event, $slot, $table, $existing) {
+        $order = DB::transaction(function () use ($event, $slot, $table, $existingOrder) {
+            $order = $existingOrder ?? Order::create([
+                'team_id'  => $event->team_id,
+                'event_id' => $event->id,
+                'status'   => Order::STATUS_PENDING,
+            ]);
+
             $data = [
+                'order_id'               => $order->id,
                 'team_id'                => $event->team_id,
                 'event_id'               => $event->id,
                 'event_slot_id'          => $slot->id,
@@ -456,10 +465,12 @@ class CheckoutWizard extends Component
                 'legal_accepted_at'      => now(),
             ];
 
-            if ($existing) {
-                $existing->update($data);
-                $existing->items()->delete();
-                $booking = $existing;
+            // 2a: genau eine (Slot-)Buchung je Order; vorhandene pending-Buchung
+            // der Order wiederverwenden. (Multi-Slot folgt in 2b.)
+            $booking = $order->bookings()->where('status', Booking::STATUS_PENDING)->first();
+            if ($booking) {
+                $booking->update($data);
+                $booking->items()->delete();
             } else {
                 $booking = Booking::create($data);
             }
@@ -468,18 +479,19 @@ class CheckoutWizard extends Component
                 $booking->items()->create($attributes);
             }
 
-            return $booking;
+            return $order;
         });
 
-        $this->bookingUuid = $booking->uuid;
+        $this->orderUuid = $order->uuid;
+        $order->load('bookings.items'); // frisch für die Betragsberechnung
 
         // Echte Zahlung, wenn für das Team Mollie hinterlegt ist UND ein
         // Betrag > 0 anfällt – sonst Mock-Bestätigung (Klick-Dummy/0 €).
         $payments = app(MolliePaymentService::class);
 
-        if ($booking->total_amount > 0 && $payments->isEnabledForTeam($event->team_id)) {
+        if ($order->total_amount > 0 && $payments->isEnabledForTeam($event->team_id)) {
             try {
-                $checkoutUrl = $payments->createForBooking($booking);
+                $checkoutUrl = $payments->createForOrder($order);
                 $this->redirect($checkoutUrl, navigate: false);
 
                 return;

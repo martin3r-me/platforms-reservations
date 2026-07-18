@@ -1,16 +1,18 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <div class="mx-auto max-w-lg px-4 py-12">
         @php
-            $B = \Platform\Reservation\Models\Booking::class;
-            $booking = $this->booking;
-            $paymentStatus = $booking?->payment?->status;
-            $isPaid   = $booking && $booking->status === $B::STATUS_CONFIRMED;
-            $isFailed = $booking && ($booking->status === $B::STATUS_CANCELLED
+            $O = \Platform\Reservation\Models\Order::class;
+            $order   = $this->order;
+            $booking = $order?->bookings->first();   // 2a: genau eine Buchung je Order
+            $paymentStatus = $order?->payment?->status;
+            $isPaid   = $order && $order->status === $O::STATUS_CONFIRMED;
+            $isFailed = $order && ($order->status === $O::STATUS_CANCELLED
                         || in_array($paymentStatus, ['failed', 'canceled', 'expired'], true));
-            $hasMollie = $booking && $booking->mollie_payment_id;
+            $hasMollie = (bool) $order?->payment?->mollie_id;
+            $reference = $order?->uuid;
         @endphp
 
-        @if (!$booking)
+        @if (!$order)
             <div class="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900">
                 <div class="text-5xl mb-4">🔍</div>
                 <h1 class="text-lg font-semibold dark:text-white">Buchung nicht gefunden</h1>
@@ -21,12 +23,12 @@
                 <div class="text-5xl mb-4">✅</div>
                 <h1 class="text-xl font-bold text-[var(--ui-secondary)] m-0">Zahlung erfolgreich!</h1>
                 <p class="mt-2 text-sm text-[var(--ui-muted)]">
-                    Vielen Dank, {{ $booking->guest_name }}. Ihre Bestellung für
-                    <strong>{{ $booking->event?->name }}</strong> am {{ $booking->date->format('d.m.Y') }}
-                    @if ($booking->slot) ({{ $booking->slot->name }}, {{ substr($booking->slot->time_start, 0, 5) }} Uhr) @endif
+                    Vielen Dank, {{ $booking?->guest_name }}. Ihre Bestellung für
+                    <strong>{{ $booking?->event?->name }}</strong> am {{ $booking?->date?->format('d.m.Y') }}
+                    @if ($booking?->slot) ({{ $booking->slot->name }}, {{ substr($booking->slot->time_start, 0, 5) }} Uhr) @endif
                     ist bezahlt und bestätigt.
                 </p>
-                <p class="mt-1 text-xs text-[var(--ui-muted)]">Buchungsnummer: <code class="rounded bg-[var(--ui-muted-5)] px-1.5 py-0.5">{{ $booking->uuid }}</code></p>
+                <p class="mt-1 text-xs text-[var(--ui-muted)]">Buchungsnummer: <code class="rounded bg-[var(--ui-muted-5)] px-1.5 py-0.5">{{ $reference }}</code></p>
                 <p class="mt-1 text-xs text-[var(--ui-muted)]">Eine Bestätigung erhalten Sie per E-Mail.</p>
                 <a href="{{ route('reservation.guest.events.index') }}" class="mt-6 inline-block rounded-xl border border-[var(--ui-border)] px-6 py-3 text-sm font-medium text-[var(--ui-secondary)]">Zur Terminübersicht</a>
             </div>
@@ -38,7 +40,7 @@
                     Ihre Zahlung wurde nicht abgeschlossen, daher konnte die Bestellung nicht bestätigt werden.
                     Sie können es erneut versuchen.
                 </p>
-                <a href="{{ route('reservation.guest.checkout', $booking->event?->uuid) }}" class="mt-6 inline-block rounded-xl bg-[var(--ui-primary)] px-6 py-3 text-sm font-bold text-white hover:opacity-90">Erneut versuchen</a>
+                <a href="{{ route('reservation.guest.checkout', $booking?->event?->uuid) }}" class="mt-6 inline-block rounded-xl bg-[var(--ui-primary)] px-6 py-3 text-sm font-bold text-white hover:opacity-90">Erneut versuchen</a>
             </div>
         @elseif (!$hasMollie)
             {{-- Buchung ohne Mollie-Zahlung (Demo/0 €) – kein Poll, neutrale Bestätigung --}}
@@ -46,9 +48,9 @@
                 <div class="text-5xl mb-4">✅</div>
                 <h1 class="text-xl font-bold text-[var(--ui-secondary)] m-0">Bestellung eingegangen</h1>
                 <p class="mt-2 text-sm text-[var(--ui-muted)]">
-                    Vielen Dank, {{ $booking->guest_name }}. Ihre Bestellung ist eingegangen.
+                    Vielen Dank, {{ $booking?->guest_name }}. Ihre Bestellung ist eingegangen.
                 </p>
-                <p class="mt-1 text-xs text-[var(--ui-muted)]">Buchungsnummer: <code class="rounded bg-[var(--ui-muted-5)] px-1.5 py-0.5">{{ $booking->uuid }}</code></p>
+                <p class="mt-1 text-xs text-[var(--ui-muted)]">Buchungsnummer: <code class="rounded bg-[var(--ui-muted-5)] px-1.5 py-0.5">{{ $reference }}</code></p>
                 <a href="{{ route('reservation.guest.events.index') }}" class="mt-6 inline-block rounded-xl border border-[var(--ui-border)] px-6 py-3 text-sm font-medium text-[var(--ui-secondary)]">Zur Terminübersicht</a>
             </div>
         @else
@@ -60,7 +62,7 @@
                 <p class="mt-2 text-sm text-[var(--ui-muted)]">
                     Wir warten auf die Bestätigung Ihrer Zahlung. Diese Seite aktualisiert sich automatisch.
                 </p>
-                <p class="mt-1 text-xs text-[var(--ui-muted)]">Buchungsnummer: <code class="rounded bg-[var(--ui-muted-5)] px-1.5 py-0.5">{{ $booking->uuid }}</code></p>
+                <p class="mt-1 text-xs text-[var(--ui-muted)]">Buchungsnummer: <code class="rounded bg-[var(--ui-muted-5)] px-1.5 py-0.5">{{ $reference }}</code></p>
             </div>
         @endif
     </div>

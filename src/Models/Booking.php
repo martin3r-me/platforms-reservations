@@ -5,7 +5,6 @@ namespace Platform\Reservation\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Symfony\Component\Uid\UuidV7;
 
@@ -25,6 +24,7 @@ class Booking extends Model
     protected $fillable = [
         'uuid',
         'team_id',
+        'order_id',
         'table_id',
         'event_id',
         'event_slot_id',
@@ -84,9 +84,19 @@ class Booking extends Model
         return $this->hasMany(BookingItem::class, 'booking_id');
     }
 
-    public function payment(): HasOne
+    public function order(): BelongsTo
     {
-        return $this->hasOne(Payment::class, 'booking_id');
+        return $this->belongsTo(Order::class, 'order_id');
+    }
+
+    /**
+     * Zahlung der Buchung – hängt seit der Order-Klammer an der Order.
+     * Accessor, damit bestehende Lesestellen ($booking->payment) weiter
+     * funktionieren; für Eager-Loading 'order.payment' verwenden.
+     */
+    public function getPaymentAttribute(): ?Payment
+    {
+        return $this->order?->payment;
     }
 
     public function scopeForTeam($query, int $teamId)

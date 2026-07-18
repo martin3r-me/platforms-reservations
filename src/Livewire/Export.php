@@ -35,7 +35,7 @@ class Export extends Component
 
     protected function buildQuery()
     {
-        $query = Booking::with(['table.floorPlan.venue', 'items', 'payment'])
+        $query = Booking::with(['table.floorPlan.venue', 'items', 'order.payment'])
             ->where('team_id', $this->getTeamId());
 
         if ($this->dateFrom) {
