@@ -16,6 +16,10 @@ Route::get('/events', [EventController::class, 'index'])
 Route::get('/events/{event}/products', [EventController::class, 'products'])
     ->name('reservation.api.events.products');
 
+// Checkout-Felder (Pflicht/optional/aus) + Texte fuers Gast-Formular.
+Route::get('/events/{event}/checkout-fields', [EventController::class, 'checkoutFields'])
+    ->name('reservation.api.events.checkout-fields');
+
 // Tischplan(e) + Verfuegbarkeit je Pause (optional ?room=&slot=).
 Route::get('/events/{event}/floor-plan', [EventController::class, 'floorPlan'])
     ->name('reservation.api.events.floor-plan');

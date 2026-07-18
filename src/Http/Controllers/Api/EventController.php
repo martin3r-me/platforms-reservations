@@ -99,6 +99,46 @@ class EventController extends ApiController
     }
 
     /**
+     * GET /events/{event}/checkout-fields – Konfiguration der Anmeldefelder (#520/#521).
+     *
+     * Liefert je Gastfeld den Modus (required|optional|hidden), damit das externe
+     * Frontend das Checkout-Formular korrekt rendert. name & count sind immer
+     * Pflicht. Zusätzlich die Checkout-Texte (18+, Rechtstext, Datenschutz-Link).
+     * {event} = UUID oder numerische ID.
+     */
+    public function checkoutFields(string $event)
+    {
+        $model = $this->resolveEvent($event);
+
+        if (! $model) {
+            return $this->notFound('Termin nicht gefunden.');
+        }
+
+        $settings = CheckoutSetting::forTeam((int) $model->team_id);
+
+        return $this->success([
+            'event' => [
+                'id'   => $model->id,
+                'uuid' => $model->uuid,
+                'name' => $model->name,
+            ],
+            // required | optional | hidden (name & count sind stets Pflicht).
+            'guest_fields' => [
+                'name'  => 'required',
+                'count' => 'required',
+                'email' => $settings->fieldMode('email'),
+                'phone' => $settings->fieldMode('phone'),
+                'notes' => $settings->fieldMode('notes'),
+            ],
+            'texts' => [
+                'age_check'   => $settings->ageText(),
+                'legal'       => $settings->legalText(),
+                'privacy_url' => $settings->privacy_url,
+            ],
+        ], 'Checkout-Felder geladen');
+    }
+
+    /**
      * GET /events/{event}/floor-plan – Tischplan(e) und Verfügbarkeit je Pause.
      *
      * Liefert die buchbaren Räume des Termins mit Tischplan und Tischen sowie die
