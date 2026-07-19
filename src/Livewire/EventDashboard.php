@@ -31,7 +31,7 @@ class EventDashboard extends Component
     public function event(): Event
     {
         return Event::forTeam(Auth::user()?->current_team_id ?? 0)
-            ->with(['slots', 'venue'])
+            ->with(['slots', 'venue', 'imageFile.variants'])
             ->findOrFail($this->eventId);
     }
 
