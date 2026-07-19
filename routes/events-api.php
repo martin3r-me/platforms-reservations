@@ -29,3 +29,7 @@ Route::post('/events/{event}/orders', [EventController::class, 'createOrder'])
     ->name('reservation.api.events.orders.store');
 Route::get('/events/{event}/orders/{order}', [EventController::class, 'orderStatus'])
     ->name('reservation.api.events.orders.show');
+
+// Flaches Polling nur per Order-UUID (ohne Termin-Kontext).
+Route::get('/orders/{order}', [EventController::class, 'orderByUuid'])
+    ->name('reservation.api.orders.show');

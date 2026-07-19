@@ -349,25 +349,49 @@ class EventController extends ApiController
             return $this->notFound('Bestellung nicht gefunden.');
         }
 
-        return $this->success([
-            'order_uuid'     => $orderModel->uuid,
-            'status'         => $orderModel->status,
-            'total_amount'   => round((float) $orderModel->total_amount, 2),
-            'payment_status' => $orderModel->payment?->status,
+        return $this->success($this->formatOrderStatus($orderModel), 'Bestellstatus geladen');
+    }
+
+    /**
+     * GET /orders/{order} – Bestellstatus allein per Order-UUID (fürs Polling,
+     * ohne Termin-Kontext). Token-gesichert; die UUID ist unrätbar.
+     */
+    public function orderByUuid(string $order)
+    {
+        $orderModel = Order::withoutGlobalScope('team')
+            ->where('uuid', $order)
+            ->with(['payment', 'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'items'])])
+            ->first();
+
+        if (! $orderModel) {
+            return $this->notFound('Bestellung nicht gefunden.');
+        }
+
+        return $this->success($this->formatOrderStatus($orderModel), 'Bestellstatus geladen');
+    }
+
+    /** Einheitliche Status-Darstellung einer Bestellung (fürs Polling). */
+    protected function formatOrderStatus(Order $order): array
+    {
+        return [
+            'order_uuid'     => $order->uuid,
+            'status'         => $order->status,
+            'total_amount'   => round((float) $order->total_amount, 2),
+            'payment_status' => $order->payment?->status,
             'customer'       => [
-                'first_name' => $orderModel->first_name,
-                'last_name'  => $orderModel->last_name,
-                'company'    => $orderModel->company,
-                'email'      => $orderModel->email,
-                'phone'      => $orderModel->phone,
-                'billing'    => $orderModel->billingAddress(),
+                'first_name' => $order->first_name,
+                'last_name'  => $order->last_name,
+                'company'    => $order->company,
+                'email'      => $order->email,
+                'phone'      => $order->phone,
+                'billing'    => $order->billingAddress(),
             ],
-            'bookings'       => $orderModel->bookings->map(fn ($b) => [
+            'bookings'       => $order->bookings->map(fn ($b) => [
                 'uuid'   => $b->uuid,
                 'slot'   => $b->slot?->name,
                 'status' => $b->status,
             ])->values()->all(),
-        ], 'Bestellstatus geladen');
+        ];
     }
 
     /**
