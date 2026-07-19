@@ -41,12 +41,8 @@ class OrderReceiptController
         $view = $type === 'bewirtungsbeleg' ? 'reservation::pdf.bewirtungsbeleg' : 'reservation::pdf.order-receipt';
         $html = view($view, $data)->render();
 
-        if (! class_exists(\Platform\Core\Services\Documents\PdfRenderer::class)) {
-            abort(501, 'PDF-Renderer nicht verfügbar.');
-        }
-
         try {
-            $pdf = app(\Platform\Core\Services\Documents\PdfRenderer::class)->render($html);
+            $pdf = $this->renderPdf($html);
         } catch (\Throwable $e) {
             report($e);
             abort(500, 'PDF konnte nicht erstellt werden.');
@@ -59,6 +55,23 @@ class OrderReceiptController
             'Content-Type'        => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"',
         ]);
+    }
+
+    /**
+     * PDF rendern – bevorzugt dompdf (reines PHP, kein Browser), sonst der
+     * Core-PdfRenderer (Browsershot). dompdf ist robust auf allen Instanzen.
+     */
+    protected function renderPdf(string $html): string
+    {
+        if (class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            return \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)->setPaper('a4')->output();
+        }
+
+        if (class_exists(\Platform\Core\Services\Documents\PdfRenderer::class)) {
+            return app(\Platform\Core\Services\Documents\PdfRenderer::class)->render($html);
+        }
+
+        abort(501, 'PDF-Renderer nicht verfügbar.');
     }
 
     /**
