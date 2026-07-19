@@ -54,6 +54,7 @@ class CheckoutSettingsGetTool implements ToolContract, ToolMetadataContract
                 'languages'                 => $s->languages(),
                 'guest_frontend_url'        => $s->guestFrontendUrl(),
                 'confirmation_channel_id'   => $s->confirmationChannelId(),
+                'issuer'                    => $s->issuer(),
                 'cancellation_enabled'           => $s->cancellationEnabled(),
                 'cancellation_deadline_hours'    => $s->cancellationDeadlineHours(),
                 'cancellation_requires_approval' => $s->cancellationRequiresApproval(),

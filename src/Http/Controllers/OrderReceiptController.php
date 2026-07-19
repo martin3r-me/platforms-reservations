@@ -129,6 +129,7 @@ class OrderReceiptController
 
         return [
             'order'       => $order,
+            'issuer'      => \Platform\Reservation\Models\CheckoutSetting::forTeam((int) $order->team_id)->issuer(),
             'lines'       => $lines,
             'groups'      => $groups,
             'vat'         => $vat,

@@ -34,11 +34,27 @@
     </style>
 </head>
 <body>
+    @if ($issuer['name'])
+        <div style="font-size: 10px; color: #6b7280; margin-bottom: 8px; line-height: 1.5;">
+            <strong style="color: #374151;">{{ $issuer['name'] }}</strong>@if ($issuer['street']) · {{ $issuer['street'] }}@endif@if ($issuer['zip'] || $issuer['city']) · {{ $issuer['zip'] }} {{ $issuer['city'] }}@endif
+            @if ($issuer['vat_id'] || $issuer['tax_number'])<br>@endif
+            @if ($issuer['vat_id'])USt-IdNr: {{ $issuer['vat_id'] }}@endif@if ($issuer['tax_number']) · Steuernr.: {{ $issuer['tax_number'] }}@endif@if ($issuer['email']) · {{ $issuer['email'] }}@endif@if ($issuer['phone']) · {{ $issuer['phone'] }}@endif
+        </div>
+    @endif
+
     <div class="head">
         <div class="eyebrow">Bewirtungsbeleg</div>
         <h1>Nachweis von Bewirtungsaufwendungen</h1>
         <div class="muted">gem. § 4 Abs. 5 Satz 1 Nr. 2 EStG</div>
     </div>
+
+    @php $billing = $order->billingAddress(); @endphp
+    @if ($order->company || $billing)
+        <div class="label">Firma / Anschrift</div>
+        <div class="box" style="margin-bottom: 10px;">
+            @if ($order->company)<strong>{{ $order->company }}</strong> · @endif{{ $order->customerName() }}@if ($billing) · {{ $billing['street'] }}, {{ $billing['zip'] }} {{ $billing['city'] }}@if ($billing['country']) ({{ $billing['country'] }})@endif @endif
+        </div>
+    @endif
 
     <table class="grid" style="margin-bottom: 6px;">
         <tr>

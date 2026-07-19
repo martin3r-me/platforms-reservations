@@ -97,6 +97,35 @@
         </div>
     </section>
 
+    {{-- Rechnungsangaben (Aussteller) --}}
+    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+            @svg('heroicon-o-building-office-2', 'w-4 h-4 text-[var(--ui-muted)]')
+            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Rechnungsangaben (Aussteller)</h2>
+        </div>
+        <div class="p-5 space-y-3">
+            <p class="text-[11px] text-[var(--ui-muted)] m-0">Diese Firmendaten erscheinen auf Beleg und Bewirtungsbeleg (USt-IdNr/Steuernummer nach Bedarf).</p>
+            <x-ui-input-text name="issuer.name" label="Firmenname" size="sm" wire:model="issuer.name" placeholder="Musterkatering GmbH" />
+            <x-ui-form-grid :cols="3" :gap="3">
+                <div class="sm:col-span-2"><x-ui-input-text name="issuer.street" label="Straße & Nr." size="sm" wire:model="issuer.street" /></div>
+                <x-ui-input-text name="issuer.zip" label="PLZ" size="sm" wire:model="issuer.zip" />
+            </x-ui-form-grid>
+            <x-ui-form-grid :cols="3" :gap="3">
+                <div class="sm:col-span-2"><x-ui-input-text name="issuer.city" label="Ort" size="sm" wire:model="issuer.city" /></div>
+                <x-ui-input-text name="issuer.country" label="Land" size="sm" wire:model="issuer.country" placeholder="DE" />
+            </x-ui-form-grid>
+            <x-ui-form-grid :cols="2" :gap="3">
+                <x-ui-input-text name="issuer.vat_id" label="USt-IdNr" size="sm" wire:model="issuer.vat_id" placeholder="DE123456789" />
+                <x-ui-input-text name="issuer.tax_number" label="Steuernummer" size="sm" wire:model="issuer.tax_number" />
+            </x-ui-form-grid>
+            <x-ui-form-grid :cols="3" :gap="3">
+                <x-ui-input-text name="issuer.email" label="E-Mail" size="sm" wire:model="issuer.email" errorKey="issuer.email" />
+                <x-ui-input-text name="issuer.phone" label="Telefon" size="sm" wire:model="issuer.phone" />
+                <x-ui-input-text name="issuer.website" label="Website" size="sm" wire:model="issuer.website" />
+            </x-ui-form-grid>
+        </div>
+    </section>
+
     {{-- Bestellbestätigung (E-Mail-Absender) --}}
     <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">

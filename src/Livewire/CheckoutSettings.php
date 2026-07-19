@@ -30,6 +30,10 @@ class CheckoutSettings extends Component
     // Absender (CRM-Comms-Channel) für Bestellbestätigungen – kein Default
     public ?int $confirmationChannelId = null;
 
+    // Aussteller-/Rechnungsangaben (Firmendaten fürs Beleg-PDF)
+    /** @var array<string,?string> */
+    public array $issuer = [];
+
     // Selbst-Storno
     public bool $cancellationEnabled = false;
     public ?int $cancellationDeadlineHours = null;
@@ -66,6 +70,7 @@ class CheckoutSettings extends Component
         $this->languagesCsv           = implode(', ', array_filter($setting->languages(), fn ($l) => $l !== 'de'));
         $this->guestFrontendUrl       = (string) ($setting->guest_frontend_url ?? '');
         $this->confirmationChannelId  = $setting->confirmationChannelId();
+        $this->issuer                 = $setting->issuer();
         $this->cancellationEnabled           = $setting->cancellationEnabled();
         $this->cancellationDeadlineHours     = $setting->cancellationDeadlineHours();
         $this->cancellationRequiresApproval  = $setting->cancellationRequiresApproval();
@@ -93,6 +98,8 @@ class CheckoutSettings extends Component
             'maxGroupEmptyTable'     => 'nullable|integer|min:1|max:200',
             'guestFrontendUrl'       => 'nullable|url|max:255',
             'confirmationChannelId'  => 'nullable|integer',
+            'issuer.email'           => 'nullable|email|max:255',
+            'issuer.website'         => 'nullable|string|max:255',
             'cancellationEnabled'          => 'boolean',
             'cancellationDeadlineHours'    => 'nullable|integer|min:0|max:8760',
             'cancellationRequiresApproval' => 'boolean',
@@ -126,6 +133,10 @@ class CheckoutSettings extends Component
             'field_notes'               => $this->fieldNotes,
             'guest_frontend_url'        => trim($this->guestFrontendUrl) ?: null,
             'confirmation_channel_id'   => $this->confirmationChannelId ?: null,
+            'issuer'                    => collect(CheckoutSetting::ISSUER_FIELDS)
+                ->mapWithKeys(fn ($f) => [$f => (trim((string) ($this->issuer[$f] ?? '')) ?: null)])
+                ->filter()
+                ->all(),
             'cancellation_enabled'           => $this->cancellationEnabled,
             'cancellation_deadline_hours'    => $this->cancellationEnabled ? $this->cancellationDeadlineHours : null,
             'cancellation_requires_approval' => $this->cancellationEnabled ? $this->cancellationRequiresApproval : false,

@@ -54,6 +54,7 @@ class CheckoutSetting extends Model
         'languages',
         'guest_frontend_url',
         'confirmation_channel_id',
+        'issuer',
         'cancellation_enabled',
         'cancellation_deadline_hours',
         'cancellation_requires_approval',
@@ -66,7 +67,11 @@ class CheckoutSetting extends Model
         'cancellation_enabled'           => 'boolean',
         'cancellation_deadline_hours'    => 'integer',
         'cancellation_requires_approval' => 'boolean',
+        'issuer'                         => 'array',
     ];
+
+    /** Felder der Aussteller-/Rechnungsangaben. */
+    public const ISSUER_FIELDS = ['name', 'street', 'zip', 'city', 'country', 'vat_id', 'tax_number', 'email', 'phone', 'website'];
 
     public function team(): BelongsTo
     {
@@ -200,6 +205,30 @@ class CheckoutSetting extends Model
     public function cancellationRequiresApproval(): bool
     {
         return (bool) $this->cancellation_requires_approval;
+    }
+
+    /**
+     * Aussteller-/Rechnungsangaben (normalisiert, alle Felder vorhanden).
+     *
+     * @return array<string,?string>
+     */
+    public function issuer(): array
+    {
+        $data = is_array($this->issuer) ? $this->issuer : [];
+        $out  = [];
+
+        foreach (self::ISSUER_FIELDS as $field) {
+            $value      = isset($data[$field]) ? trim((string) $data[$field]) : '';
+            $out[$field] = $value !== '' ? $value : null;
+        }
+
+        return $out;
+    }
+
+    /** Sind Aussteller-Daten hinterlegt (mindestens Firmenname)? */
+    public function hasIssuer(): bool
+    {
+        return $this->issuer()['name'] !== null;
     }
 
     /** CRM-Comms-Channel-ID für Bestellbestätigungen (null = kein Versand). */

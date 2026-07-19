@@ -41,6 +41,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
                 'languages'                 => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Angebotene Sprachen (locale-Codes, z.B. ["de","en"]). DE ist immer dabei.'],
                 'guest_frontend_url'        => ['type' => ['string', 'null'], 'description' => 'Basis-URL des Shop-Frontends (Allowlist-Origin für Zahlungs-Rücksprung).'],
                 'confirmation_channel_id'   => ['type' => ['integer', 'null'], 'description' => 'CRM-Comms-Channel-ID (Postmark) für Bestellbestätigungen; null = kein Versand.'],
+                'issuer'                    => ['type' => 'object', 'description' => 'Aussteller-/Rechnungsangaben: name, street, zip, city, country, vat_id, tax_number, email, phone, website.'],
                 'cancellation_enabled'           => ['type' => 'boolean', 'description' => 'Selbst-Storno durch den Kunden erlauben.'],
                 'cancellation_deadline_hours'    => ['type' => ['integer', 'null'], 'description' => 'Frist: Stunden vor Veranstaltungsdatum (null = keine Frist).'],
                 'cancellation_requires_approval' => ['type' => 'boolean', 'description' => 'Storno erst nach Freigabe durch das Team (Default false).'],
@@ -72,6 +73,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
                 'languages.*'               => 'string|regex:/^[a-zA-Z]{2}(_[a-zA-Z]{2})?$/',
                 'guest_frontend_url'        => 'sometimes|nullable|url|max:255',
                 'confirmation_channel_id'   => 'sometimes|nullable|integer',
+                'issuer'                    => 'sometimes|array',
                 'cancellation_enabled'           => 'sometimes|boolean',
                 'cancellation_deadline_hours'    => 'sometimes|nullable|integer|min:0|max:8760',
                 'cancellation_requires_approval' => 'sometimes|boolean',
@@ -91,6 +93,17 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
                 'confirmation_channel_id', 'cancellation_enabled', 'cancellation_deadline_hours',
                 'cancellation_requires_approval', 'age_check_text', 'legal_text', 'privacy_url',
             ])->all());
+
+            // Aussteller-Daten mergen (nur bekannte Felder, leere entfernt).
+            if (array_key_exists('issuer', $validator->validated())) {
+                $incoming = (array) $validator->validated()['issuer'];
+                $merged   = array_merge($setting->issuer(), $incoming);
+                $setting->issuer = collect(CheckoutSetting::ISSUER_FIELDS)
+                    ->mapWithKeys(fn ($f) => [$f => (trim((string) ($merged[$f] ?? '')) ?: null)])
+                    ->filter()
+                    ->all();
+            }
+
             $setting->team_id = $teamId;
             $setting->save();
 
@@ -107,6 +120,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
                 'cancellation_enabled'           => $setting->cancellationEnabled(),
                 'cancellation_deadline_hours'    => $setting->cancellationDeadlineHours(),
                 'cancellation_requires_approval' => $setting->cancellationRequiresApproval(),
+                'issuer'                    => $setting->issuer(),
             ], ['updated' => true]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Speichern der Einstellungen: ' . $e->getMessage(), 'EXECUTION_ERROR');
