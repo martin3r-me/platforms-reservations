@@ -60,6 +60,7 @@
                 <x-ui-table-header-cell compact="true" align="center">Personen</x-ui-table-header-cell>
                 <x-ui-table-header-cell compact="true" align="right">Bestellung</x-ui-table-header-cell>
                 <x-ui-table-header-cell compact="true">Status</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true">Gebucht am</x-ui-table-header-cell>
                 <x-ui-table-header-cell compact="true">Aktionen</x-ui-table-header-cell>
             </x-ui-table-header>
             <x-ui-table-body>
@@ -104,6 +105,14 @@
                             <x-ui-badge :variant="$statusVariant" size="xs">{{ $statusLabel }}</x-ui-badge>
                         </x-ui-table-cell>
                         <x-ui-table-cell compact="true">
+                            @if ($booking->created_at)
+                                <span class="whitespace-nowrap tabular-nums text-[var(--ui-secondary)]">{{ $booking->created_at->format('d.m.Y') }}</span>
+                                <span class="block text-xs text-[var(--ui-muted)] tabular-nums">{{ $booking->created_at->format('H:i') }} Uhr</span>
+                            @else
+                                <span class="text-[var(--ui-muted)]">–</span>
+                            @endif
+                        </x-ui-table-cell>
+                        <x-ui-table-cell compact="true">
                             <div class="flex flex-wrap gap-1.5">
                                 @if ($booking->status === 'pending')
                                     <x-ui-button variant="success" size="sm" wire:click="confirmBooking({{ $booking->id }})">Bestätigen</x-ui-button>
@@ -132,7 +141,7 @@
                     </x-ui-table-row>
                 @empty
                     <tr>
-                        <td colspan="9">
+                        <td colspan="10">
                             <div class="flex flex-col items-center justify-center py-8 text-[var(--ui-muted)]">
                                 @svg('heroicon-o-inbox', 'w-8 h-8 mb-2 opacity-40')
                                 <span class="text-xs">Keine Buchungen gefunden</span>
