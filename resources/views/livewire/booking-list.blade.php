@@ -49,6 +49,7 @@
         <x-ui-table compact="true">
             <x-ui-table-header>
                 <x-ui-table-header-cell compact="true">Datum</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true">Veranstaltung</x-ui-table-header-cell>
                 <x-ui-table-header-cell compact="true">Uhrzeit</x-ui-table-header-cell>
                 <x-ui-table-header-cell compact="true">Tisch</x-ui-table-header-cell>
                 <x-ui-table-header-cell compact="true">Gast</x-ui-table-header-cell>
@@ -61,6 +62,12 @@
                 @forelse ($this->bookings as $booking)
                     <x-ui-table-row compact="true" wire:key="booking-{{ $booking->id }}">
                         <x-ui-table-cell compact="true">{{ $booking->date->format('d.m.Y') }}</x-ui-table-cell>
+                        <x-ui-table-cell compact="true">
+                            <span class="font-medium text-[var(--ui-secondary)]">{{ $booking->event?->name ?? '—' }}</span>
+                            @if ($booking->slot)
+                                <span class="block text-xs text-[var(--ui-muted)]">{{ $booking->slot->name }}</span>
+                            @endif
+                        </x-ui-table-cell>
                         <x-ui-table-cell compact="true">{{ $booking->time_start ? substr($booking->time_start, 0, 5) : '–' }}</x-ui-table-cell>
                         <x-ui-table-cell compact="true">{{ $booking->table?->label }}</x-ui-table-cell>
                         <x-ui-table-cell compact="true">
@@ -121,7 +128,7 @@
                     </x-ui-table-row>
                 @empty
                     <tr>
-                        <td colspan="8">
+                        <td colspan="9">
                             <div class="flex flex-col items-center justify-center py-8 text-[var(--ui-muted)]">
                                 @svg('heroicon-o-inbox', 'w-8 h-8 mb-2 opacity-40')
                                 <span class="text-xs">Keine Buchungen gefunden</span>
