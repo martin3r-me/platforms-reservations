@@ -13,10 +13,16 @@
         <x-ui-sidebar-item :href="route('reservation.inbox.index')">
             @svg('heroicon-o-inbox', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Posteingang</span>
+            @if ($this->inboxCount > 0)
+                <span class="ml-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--ui-primary)] px-1 text-[10px] font-semibold text-white">{{ $this->inboxCount }}</span>
+            @endif
         </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.operations.index')">
             @svg('heroicon-o-fire', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Veranstaltungen</span>
+            @if ($this->operationsCount > 0)
+                <span class="ml-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--ui-muted-5)] px-1 text-[10px] font-semibold text-[var(--ui-secondary)]">{{ $this->operationsCount }}</span>
+            @endif
         </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.bookings.index')">
             @svg('heroicon-o-calendar-days', 'w-4 h-4 text-[var(--ui-secondary)]')
@@ -80,11 +86,17 @@
     {{-- Collapsed: Icons-only --}}
     <div x-show="collapsed" class="px-2 py-2 border-b border-[var(--ui-border)]">
         <div class="flex flex-col gap-2">
-            <a href="{{ route('reservation.inbox.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
+            <a href="{{ route('reservation.inbox.index') }}" wire:navigate class="relative flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Posteingang">
                 @svg('heroicon-o-inbox', 'w-5 h-5')
+                @if ($this->inboxCount > 0)
+                    <span class="absolute right-1 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[var(--ui-primary)] px-1 text-[9px] font-semibold text-white">{{ $this->inboxCount > 99 ? '99+' : $this->inboxCount }}</span>
+                @endif
             </a>
-            <a href="{{ route('reservation.operations.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
+            <a href="{{ route('reservation.operations.index') }}" wire:navigate class="relative flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Veranstaltungen">
                 @svg('heroicon-o-fire', 'w-5 h-5')
+                @if ($this->operationsCount > 0)
+                    <span class="absolute right-1 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[var(--ui-secondary)] px-1 text-[9px] font-semibold text-white">{{ $this->operationsCount > 99 ? '99+' : $this->operationsCount }}</span>
+                @endif
             </a>
             <a href="{{ route('reservation.bookings.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
                 @svg('heroicon-o-calendar-days', 'w-5 h-5')
