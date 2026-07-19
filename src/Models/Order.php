@@ -31,6 +31,7 @@ class Order extends Model
         'event_id',
         'status',
         'cancellation_requested_at',
+        'seen_at',
         'first_name',
         'last_name',
         'company',
@@ -44,7 +45,34 @@ class Order extends Model
 
     protected $casts = [
         'cancellation_requested_at' => 'datetime',
+        'seen_at'                   => 'datetime',
     ];
+
+    /** Für den Posteingang relevante Order-Status. */
+    public const INBOX_STATUSES = [
+        self::STATUS_CONFIRMED,
+        self::STATUS_CANCELLED,
+        self::STATUS_CANCELLATION_REQUESTED,
+    ];
+
+    /**
+     * Vorgangs-Typ im Posteingang: new | cancellation_requested | cancelled |
+     * payment_failed.
+     */
+    public function inboxType(): string
+    {
+        if ($this->status === self::STATUS_CANCELLATION_REQUESTED) {
+            return 'cancellation_requested';
+        }
+
+        if ($this->status === self::STATUS_CANCELLED) {
+            return in_array($this->payment?->status, ['failed', 'expired', 'canceled'], true)
+                ? 'payment_failed'
+                : 'cancelled';
+        }
+
+        return 'new';
+    }
 
     protected static function booted(): void
     {

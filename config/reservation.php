@@ -28,8 +28,8 @@ return [
             'group' => 'Übersicht',
             'items' => [
                 ['label' => 'Dashboard', 'route' => 'reservation.dashboard', 'icon' => 'heroicon-o-home'],
+                ['label' => 'Posteingang', 'route' => 'reservation.inbox.index', 'icon' => 'heroicon-o-inbox'],
                 ['label' => 'Buchungen', 'route' => 'reservation.bookings.index', 'icon' => 'heroicon-o-calendar-days'],
-                ['label' => 'Storno-Anfragen', 'route' => 'reservation.cancellations.index', 'icon' => 'heroicon-o-arrow-uturn-left'],
             ],
         ],
         [

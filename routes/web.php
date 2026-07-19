@@ -18,9 +18,13 @@ use Platform\Reservation\Livewire\EventOrders;
 
 // Dashboard (Kennzahlen, nächste Termine, neueste Buchungen)
 Route::get('/', \Platform\Reservation\Livewire\Dashboard::class)->name('reservation.dashboard');
+// Posteingang: chronologischer Feed neuer Bestellungen & Storno-Anfragen (Team-geteilt)
+Route::get('/inbox', \Platform\Reservation\Livewire\Inbox::class)->name('reservation.inbox.index');
+// Alle Buchungen (Browse/Filter/Detail) – nicht mehr in der Hauptnavigation
 Route::get('/bookings', BookingList::class)->name('reservation.bookings.index');
 Route::get('/bookings/create', BookingCreate::class)->name('reservation.bookings.create');
-Route::get('/cancellations', \Platform\Reservation\Livewire\CancellationRequests::class)->name('reservation.cancellations.index');
+// Alt-Link: Storno-Anfragen sind in den Posteingang integriert
+Route::get('/cancellations', fn () => redirect()->route('reservation.inbox.index'))->name('reservation.cancellations.index');
 
 // Termine (Veranstaltungen mit Pausen-Slots und Räumen)
 Route::get('/events', EventManager::class)->name('reservation.events.index');
