@@ -409,8 +409,10 @@ class EventController extends ApiController
                 'guest_count' => $b->guest_count,
                 'table'       => $b->table?->label,
                 'items'       => $b->items->map(fn ($i) => [
-                    'name'     => $i->menuItem?->name,
-                    'quantity' => $i->quantity,
+                    'name'       => $i->menuItem?->name,
+                    'quantity'   => $i->quantity,
+                    'unit_price' => round((float) $i->unit_price, 2),
+                    'total'      => round((float) $i->quantity * (float) $i->unit_price, 2),
                 ])->values()->all(),
             ])->values()->all(),
         ];
