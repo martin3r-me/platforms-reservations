@@ -9,18 +9,12 @@
             ['label' => 'Veranstaltungen', 'href' => route('reservation.operations.index')],
             ['label' => $this->event->name],
         ]">
-            <div class="flex items-center gap-2">
-                @if (\Illuminate\Support\Facades\Route::has('reservation.guest.checkout') && $this->event->status->value === 'published')
-                    <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.guest.checkout', $this->event->uuid)" target="_blank">
-                        @svg('heroicon-o-eye', 'w-4 h-4')
-                        <span>Gast-Ansicht</span>
-                    </x-ui-button>
-                @endif
-                <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.events.briefing', $this->event->id)" target="_blank">
-                    @svg('heroicon-o-presentation-chart-bar', 'w-4 h-4')
-                    <span>Abend-Übersicht</span>
+            @if (\Illuminate\Support\Facades\Route::has('reservation.guest.checkout') && $this->event->status->value === 'published')
+                <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.guest.checkout', $this->event->uuid)" target="_blank">
+                    @svg('heroicon-o-eye', 'w-4 h-4')
+                    <span>Gast-Ansicht</span>
                 </x-ui-button>
-            </div>
+            @endif
         </x-ui-page-actionbar>
     </x-slot>
 
@@ -64,7 +58,7 @@
         </div>
 
         {{-- Vollwertige Views --}}
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <a href="{{ route('reservation.events.orders', $this->event->id) }}" wire:navigate
                class="group flex items-start gap-4 rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm p-5 transition-colors hover:border-[var(--ui-primary)]/50 hover:bg-[var(--ui-primary-10)]/20">
                 <div class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-primary-10)]">
@@ -85,6 +79,18 @@
                 <div class="min-w-0 flex-1">
                     <h3 class="m-0 text-base font-semibold text-[var(--ui-secondary)]">Laufzettel</h3>
                     <p class="m-0 mt-1 text-sm text-[var(--ui-muted)]">Laufrunden je Pause: Standzeit-Klasse → Tisch → Bestellung.</p>
+                </div>
+                @svg('heroicon-o-arrow-right', 'w-5 h-5 text-[var(--ui-muted)] transition-transform group-hover:translate-x-0.5')
+            </a>
+
+            <a href="{{ route('reservation.events.overview', $this->event->id) }}" wire:navigate
+               class="group flex items-start gap-4 rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm p-5 transition-colors hover:border-[var(--ui-primary)]/50 hover:bg-[var(--ui-primary-10)]/20">
+                <div class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-primary-10)]">
+                    @svg('heroicon-o-presentation-chart-bar', 'w-6 h-6 text-[var(--ui-primary)]')
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h3 class="m-0 text-base font-semibold text-[var(--ui-secondary)]">Abend-Übersicht</h3>
+                    <p class="m-0 mt-1 text-sm text-[var(--ui-muted)]">Kennzahlen, Pausen, Top-Speisen und Gästeliste auf einen Blick.</p>
                 </div>
                 @svg('heroicon-o-arrow-right', 'w-5 h-5 text-[var(--ui-muted)] transition-transform group-hover:translate-x-0.5')
             </a>
