@@ -28,5 +28,10 @@ Route::get('/order/{uuid}/cancel', OrderCancel::class)
     ->middleware('signed')
     ->name('reservation.guest.order.cancel');
 
+// Beleg-PDF (Bestellbestätigung | Bewirtungsbeleg) per signierter URL
+Route::get('/order/{uuid}/receipt', \Platform\Reservation\Http\Controllers\OrderReceiptController::class)
+    ->middleware('signed')
+    ->name('reservation.guest.order.receipt');
+
 // Tischplan-Buchung durch Gäste (Alt-Flow ohne Termin)
 Route::get('/book/{floorPlanId}', FloorPlanViewer::class)->name('reservation.floor-plan.viewer');

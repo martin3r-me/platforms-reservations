@@ -33,3 +33,7 @@ Route::get('/events/{event}/orders/{order}', [EventController::class, 'orderStat
 // Flaches Polling nur per Order-UUID (ohne Termin-Kontext).
 Route::get('/orders/{order}', [EventController::class, 'orderByUuid'])
     ->name('reservation.api.orders.show');
+
+// Signierte PDF-URL eines Belegs (?type=confirmation|bewirtungsbeleg).
+Route::get('/orders/{order}/receipt', [EventController::class, 'orderReceipt'])
+    ->name('reservation.api.orders.receipt');

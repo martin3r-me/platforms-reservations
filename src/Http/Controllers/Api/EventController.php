@@ -387,6 +387,34 @@ class EventController extends ApiController
         return $this->success($this->formatOrderStatus($orderModel), 'Bestellstatus geladen');
     }
 
+    /**
+     * GET /orders/{order}/receipt – signierte PDF-URL eines Belegs.
+     * ?type=confirmation (Default, Bestellbestätigung) | bewirtungsbeleg.
+     */
+    public function orderReceipt(Request $request, string $order)
+    {
+        $type = in_array($request->query('type'), ['confirmation', 'bewirtungsbeleg'], true)
+            ? $request->query('type')
+            : 'confirmation';
+
+        $orderModel = Order::withoutGlobalScope('team')->where('uuid', $order)->first();
+
+        if (! $orderModel) {
+            return $this->notFound('Bestellung nicht gefunden.');
+        }
+
+        $url = \Illuminate\Support\Facades\URL::signedRoute(
+            'reservation.guest.order.receipt',
+            ['uuid' => $orderModel->uuid, 'type' => $type],
+        );
+
+        return $this->success([
+            'order_uuid' => $orderModel->uuid,
+            'type'       => $type,
+            'url'        => $url,
+        ], 'Beleg-URL erstellt');
+    }
+
     /** Einheitliche Status-Darstellung einer Bestellung (fürs Polling). */
     protected function formatOrderStatus(Order $order): array
     {
