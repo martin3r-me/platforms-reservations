@@ -96,6 +96,46 @@ class EventDashboard extends Component
         return (int) $this->itemsByCategory->flatten(1)->sum('quantity');
     }
 
+    /**
+     * Verteilung der bestellten Menge auf die Standzeit-Klassen (Timing) –
+     * Artikel ohne Klasse gelten als zeitlich unkritisch.
+     *
+     * @return \Illuminate\Support\Collection<int, array{name: string, color: ?string, lead_time_minutes: ?int, quantity: int}>
+     */
+    #[Computed]
+    public function holdingClassDistribution(): \Illuminate\Support\Collection
+    {
+        $totals = BookingItem::query()
+            ->join('reservation_bookings as b', 'b.id', '=', 'reservation_booking_items.booking_id')
+            ->where('b.event_id', $this->eventId)
+            ->whereNotIn('b.status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
+            ->groupBy('reservation_booking_items.menu_item_id')
+            ->selectRaw('reservation_booking_items.menu_item_id, SUM(reservation_booking_items.quantity) as qty')
+            ->pluck('qty', 'menu_item_id');
+
+        if ($totals->isEmpty()) {
+            return collect();
+        }
+
+        return MenuItem::with('holdingClass')
+            ->whereIn('id', $totals->keys())
+            ->get()
+            ->groupBy(fn (MenuItem $item) => $item->holding_class_id ?? 0)
+            ->map(function ($items) use ($totals) {
+                $hc = $items->first()->holdingClass;
+
+                return [
+                    'name'              => $hc?->name ?? 'Zeitlich egal / vorab',
+                    'color'             => $hc?->color,
+                    'lead_time_minutes' => $hc?->lead_time_minutes,
+                    'sort_order'        => $hc?->sort_order ?? PHP_INT_MAX,
+                    'quantity'          => (int) $items->sum(fn (MenuItem $item) => $totals[$item->id]),
+                ];
+            })
+            ->sortBy([['sort_order', 'asc'], ['name', 'asc']])
+            ->values();
+    }
+
     public function render()
     {
         return view('reservation::livewire.event-dashboard')

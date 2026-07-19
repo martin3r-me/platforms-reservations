@@ -125,6 +125,39 @@
             </section>
         @endif
 
+        {{-- Standzeit-Klassen-Verteilung (Timing) --}}
+        @if ($this->holdingClassDistribution->isNotEmpty())
+            @php $hcTotal = max(1, $this->totalItems); @endphp
+            <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+                    @svg('heroicon-o-fire', 'w-4 h-4 text-[var(--ui-muted)]')
+                    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Standzeit-Klassen</h2>
+                    <span class="ml-auto text-[11px] text-[var(--ui-muted)]">Timing-Verteilung</span>
+                </div>
+                <div class="space-y-3 p-4">
+                    @foreach ($this->holdingClassDistribution as $hc)
+                        @php
+                            $share = round($hc['quantity'] / $hcTotal * 100);
+                            $color = $hc['color'] ?: '#94a3b8';
+                        @endphp
+                        <div wire:key="hc-dist-{{ $loop->index }}">
+                            <div class="mb-1 flex items-center gap-2 text-sm">
+                                <span class="inline-block h-3 w-3 shrink-0 rounded-full border border-black/10" style="background: {{ $color }}"></span>
+                                <span class="font-medium text-[var(--ui-secondary)]">{{ $hc['name'] }}</span>
+                                @if ($hc['lead_time_minutes'] !== null)
+                                    <span class="rounded-full bg-[var(--ui-muted-5)] px-2 py-0.5 text-[10px] font-medium text-[var(--ui-muted)]">{{ $hc['lead_time_minutes'] }} min vor</span>
+                                @endif
+                                <span class="ml-auto shrink-0 tabular-nums text-[var(--ui-secondary)]"><span class="font-bold">{{ $hc['quantity'] }}×</span> <span class="text-[var(--ui-muted)]">· {{ $share }} %</span></span>
+                            </div>
+                            <div class="h-2 w-full overflow-hidden rounded-full bg-[var(--ui-muted-5)]">
+                                <div class="h-full rounded-full" style="width: {{ $share }}%; background: {{ $color }}"></div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
     </div>
     </x-ui-page-container>
 </x-ui-page>
