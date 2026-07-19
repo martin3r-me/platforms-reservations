@@ -77,10 +77,10 @@
                         </span>
                         <span class="shrink-0 text-[11px] text-[var(--ui-muted)]" title="zugeordnete Artikel">{{ $c->menu_items_count }} Art.</span>
                         <div class="flex shrink-0 items-center">
-                            <x-ui-button variant="secondary-ghost" size="sm" :iconOnly="true" wire:click="moveUp({{ $c->id }})" title="Nach oben" @disabled($index === 0)>
+                            <x-ui-button variant="secondary-ghost" size="sm" :iconOnly="true" wire:click="moveUp({{ $c->id }})" title="Nach oben" :disabled="$index === 0">
                                 @svg('heroicon-o-chevron-up', 'w-4 h-4')
                             </x-ui-button>
-                            <x-ui-button variant="secondary-ghost" size="sm" :iconOnly="true" wire:click="moveDown({{ $c->id }})" title="Nach unten" @disabled($index === $this->classes->count() - 1)>
+                            <x-ui-button variant="secondary-ghost" size="sm" :iconOnly="true" wire:click="moveDown({{ $c->id }})" title="Nach unten" :disabled="$index === $this->classes->count() - 1">
                                 @svg('heroicon-o-chevron-down', 'w-4 h-4')
                             </x-ui-button>
                         </div>
