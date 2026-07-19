@@ -358,7 +358,7 @@ class EventController extends ApiController
             ->where('team_id', $model->team_id)
             ->where('event_id', $model->id)
             ->where('uuid', $order)
-            ->with(['payment', 'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'items'])])
+            ->with(['payment', 'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table', 'items.menuItem'])])
             ->first();
 
         if (! $orderModel) {
@@ -376,7 +376,7 @@ class EventController extends ApiController
     {
         $orderModel = Order::withoutGlobalScope('team')
             ->where('uuid', $order)
-            ->with(['payment', 'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'items'])])
+            ->with(['payment', 'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table', 'items.menuItem'])])
             ->first();
 
         if (! $orderModel) {
@@ -403,9 +403,15 @@ class EventController extends ApiController
                 'billing'    => $order->billingAddress(),
             ],
             'bookings'       => $order->bookings->map(fn ($b) => [
-                'uuid'   => $b->uuid,
-                'slot'   => $b->slot?->name,
-                'status' => $b->status,
+                'uuid'        => $b->uuid,
+                'slot'        => $b->slot?->name,
+                'status'      => $b->status,
+                'guest_count' => $b->guest_count,
+                'table'       => $b->table?->label,
+                'items'       => $b->items->map(fn ($i) => [
+                    'name'     => $i->menuItem?->name,
+                    'quantity' => $i->quantity,
+                ])->values()->all(),
             ])->values()->all(),
         ];
     }
