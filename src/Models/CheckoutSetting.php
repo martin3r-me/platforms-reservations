@@ -71,7 +71,11 @@ class CheckoutSetting extends Model
     ];
 
     /** Felder der Aussteller-/Rechnungsangaben. */
-    public const ISSUER_FIELDS = ['name', 'street', 'zip', 'city', 'country', 'vat_id', 'tax_number', 'email', 'phone', 'website'];
+    public const ISSUER_FIELDS = [
+        'name', 'street', 'zip', 'city', 'country',
+        'vat_id', 'tax_number', 'register_court', 'register_number', 'managing_directors',
+        'email', 'phone', 'fax', 'website',
+    ];
 
     public function team(): BelongsTo
     {

@@ -119,8 +119,14 @@
                 <x-ui-input-text name="issuer.tax_number" label="Steuernummer" size="sm" wire:model="issuer.tax_number" />
             </x-ui-form-grid>
             <x-ui-form-grid :cols="3" :gap="3">
+                <x-ui-input-text name="issuer.register_court" label="Registergericht" size="sm" wire:model="issuer.register_court" placeholder="Amtsgericht Wuppertal" />
+                <x-ui-input-text name="issuer.register_number" label="HRB-Nr." size="sm" wire:model="issuer.register_number" placeholder="8727" />
+                <x-ui-input-text name="issuer.managing_directors" label="Vertreten durch" size="sm" wire:model="issuer.managing_directors" placeholder="Max Muster & …" />
+            </x-ui-form-grid>
+            <x-ui-form-grid :cols="4" :gap="3">
                 <x-ui-input-text name="issuer.email" label="E-Mail" size="sm" wire:model="issuer.email" errorKey="issuer.email" />
                 <x-ui-input-text name="issuer.phone" label="Telefon" size="sm" wire:model="issuer.phone" />
+                <x-ui-input-text name="issuer.fax" label="Telefax" size="sm" wire:model="issuer.fax" />
                 <x-ui-input-text name="issuer.website" label="Website" size="sm" wire:model="issuer.website" />
             </x-ui-form-grid>
         </div>

@@ -34,13 +34,7 @@
     </style>
 </head>
 <body>
-    @if ($issuer['name'])
-        <div style="font-size: 10px; color: #6b7280; margin-bottom: 8px; line-height: 1.5;">
-            <strong style="color: #374151;">{{ $issuer['name'] }}</strong>@if ($issuer['street']) · {{ $issuer['street'] }}@endif@if ($issuer['zip'] || $issuer['city']) · {{ $issuer['zip'] }} {{ $issuer['city'] }}@endif
-            @if ($issuer['vat_id'] || $issuer['tax_number'])<br>@endif
-            @if ($issuer['vat_id'])USt-IdNr: {{ $issuer['vat_id'] }}@endif@if ($issuer['tax_number']) · Steuernr.: {{ $issuer['tax_number'] }}@endif@if ($issuer['email']) · {{ $issuer['email'] }}@endif@if ($issuer['phone']) · {{ $issuer['phone'] }}@endif
-        </div>
-    @endif
+    @include('reservation::pdf.partials.issuer', ['issuer' => $issuer])
 
     <div class="head">
         <div class="eyebrow">Bewirtungsbeleg</div>
