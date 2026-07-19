@@ -9,6 +9,7 @@ use Livewire\Component;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\Event;
+use Platform\Reservation\Models\MenuItem;
 
 /**
  * VA-Dashboard: operativer Hub einer Veranstaltung. Bündelt Kennzahlen und
@@ -54,6 +55,45 @@ class EventDashboard extends Component
             'revenue'  => $revenue,
             'pauses'   => $this->event->slots->count(),
         ];
+    }
+
+    /**
+     * Bestellte Artikel des gesamten Termins (aktive Buchungen), als
+     * Gesamtmenge je Artikel – geclustert nach Kategorie.
+     *
+     * @return \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<int, array{name: string, quantity: int}>>
+     */
+    #[Computed]
+    public function itemsByCategory(): \Illuminate\Support\Collection
+    {
+        $totals = BookingItem::query()
+            ->join('reservation_bookings as b', 'b.id', '=', 'reservation_booking_items.booking_id')
+            ->where('b.event_id', $this->eventId)
+            ->whereNotIn('b.status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
+            ->groupBy('reservation_booking_items.menu_item_id')
+            ->selectRaw('reservation_booking_items.menu_item_id, SUM(reservation_booking_items.quantity) as qty')
+            ->pluck('qty', 'menu_item_id');
+
+        if ($totals->isEmpty()) {
+            return collect();
+        }
+
+        return MenuItem::with('category')
+            ->whereIn('id', $totals->keys())
+            ->get()
+            ->sortBy([['category.sort_order', 'asc'], ['sort_order', 'asc'], ['name', 'asc']])
+            ->groupBy(fn (MenuItem $item) => $item->category?->name ?? 'Sonstiges')
+            ->map(fn ($items) => $items->map(fn (MenuItem $item) => [
+                'name'     => $item->name,
+                'quantity' => (int) $totals[$item->id],
+            ])->values());
+    }
+
+    /** Gesamtmenge bestellter Artikel (für die Section-Überschrift). */
+    #[Computed]
+    public function totalItems(): int
+    {
+        return (int) $this->itemsByCategory->flatten(1)->sum('quantity');
     }
 
     public function render()

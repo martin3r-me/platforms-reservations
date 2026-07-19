@@ -96,6 +96,35 @@
             </a>
         </div>
 
+        {{-- Bestellte Artikel, geclustert nach Kategorie --}}
+        @if ($this->itemsByCategory->isNotEmpty())
+            <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+                    @svg('heroicon-o-rectangle-stack', 'w-4 h-4 text-[var(--ui-muted)]')
+                    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Bestellte Artikel</h2>
+                    <span class="ml-auto text-[11px] text-[var(--ui-muted)]">{{ $this->totalItems }} Stk.</span>
+                </div>
+                <div class="grid grid-cols-1 gap-px bg-[var(--ui-border)]/20 sm:grid-cols-2 lg:grid-cols-3">
+                    @foreach ($this->itemsByCategory as $category => $items)
+                        <div class="bg-white p-3" wire:key="cat-{{ $loop->index }}">
+                            <p class="m-0 mb-1.5 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">
+                                <span class="truncate">{{ $category }}</span>
+                                <span class="tabular-nums">{{ $items->sum('quantity') }}</span>
+                            </p>
+                            <div class="divide-y divide-[var(--ui-border)]/20">
+                                @foreach ($items as $item)
+                                    <div class="flex items-center justify-between gap-2 py-1 text-sm" wire:key="cat-{{ $loop->parent->index }}-item-{{ $loop->index }}">
+                                        <span class="min-w-0 truncate text-[var(--ui-secondary)]">{{ $item['name'] }}</span>
+                                        <span class="shrink-0 font-bold tabular-nums text-[var(--ui-secondary)]">{{ $item['quantity'] }}×</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
     </div>
     </x-ui-page-container>
 </x-ui-page>
