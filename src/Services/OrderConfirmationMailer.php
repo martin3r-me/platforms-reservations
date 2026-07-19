@@ -40,17 +40,24 @@ class OrderConfirmationMailer
             return ['status' => 'no_comms_module', 'message' => 'CRM/Comms-Modul nicht installiert – keine Mail versendet.'];
         }
 
-        // Aktiven Postmark-Email-Channel des Teams ermitteln.
+        // Absender wird explizit konfiguriert (kein Default/Fallback).
+        $channelId = \Platform\Reservation\Models\CheckoutSetting::forTeam((int) $order->team_id)->confirmationChannelId();
+
+        if (!$channelId) {
+            return ['status' => 'no_channel_configured', 'message' => 'Kein Absender für Bestellbestätigungen konfiguriert – keine Mail versendet.'];
+        }
+
+        // Nur den gewählten Channel nehmen – und nur, wenn er zum Team passt und aktiv ist.
         $channel = \Platform\Crm\Models\CommsChannel::query()
+            ->where('id', $channelId)
             ->where('team_id', (int) $order->team_id)
             ->where('type', 'email')
             ->where('provider', 'postmark')
             ->where('is_active', true)
-            ->orderBy('id')
             ->first();
 
         if (!$channel) {
-            return ['status' => 'no_channel', 'message' => 'Kein aktiver Email-Channel im CRM gefunden.'];
+            return ['status' => 'channel_invalid', 'message' => 'Konfigurierter Absender ist nicht (mehr) gültig – keine Mail versendet.'];
         }
 
         $subject  = 'Vielen Dank für Ihre Bestellung – ' . ($order->event?->name ?? 'PausePlus');

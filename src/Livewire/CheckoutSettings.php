@@ -27,6 +27,9 @@ class CheckoutSettings extends Component
     // Basis-URL des Shop-Frontends (Allowlist für Zahlungs-Rücksprung)
     public string $guestFrontendUrl = '';
 
+    // Absender (CRM-Comms-Channel) für Bestellbestätigungen – kein Default
+    public ?int $confirmationChannelId = null;
+
     // #520/#521: Anmeldefelder (required|optional|hidden)
     public string $fieldEmail = 'required';
     public string $fieldPhone = 'optional';
@@ -57,6 +60,7 @@ class CheckoutSettings extends Component
         $this->maxGroupEmptyTable     = $setting->maxGroupEmptyTable();
         $this->languagesCsv           = implode(', ', array_filter($setting->languages(), fn ($l) => $l !== 'de'));
         $this->guestFrontendUrl       = (string) ($setting->guest_frontend_url ?? '');
+        $this->confirmationChannelId  = $setting->confirmationChannelId();
         $this->fieldEmail             = $setting->fieldMode('email');
         $this->fieldPhone             = $setting->fieldMode('phone');
         $this->fieldNotes             = $setting->fieldMode('notes');
@@ -80,6 +84,7 @@ class CheckoutSettings extends Component
             'softTableCapacity'      => 'boolean',
             'maxGroupEmptyTable'     => 'nullable|integer|min:1|max:200',
             'guestFrontendUrl'       => 'nullable|url|max:255',
+            'confirmationChannelId'  => 'nullable|integer',
             'fieldEmail'             => 'required|in:required,optional,hidden',
             'fieldPhone'             => 'required|in:required,optional,hidden',
             'fieldNotes'             => 'required|in:required,optional,hidden',
@@ -109,6 +114,7 @@ class CheckoutSettings extends Component
             'field_phone'               => $this->fieldPhone,
             'field_notes'               => $this->fieldNotes,
             'guest_frontend_url'        => trim($this->guestFrontendUrl) ?: null,
+            'confirmation_channel_id'   => $this->confirmationChannelId ?: null,
         ])->save();
 
         // Zahlung (Mollie) speichern – Keys nur bei Eingabe überschreiben.
@@ -134,13 +140,40 @@ class CheckoutSettings extends Component
         session()->flash('checkout_message', 'Einstellungen gespeichert.');
     }
 
+    /**
+     * Aktive Postmark-E-Mail-Channels des Teams (für die Absender-Auswahl).
+     * Defensiv: ohne CRM/Comms-Modul leere Liste.
+     *
+     * @return array<int, array{value:int, label:string}>
+     */
+    protected function emailChannelOptions(): array
+    {
+        if (!class_exists(\Platform\Crm\Models\CommsChannel::class)) {
+            return [];
+        }
+
+        return \Platform\Crm\Models\CommsChannel::query()
+            ->where('team_id', $this->getTeamId())
+            ->where('type', 'email')
+            ->where('provider', 'postmark')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($c) => [
+                'value' => $c->id,
+                'label' => trim(($c->name ?: 'Absender') . ' · ' . $c->sender_identifier),
+            ])
+            ->all();
+    }
+
     public function render()
     {
         return view('reservation::livewire.checkout-settings', [
-            'defaultAge'   => CheckoutSetting::DEFAULT_AGE_TEXT,
-            'defaultLegal' => CheckoutSetting::DEFAULT_LEGAL_TEXT,
-            'payReady'     => app(MolliePaymentService::class)->isEnabledForTeam($this->getTeamId()),
-            'webhookUrl'   => route('reservation.api.payment.webhook'),
+            'defaultAge'    => CheckoutSetting::DEFAULT_AGE_TEXT,
+            'defaultLegal'  => CheckoutSetting::DEFAULT_LEGAL_TEXT,
+            'payReady'      => app(MolliePaymentService::class)->isEnabledForTeam($this->getTeamId()),
+            'webhookUrl'    => route('reservation.api.payment.webhook'),
+            'emailChannels' => $this->emailChannelOptions(),
         ])->layout('platform::layouts.app');
     }
 }

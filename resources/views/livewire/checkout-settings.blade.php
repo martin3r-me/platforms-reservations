@@ -97,6 +97,29 @@
         </div>
     </section>
 
+    {{-- Bestellbestätigung (E-Mail-Absender) --}}
+    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+            @svg('heroicon-o-envelope', 'w-4 h-4 text-[var(--ui-muted)]')
+            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Bestellbestätigung (E-Mail)</h2>
+        </div>
+        <div class="p-5">
+            @if (count($emailChannels))
+                <x-ui-input-select
+                    name="confirmationChannelId"
+                    label="Absender für Bestellbestätigungen"
+                    :options="$emailChannels"
+                    :nullable="true"
+                    nullLabel="— kein Versand —"
+                    wire:model="confirmationChannelId"
+                />
+                <p class="mt-1 text-[11px] text-[var(--ui-muted)]">Wähle den Postmark-Absender (aus dem CRM), über den die „Vielen Dank für Ihre Bestellung"-Mail verschickt wird. <strong>Ohne Auswahl wird keine Bestätigung versendet</strong> (kein Standard-Absender).</p>
+            @else
+                <p class="text-[11px] text-[var(--ui-muted)] m-0">Es sind keine aktiven Postmark-E-Mail-Absender im CRM vorhanden. Lege zuerst im CRM einen E-Mail-Channel (Provider Postmark) an – dann kannst du ihn hier auswählen.</p>
+            @endif
+        </div>
+    </section>
+
     {{-- Zahlung (Mollie) --}}
     <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">

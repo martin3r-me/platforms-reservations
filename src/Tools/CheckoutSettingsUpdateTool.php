@@ -40,6 +40,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
                 'max_group_empty_table'     => ['type' => ['integer', 'null'], 'description' => 'Max. Gruppengröße auf leerem Tisch (null = unbegrenzt).'],
                 'languages'                 => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Angebotene Sprachen (locale-Codes, z.B. ["de","en"]). DE ist immer dabei.'],
                 'guest_frontend_url'        => ['type' => ['string', 'null'], 'description' => 'Basis-URL des Shop-Frontends (Allowlist-Origin für Zahlungs-Rücksprung).'],
+                'confirmation_channel_id'   => ['type' => ['integer', 'null'], 'description' => 'CRM-Comms-Channel-ID (Postmark) für Bestellbestätigungen; null = kein Versand.'],
                 'age_check_text'            => ['type' => 'string'],
                 'legal_text'                => ['type' => 'string'],
                 'privacy_url'               => ['type' => 'string'],
@@ -67,6 +68,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
                 'languages'                 => 'sometimes|array',
                 'languages.*'               => 'string|regex:/^[a-zA-Z]{2}(_[a-zA-Z]{2})?$/',
                 'guest_frontend_url'        => 'sometimes|nullable|url|max:255',
+                'confirmation_channel_id'   => 'sometimes|nullable|integer',
                 'age_check_text'            => 'sometimes|nullable|string|max:1000',
                 'legal_text'                => 'sometimes|nullable|string|max:1000',
                 'privacy_url'               => 'sometimes|nullable|url|max:255',
@@ -80,7 +82,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
             $setting->fill(collect($validator->validated())->only([
                 'field_email', 'field_phone', 'field_notes', 'default_room_release_mode',
                 'soft_table_capacity', 'max_group_empty_table', 'languages', 'guest_frontend_url',
-                'age_check_text', 'legal_text', 'privacy_url',
+                'confirmation_channel_id', 'age_check_text', 'legal_text', 'privacy_url',
             ])->all());
             $setting->team_id = $teamId;
             $setting->save();
@@ -94,6 +96,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
                 'max_group_empty_table'     => $setting->maxGroupEmptyTable(),
                 'languages'                 => $setting->languages(),
                 'guest_frontend_url'        => $setting->guestFrontendUrl(),
+                'confirmation_channel_id'   => $setting->confirmationChannelId(),
             ], ['updated' => true]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Speichern der Einstellungen: ' . $e->getMessage(), 'EXECUTION_ERROR');

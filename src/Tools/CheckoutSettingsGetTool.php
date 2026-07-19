@@ -53,6 +53,7 @@ class CheckoutSettingsGetTool implements ToolContract, ToolMetadataContract
                 'max_group_empty_table'     => $s->maxGroupEmptyTable(),
                 'languages'                 => $s->languages(),
                 'guest_frontend_url'        => $s->guestFrontendUrl(),
+                'confirmation_channel_id'   => $s->confirmationChannelId(),
                 'age_check_text'            => $s->age_check_text,
                 'legal_text'                => $s->legal_text,
                 'privacy_url'               => $s->privacy_url,

@@ -53,6 +53,7 @@ class CheckoutSetting extends Model
         'max_group_empty_table',
         'languages',
         'guest_frontend_url',
+        'confirmation_channel_id',
     ];
 
     protected $casts = [
@@ -175,6 +176,12 @@ class CheckoutSetting extends Model
             ->all();
 
         return array_merge([Translation::DEFAULT_LOCALE], $list);
+    }
+
+    /** CRM-Comms-Channel-ID für Bestellbestätigungen (null = kein Versand). */
+    public function confirmationChannelId(): ?int
+    {
+        return $this->confirmation_channel_id !== null ? (int) $this->confirmation_channel_id : null;
     }
 
     /** Basis-URL des Shop-Frontends (Allowlist-Origin für Zahlungs-Rücksprung). */
