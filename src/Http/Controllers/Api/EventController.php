@@ -15,6 +15,7 @@ use Platform\Reservation\Models\Order;
 use Platform\Reservation\Models\SalesList;
 use Platform\Reservation\Models\Translation;
 use Platform\Reservation\Services\GuestOrderService;
+use Platform\Reservation\Support\Vat;
 use Platform\Reservation\Services\SeatAvailabilityService;
 
 /**
@@ -412,9 +413,48 @@ class EventController extends ApiController
                     'name'       => $i->menuItem?->name,
                     'quantity'   => $i->quantity,
                     'unit_price' => round((float) $i->unit_price, 2),
+                    'tax_rate'   => round((float) $i->tax_rate, 2),
                     'total'      => round((float) $i->quantity * (float) $i->unit_price, 2),
                 ])->values()->all(),
             ])->values()->all(),
+            'vat_summary'    => $this->vatSummary($order),
+        ];
+    }
+
+    /**
+     * MwSt-Aufschlüsselung einer Bestellung, gruppiert nach Steuersatz.
+     * Preise sind brutto; Netto/MwSt werden je Satz aus der Bruttosumme extrahiert.
+     *
+     * @return array{net: float, vat: float, gross: float, rates: array<int, array{rate: float, net: float, vat: float, gross: float}>}
+     */
+    protected function vatSummary(Order $order): array
+    {
+        $grossByRate = [];
+        foreach ($order->bookings as $booking) {
+            foreach ($booking->items as $item) {
+                $rate = (float) $item->tax_rate;
+                $gross = (float) $item->unit_price * $item->quantity;
+                $grossByRate[(string) $rate] = ($grossByRate[(string) $rate] ?? 0.0) + $gross;
+            }
+        }
+
+        krsort($grossByRate, SORT_NUMERIC); // 19 % vor 7 %
+
+        $rates = [];
+        $totalNet = $totalVat = $totalGross = 0.0;
+        foreach ($grossByRate as $rate => $gross) {
+            $v = Vat::fromGross($gross, (float) $rate);
+            $rates[] = ['rate' => (float) $rate] + $v;
+            $totalNet += $v['net'];
+            $totalVat += $v['vat'];
+            $totalGross += $v['gross'];
+        }
+
+        return [
+            'net'   => round($totalNet, 2),
+            'vat'   => round($totalVat, 2),
+            'gross' => round($totalGross, 2),
+            'rates' => $rates,
         ];
     }
 

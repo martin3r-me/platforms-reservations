@@ -147,6 +147,67 @@ class MolliePaymentService
         }
     }
 
+    /**
+     * Löst die (volle) Rückerstattung einer Bestellung bei Mollie aus und
+     * vermerkt sie an der Payment. Defensiv: ohne SDK/Zahlung/Bezahlung inert.
+     *
+     * @return array{status:string,message:string}
+     */
+    public function refundOrder(Order $order): array
+    {
+        if (!class_exists(\Mollie\Api\MollieApiClient::class)) {
+            return ['status' => 'no_sdk', 'message' => 'Mollie-SDK nicht installiert.'];
+        }
+
+        $payment = $order->payment()->first();
+
+        if (!$payment || !$payment->mollie_id) {
+            return ['status' => 'no_payment', 'message' => 'Keine Mollie-Zahlung zur Bestellung.'];
+        }
+        if ($payment->refunded_at) {
+            return ['status' => 'already_refunded', 'message' => 'Bereits erstattet.'];
+        }
+        if ($payment->status !== 'paid') {
+            return ['status' => 'not_paid', 'message' => 'Zahlung nicht bezahlt – keine Erstattung nötig.'];
+        }
+
+        $creds = $this->resolver->forTeam($order->team_id);
+        if (!$creds) {
+            return ['status' => 'no_credentials', 'message' => 'Keine Mollie-Zugangsdaten.'];
+        }
+
+        try {
+            $molliePayment = $this->client($creds)->payments->get($payment->mollie_id);
+
+            if (method_exists($molliePayment, 'canBeRefunded') && !$molliePayment->canBeRefunded()) {
+                return ['status' => 'not_refundable', 'message' => 'Zahlung ist bei Mollie nicht erstattbar.'];
+            }
+
+            $currency = strtoupper((string) ($payment->currency ?: config('reservation.currency', 'EUR')));
+            $value    = number_format((float) $payment->amount, 2, '.', '');
+
+            $molliePayment->refund([
+                'amount'      => ['currency' => $currency, 'value' => $value],
+                'description' => 'Storno PausePlus Bestellung ' . $order->uuid,
+            ]);
+
+            $payment->update([
+                'status'          => 'refunded',
+                'refunded_at'     => now(),
+                'refunded_amount' => $payment->amount,
+            ]);
+
+            return ['status' => 'refunded', 'message' => 'Rückerstattung ausgelöst: ' . $value . ' ' . $currency];
+        } catch (\Throwable $e) {
+            \Log::warning('[Reservation\\MolliePaymentService] Refund fehlgeschlagen', [
+                'order_id' => $order->id,
+                'error'    => $e->getMessage(),
+            ]);
+
+            return ['status' => 'failed', 'message' => 'Rückerstattung fehlgeschlagen: ' . $e->getMessage()];
+        }
+    }
+
     protected function client(MollieCredentials $creds): MollieApiClient
     {
         $client = new MollieApiClient();

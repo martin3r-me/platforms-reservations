@@ -120,6 +120,37 @@
         </div>
     </section>
 
+    {{-- Selbst-Storno --}}
+    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+            @svg('heroicon-o-arrow-uturn-left', 'w-4 h-4 text-[var(--ui-muted)]')
+            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Stornierung durch Kunden</h2>
+        </div>
+        <div class="p-5 space-y-4">
+            <label class="flex items-start gap-2 text-sm text-[var(--ui-secondary)] cursor-pointer">
+                <input wire:model.live="cancellationEnabled" type="checkbox" class="mt-0.5 rounded border-[var(--ui-border)]" />
+                <span>
+                    Selbst-Storno erlauben
+                    <span class="block text-[11px] text-[var(--ui-muted)]">Kunden erhalten in der Bestätigungs-Mail einen Storno-Link. Innerhalb der Frist wird die Bestellung storniert und die Zahlung über Mollie erstattet.</span>
+                </span>
+            </label>
+
+            @if ($cancellationEnabled)
+                <div class="ml-6 max-w-xs">
+                    <x-ui-input-text type="number" name="cancellationDeadlineHours" label="Frist: Stunden vor Veranstaltung" size="sm" wire:model="cancellationDeadlineHours" placeholder="z. B. 72" errorKey="cancellationDeadlineHours" />
+                    <p class="mt-1 text-[11px] text-[var(--ui-muted)]">Bis wie viele Stunden vor dem Veranstaltungsdatum ein Storno möglich ist. Leer = keine Frist.</p>
+                </div>
+                <label class="ml-6 flex items-start gap-2 text-sm text-[var(--ui-secondary)] cursor-pointer">
+                    <input wire:model="cancellationRequiresApproval" type="checkbox" class="mt-0.5 rounded border-[var(--ui-border)]" />
+                    <span>
+                        Storno erst nach Freigabe
+                        <span class="block text-[11px] text-[var(--ui-muted)]">Standard: aus – der Klick storniert sofort und löst die Rückerstattung aus. Aktiv: der Kunde fragt nur an, das Team gibt frei (dann erst Rückerstattung).</span>
+                    </span>
+                </label>
+            @endif
+        </div>
+    </section>
+
     {{-- Zahlung (Mollie) --}}
     <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">

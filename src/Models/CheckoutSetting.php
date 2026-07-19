@@ -54,12 +54,18 @@ class CheckoutSetting extends Model
         'languages',
         'guest_frontend_url',
         'confirmation_channel_id',
+        'cancellation_enabled',
+        'cancellation_deadline_hours',
+        'cancellation_requires_approval',
     ];
 
     protected $casts = [
-        'soft_table_capacity'   => 'boolean',
-        'max_group_empty_table' => 'integer',
-        'languages'             => 'array',
+        'soft_table_capacity'            => 'boolean',
+        'max_group_empty_table'          => 'integer',
+        'languages'                      => 'array',
+        'cancellation_enabled'           => 'boolean',
+        'cancellation_deadline_hours'    => 'integer',
+        'cancellation_requires_approval' => 'boolean',
     ];
 
     public function team(): BelongsTo
@@ -176,6 +182,24 @@ class CheckoutSetting extends Model
             ->all();
 
         return array_merge([Translation::DEFAULT_LOCALE], $list);
+    }
+
+    /** Selbst-Storno durch den Kunden aktiviert? */
+    public function cancellationEnabled(): bool
+    {
+        return (bool) $this->cancellation_enabled;
+    }
+
+    /** Storno-Frist in Stunden vor dem Veranstaltungsdatum (null = keine Frist). */
+    public function cancellationDeadlineHours(): ?int
+    {
+        return $this->cancellation_deadline_hours !== null ? (int) $this->cancellation_deadline_hours : null;
+    }
+
+    /** Storno erst nach Freigabe durch das Team? */
+    public function cancellationRequiresApproval(): bool
+    {
+        return (bool) $this->cancellation_requires_approval;
     }
 
     /** CRM-Comms-Channel-ID für Bestellbestätigungen (null = kein Versand). */

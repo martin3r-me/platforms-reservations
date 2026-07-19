@@ -98,6 +98,20 @@
                         </td>
                     </tr>
 
+                    {{-- Storno --}}
+                    @isset($cancelUrl)
+                        @if ($cancelUrl)
+                            <tr>
+                                <td style="padding:0 32px 20px;">
+                                    <div style="border-top:1px solid #e5e7eb; padding-top:16px; font-size:13px; color:#6b7280;">
+                                        Planänderung? Sie können Ihre Bestellung hier stornieren:<br>
+                                        <a href="{{ $cancelUrl }}" style="display:inline-block; margin-top:8px; color:#285567; font-weight:bold;">Bestellung stornieren</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endif
+                    @endisset
+
                     {{-- Fuß --}}
                     <tr>
                         <td style="padding:20px 32px; background-color:#f9fafb; border-top:1px solid #e5e7eb; font-size:12px; color:#9ca3af;">

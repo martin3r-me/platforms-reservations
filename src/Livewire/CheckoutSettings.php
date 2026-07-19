@@ -30,6 +30,11 @@ class CheckoutSettings extends Component
     // Absender (CRM-Comms-Channel) für Bestellbestätigungen – kein Default
     public ?int $confirmationChannelId = null;
 
+    // Selbst-Storno
+    public bool $cancellationEnabled = false;
+    public ?int $cancellationDeadlineHours = null;
+    public bool $cancellationRequiresApproval = false;
+
     // #520/#521: Anmeldefelder (required|optional|hidden)
     public string $fieldEmail = 'required';
     public string $fieldPhone = 'optional';
@@ -61,6 +66,9 @@ class CheckoutSettings extends Component
         $this->languagesCsv           = implode(', ', array_filter($setting->languages(), fn ($l) => $l !== 'de'));
         $this->guestFrontendUrl       = (string) ($setting->guest_frontend_url ?? '');
         $this->confirmationChannelId  = $setting->confirmationChannelId();
+        $this->cancellationEnabled           = $setting->cancellationEnabled();
+        $this->cancellationDeadlineHours     = $setting->cancellationDeadlineHours();
+        $this->cancellationRequiresApproval  = $setting->cancellationRequiresApproval();
         $this->fieldEmail             = $setting->fieldMode('email');
         $this->fieldPhone             = $setting->fieldMode('phone');
         $this->fieldNotes             = $setting->fieldMode('notes');
@@ -85,6 +93,9 @@ class CheckoutSettings extends Component
             'maxGroupEmptyTable'     => 'nullable|integer|min:1|max:200',
             'guestFrontendUrl'       => 'nullable|url|max:255',
             'confirmationChannelId'  => 'nullable|integer',
+            'cancellationEnabled'          => 'boolean',
+            'cancellationDeadlineHours'    => 'nullable|integer|min:0|max:8760',
+            'cancellationRequiresApproval' => 'boolean',
             'fieldEmail'             => 'required|in:required,optional,hidden',
             'fieldPhone'             => 'required|in:required,optional,hidden',
             'fieldNotes'             => 'required|in:required,optional,hidden',
@@ -115,6 +126,9 @@ class CheckoutSettings extends Component
             'field_notes'               => $this->fieldNotes,
             'guest_frontend_url'        => trim($this->guestFrontendUrl) ?: null,
             'confirmation_channel_id'   => $this->confirmationChannelId ?: null,
+            'cancellation_enabled'           => $this->cancellationEnabled,
+            'cancellation_deadline_hours'    => $this->cancellationEnabled ? $this->cancellationDeadlineHours : null,
+            'cancellation_requires_approval' => $this->cancellationEnabled ? $this->cancellationRequiresApproval : false,
         ])->save();
 
         // Zahlung (Mollie) speichern – Keys nur bei Eingabe überschreiben.

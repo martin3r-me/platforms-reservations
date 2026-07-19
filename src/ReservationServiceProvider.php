@@ -152,6 +152,9 @@ class ReservationServiceProvider extends ServiceProvider
             // Übersetzungen (#522)
             $registry->register(new \Platform\Reservation\Tools\TranslationsGetTool());
             $registry->register(new \Platform\Reservation\Tools\TranslationsUpdateTool());
+
+            // Storno (Team-/Freigabe-Storno + Rückerstattung)
+            $registry->register(new \Platform\Reservation\Tools\OrderCancelTool());
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning(
                 'Reservation: Tool-Registrierung fehlgeschlagen',

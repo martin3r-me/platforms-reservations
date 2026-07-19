@@ -40,8 +40,10 @@ class OrderConfirmationMailer
             return ['status' => 'no_comms_module', 'message' => 'CRM/Comms-Modul nicht installiert – keine Mail versendet.'];
         }
 
+        $settings  = \Platform\Reservation\Models\CheckoutSetting::forTeam((int) $order->team_id);
+
         // Absender wird explizit konfiguriert (kein Default/Fallback).
-        $channelId = \Platform\Reservation\Models\CheckoutSetting::forTeam((int) $order->team_id)->confirmationChannelId();
+        $channelId = $settings->confirmationChannelId();
 
         if (!$channelId) {
             return ['status' => 'no_channel_configured', 'message' => 'Kein Absender für Bestellbestätigungen konfiguriert – keine Mail versendet.'];
@@ -60,8 +62,16 @@ class OrderConfirmationMailer
             return ['status' => 'channel_invalid', 'message' => 'Konfigurierter Absender ist nicht (mehr) gültig – keine Mail versendet.'];
         }
 
+        // Signierter Storno-Link, wenn Selbst-Storno aktiviert ist.
+        $cancelUrl = $settings->cancellationEnabled()
+            ? \Illuminate\Support\Facades\URL::signedRoute('reservation.guest.order.cancel', ['uuid' => $order->uuid])
+            : null;
+
         $subject  = 'Vielen Dank für Ihre Bestellung – ' . ($order->event?->name ?? 'PausePlus');
-        $htmlBody = view('reservation::emails.order-confirmation', ['order' => $order])->render();
+        $htmlBody = view('reservation::emails.order-confirmation', [
+            'order'     => $order,
+            'cancelUrl' => $cancelUrl,
+        ])->render();
 
         try {
             /** @var \Platform\Crm\Services\Comms\PostmarkEmailService $svc */

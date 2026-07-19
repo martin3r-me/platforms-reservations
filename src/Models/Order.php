@@ -21,6 +21,7 @@ class Order extends Model
     public const STATUS_PENDING   = 'pending';
     public const STATUS_CONFIRMED = 'confirmed';
     public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_CANCELLATION_REQUESTED = 'cancellation_requested';
 
     protected $table = 'reservation_orders';
 
@@ -96,5 +97,33 @@ class Order extends Model
             'city'    => $this->billing_city,
             'country' => $this->billing_country,
         ];
+    }
+
+    /** Storno-Frist: X Stunden vor dem Veranstaltungsdatum (null = keine Frist). */
+    public function cancellationDeadline(CheckoutSetting $settings): ?\Carbon\Carbon
+    {
+        $hours = $settings->cancellationDeadlineHours();
+        $date  = $this->event?->date;
+
+        if ($hours === null || ! $date) {
+            return null;
+        }
+
+        return $date->copy()->startOfDay()->subHours($hours);
+    }
+
+    /**
+     * Darf der Kunde jetzt selbst stornieren? (aktiviert, Status bestätigt,
+     * innerhalb der Frist).
+     */
+    public function isCancellable(CheckoutSetting $settings, ?\Carbon\Carbon $now = null): bool
+    {
+        if (! $settings->cancellationEnabled() || $this->status !== self::STATUS_CONFIRMED) {
+            return false;
+        }
+
+        $deadline = $this->cancellationDeadline($settings);
+
+        return $deadline === null || ($now ?? now())->lt($deadline);
     }
 }

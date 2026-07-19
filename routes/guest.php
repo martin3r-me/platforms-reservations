@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Platform\Reservation\Livewire\FloorPlanViewer;
 use Platform\Reservation\Livewire\Guest\CheckoutWizard;
 use Platform\Reservation\Livewire\Guest\EventOverview;
+use Platform\Reservation\Livewire\Guest\OrderCancel;
 use Platform\Reservation\Livewire\Guest\PaymentReturn;
 
 // Öffentliche Gast-Routen (ohne Auth) – via ModuleRouter::group(..., requireAuth: false).
@@ -21,6 +22,11 @@ Route::get('/termine/{uuid}', CheckoutWizard::class)->name('reservation.guest.ch
 
 // Rückkehr von der Mollie-Bezahlseite (zeigt Zahlungsstatus der Buchung)
 Route::get('/payment/return/{uuid}', PaymentReturn::class)->name('reservation.guest.payment.return');
+
+// Selbst-Storno per signiertem Link aus der Bestätigungs-Mail
+Route::get('/order/{uuid}/cancel', OrderCancel::class)
+    ->middleware('signed')
+    ->name('reservation.guest.order.cancel');
 
 // Tischplan-Buchung durch Gäste (Alt-Flow ohne Termin)
 Route::get('/book/{floorPlanId}', FloorPlanViewer::class)->name('reservation.floor-plan.viewer');
