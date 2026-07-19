@@ -1,12 +1,12 @@
 <x-ui-page>
     <x-slot name="navbar">
-        <x-ui-page-navbar title="Buchungen" icon="heroicon-o-calendar-days" />
+        <x-ui-page-navbar title="Alle Buchungen" icon="heroicon-o-calendar-days" />
     </x-slot>
 
     <x-slot name="actionbar">
         <x-ui-page-actionbar :breadcrumbs="[
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
-            ['label' => 'Buchungen'],
+            ['label' => 'Alle Buchungen'],
         ]">
             <x-ui-button variant="primary" size="sm" :href="route('reservation.bookings.create')">
                 @svg('heroicon-o-plus', 'w-4 h-4')

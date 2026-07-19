@@ -30,7 +30,7 @@ return [
                 ['label' => 'Dashboard', 'route' => 'reservation.dashboard', 'icon' => 'heroicon-o-home'],
                 ['label' => 'Posteingang', 'route' => 'reservation.inbox.index', 'icon' => 'heroicon-o-inbox'],
                 ['label' => 'Veranstaltungen', 'route' => 'reservation.operations.index', 'icon' => 'heroicon-o-fire'],
-                ['label' => 'Buchungen', 'route' => 'reservation.bookings.index', 'icon' => 'heroicon-o-calendar-days'],
+                ['label' => 'Alle Buchungen', 'route' => 'reservation.bookings.index', 'icon' => 'heroicon-o-calendar-days'],
             ],
         ],
         [
