@@ -33,7 +33,7 @@ class GuestOrderService
      *
      * @throws GuestOrderException
      */
-    public function place(Event $event, array $guest, array $slotOrders, bool $ageConfirmed): array
+    public function place(Event $event, array $guest, array $slotOrders, bool $ageConfirmed, ?string $redirectUrl = null): array
     {
         if (!$event->isOrderable()) {
             throw new GuestOrderException('Der Bestellschluss für diesen Termin ist erreicht.', 'ORDER_CLOSED');
@@ -139,7 +139,7 @@ class GuestOrderService
 
         $checkoutUrl = null;
         if ($order->total_amount > 0 && $this->payments->isEnabledForTeam($event->team_id)) {
-            $checkoutUrl = $this->payments->createForOrder($order);
+            $checkoutUrl = $this->payments->createForOrder($order, $redirectUrl);
         }
 
         return ['order' => $order, 'checkout_url' => $checkoutUrl];

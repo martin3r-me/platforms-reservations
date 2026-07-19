@@ -52,6 +52,7 @@ class CheckoutSetting extends Model
         'soft_table_capacity',
         'max_group_empty_table',
         'languages',
+        'guest_frontend_url',
     ];
 
     protected $casts = [
@@ -174,6 +175,36 @@ class CheckoutSetting extends Model
             ->all();
 
         return array_merge([Translation::DEFAULT_LOCALE], $list);
+    }
+
+    /** Basis-URL des Shop-Frontends (Allowlist-Origin für Zahlungs-Rücksprung). */
+    public function guestFrontendUrl(): ?string
+    {
+        return trim((string) $this->guest_frontend_url) ?: null;
+    }
+
+    /**
+     * Prüft, ob eine redirect_url erlaubt ist: gleicher Origin (Schema+Host+Port)
+     * wie die gepflegte Frontend-Basis-URL. Ohne Basis-URL ist nichts erlaubt.
+     */
+    public function isAllowedRedirect(string $url): bool
+    {
+        $base = $this->guestFrontendUrl();
+
+        if (! $base) {
+            return false;
+        }
+
+        $u = parse_url($url);
+        $b = parse_url($base);
+
+        if (! is_array($u) || ! is_array($b) || empty($u['host']) || empty($b['host'])) {
+            return false;
+        }
+
+        return strcasecmp($u['scheme'] ?? '', $b['scheme'] ?? '') === 0
+            && strcasecmp($u['host'], $b['host']) === 0
+            && ($u['port'] ?? null) === ($b['port'] ?? null);
     }
 
     /** Standard-Raumfreigabe für neue Termine (parallel|sequential). */

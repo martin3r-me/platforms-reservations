@@ -24,6 +24,9 @@ class CheckoutSettings extends Component
     // #522: zusätzlich angebotene Sprachen (kommagetrennt, DE ist immer dabei)
     public string $languagesCsv = '';
 
+    // Basis-URL des Shop-Frontends (Allowlist für Zahlungs-Rücksprung)
+    public string $guestFrontendUrl = '';
+
     // #520/#521: Anmeldefelder (required|optional|hidden)
     public string $fieldEmail = 'required';
     public string $fieldPhone = 'optional';
@@ -53,6 +56,7 @@ class CheckoutSettings extends Component
         $this->softTableCapacity      = $setting->softTableCapacity();
         $this->maxGroupEmptyTable     = $setting->maxGroupEmptyTable();
         $this->languagesCsv           = implode(', ', array_filter($setting->languages(), fn ($l) => $l !== 'de'));
+        $this->guestFrontendUrl       = (string) ($setting->guest_frontend_url ?? '');
         $this->fieldEmail             = $setting->fieldMode('email');
         $this->fieldPhone             = $setting->fieldMode('phone');
         $this->fieldNotes             = $setting->fieldMode('notes');
@@ -75,6 +79,7 @@ class CheckoutSettings extends Component
             'defaultRoomReleaseMode' => 'required|in:parallel,sequential',
             'softTableCapacity'      => 'boolean',
             'maxGroupEmptyTable'     => 'nullable|integer|min:1|max:200',
+            'guestFrontendUrl'       => 'nullable|url|max:255',
             'fieldEmail'             => 'required|in:required,optional,hidden',
             'fieldPhone'             => 'required|in:required,optional,hidden',
             'fieldNotes'             => 'required|in:required,optional,hidden',
@@ -103,6 +108,7 @@ class CheckoutSettings extends Component
             'field_email'               => $this->fieldEmail,
             'field_phone'               => $this->fieldPhone,
             'field_notes'               => $this->fieldNotes,
+            'guest_frontend_url'        => trim($this->guestFrontendUrl) ?: null,
         ])->save();
 
         // Zahlung (Mollie) speichern – Keys nur bei Eingabe überschreiben.

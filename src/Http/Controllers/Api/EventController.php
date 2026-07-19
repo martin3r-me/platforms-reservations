@@ -291,11 +291,26 @@ class EventController extends ApiController
             'guest.billing.country' => ['nullable', 'string', 'size:2'],
             'legal_accepted'        => 'accepted',
             'age_confirmed'         => 'nullable|boolean',
+            'redirect_url'          => ['nullable', 'url', 'max:2048'],
             'slots'                 => 'required|array|min:1',
             'slots.*.slot_id'       => 'required|integer',
             'slots.*.table_id'      => 'required|integer',
             'slots.*.items'         => 'required|array|min:1',
         ]);
+
+        // Rücksprung-URL des Frontends nach der Zahlung – nur erlaubt, wenn Origin
+        // der gepflegten Frontend-Basis-URL entspricht (Open-Redirect-Schutz).
+        $redirectUrl = null;
+        if (! empty($data['redirect_url'])) {
+            if (! $settings->isAllowedRedirect($data['redirect_url'])) {
+                return $this->error(
+                    'redirect_url ist nicht erlaubt – Origin weicht von der hinterlegten Frontend-URL ab (oder es ist keine hinterlegt).',
+                    ['code' => 'INVALID_REDIRECT'],
+                    422,
+                );
+            }
+            $redirectUrl = $data['redirect_url'];
+        }
 
         $model->loadMissing(['slots', 'eventRooms']);
 
@@ -314,6 +329,7 @@ class EventController extends ApiController
                 ],
                 $data['slots'],
                 (bool) ($data['age_confirmed'] ?? false),
+                $redirectUrl,
             );
         } catch (GuestOrderException $e) {
             return $this->error($e->getMessage(), ['code' => $e->errorCode], 422);

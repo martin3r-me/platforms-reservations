@@ -39,6 +39,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
                 'soft_table_capacity'       => ['type' => 'boolean', 'description' => 'Großgruppen dürfen leere Tische überbelegen.'],
                 'max_group_empty_table'     => ['type' => ['integer', 'null'], 'description' => 'Max. Gruppengröße auf leerem Tisch (null = unbegrenzt).'],
                 'languages'                 => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Angebotene Sprachen (locale-Codes, z.B. ["de","en"]). DE ist immer dabei.'],
+                'guest_frontend_url'        => ['type' => ['string', 'null'], 'description' => 'Basis-URL des Shop-Frontends (Allowlist-Origin für Zahlungs-Rücksprung).'],
                 'age_check_text'            => ['type' => 'string'],
                 'legal_text'                => ['type' => 'string'],
                 'privacy_url'               => ['type' => 'string'],
@@ -65,6 +66,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
                 'max_group_empty_table'     => 'sometimes|nullable|integer|min:1|max:200',
                 'languages'                 => 'sometimes|array',
                 'languages.*'               => 'string|regex:/^[a-zA-Z]{2}(_[a-zA-Z]{2})?$/',
+                'guest_frontend_url'        => 'sometimes|nullable|url|max:255',
                 'age_check_text'            => 'sometimes|nullable|string|max:1000',
                 'legal_text'                => 'sometimes|nullable|string|max:1000',
                 'privacy_url'               => 'sometimes|nullable|url|max:255',
@@ -77,7 +79,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
             $setting = CheckoutSetting::forTeam($teamId);
             $setting->fill(collect($validator->validated())->only([
                 'field_email', 'field_phone', 'field_notes', 'default_room_release_mode',
-                'soft_table_capacity', 'max_group_empty_table', 'languages',
+                'soft_table_capacity', 'max_group_empty_table', 'languages', 'guest_frontend_url',
                 'age_check_text', 'legal_text', 'privacy_url',
             ])->all());
             $setting->team_id = $teamId;
@@ -91,6 +93,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
                 'soft_table_capacity'       => $setting->softTableCapacity(),
                 'max_group_empty_table'     => $setting->maxGroupEmptyTable(),
                 'languages'                 => $setting->languages(),
+                'guest_frontend_url'        => $setting->guestFrontendUrl(),
             ], ['updated' => true]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Speichern der Einstellungen: ' . $e->getMessage(), 'EXECUTION_ERROR');

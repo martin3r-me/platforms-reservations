@@ -38,7 +38,7 @@ class MolliePaymentService
      * Mollie-Zahlung für eine Order (eine oder mehrere Slot-Buchungen) anlegen
      * und Checkout-URL zurückgeben. Betrag = Summe aller Buchungen der Order.
      */
-    public function createForOrder(Order $order): string
+    public function createForOrder(Order $order, ?string $redirectUrl = null): string
     {
         $creds = $this->resolver->forTeam($order->team_id);
 
@@ -53,7 +53,8 @@ class MolliePaymentService
         $molliePayment = $client->payments->create([
             'amount'      => ['currency' => $currency, 'value' => $value],
             'description' => 'PausePlus Bestellung ' . $order->uuid,
-            'redirectUrl' => route('reservation.guest.payment.return', $order->uuid),
+            // Rücksprung: vom Frontend übergebene (validierte) URL, sonst In-App-Return.
+            'redirectUrl' => $redirectUrl ?: route('reservation.guest.payment.return', $order->uuid),
             'webhookUrl'  => route('reservation.api.payment.webhook'),
             'metadata'    => [
                 'order_id'   => $order->id,
