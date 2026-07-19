@@ -136,6 +136,47 @@ class EventDashboard extends Component
             ->values();
     }
 
+    /**
+     * Tisch-Auslastung je Raum: belegt (aktive Buchung) / gesperrt (für den
+     * Termin deaktiviert) / frei.
+     *
+     * @return \Illuminate\Support\Collection<int, array{room: string, total: int, occupied: int, blocked: int, free: int}>
+     */
+    #[Computed]
+    public function roomUtilization(): \Illuminate\Support\Collection
+    {
+        $disabled = collect($this->event->disabled_table_ids ?? [])->map(fn ($id) => (int) $id);
+
+        $occupied = Booking::where('event_id', $this->eventId)
+            ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
+            ->whereNotNull('table_id')
+            ->pluck('table_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique();
+
+        return $this->event->eventRooms()
+            ->with(['floorPlan.tables' => fn ($q) => $q->where('is_active', true)])
+            ->get()
+            ->map(function ($room) use ($disabled, $occupied) {
+                $ids        = ($room->floorPlan?->tables ?? collect())->pluck('id')->map(fn ($id) => (int) $id);
+                $blockedIds = $ids->intersect($disabled);
+                $occupiedIds = $ids->intersect($occupied)->diff($blockedIds);
+                $total   = $ids->count();
+                $blocked = $blockedIds->count();
+                $occ     = $occupiedIds->count();
+
+                return [
+                    'room'     => $room->floorPlan?->name ?? 'Raum',
+                    'total'    => $total,
+                    'occupied' => $occ,
+                    'blocked'  => $blocked,
+                    'free'     => max(0, $total - $blocked - $occ),
+                ];
+            })
+            ->filter(fn ($r) => $r['total'] > 0)
+            ->values();
+    }
+
     public function render()
     {
         return view('reservation::livewire.event-dashboard')

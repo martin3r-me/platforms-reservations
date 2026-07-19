@@ -158,6 +158,46 @@
             </section>
         @endif
 
+        {{-- Tisch-Auslastung je Raum --}}
+        @if ($this->roomUtilization->isNotEmpty())
+            <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-3">
+                    @svg('heroicon-o-squares-2x2', 'w-4 h-4 text-[var(--ui-muted)]')
+                    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Auslastung</h2>
+                    <span class="ml-auto flex items-center gap-3 text-[10px] text-[var(--ui-muted)]">
+                        <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-sm bg-[var(--ui-primary)]"></span>belegt</span>
+                        <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-sm bg-[var(--ui-danger)]"></span>gesperrt</span>
+                        <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-sm bg-[var(--ui-muted-5)] border border-[var(--ui-border)]"></span>frei</span>
+                    </span>
+                </div>
+                <div class="space-y-3 p-4">
+                    @foreach ($this->roomUtilization as $r)
+                        @php
+                            $total = max(1, $r['total']);
+                            $occPct   = $r['occupied'] / $total * 100;
+                            $blkPct   = $r['blocked'] / $total * 100;
+                            $freePct  = $r['free'] / $total * 100;
+                        @endphp
+                        <div wire:key="util-{{ $loop->index }}">
+                            <div class="mb-1 flex items-center gap-2 text-sm">
+                                <span class="font-medium text-[var(--ui-secondary)]">{{ $r['room'] }}</span>
+                                <span class="ml-auto shrink-0 text-xs tabular-nums text-[var(--ui-muted)]">
+                                    <span class="font-semibold text-[var(--ui-secondary)]">{{ $r['occupied'] }}</span> belegt
+                                    @if ($r['blocked'] > 0) · <span class="font-semibold text-[var(--ui-danger)]">{{ $r['blocked'] }}</span> gesperrt @endif
+                                    · {{ $r['free'] }} frei / {{ $r['total'] }}
+                                </span>
+                            </div>
+                            <div class="flex h-2.5 w-full overflow-hidden rounded-full bg-[var(--ui-muted-5)]">
+                                <div class="h-full bg-[var(--ui-primary)]" style="width: {{ $occPct }}%"></div>
+                                <div class="h-full bg-[var(--ui-danger)]" style="width: {{ $blkPct }}%"></div>
+                                <div class="h-full" style="width: {{ $freePct }}%"></div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
     </div>
     </x-ui-page-container>
 </x-ui-page>
