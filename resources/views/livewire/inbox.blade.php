@@ -7,12 +7,7 @@
         <x-ui-page-actionbar :breadcrumbs="[
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Posteingang'],
-        ]">
-            <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.bookings.create')">
-                @svg('heroicon-o-plus', 'w-4 h-4')
-                <span>Neue Buchung</span>
-            </x-ui-button>
-        </x-ui-page-actionbar>
+        ]" />
     </x-slot>
 
     <x-ui-page-container>
@@ -32,29 +27,34 @@
             <div class="rounded-lg border border-[var(--ui-success)]/30 bg-[var(--ui-success-10)] p-3 text-sm text-[var(--ui-success)]">{{ session('inbox_message') }}</div>
         @endif
 
-        {{-- Kopf: Filter + Bulk --}}
-        <div class="flex flex-wrap items-center gap-2">
-            <div class="inline-flex overflow-hidden rounded-lg border border-[var(--ui-border)]">
-                <button wire:click="$set('unseenOnly', true)" class="px-3 py-1.5 text-sm {{ $unseenOnly ? 'bg-[var(--ui-primary)] text-white' : 'text-[var(--ui-secondary)]' }}">
-                    Ungesehen ({{ $this->unseenCount }})
-                </button>
-                <button wire:click="$set('unseenOnly', false)" class="px-3 py-1.5 text-sm {{ !$unseenOnly ? 'bg-[var(--ui-primary)] text-white' : 'text-[var(--ui-secondary)]' }}">
-                    Alle
-                </button>
-            </div>
-
-            <div class="ml-auto flex items-center gap-2">
-                @if (count($selected))
-                    <span class="text-xs text-[var(--ui-muted)]">{{ count($selected) }} ausgewählt</span>
-                    <x-ui-button variant="primary" size="sm" wire:click="markSelectedSeen">Ausgewählte als gesehen</x-ui-button>
-                @endif
-                @if ($this->unseenCount > 0)
-                    <x-ui-button variant="secondary-outline" size="sm" wire:click="markAllSeen" wire:confirm="Alle als gesehen markieren?">Alle als gesehen</x-ui-button>
-                @endif
-            </div>
-        </div>
-
         <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+            {{-- Karten-Header --}}
+            <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+                @svg('heroicon-o-inbox', 'w-4 h-4 text-[var(--ui-muted)]')
+                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Posteingang</h2>
+                <span class="ml-auto text-[11px] text-[var(--ui-muted)]">{{ $this->entries->count() }}</span>
+            </div>
+
+            {{-- Filter + Bulk --}}
+            <div class="flex flex-wrap items-center gap-1.5 border-b border-[var(--ui-border)]/30 px-4 py-2 text-[11px]">
+                <span class="text-[var(--ui-muted)]">Filter:</span>
+                <button type="button" wire:click="$set('unseenOnly', true)"
+                    class="rounded-full px-2.5 py-0.5 transition-colors {{ $unseenOnly ? 'bg-[var(--ui-primary)] font-medium text-white' : 'text-[var(--ui-muted)] hover:bg-[var(--ui-muted-5)]' }}">Ungesehen ({{ $this->unseenCount }})</button>
+                <button type="button" wire:click="$set('unseenOnly', false)"
+                    class="rounded-full px-2.5 py-0.5 transition-colors {{ !$unseenOnly ? 'bg-[var(--ui-primary)] font-medium text-white' : 'text-[var(--ui-muted)] hover:bg-[var(--ui-muted-5)]' }}">Alle</button>
+
+                <div class="ml-auto flex items-center gap-2">
+                    @if (count($selected))
+                        <span class="text-[var(--ui-muted)]">{{ count($selected) }} ausgewählt</span>
+                        <button type="button" wire:click="markSelectedSeen" class="rounded-full bg-[var(--ui-primary)] px-2.5 py-0.5 font-medium text-white">Ausgewählte als gesehen</button>
+                    @endif
+                    @if ($this->unseenCount > 0)
+                        <button type="button" wire:click="markAllSeen" wire:confirm="Alle als gesehen markieren?" class="rounded-full border border-[var(--ui-border)] px-2.5 py-0.5 text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">Alle als gesehen</button>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Zeilen --}}
             <div class="divide-y divide-[var(--ui-border)]/30">
                 @forelse ($this->entries as $order)
                     @php [$label, $variant, $icon] = $typeMap[$order->inboxType()] ?? ['Vorgang', 'muted', 'heroicon-o-bell']; @endphp

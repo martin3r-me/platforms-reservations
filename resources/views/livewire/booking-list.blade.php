@@ -25,34 +25,31 @@
         <div class="rounded-lg border border-[var(--ui-danger)]/30 bg-[var(--ui-danger-10)] p-3 text-sm text-[var(--ui-danger)]">{{ session('booking_error') }}</div>
     @endif
 
-    {{-- Filter --}}
-    <div class="flex flex-wrap items-end gap-2">
-        <div class="w-44">
-            <x-ui-input-date name="filterDate" size="sm" wire:model.live="filterDate" />
-        </div>
-        <div class="w-44">
-            <x-ui-input-select
-                name="filterStatus"
-                size="sm"
-                :options="[
-                    ['value' => 'pending', 'label' => 'Ausstehend'],
-                    ['value' => 'confirmed', 'label' => 'Bestätigt'],
-                    ['value' => 'cancelled', 'label' => 'Storniert'],
-                    ['value' => 'no_show', 'label' => 'No-Show'],
-                    ['value' => 'completed', 'label' => 'Abgeschlossen'],
-                ]"
-                :nullable="true"
-                nullLabel="Alle Status"
-                wire:model.live="filterStatus"
-            />
-        </div>
-        <div class="min-w-[200px] flex-1">
-            <x-ui-input-text name="search" size="sm" wire:model.live.debounce.300ms="search" placeholder="Name oder E-Mail suchen…" />
-        </div>
-    </div>
-
-    {{-- Tabelle --}}
     <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+        {{-- Karten-Header --}}
+        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+            @svg('heroicon-o-calendar-days', 'w-4 h-4 text-[var(--ui-muted)]')
+            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Buchungen</h2>
+            <span class="ml-auto text-[11px] text-[var(--ui-muted)]">{{ $this->bookings->total() }}</span>
+        </div>
+
+        {{-- Filter --}}
+        <div class="flex flex-wrap items-center gap-1.5 border-b border-[var(--ui-border)]/30 px-4 py-2 text-[11px]">
+            <span class="text-[var(--ui-muted)]">Status:</span>
+            @foreach (['' => 'Alle', 'pending' => 'Ausstehend', 'confirmed' => 'Bestätigt', 'cancelled' => 'Storniert', 'no_show' => 'No-Show', 'completed' => 'Abgeschlossen'] as $val => $label)
+                <button type="button" wire:click="$set('filterStatus', '{{ $val }}')"
+                    class="rounded-full px-2.5 py-0.5 transition-colors {{ $filterStatus === $val ? 'bg-[var(--ui-primary)] font-medium text-white' : 'text-[var(--ui-muted)] hover:bg-[var(--ui-muted-5)]' }}">{{ $label }}</button>
+            @endforeach
+            <span class="ml-3 text-[var(--ui-muted)]">Datum:</span>
+            <div class="w-40">
+                <x-ui-input-date name="filterDate" size="sm" wire:model.live="filterDate" />
+            </div>
+            <div class="ml-auto w-56">
+                <x-ui-input-text name="search" size="sm" wire:model.live.debounce.300ms="search" placeholder="Name oder E-Mail suchen…" />
+            </div>
+        </div>
+
+        {{-- Tabelle --}}
         <x-ui-table compact="true">
             <x-ui-table-header>
                 <x-ui-table-header-cell compact="true">Datum</x-ui-table-header-cell>
