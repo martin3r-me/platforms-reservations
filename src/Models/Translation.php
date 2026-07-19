@@ -11,6 +11,9 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class Translation extends Model
 {
+    /** Basis-/Default-Sprache (liegt in den Modell-Spalten). */
+    public const DEFAULT_LOCALE = 'de';
+
     protected $table = 'reservation_translations';
 
     protected $fillable = [

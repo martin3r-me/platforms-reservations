@@ -9,11 +9,11 @@ use Platform\Core\Models\Team;
 use Platform\Reservation\Enums\EventStatus;
 use Platform\Reservation\Exceptions\GuestOrderException;
 use Platform\Reservation\Models\CheckoutSetting;
-use Platform\Reservation\Models\Concerns\HasTranslations;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Order;
 use Platform\Reservation\Models\SalesList;
+use Platform\Reservation\Models\Translation;
 use Platform\Reservation\Services\GuestOrderService;
 use Platform\Reservation\Services\SeatAvailabilityService;
 
@@ -109,7 +109,7 @@ class EventController extends ApiController
     {
         $lang = strtolower(trim((string) $request->query('lang', '')));
 
-        return preg_match('/^[a-z]{2}(_[a-z]{2})?$/', $lang) ? $lang : HasTranslations::DEFAULT_LOCALE;
+        return preg_match('/^[a-z]{2}(_[a-z]{2})?$/', $lang) ? $lang : Translation::DEFAULT_LOCALE;
     }
 
     /**
@@ -518,7 +518,7 @@ class EventController extends ApiController
     /**
      * Denormalisiertes Format eines Artikels.
      */
-    protected function formatProduct(MenuItem $item, string $locale = HasTranslations::DEFAULT_LOCALE): array
+    protected function formatProduct(MenuItem $item, string $locale = Translation::DEFAULT_LOCALE): array
     {
         return [
             'id'               => $item->id,

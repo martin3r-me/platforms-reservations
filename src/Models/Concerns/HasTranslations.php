@@ -17,7 +17,8 @@ use Platform\Reservation\Models\Translation;
  */
 trait HasTranslations
 {
-    public const DEFAULT_LOCALE = 'de';
+    /** Basis-/Default-Sprache (Konstante lebt auf {@see Translation}). */
+    public const DEFAULT_LOCALE = Translation::DEFAULT_LOCALE;
 
     public function translations(): MorphMany
     {

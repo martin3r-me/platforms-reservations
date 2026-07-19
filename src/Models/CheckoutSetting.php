@@ -168,12 +168,12 @@ class CheckoutSetting extends Model
         $list = collect(is_array($this->languages) ? $this->languages : [])
             ->map(fn ($l) => strtolower(trim((string) $l)))
             ->filter()
-            ->reject(fn ($l) => $l === HasTranslations::DEFAULT_LOCALE)
+            ->reject(fn ($l) => $l === Translation::DEFAULT_LOCALE)
             ->unique()
             ->values()
             ->all();
 
-        return array_merge([HasTranslations::DEFAULT_LOCALE], $list);
+        return array_merge([Translation::DEFAULT_LOCALE], $list);
     }
 
     /** Standard-Raumfreigabe für neue Termine (parallel|sequential). */
