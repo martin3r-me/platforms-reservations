@@ -80,6 +80,18 @@
         </div>
     </section>
 
+    {{-- Shop-Sprachen (#522) --}}
+    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
+            @svg('heroicon-o-language', 'w-4 h-4 text-[var(--ui-muted)]')
+            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Shop-Sprachen</h2>
+        </div>
+        <div class="p-5">
+            <x-ui-input-text name="languagesCsv" label="Zusätzliche Sprachen (Codes, kommagetrennt)" size="sm" wire:model="languagesCsv" placeholder="en, fr" errorKey="languagesCsv" />
+            <p class="mt-1 text-[11px] text-[var(--ui-muted)]"><strong>Deutsch</strong> ist Basis-/Standardsprache und immer aktiv. Zusätzliche Sprachen z. B. <code>en, fr</code>. Übersetzungen der Speisen, Kategorien, Allergene und Checkout-Texte pflegst du je Objekt (auch per MCP); fehlt eine Übersetzung, wird Deutsch angezeigt.</p>
+        </div>
+    </section>
+
     {{-- Zahlung (Mollie) --}}
     <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">

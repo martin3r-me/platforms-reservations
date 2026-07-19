@@ -9,11 +9,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Platform\Core\Models\User;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Platform\Reservation\Models\Concerns\HasContextImage;
+use Platform\Reservation\Models\Concerns\HasTranslations;
 
 class MenuItem extends Model
 {
     use BelongsToTeam;
     use HasContextImage;
+    use HasTranslations;
+
+    /** Übersetzbare Felder (#522). */
+    protected array $translatable = ['name', 'description'];
 
     public const APPROVAL_DRAFT    = 'draft';
     public const APPROVAL_REVIEW   = 'review';

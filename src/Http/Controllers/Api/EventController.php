@@ -9,6 +9,7 @@ use Platform\Core\Models\Team;
 use Platform\Reservation\Enums\EventStatus;
 use Platform\Reservation\Exceptions\GuestOrderException;
 use Platform\Reservation\Models\CheckoutSetting;
+use Platform\Reservation\Models\Concerns\HasTranslations;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Order;
@@ -82,8 +83,10 @@ class EventController extends ApiController
             return $this->notFound('Termin nicht gefunden.');
         }
 
+        $locale    = $this->requestLocale($request);
         $salesList = $this->resolveSalesList($model);
-        $products  = $this->visibleItems($salesList)->map(fn (MenuItem $item) => $this->formatProduct($item));
+        $items     = $this->visibleItems($salesList);
+        $products  = $items->map(fn (MenuItem $item) => $this->formatProduct($item, $locale));
 
         return $this->success([
             'event' => [
@@ -92,10 +95,44 @@ class EventController extends ApiController
                 'name' => $model->name,
                 'date' => $model->date?->format('Y-m-d'),
             ],
-            'sales_list'    => $salesList?->name,
+            'language'       => $locale,
+            'sales_list'     => $salesList?->name,
             'products_count' => $products->count(),
-            'products'      => $products->values()->all(),
+            'products'       => $products->values()->all(),
+            // Legende: alle vorkommenden Allergene/Zusatzstoffe mit (übersetztem) Namen.
+            'legend'         => $this->buildLegend($items, $locale),
         ], 'Artikel erfolgreich geladen');
+    }
+
+    /** Locale aus ?lang= (Fallback Basis-Sprache DE), locale-Format normalisiert. */
+    protected function requestLocale(Request $request): string
+    {
+        $lang = strtolower(trim((string) $request->query('lang', '')));
+
+        return preg_match('/^[a-z]{2}(_[a-z]{2})?$/', $lang) ? $lang : HasTranslations::DEFAULT_LOCALE;
+    }
+
+    /**
+     * Allergen-/Zusatzstoff-Legende (Code → übersetzter Name) über alle Artikel.
+     */
+    protected function buildLegend($items, string $locale): array
+    {
+        $allergens = collect();
+        $additives = collect();
+
+        foreach ($items as $item) {
+            foreach ($item->allergens as $a) {
+                $allergens[$a->code] = ['code' => $a->code, 'name' => $a->translate('name', $locale)];
+            }
+            foreach ($item->additives as $z) {
+                $additives[$z->code] = ['code' => $z->code, 'name' => $z->translate('name', $locale)];
+            }
+        }
+
+        return [
+            'allergens' => $allergens->values()->all(),
+            'additives' => $additives->values()->all(),
+        ];
     }
 
     /**
@@ -106,7 +143,7 @@ class EventController extends ApiController
      * Pflicht. Zusätzlich die Checkout-Texte (18+, Rechtstext, Datenschutz-Link).
      * {event} = UUID oder numerische ID.
      */
-    public function checkoutFields(string $event)
+    public function checkoutFields(Request $request, string $event)
     {
         $model = $this->resolveEvent($event);
 
@@ -115,6 +152,11 @@ class EventController extends ApiController
         }
 
         $settings = CheckoutSetting::forTeam((int) $model->team_id);
+        $settings->loadMissing('translations');
+        $locale   = $this->requestLocale($request);
+
+        $ageText   = $settings->translate('age_check_text', $locale) ?: $settings->ageText();
+        $legalText = $settings->translate('legal_text', $locale) ?: $settings->legalText();
 
         return $this->success([
             'event' => [
@@ -122,6 +164,8 @@ class EventController extends ApiController
                 'uuid' => $model->uuid,
                 'name' => $model->name,
             ],
+            'language'  => $locale,
+            'languages' => $settings->languages(), // angebotene Sprachen (DE zuerst)
             // required | optional | hidden (name & count sind stets Pflicht).
             'guest_fields' => [
                 'name'  => 'required',
@@ -131,8 +175,8 @@ class EventController extends ApiController
                 'notes' => $settings->fieldMode('notes'),
             ],
             'texts' => [
-                'age_check'   => $settings->ageText(),
-                'legal'       => $settings->legalText(),
+                'age_check'   => $ageText,
+                'legal'       => $legalText,
                 'privacy_url' => $settings->privacy_url,
             ],
         ], 'Checkout-Felder geladen');
@@ -413,7 +457,14 @@ class EventController extends ApiController
             ->withoutGlobalScope('team')
             ->where('approval_status', MenuItem::APPROVAL_APPROVED)
             ->where('available', true)
-            ->with(['allergens', 'additives', 'category', 'holdingClass', 'imageFile.variants'])
+            ->with([
+                'translations',
+                'category.translations',
+                'allergens.translations',
+                'additives.translations',
+                'holdingClass',
+                'imageFile.variants',
+            ])
             ->orderBy('sort_order')
             ->get();
     }
@@ -421,16 +472,16 @@ class EventController extends ApiController
     /**
      * Denormalisiertes Format eines Artikels.
      */
-    protected function formatProduct(MenuItem $item): array
+    protected function formatProduct(MenuItem $item, string $locale = HasTranslations::DEFAULT_LOCALE): array
     {
         return [
             'id'               => $item->id,
-            'name'             => $item->name,
-            'description'      => $item->description,
+            'name'             => $item->translate('name', $locale),
+            'description'      => $item->translate('description', $locale),
             'portion_size'     => $item->portion_size,
             'price'            => (float) $item->price,
             'tax_rate'         => (float) $item->tax_rate,
-            'category'         => $item->category?->name,
+            'category'         => $item->category?->translate('name', $locale),
             'category_id'      => $item->category_id,
             'holding_class'    => $item->holdingClass?->name,
             'holding_class_id' => $item->holding_class_id,

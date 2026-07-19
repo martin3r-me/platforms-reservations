@@ -7,11 +7,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Platform\Reservation\Models\Concerns\HasContextImage;
+use Platform\Reservation\Models\Concerns\HasTranslations;
 
 class MenuCategory extends Model
 {
     use BelongsToTeam;
     use HasContextImage;
+    use HasTranslations;
+
+    /** Übersetzbare Felder (#522). */
+    protected array $translatable = ['name', 'description'];
 
     protected $table = 'reservation_menu_categories';
 

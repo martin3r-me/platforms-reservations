@@ -21,6 +21,9 @@ class CheckoutSettings extends Component
     public bool $softTableCapacity = false;
     public ?int $maxGroupEmptyTable = null;
 
+    // #522: zusätzlich angebotene Sprachen (kommagetrennt, DE ist immer dabei)
+    public string $languagesCsv = '';
+
     // #520/#521: Anmeldefelder (required|optional|hidden)
     public string $fieldEmail = 'required';
     public string $fieldPhone = 'optional';
@@ -49,6 +52,7 @@ class CheckoutSettings extends Component
         $this->defaultRoomReleaseMode = $setting->defaultRoomReleaseMode();
         $this->softTableCapacity      = $setting->softTableCapacity();
         $this->maxGroupEmptyTable     = $setting->maxGroupEmptyTable();
+        $this->languagesCsv           = implode(', ', array_filter($setting->languages(), fn ($l) => $l !== 'de'));
         $this->fieldEmail             = $setting->fieldMode('email');
         $this->fieldPhone             = $setting->fieldMode('phone');
         $this->fieldNotes             = $setting->fieldMode('notes');
@@ -89,6 +93,13 @@ class CheckoutSettings extends Component
             'default_room_release_mode' => $this->defaultRoomReleaseMode,
             'soft_table_capacity'       => $this->softTableCapacity,
             'max_group_empty_table'     => $this->softTableCapacity ? $this->maxGroupEmptyTable : null,
+            'languages'                 => collect(explode(',', $this->languagesCsv))
+                ->map(fn ($l) => strtolower(trim($l)))
+                ->filter()
+                ->reject(fn ($l) => $l === 'de')
+                ->unique()
+                ->values()
+                ->all(),
             'field_email'               => $this->fieldEmail,
             'field_phone'               => $this->fieldPhone,
             'field_notes'               => $this->fieldNotes,

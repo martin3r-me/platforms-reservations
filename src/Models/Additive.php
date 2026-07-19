@@ -4,9 +4,15 @@ namespace Platform\Reservation\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Platform\Reservation\Models\Concerns\HasTranslations;
 
 class Additive extends Model
 {
+    use HasTranslations;
+
+    /** Übersetzbare Felder (#522) – der Code bleibt gleich. */
+    protected array $translatable = ['name'];
+
     protected $table = 'reservation_additives';
 
     protected $fillable = [

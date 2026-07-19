@@ -148,6 +148,10 @@ class ReservationServiceProvider extends ServiceProvider
             // Checkout-/Buchungs-Einstellungen
             $registry->register(new \Platform\Reservation\Tools\CheckoutSettingsGetTool());
             $registry->register(new \Platform\Reservation\Tools\CheckoutSettingsUpdateTool());
+
+            // Übersetzungen (#522)
+            $registry->register(new \Platform\Reservation\Tools\TranslationsGetTool());
+            $registry->register(new \Platform\Reservation\Tools\TranslationsUpdateTool());
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning(
                 'Reservation: Tool-Registrierung fehlgeschlagen',

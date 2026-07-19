@@ -51,6 +51,7 @@ class CheckoutSettingsGetTool implements ToolContract, ToolMetadataContract
                 'default_room_release_mode' => $s->defaultRoomReleaseMode(),
                 'soft_table_capacity'       => $s->softTableCapacity(),
                 'max_group_empty_table'     => $s->maxGroupEmptyTable(),
+                'languages'                 => $s->languages(),
                 'age_check_text'            => $s->age_check_text,
                 'legal_text'                => $s->legal_text,
                 'privacy_url'               => $s->privacy_url,

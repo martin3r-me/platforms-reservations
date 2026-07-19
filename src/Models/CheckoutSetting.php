@@ -5,6 +5,7 @@ namespace Platform\Reservation\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
+use Platform\Reservation\Models\Concerns\HasTranslations;
 
 /**
  * Pro-Team konfigurierbare Checkout-Texte (18+-Hinweis, Rechtstext,
@@ -13,6 +14,10 @@ use Platform\Reservation\Models\Concerns\BelongsToTeam;
 class CheckoutSetting extends Model
 {
     use BelongsToTeam;
+    use HasTranslations;
+
+    /** Übersetzbare Texte (#522). */
+    protected array $translatable = ['age_check_text', 'legal_text'];
 
     public const DEFAULT_AGE_TEXT = 'Ihre Bestellung enthält alkoholische Getränke. Ich bestätige, dass ich mindestens 18 Jahre alt bin. Das Servicepersonal kann vor Ort einen Altersnachweis verlangen.';
     public const DEFAULT_LEGAL_TEXT = 'Ich habe die Hinweise zu Allergenen und Zusatzstoffen zur Kenntnis genommen und bestelle zahlungspflichtig.';
@@ -46,11 +51,13 @@ class CheckoutSetting extends Model
         'field_notes',
         'soft_table_capacity',
         'max_group_empty_table',
+        'languages',
     ];
 
     protected $casts = [
         'soft_table_capacity'   => 'boolean',
         'max_group_empty_table' => 'integer',
+        'languages'             => 'array',
     ];
 
     public function team(): BelongsTo
@@ -148,6 +155,25 @@ class CheckoutSetting extends Model
     public function maxGroupEmptyTable(): ?int
     {
         return $this->max_group_empty_table !== null ? (int) $this->max_group_empty_table : null;
+    }
+
+    /**
+     * Angebotene Sprachen (locale-Codes). Basis-/Default-Sprache DE ist immer
+     * enthalten und steht an erster Stelle.
+     *
+     * @return array<int,string>
+     */
+    public function languages(): array
+    {
+        $list = collect(is_array($this->languages) ? $this->languages : [])
+            ->map(fn ($l) => strtolower(trim((string) $l)))
+            ->filter()
+            ->reject(fn ($l) => $l === HasTranslations::DEFAULT_LOCALE)
+            ->unique()
+            ->values()
+            ->all();
+
+        return array_merge([HasTranslations::DEFAULT_LOCALE], $list);
     }
 
     /** Standard-Raumfreigabe für neue Termine (parallel|sequential). */
