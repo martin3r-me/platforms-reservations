@@ -21,51 +21,6 @@ return [
     ],
 
     /**
-     * Sidebar-Struktur (Metadaten + wird von Livewire\Sidebar gerendert).
-     */
-    'sidebar' => [
-        [
-            'group' => 'Übersicht',
-            'items' => [
-                ['label' => 'Dashboard', 'route' => 'reservation.dashboard', 'icon' => 'heroicon-o-home'],
-                ['label' => 'Posteingang', 'route' => 'reservation.inbox.index', 'icon' => 'heroicon-o-inbox'],
-                ['label' => 'Veranstaltungen', 'route' => 'reservation.operations.index', 'icon' => 'heroicon-o-fire'],
-                ['label' => 'Alle Buchungen', 'route' => 'reservation.bookings.index', 'icon' => 'heroicon-o-calendar-days'],
-            ],
-        ],
-        [
-            'group' => 'Verwaltung',
-            'items' => [
-                ['label' => 'Termine', 'route' => 'reservation.events.index', 'icon' => 'heroicon-o-ticket'],
-                ['label' => 'Venues & Tischpläne', 'route' => 'reservation.venues.index', 'icon' => 'heroicon-o-building-storefront'],
-                ['label' => 'Verkaufslisten', 'route' => 'reservation.sales-lists.index', 'icon' => 'heroicon-o-queue-list'],
-                ['label' => 'Artikel', 'route' => 'reservation.menu.index', 'icon' => 'heroicon-o-rectangle-stack'],
-                ['label' => 'Drop-off', 'route' => 'reservation.dropoff.index', 'icon' => 'heroicon-o-clock'],
-            ],
-        ],
-        [
-            'group' => 'Finanzen',
-            'items' => [
-                ['label' => 'Umsatz', 'route' => 'reservation.finance.index', 'icon' => 'heroicon-o-banknotes'],
-            ],
-        ],
-        [
-            'group' => 'Auswertung',
-            'items' => [
-                ['label' => 'Export', 'route' => 'reservation.export', 'icon' => 'heroicon-o-arrow-down-tray'],
-            ],
-        ],
-        [
-            'group' => 'Einstellungen',
-            'items' => [
-                ['label' => 'Einstellungen', 'route' => 'reservation.settings.checkout', 'icon' => 'heroicon-o-cog-6-tooth'],
-                ['label' => 'Allergene & Zusatzstoffe', 'route' => 'reservation.settings.declarations', 'icon' => 'heroicon-o-beaker'],
-                ['label' => 'Standzeit-Klassen', 'route' => 'reservation.settings.holding-classes', 'icon' => 'heroicon-o-fire'],
-            ],
-        ],
-    ],
-
-    /**
      * Mollie-Zahlungsintegration.
      *
      * Pro Team wird der API-Key i.d.R. in den Modul-Einstellungen hinterlegt

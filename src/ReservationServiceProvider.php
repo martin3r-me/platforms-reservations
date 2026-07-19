@@ -177,7 +177,6 @@ class ReservationServiceProvider extends ServiceProvider
                     'routing'    => config('reservation.routing'),
                     'guard'      => config('reservation.guard'),
                     'navigation' => config('reservation.navigation'),
-                    'sidebar'    => config('reservation.sidebar'),
                 ]);
 
                 if (\Platform\Core\PlatformCore::getModule('reservation')) {

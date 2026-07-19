@@ -10,9 +10,17 @@
             @svg('heroicon-o-home', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Dashboard</span>
         </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('reservation.inbox.index')">
+            @svg('heroicon-o-inbox', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Posteingang</span>
+        </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('reservation.operations.index')">
+            @svg('heroicon-o-fire', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Veranstaltungen</span>
+        </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.bookings.index')">
             @svg('heroicon-o-calendar-days', 'w-4 h-4 text-[var(--ui-secondary)]')
-            <span class="ml-2 text-sm">Buchungen</span>
+            <span class="ml-2 text-sm">Alle Buchungen</span>
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
 
@@ -62,12 +70,22 @@
             @svg('heroicon-o-beaker', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Allergene &amp; Zusatzstoffe</span>
         </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('reservation.settings.holding-classes')">
+            @svg('heroicon-o-fire', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Standzeit-Klassen</span>
+        </x-ui-sidebar-item>
     </x-ui-sidebar-list>
     </div>
 
     {{-- Collapsed: Icons-only --}}
     <div x-show="collapsed" class="px-2 py-2 border-b border-[var(--ui-border)]">
         <div class="flex flex-col gap-2">
+            <a href="{{ route('reservation.inbox.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
+                @svg('heroicon-o-inbox', 'w-5 h-5')
+            </a>
+            <a href="{{ route('reservation.operations.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
+                @svg('heroicon-o-fire', 'w-5 h-5')
+            </a>
             <a href="{{ route('reservation.bookings.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
                 @svg('heroicon-o-calendar-days', 'w-5 h-5')
             </a>
