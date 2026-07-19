@@ -107,20 +107,6 @@
                                     <span>Veröffentlichen</span>
                                 </x-ui-button>
                             @endif
-                            @if ($event->bookings_count > 0)
-                                <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.events.orders', $event->id)" wire:navigate>
-                                    @svg('heroicon-o-fire', 'w-4 h-4')
-                                    <span>Küche</span>
-                                </x-ui-button>
-                                <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.events.function-sheet', $event->id)" target="_blank">
-                                    @svg('heroicon-o-clipboard-document-list', 'w-4 h-4')
-                                    <span>Laufzettel</span>
-                                </x-ui-button>
-                                <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.events.briefing', $event->id)" target="_blank">
-                                    @svg('heroicon-o-presentation-chart-bar', 'w-4 h-4')
-                                    <span>Übersicht</span>
-                                </x-ui-button>
-                            @endif
                             @if ($event->status->value === 'published')
                                 @if (\Illuminate\Support\Facades\Route::has('reservation.guest.checkout'))
                                     <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.guest.checkout', $event->uuid)" target="_blank">

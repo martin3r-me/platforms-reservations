@@ -26,7 +26,10 @@ Route::get('/bookings/create', BookingCreate::class)->name('reservation.bookings
 // Alt-Link: Storno-Anfragen sind in den Posteingang integriert
 Route::get('/cancellations', fn () => redirect()->route('reservation.inbox.index'))->name('reservation.cancellations.index');
 
-// Termine (Veranstaltungen mit Pausen-Slots und Räumen)
+// Veranstaltungen (operative Durchführung): nur Termine mit Buchungen, operative Aktionen
+Route::get('/operations', \Platform\Reservation\Livewire\EventOperations::class)->name('reservation.operations.index');
+
+// Termine (Verwaltung: Veranstaltungen mit Pausen-Slots und Räumen anlegen/pflegen)
 Route::get('/events', EventManager::class)->name('reservation.events.index');
 
 // Küchen-Übersicht: Gesamtbestellungen eines Termins je Pause
