@@ -103,13 +103,8 @@
                             <div class="flex flex-wrap gap-1.5">
                                 @if ($booking->status === 'pending')
                                     <x-ui-button variant="success" size="sm" wire:click="confirmBooking({{ $booking->id }})">Bestätigen</x-ui-button>
-                                @elseif ($booking->status === 'confirmed')
-                                    <x-ui-button variant="primary" size="sm" wire:click="markCompleted({{ $booking->id }})">Abschließen</x-ui-button>
                                 @endif
                                 <x-ui-button variant="secondary-outline" size="sm" wire:click="openDetail({{ $booking->id }})">Details</x-ui-button>
-                                @if ($booking->status === 'confirmed')
-                                    <x-ui-button variant="secondary-outline" size="sm" wire:click="markNoShow({{ $booking->id }})">No-Show</x-ui-button>
-                                @endif
                                 @if ($booking->status === 'pending')
                                     <div class="shrink-0">
                                         <x-ui-confirm-button
