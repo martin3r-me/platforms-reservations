@@ -52,7 +52,7 @@
         {{-- Tabelle --}}
         <x-ui-table compact="true">
             <x-ui-table-header>
-                <x-ui-table-header-cell compact="true">Datum</x-ui-table-header-cell>
+                <x-ui-table-header-cell compact="true">VA-Datum</x-ui-table-header-cell>
                 <x-ui-table-header-cell compact="true">Veranstaltung</x-ui-table-header-cell>
                 <x-ui-table-header-cell compact="true">Uhrzeit</x-ui-table-header-cell>
                 <x-ui-table-header-cell compact="true">Tisch</x-ui-table-header-cell>
