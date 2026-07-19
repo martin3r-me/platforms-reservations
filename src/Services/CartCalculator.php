@@ -125,10 +125,23 @@ class CartCalculator
             ->map(fn (float $gross, $rate) => Vat::fromGross($gross, (float) $rate));
     }
 
-    /** Enthält der Warenkorb altersbeschränkte (alkoholische) Artikel? */
+    /**
+     * Höchste Altersgrenze im Warenkorb (16 | 18 | null). null = keine.
+     */
+    public function requiredMinAge(Collection $lines): ?int
+    {
+        $ages = $lines
+            ->map(fn ($line) => $line['item']->min_age?->value)
+            ->filter()
+            ->values();
+
+        return $ages->isEmpty() ? null : (int) $ages->max();
+    }
+
+    /** Enthält der Warenkorb altersbeschränkte Artikel (16/18)? */
     public function containsAgeRestricted(Collection $lines): bool
     {
-        return $lines->contains(fn ($line) => $line['item']->is_alcoholic);
+        return $this->requiredMinAge($lines) !== null;
     }
 
     /**

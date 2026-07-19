@@ -45,6 +45,9 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
                 'is_vegetarian' => ['type' => 'boolean'],
                 'is_vegan'      => ['type' => 'boolean'],
                 'is_alcoholic'  => ['type' => 'boolean'],
+                'min_age'       => ['type' => ['integer', 'null'], 'enum' => [16, 18, null], 'description' => 'Altersgrenze 16|18|null.'],
+                'is_caffeinated' => ['type' => 'boolean'],
+                'caffeine_mg'   => ['type' => ['number', 'null'], 'description' => 'mg/100 ml.'],
             ],
             'required'   => ['id'],
         ];
@@ -72,6 +75,9 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
                 'is_vegetarian' => 'sometimes|boolean',
                 'is_vegan'      => 'sometimes|boolean',
                 'is_alcoholic'  => 'sometimes|boolean',
+                'min_age'       => 'sometimes|nullable|integer|in:16,18',
+                'is_caffeinated' => 'sometimes|boolean',
+                'caffeine_mg'   => 'sometimes|nullable|numeric|min:0|max:10000',
             ]);
 
             if ($validator->fails()) {
@@ -105,6 +111,7 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
             $data = collect($validator->validated())->only([
                 'category_id', 'holding_class_id', 'name', 'price', 'tax_rate', 'description',
                 'portion_size', 'available', 'is_vegetarian', 'is_vegan', 'is_alcoholic',
+                'min_age', 'is_caffeinated', 'caffeine_mg',
             ])->all();
 
             if (isset($data['tax_rate'])) {

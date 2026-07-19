@@ -328,14 +328,35 @@
                     'itemAvailable'  => 'Verfügbar',
                     'itemVegetarian' => 'Vegetarisch',
                     'itemVegan'      => 'Vegan',
-                    'itemAlcoholic'  => 'Alkoholisch (18+)',
+                    'itemAlcoholic'  => 'Alkoholisch',
+                    'itemCaffeinated' => 'Koffeinhaltig',
                 ] as $prop => $label)
                     <label class="flex items-center gap-2 text-sm text-[var(--ui-secondary)] cursor-pointer">
-                        <input wire:model="{{ $prop }}" type="checkbox" class="rounded border-[var(--ui-border)]" />
+                        <input wire:model.live="{{ $prop }}" type="checkbox" class="rounded border-[var(--ui-border)]" />
                         {{ $label }}
                     </label>
                 @endforeach
             </div>
+
+            <x-ui-form-grid :cols="2" :gap="3">
+                {{-- Altersgrenze --}}
+                <x-ui-input-select
+                    name="itemMinAge"
+                    label="Altersgrenze (Jugendschutz)"
+                    :options="[
+                        ['value' => '', 'label' => 'Keine'],
+                        ['value' => '16', 'label' => '16+ (Bier, Wein, Sekt)'],
+                        ['value' => '18', 'label' => '18+ (Spirituosen)'],
+                    ]"
+                    wire:model="itemMinAge"
+                    errorKey="itemMinAge"
+                />
+
+                {{-- Koffeingehalt (nur wenn koffeinhaltig) --}}
+                @if ($itemCaffeinated)
+                    <x-ui-input-number name="itemCaffeineMg" label="Koffeingehalt (mg/100 ml)" step="0.1" min="0" wire:model="itemCaffeineMg" placeholder="z. B. 32,0" errorKey="itemCaffeineMg" />
+                @endif
+            </x-ui-form-grid>
 
             {{-- Allergene --}}
             <div>

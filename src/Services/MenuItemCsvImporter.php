@@ -28,6 +28,7 @@ class MenuItemCsvImporter
     protected const KNOWN_COLUMNS = [
         'name', 'beschreibung', 'portionsgroesse', 'kategorie', 'preis', 'mwst',
         'allergene', 'zusatzstoffe', 'vegetarisch', 'vegan', 'alkohol', 'verfuegbar',
+        'altersgrenze', 'koffein', 'koffein_mg',
     ];
 
     /**
@@ -114,6 +115,9 @@ class MenuItemCsvImporter
                     'is_vegetarian'   => $row['is_vegetarian'],
                     'is_vegan'        => $row['is_vegan'],
                     'is_alcoholic'    => $row['is_alcoholic'],
+                    'min_age'         => $row['min_age'],
+                    'is_caffeinated'  => $row['is_caffeinated'],
+                    'caffeine_mg'     => $row['caffeine_mg'],
                     'approval_status' => MenuItem::APPROVAL_DRAFT,
                 ]);
 
@@ -207,6 +211,11 @@ class MenuItemCsvImporter
             'is_vegetarian' => $this->parseBool($data['vegetarisch'] ?? '', false),
             'is_vegan'      => $this->parseBool($data['vegan'] ?? '', false),
             'is_alcoholic'  => $this->parseBool($data['alkohol'] ?? '', false),
+            'min_age'       => in_array((int) ($data['altersgrenze'] ?? 0), [16, 18], true) ? (int) $data['altersgrenze'] : null,
+            'is_caffeinated' => $this->parseBool($data['koffein'] ?? '', false),
+            'caffeine_mg'   => isset($data['koffein_mg']) && is_numeric(str_replace(',', '.', (string) $data['koffein_mg']))
+                ? (float) str_replace(',', '.', (string) $data['koffein_mg'])
+                : null,
             'allergen_ids'  => $allergenIds,
             'additive_ids'  => $additiveIds,
         ];

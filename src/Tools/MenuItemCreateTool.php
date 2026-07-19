@@ -44,7 +44,10 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
                 'available'     => ['type' => 'boolean'],
                 'is_vegetarian' => ['type' => 'boolean'],
                 'is_vegan'      => ['type' => 'boolean'],
-                'is_alcoholic'  => ['type' => 'boolean', 'description' => 'Alkohol → 18+-Prüfung im Checkout.'],
+                'is_alcoholic'  => ['type' => 'boolean', 'description' => 'Enthält Alkohol (Label).'],
+                'min_age'       => ['type' => ['integer', 'null'], 'enum' => [16, 18, null], 'description' => 'Altersgrenze: 16 (Bier/Wein/Sekt), 18 (Spirituosen), null = keine.'],
+                'is_caffeinated' => ['type' => 'boolean', 'description' => 'Koffeinhaltig (Kennzeichnung).'],
+                'caffeine_mg'   => ['type' => ['number', 'null'], 'description' => 'Koffeingehalt in mg/100 ml (optional).'],
             ],
             'required'   => ['category_id', 'name', 'price'],
         ];
@@ -71,6 +74,9 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
                 'is_vegetarian' => 'nullable|boolean',
                 'is_vegan'      => 'nullable|boolean',
                 'is_alcoholic'  => 'nullable|boolean',
+                'min_age'       => 'nullable|integer|in:16,18',
+                'is_caffeinated' => 'nullable|boolean',
+                'caffeine_mg'   => 'nullable|numeric|min:0|max:10000',
             ]);
 
             if ($validator->fails()) {

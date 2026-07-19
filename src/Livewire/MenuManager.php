@@ -38,6 +38,9 @@ class MenuManager extends Component
     public bool $itemVegetarian = false;
     public bool $itemVegan = false;
     public bool $itemAlcoholic = false;
+    public ?int $itemMinAge = null;
+    public bool $itemCaffeinated = false;
+    public ?string $itemCaffeineMg = null;
     public array $itemAllergenIds = [];
     public array $itemAdditiveIds = [];
 
@@ -209,6 +212,9 @@ class MenuManager extends Component
             $this->itemVegetarian    = $item->is_vegetarian;
             $this->itemVegan         = $item->is_vegan;
             $this->itemAlcoholic     = $item->is_alcoholic;
+            $this->itemMinAge        = $item->min_age?->value;
+            $this->itemCaffeinated   = $item->is_caffeinated;
+            $this->itemCaffeineMg    = $item->caffeine_mg !== null ? (string) $item->caffeine_mg : null;
             $this->itemAllergenIds   = $item->allergens->pluck('id')->toArray();
             $this->itemAdditiveIds   = $item->additives->pluck('id')->toArray();
         } else {
@@ -229,6 +235,9 @@ class MenuManager extends Component
         $this->itemVegetarian  = false;
         $this->itemVegan       = false;
         $this->itemAlcoholic   = false;
+        $this->itemMinAge      = null;
+        $this->itemCaffeinated = false;
+        $this->itemCaffeineMg  = null;
         $this->itemAllergenIds = [];
         $this->itemAdditiveIds = [];
     }
@@ -247,6 +256,8 @@ class MenuManager extends Component
                 }
             }],
             'itemImage'       => 'nullable|image|max:20480',
+            'itemMinAge'      => 'nullable|integer|in:16,18',
+            'itemCaffeineMg'  => 'nullable|numeric|min:0|max:10000',
         ]);
 
         $data = [
@@ -262,6 +273,11 @@ class MenuManager extends Component
             'is_vegetarian' => $this->itemVegetarian,
             'is_vegan'      => $this->itemVegan,
             'is_alcoholic'  => $this->itemAlcoholic,
+            'min_age'       => $this->itemMinAge ?: null,
+            'is_caffeinated' => $this->itemCaffeinated,
+            'caffeine_mg'   => $this->itemCaffeinated && $this->itemCaffeineMg !== null && $this->itemCaffeineMg !== ''
+                ? $this->itemCaffeineMg
+                : null,
         ];
 
         if ($this->editingItemId) {
@@ -269,7 +285,7 @@ class MenuManager extends Component
             $item->update($data);
             $contentChanged = $item->wasChanged([
                 'name', 'description', 'portion_size', 'price', 'tax_rate',
-                'is_vegetarian', 'is_vegan', 'is_alcoholic',
+                'is_vegetarian', 'is_vegan', 'is_alcoholic', 'min_age', 'is_caffeinated', 'caffeine_mg',
             ]);
         } else {
             $item = MenuItem::create($data);

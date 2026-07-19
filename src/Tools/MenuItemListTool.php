@@ -69,6 +69,9 @@ class MenuItemListTool implements ToolContract, ToolMetadataContract
                 'is_vegetarian'   => $item->is_vegetarian,
                 'is_vegan'        => $item->is_vegan,
                 'is_alcoholic'    => $item->is_alcoholic,
+                'min_age'         => $item->min_age?->value,
+                'is_caffeinated'  => $item->is_caffeinated,
+                'caffeine_mg'     => $item->caffeine_mg !== null ? (float) $item->caffeine_mg : null,
                 'approval_status' => $item->approval_status,
             ]);
 

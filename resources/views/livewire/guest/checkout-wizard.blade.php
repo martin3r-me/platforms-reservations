@@ -442,11 +442,14 @@
                     </div>
                 @endif
 
-                {{-- 18+ (nur bei Alkohol) --}}
+                {{-- Altersbestätigung (16+/18+, je nach Warenkorb) --}}
                 @if ($this->requiresAgeCheck)
                     <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-purple-300 bg-purple-50 p-3 text-sm dark:border-purple-800 dark:bg-purple-900/20">
                         <input type="checkbox" wire:model.live="ageConfirmed" class="mt-0.5 rounded border-gray-300" />
-                        <span class="dark:text-white">{{ $this->checkoutTexts->ageText() }}</span>
+                        <span class="dark:text-white">
+                            <strong>Ich bestätige, dass ich mindestens {{ $this->requiredMinAge }} Jahre alt bin.</strong>
+                            <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">{{ $this->checkoutTexts->ageText() }}</span>
+                        </span>
                     </label>
                     @error('ageConfirmed') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
                 @endif

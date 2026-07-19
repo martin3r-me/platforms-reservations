@@ -52,6 +52,9 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
                             'is_vegetarian'  => ['type' => 'boolean'],
                             'is_vegan'       => ['type' => 'boolean'],
                             'is_alcoholic'   => ['type' => 'boolean'],
+                            'min_age'        => ['type' => ['integer', 'null'], 'enum' => [16, 18, null]],
+                            'is_caffeinated' => ['type' => 'boolean'],
+                            'caffeine_mg'    => ['type' => ['number', 'null']],
                             'allergen_codes' => ['type' => 'array', 'items' => ['type' => 'string']],
                             'additive_codes' => ['type' => 'array', 'items' => ['type' => 'string']],
                         ],
@@ -135,6 +138,9 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
                     'is_vegetarian' => $row['is_vegetarian'] ?? false,
                     'is_vegan'      => $row['is_vegan'] ?? false,
                     'is_alcoholic'  => $row['is_alcoholic'] ?? false,
+                    'min_age'       => in_array(($row['min_age'] ?? null), [16, 18], true) ? (int) $row['min_age'] : null,
+                    'is_caffeinated' => $row['is_caffeinated'] ?? false,
+                    'caffeine_mg'   => isset($row['caffeine_mg']) && is_numeric($row['caffeine_mg']) ? (float) $row['caffeine_mg'] : null,
                 ];
 
                 if ($approve) {

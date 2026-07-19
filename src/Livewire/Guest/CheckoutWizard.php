@@ -185,7 +185,14 @@ class CheckoutWizard extends Component
     #[Computed]
     public function requiresAgeCheck(): bool
     {
-        return $this->calc()->containsAgeRestricted($this->allLines());
+        return $this->requiredMinAge !== null;
+    }
+
+    /** Höchste Altersgrenze im Warenkorb (16 | 18 | null). */
+    #[Computed]
+    public function requiredMinAge(): ?int
+    {
+        return $this->calc()->requiredMinAge($this->allLines());
     }
 
     #[Computed]

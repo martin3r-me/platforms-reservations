@@ -45,6 +45,9 @@ class MenuItem extends Model
         'is_vegetarian',
         'is_vegan',
         'is_alcoholic',
+        'min_age',
+        'is_caffeinated',
+        'caffeine_mg',
         'approval_status',
         'submitted_by',
         'approved_by',
@@ -60,6 +63,9 @@ class MenuItem extends Model
         'is_vegetarian' => 'boolean',
         'is_vegan'      => 'boolean',
         'is_alcoholic'  => 'boolean',
+        'min_age'       => \Platform\Reservation\Enums\AgeRestriction::class,
+        'is_caffeinated' => 'boolean',
+        'caffeine_mg'   => 'decimal:1',
         'approved_at'   => 'datetime',
     ];
 

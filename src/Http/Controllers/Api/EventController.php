@@ -630,6 +630,13 @@ class EventController extends ApiController
             'is_vegetarian'    => $item->is_vegetarian,
             'is_vegan'         => $item->is_vegan,
             'is_alcoholic'     => $item->is_alcoholic,
+            'min_age'          => $item->min_age?->value, // 16 | 18 | null
+            'is_caffeinated'   => $item->is_caffeinated,
+            'caffeine_mg'      => $item->caffeine_mg !== null ? (float) $item->caffeine_mg : null, // mg/100 ml
+            'caffeine_notice'  => $item->is_caffeinated
+                ? 'Erhöhter Koffeingehalt. Für Kinder und schwangere oder stillende Frauen nicht empfohlen.'
+                    . ($item->caffeine_mg !== null ? ' (' . rtrim(rtrim(number_format((float) $item->caffeine_mg, 1, ',', '.'), '0'), ',') . ' mg/100 ml)' : '')
+                : null,
             'allergens'        => $item->allergens->pluck('code')->values(),
             'additives'        => $item->additives->pluck('code')->values(),
             'image_url'        => $item->image_context_file_id ? $item->imageUrl('medium_1_1') : null,
