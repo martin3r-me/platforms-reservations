@@ -23,7 +23,7 @@ class OrderReceiptController
             ->where('uuid', $uuid)
             ->with([
                 'event',
-                'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table', 'items.menuItem']),
+                'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table.floorPlan', 'items.menuItem']),
                 'payment',
             ])
             ->first();
@@ -80,25 +80,37 @@ class OrderReceiptController
     protected function buildData(Order $order): array
     {
         $lines   = [];
+        $groups  = []; // je Buchung/Pause: Slot, Tisch, Raum + Positionen
         $byRate  = []; // rate => brutto-Summe
 
         foreach ($order->bookings as $booking) {
+            $groupItems = [];
+
             foreach ($booking->items as $item) {
                 $rate  = (float) $item->tax_rate;
                 $gross = round((float) $item->quantity * (float) $item->unit_price, 2);
 
-                $lines[] = [
+                $entry = [
                     'name'       => $item->menuItem?->name ?? 'Produkt',
                     'quantity'   => (int) $item->quantity,
                     'unit_price' => round((float) $item->unit_price, 2),
                     'tax_rate'   => $rate,
                     'total'      => $gross,
-                    'slot'       => $booking->slot?->name,
                 ];
+
+                $groupItems[] = $entry;
+                $lines[]      = $entry + ['slot' => $booking->slot?->name];
 
                 $key         = number_format($rate, 2, '.', '');
                 $byRate[$key] = round(($byRate[$key] ?? 0) + $gross, 2);
             }
+
+            $groups[] = [
+                'slot'  => $booking->slot?->displayLabel() ?? ($booking->slot?->name ?? 'Pause'),
+                'table' => $booking->table?->label,
+                'room'  => $booking->table?->floorPlan?->name,
+                'items' => $groupItems,
+            ];
         }
 
         $vat       = [];
@@ -118,6 +130,7 @@ class OrderReceiptController
         return [
             'order'       => $order,
             'lines'       => $lines,
+            'groups'      => $groups,
             'vat'         => $vat,
             'total_net'   => $totalNet,
             'total_vat'   => $totalVat,

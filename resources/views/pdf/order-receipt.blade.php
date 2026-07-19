@@ -49,18 +49,24 @@
 
     <table class="items">
         <thead>
-            <tr><th>Pos.</th><th>Pause</th><th class="num">Menge</th><th class="num">Einzel</th><th class="num">MwSt</th><th class="num">Summe</th></tr>
+            <tr><th>Position</th><th class="num">Menge</th><th class="num">Einzel</th><th class="num">MwSt</th><th class="num">Summe</th></tr>
         </thead>
         <tbody>
-            @foreach ($lines as $line)
+            @foreach ($groups as $g)
                 <tr>
-                    <td>{{ $line['name'] }}</td>
-                    <td class="muted">{{ $line['slot'] }}</td>
-                    <td class="num">{{ $line['quantity'] }}</td>
-                    <td class="num">{{ $fmt($line['unit_price']) }}</td>
-                    <td class="num">{{ $pct($line['tax_rate']) }}</td>
-                    <td class="num">{{ $fmt($line['total']) }}</td>
+                    <td colspan="5" style="background: #f3f4f6; color: #285567; font-weight: bold; padding: 7px 4px;">
+                        {{ $g['slot'] }}@if ($g['table']) · Tisch {{ $g['table'] }}@endif@if ($g['room']) · {{ $g['room'] }}@endif
+                    </td>
                 </tr>
+                @foreach ($g['items'] as $line)
+                    <tr>
+                        <td>{{ $line['name'] }}</td>
+                        <td class="num">{{ $line['quantity'] }}</td>
+                        <td class="num">{{ $fmt($line['unit_price']) }}</td>
+                        <td class="num">{{ $pct($line['tax_rate']) }}</td>
+                        <td class="num">{{ $fmt($line['total']) }}</td>
+                    </tr>
+                @endforeach
             @endforeach
         </tbody>
     </table>
