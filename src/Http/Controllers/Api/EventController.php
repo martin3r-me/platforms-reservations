@@ -159,6 +159,7 @@ class EventController extends ApiController
             'slots',
             'eventRooms.floorPlan'        => fn ($q) => $q->withoutGlobalScope('team'),
             'eventRooms.floorPlan.tables' => fn ($q) => $q->withoutGlobalScope('team')->where('is_active', true),
+            'eventRooms.floorPlan.atmosphereFiles.variants',
         ]);
 
         $checkout   = CheckoutSetting::forTeam((int) $model->team_id);
@@ -352,6 +353,7 @@ class EventController extends ApiController
                 'background_rotation' => $floorPlan->background_rotation,
                 'aspect'             => $floorPlan->displayAspect(),
             ],
+            'atmosphere_images' => $floorPlan->atmosphereImages(), // [{ id, url, thumbnail }]
             'tables' => $tables->map(fn ($t) => [
                 'id'          => $t->id,
                 'label'       => $t->label,

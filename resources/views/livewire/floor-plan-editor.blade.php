@@ -69,6 +69,39 @@
             ])
         </div>
 
+        {{-- Atmosphäre-Bilder (Galerie, beliebig viele) --}}
+        @if ($this->floorPlan)
+            @php $atmosphere = $this->floorPlan->atmosphereImages(); @endphp
+            <div class="rounded-lg border border-[var(--ui-border)]/60 p-3 space-y-2">
+                <div class="flex items-center gap-2">
+                    @svg('heroicon-o-photo', 'w-5 h-5 text-[var(--ui-muted)]')
+                    <span class="text-sm font-medium text-[var(--ui-secondary)]">Atmosphäre-Bilder</span>
+                    <span class="ml-auto text-xs text-[var(--ui-muted)]">erscheinen in der Gast-Ansicht / App ({{ count($atmosphere) }})</span>
+                </div>
+
+                @if (count($atmosphere))
+                    <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                        @foreach ($atmosphere as $img)
+                            <div wire:key="atmo-{{ $img['id'] }}" class="relative aspect-square overflow-hidden rounded-lg border border-[var(--ui-border)]/50">
+                                <img src="{{ $img['thumbnail'] }}" alt="" class="h-full w-full object-cover" />
+                                <button wire:click="removeAtmosphereImage({{ $img['id'] }})" wire:confirm="Bild entfernen?" type="button"
+                                    class="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-xs leading-5 text-white hover:bg-black/80">✕</button>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
+                <label class="block">
+                    <input type="file" wire:model="atmosphereUploads" multiple accept="image/*"
+                        class="block w-full text-sm text-[var(--ui-secondary)] file:mr-3 file:rounded-md file:border file:border-[var(--ui-border)] file:bg-gray-50 file:px-3 file:py-1.5 file:text-sm hover:file:bg-gray-100" />
+                    <span class="mt-1 block text-[11px] text-[var(--ui-muted)]">Mehrere möglich · JPG, PNG oder WebP · max. 20 MB je Bild.</span>
+                </label>
+                <div wire:loading wire:target="atmosphereUploads" class="text-xs text-[var(--ui-muted)]">Lade hoch …</div>
+                @error('atmosphereUploads.*') <p class="text-xs text-[var(--ui-danger)] m-0">{{ $message }}</p> @enderror
+                @error('atmosphereUploads') <p class="text-xs text-[var(--ui-danger)] m-0">{{ $message }}</p> @enderror
+            </div>
+        @endif
+
         {{-- Canvas: Tischplan – Seitenverhältnis folgt dem Grundriss (kein Letterbox);
              Tische in normalisierten Koordinaten -> identisch zur Gast-Ansicht. --}}
         <div class="mx-auto w-full max-w-3xl">

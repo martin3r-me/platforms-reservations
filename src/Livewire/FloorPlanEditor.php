@@ -6,6 +6,8 @@ use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\WithFileUploads;
+use Platform\Core\Models\ContextFile;
+use Platform\Core\Services\ContextFileService;
 use Platform\Reservation\Models\Venue;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\Table;
@@ -28,6 +30,9 @@ class FloorPlanEditor extends Component
 
     // Grundriss-Upload
     public $background = null;
+
+    // Atmosphäre-Bilder (Galerie, beliebig viele ContextFiles am Raum)
+    public $atmosphereUploads = [];
 
     // Tisch-Formular
     public bool $showTableForm = false;
@@ -68,7 +73,9 @@ class FloorPlanEditor extends Component
     #[Computed]
     public function floorPlan(): ?FloorPlan
     {
-        return $this->floorPlanId ? FloorPlan::find($this->floorPlanId) : null;
+        return $this->floorPlanId
+            ? FloorPlan::with(['imageFile.variants', 'atmosphereFiles.variants'])->find($this->floorPlanId)
+            : null;
     }
 
     #[Computed]
@@ -154,6 +161,61 @@ class FloorPlanEditor extends Component
 
         FloorPlan::findOrFail($this->floorPlanId)
             ->clearContextImage(Auth::user()?->current_team_id);
+
+        unset($this->floorPlan);
+    }
+
+    /** Atmosphäre-Bilder hochladen (mehrere ContextFiles am Raum-Kontext). */
+    public function updatedAtmosphereUploads(): void
+    {
+        if (!$this->floorPlanId) {
+            $this->addError('atmosphereUploads', 'Bitte zuerst den Tischplan speichern.');
+            $this->atmosphereUploads = [];
+            return;
+        }
+
+        $this->validate(['atmosphereUploads.*' => 'image|max:20480'], [
+            'atmosphereUploads.*.image' => 'Bitte nur Bilder hochladen (JPG, PNG oder WebP).',
+            'atmosphereUploads.*.max'   => 'Ein Bild ist zu groß (max. 20 MB).',
+        ]);
+
+        $service = app(ContextFileService::class);
+        $teamId  = Auth::user()?->current_team_id;
+
+        foreach ((array) $this->atmosphereUploads as $file) {
+            try {
+                $service->uploadForContext(
+                    $file,
+                    FloorPlan::ATMOSPHERE_CONTEXT,
+                    $this->floorPlanId,
+                    ['team_id' => $teamId, 'user_id' => Auth::id()],
+                );
+            } catch (\Throwable $e) {
+                report($e);
+                $this->addError('atmosphereUploads', 'Ein Bild konnte nicht gespeichert werden: ' . $e->getMessage());
+            }
+        }
+
+        $this->atmosphereUploads = [];
+        unset($this->floorPlan);
+        $this->dispatch('floor-plan-saved');
+    }
+
+    /** Ein Atmosphäre-Bild löschen (nur wenn es zu diesem Raum gehört). */
+    public function removeAtmosphereImage(int $fileId): void
+    {
+        if (!$this->floorPlanId) {
+            return;
+        }
+
+        $owned = ContextFile::where('id', $fileId)
+            ->where('context_type', FloorPlan::ATMOSPHERE_CONTEXT)
+            ->where('context_id', $this->floorPlanId)
+            ->exists();
+
+        if ($owned) {
+            app(ContextFileService::class)->delete($fileId, Auth::user()?->current_team_id);
+        }
 
         unset($this->floorPlan);
     }

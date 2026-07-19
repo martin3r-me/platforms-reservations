@@ -55,9 +55,50 @@ class FloorPlan extends Model
         return $this->belongsTo(Venue::class, 'venue_id');
     }
 
+    /** ContextFile-Kontext der Atmosphäre-Bilder dieses Raums. */
+    public const ATMOSPHERE_CONTEXT = 'reservation.floor_plan.atmosphere';
+
     public function tables(): HasMany
     {
         return $this->hasMany(Table::class, 'floor_plan_id');
+    }
+
+    /**
+     * Atmosphäre-Bilder des Raums – beliebig viele platform-core ContextFiles
+     * am Kontext (context_type, context_id). Kein Pivot, keine Single-Image-Spalte.
+     */
+    public function atmosphereFiles(): HasMany
+    {
+        return $this->hasMany(\Platform\Core\Models\ContextFile::class, 'context_id')
+            ->where('context_type', self::ATMOSPHERE_CONTEXT)
+            ->orderBy('id');
+    }
+
+    /**
+     * Atmosphäre-Bilder als URL-Liste (für UI/API).
+     *
+     * @return array<int, array{id:int, url:string, thumbnail:string}>
+     */
+    public function atmosphereImages(): array
+    {
+        return $this->atmosphereFiles->map(fn ($file) => [
+            'id'        => $file->id,
+            'url'       => $this->contextFileVariantUrl($file, 'large_original'),
+            'thumbnail' => $this->contextFileVariantUrl($file, 'medium_1_1'),
+        ])->all();
+    }
+
+    /** Signierte URL einer Variante (mit Ratio-/Original-Fallback). */
+    protected function contextFileVariantUrl(\Platform\Core\Models\ContextFile $file, string $variant): string
+    {
+        $match = $file->variants->firstWhere('variant_type', $variant);
+
+        if (! $match && str_contains($variant, '_')) {
+            $ratio = substr($variant, strpos($variant, '_') + 1);
+            $match = $file->variants->first(fn ($v) => str_ends_with($v->variant_type, '_' . $ratio));
+        }
+
+        return $match?->url ?? $file->url;
     }
 
     /** Raum-Default: Vorbelegung der Verkaufsliste beim Anlegen eines Termins. */
