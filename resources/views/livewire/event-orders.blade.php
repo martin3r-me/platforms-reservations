@@ -6,8 +6,9 @@
     <x-slot name="actionbar">
         <x-ui-page-actionbar :breadcrumbs="[
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
-            ['label' => 'Termine', 'href' => route('reservation.events.index')],
-            ['label' => $this->event->name],
+            ['label' => 'Veranstaltungen', 'href' => route('reservation.operations.index')],
+            ['label' => $this->event->name, 'href' => route('reservation.events.dashboard', $this->event->id)],
+            ['label' => 'Küche'],
         ]">
             <x-ui-button variant="secondary-outline" size="sm" onclick="window.print()">
                 @svg('heroicon-o-printer', 'w-4 h-4')

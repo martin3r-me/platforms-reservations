@@ -59,18 +59,10 @@
                                     · <span class="font-medium text-[var(--ui-secondary)]">{{ $event->bookings_count }} {{ $event->bookings_count === 1 ? 'Buchung' : 'Buchungen' }}</span>
                                 </p>
                             </div>
-                            <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                                <x-ui-button variant="primary" size="sm" :href="route('reservation.events.orders', $event->id)" wire:navigate>
-                                    @svg('heroicon-o-fire', 'w-4 h-4')
-                                    <span>Küche</span>
-                                </x-ui-button>
-                                <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.events.function-sheet', $event->id)" target="_blank">
-                                    @svg('heroicon-o-clipboard-document-list', 'w-4 h-4')
-                                    <span>Laufzettel</span>
-                                </x-ui-button>
-                                <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.events.briefing', $event->id)" target="_blank">
-                                    @svg('heroicon-o-presentation-chart-bar', 'w-4 h-4')
-                                    <span>Übersicht</span>
+                            <div class="flex shrink-0 items-center justify-end">
+                                <x-ui-button variant="primary" size="sm" :href="route('reservation.events.dashboard', $event->id)" wire:navigate>
+                                    <span>Öffnen</span>
+                                    @svg('heroicon-o-arrow-right', 'w-4 h-4')
                                 </x-ui-button>
                             </div>
                         </div>

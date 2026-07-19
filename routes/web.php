@@ -32,8 +32,16 @@ Route::get('/operations', \Platform\Reservation\Livewire\EventOperations::class)
 // Termine (Verwaltung: Veranstaltungen mit Pausen-Slots und Räumen anlegen/pflegen)
 Route::get('/events', EventManager::class)->name('reservation.events.index');
 
+// VA-Dashboard: operativer Hub einer Veranstaltung (Küche + Laufzettel)
+Route::get('/events/{eventId}/dashboard', \Platform\Reservation\Livewire\EventDashboard::class)->name('reservation.events.dashboard');
+
 // Küchen-Übersicht: Gesamtbestellungen eines Termins je Pause
 Route::get('/events/{eventId}/orders', EventOrders::class)->name('reservation.events.orders');
+
+// Laufzettel (Function Sheet) als vollwertige In-App-View
+Route::get('/events/{eventId}/function', \Platform\Reservation\Livewire\EventFunctionSheet::class)->name('reservation.events.function');
+
+// Druckbare Standalone-Ansichten (Laufzettel/Briefing)
 Route::get('/events/{eventId}/function-sheet', \Platform\Reservation\Http\Controllers\FunctionSheetController::class)->name('reservation.events.function-sheet');
 Route::get('/events/{eventId}/briefing', \Platform\Reservation\Http\Controllers\EventBriefingController::class)->name('reservation.events.briefing');
 
