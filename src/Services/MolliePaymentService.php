@@ -8,7 +8,7 @@ use Platform\Reservation\Contracts\MollieCredentialResolver;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\Order;
 use Platform\Reservation\Models\Payment;
-use Platform\Reservation\Services\BookingConfirmationMailer;
+use Platform\Reservation\Services\OrderConfirmationMailer;
 use Platform\Reservation\Support\MollieCredentials;
 
 /**
@@ -129,10 +129,10 @@ class MolliePaymentService
                         // Von Mollie gemeldete echte Zahlungsart übernehmen (z.B. ideal, creditcard, paypal).
                         'payment_method' => $molliePayment->method ?: $booking->payment_method,
                     ]);
-
-                    // Bestätigungsmail an den Gast (über CRM-Comms; inert ohne Channel).
-                    BookingConfirmationMailer::send($booking);
                 }
+
+                // EINE Bestellbestätigung je Order (über CRM-Comms; inert ohne Channel).
+                OrderConfirmationMailer::send($order);
             }
         } elseif ($isFailure) {
             if ($order->status === Order::STATUS_PENDING) {
