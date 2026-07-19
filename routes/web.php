@@ -20,6 +20,7 @@ use Platform\Reservation\Livewire\EventOrders;
 Route::get('/', \Platform\Reservation\Livewire\Dashboard::class)->name('reservation.dashboard');
 Route::get('/bookings', BookingList::class)->name('reservation.bookings.index');
 Route::get('/bookings/create', BookingCreate::class)->name('reservation.bookings.create');
+Route::get('/cancellations', \Platform\Reservation\Livewire\CancellationRequests::class)->name('reservation.cancellations.index');
 
 // Termine (Veranstaltungen mit Pausen-Slots und Räumen)
 Route::get('/events', EventManager::class)->name('reservation.events.index');

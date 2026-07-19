@@ -30,6 +30,7 @@ class Order extends Model
         'team_id',
         'event_id',
         'status',
+        'cancellation_requested_at',
         'first_name',
         'last_name',
         'company',
@@ -39,6 +40,10 @@ class Order extends Model
         'billing_zip',
         'billing_city',
         'billing_country',
+    ];
+
+    protected $casts = [
+        'cancellation_requested_at' => 'datetime',
     ];
 
     protected static function booted(): void

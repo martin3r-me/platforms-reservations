@@ -41,7 +41,10 @@ class OrderCancellationService
         }
 
         if ($settings->cancellationRequiresApproval()) {
-            $order->update(['status' => Order::STATUS_CANCELLATION_REQUESTED]);
+            $order->update([
+                'status'                    => Order::STATUS_CANCELLATION_REQUESTED,
+                'cancellation_requested_at' => now(),
+            ]);
 
             return ['status' => 'requested', 'message' => 'Ihr Storno wurde angefragt und wird geprüft. Sie erhalten die Rückerstattung nach Freigabe.'];
         }

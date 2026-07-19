@@ -29,6 +29,7 @@ return [
             'items' => [
                 ['label' => 'Dashboard', 'route' => 'reservation.dashboard', 'icon' => 'heroicon-o-home'],
                 ['label' => 'Buchungen', 'route' => 'reservation.bookings.index', 'icon' => 'heroicon-o-calendar-days'],
+                ['label' => 'Storno-Anfragen', 'route' => 'reservation.cancellations.index', 'icon' => 'heroicon-o-arrow-uturn-left'],
             ],
         ],
         [
