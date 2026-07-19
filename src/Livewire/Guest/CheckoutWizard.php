@@ -41,11 +41,27 @@ class CheckoutWizard extends Component
     public int $step = 1;
 
     // Step 1: Gastdaten (gelten für die ganze Bestellung)
-    public string $guestName = '';
+    public string $guestFirstName = '';
+    public string $guestLastName = '';
+    public string $guestCompany = '';
     public string $guestEmail = '';
     public string $guestPhone = '';
     public int $guestCount = 2;
     public string $notes = '';
+
+    // Optional: Rechnungsadresse
+    public string $billingStreet = '';
+    public string $billingZip = '';
+    public string $billingCity = '';
+    public string $billingCountry = '';
+
+    /** Anzeigename: "Vorname Nachname", sonst Firma. */
+    public function guestDisplayName(): string
+    {
+        $name = trim($this->guestFirstName . ' ' . $this->guestLastName);
+
+        return $name !== '' ? $name : trim($this->guestCompany);
+    }
 
     // Step 2: Produkte je Pause – slotId => (menu_item_id => Menge)
     /** @var array<int, array<int, int>> */
@@ -289,11 +305,17 @@ class CheckoutWizard extends Component
         $settings = $this->checkoutSettings;
 
         return [
-            'guestName'  => ['required', 'string', 'max:255'],
+            'guestFirstName' => ['required', 'string', 'max:255'],
+            'guestLastName'  => ['required', 'string', 'max:255'],
+            'guestCompany'   => ['nullable', 'string', 'max:255'],
             'guestEmail' => $settings->guestFieldRule('email', ['email:rfc' . ($dns ? ',dns' : ''), 'max:255']),
-            'guestPhone' => $settings->guestFieldRule('phone', ['string', 'max:30', 'regex:' . self::PHONE_REGEX]),
+            'guestPhone' => $settings->guestFieldRule('phone', ['string', 'max:40', 'regex:' . self::PHONE_REGEX]),
             'guestCount' => ['required', 'integer', 'min:1', 'max:20'],
             'notes'      => $settings->guestFieldRule('notes', ['string', 'max:2000']),
+            'billingStreet'  => ['nullable', 'string', 'max:255'],
+            'billingZip'     => ['nullable', 'string', 'max:20'],
+            'billingCity'    => ['nullable', 'string', 'max:255'],
+            'billingCountry' => ['nullable', 'string', 'max:2'],
         ];
     }
 
@@ -316,7 +338,8 @@ class CheckoutWizard extends Component
     protected function guestMessages(): array
     {
         return [
-            'guestName.required'  => 'Bitte geben Sie Ihren Namen an.',
+            'guestFirstName.required' => 'Bitte geben Sie Ihren Vornamen an.',
+            'guestLastName.required'  => 'Bitte geben Sie Ihren Nachnamen an.',
             'guestEmail.required' => 'Bitte geben Sie Ihre E-Mail-Adresse an.',
             'guestEmail.email'    => 'Bitte geben Sie eine gültige, existierende E-Mail-Adresse an.',
             'guestPhone.regex'    => 'Bitte geben Sie eine gültige Telefonnummer an (Ziffern, +, /, -, Klammern).',
@@ -458,7 +481,8 @@ class CheckoutWizard extends Component
         $this->normalizeHiddenGuestFields();
         $guest = \Illuminate\Support\Facades\Validator::make(
             [
-                'guestName'  => $this->guestName,
+                'guestFirstName' => $this->guestFirstName,
+                'guestLastName'  => $this->guestLastName,
                 'guestEmail' => $this->guestEmail,
                 'guestPhone' => $this->guestPhone,
                 'guestCount' => $this->guestCount,
@@ -543,6 +567,18 @@ class CheckoutWizard extends Component
                 'status'   => Order::STATUS_PENDING,
             ]);
 
+            $order->fill([
+                'first_name'      => $this->guestFirstName,
+                'last_name'       => $this->guestLastName,
+                'company'         => trim($this->guestCompany) ?: null,
+                'email'           => $this->guestEmail ?: null,
+                'phone'           => $this->guestPhone ?: null,
+                'billing_street'  => trim($this->billingStreet) ?: null,
+                'billing_zip'     => trim($this->billingZip) ?: null,
+                'billing_city'    => trim($this->billingCity) ?: null,
+                'billing_country' => trim($this->billingCountry) ?: null,
+            ])->save();
+
             // Bei erneutem Absenden: bestehende Buchungen der Order neu aufbauen.
             foreach ($order->bookings as $old) {
                 $old->delete(); // booking_items kaskadieren über booking_id
@@ -558,7 +594,7 @@ class CheckoutWizard extends Component
                     'event_id'               => $event->id,
                     'event_slot_id'          => $slot->id,
                     'table_id'               => $table->id,
-                    'guest_name'             => $this->guestName,
+                    'guest_name'             => $this->guestDisplayName(),
                     'guest_email'            => $this->guestEmail ?: null,
                     'guest_phone'            => $this->guestPhone ?: null,
                     'guest_count'            => $this->guestCount,

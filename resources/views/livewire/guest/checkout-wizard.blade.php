@@ -63,11 +63,26 @@
             <div class="mx-auto max-w-lg space-y-4">
                 <h2 class="text-lg font-semibold dark:text-white">Ihre Daten</h2>
 
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Vorname *</label>
+                        <input wire:model="guestFirstName" type="text" autocomplete="given-name"
+                            class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                        @error('guestFirstName') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nachname *</label>
+                        <input wire:model="guestLastName" type="text" autocomplete="family-name"
+                            class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                        @error('guestLastName') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name *</label>
-                    <input wire:model="guestName" type="text" autocomplete="name"
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Firma <span class="text-gray-400">(optional)</span></label>
+                    <input wire:model="guestCompany" type="text" autocomplete="organization"
                         class="mt-1 w-full rounded-xl border px-4 py-3 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                    @error('guestName') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                    @error('guestCompany') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                 </div>
 
                 @if ($this->checkoutSettings->fieldIsVisible('email'))
@@ -112,6 +127,35 @@
                         @error('notes') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                     </div>
                 @endif
+
+                {{-- Optional: Rechnungsadresse --}}
+                <details class="rounded-xl border px-4 py-3 dark:border-gray-700">
+                    <summary class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">Rechnungsadresse <span class="text-gray-400">(optional)</span></summary>
+                    <div class="mt-3 space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Straße &amp; Nr.</label>
+                            <input wire:model="billingStreet" type="text" autocomplete="street-address"
+                                class="mt-1 w-full rounded-xl border px-4 py-2.5 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">PLZ</label>
+                                <input wire:model="billingZip" type="text" autocomplete="postal-code"
+                                    class="mt-1 w-full rounded-xl border px-3 py-2.5 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                            </div>
+                            <div class="col-span-2">
+                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Ort</label>
+                                <input wire:model="billingCity" type="text" autocomplete="address-level2"
+                                    class="mt-1 w-full rounded-xl border px-3 py-2.5 text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Land (2-stellig, z. B. DE)</label>
+                            <input wire:model="billingCountry" type="text" maxlength="2" autocomplete="country"
+                                class="mt-1 w-24 rounded-xl border px-3 py-2.5 text-base uppercase dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                        </div>
+                    </div>
+                </details>
 
                 <button wire:click="nextStep"
                     class="mt-2 w-full rounded-xl bg-[var(--ui-primary)] py-3 text-base font-bold text-white hover:opacity-90">
@@ -346,7 +390,7 @@
                 <div class="rounded-xl border bg-white p-4 text-sm dark:border-gray-700 dark:bg-gray-900">
                     <p class="font-semibold dark:text-white">{{ $this->event->name }}</p>
                     <p class="text-gray-500 dark:text-gray-400">
-                        {{ $this->event->date->format('d.m.Y') }} · {{ $guestName }} · {{ $guestCount }} {{ $guestCount === 1 ? 'Person' : 'Personen' }}
+                        {{ $this->event->date->format('d.m.Y') }} · {{ $this->guestDisplayName() }} · {{ $guestCount }} {{ $guestCount === 1 ? 'Person' : 'Personen' }}
                     </p>
                 </div>
 
@@ -445,7 +489,7 @@
                 <div class="text-5xl">✅</div>
                 <h2 class="text-xl font-bold dark:text-white">Vielen Dank für Ihre Bestellung!</h2>
                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                    {{ $guestName }}, Ihre Pausen-Bestellung für
+                    {{ $this->guestDisplayName() }}, Ihre Pausen-Bestellung für
                     <strong>{{ $this->event->name }}</strong> am
                     {{ $this->event->date->format('d.m.Y') }} ist eingegangen.
                 </p>

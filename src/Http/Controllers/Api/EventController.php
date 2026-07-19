@@ -166,13 +166,17 @@ class EventController extends ApiController
             ],
             'language'  => $locale,
             'languages' => $settings->languages(), // angebotene Sprachen (DE zuerst)
-            // required | optional | hidden (name & count sind stets Pflicht).
+            // required | optional | hidden. Vor-/Nachname & Personenzahl sind Pflicht;
+            // Firma und Rechnungsadresse (billing) sind optional.
             'guest_fields' => [
-                'name'  => 'required',
-                'count' => 'required',
-                'email' => $settings->fieldMode('email'),
-                'phone' => $settings->fieldMode('phone'),
-                'notes' => $settings->fieldMode('notes'),
+                'first_name' => 'required',
+                'last_name'  => 'required',
+                'company'    => 'optional',
+                'count'      => 'required',
+                'email'      => $settings->fieldMode('email'),
+                'phone'      => $settings->fieldMode('phone'),
+                'notes'      => $settings->fieldMode('notes'),
+                'billing'    => 'optional', // Adressblock: street, zip, city, country
             ],
             'texts' => [
                 'age_check'   => $ageText,
@@ -272,18 +276,25 @@ class EventController extends ApiController
         $settings = CheckoutSetting::forTeam((int) $model->team_id);
 
         $data = $request->validate([
-            'guest'            => 'required|array',
-            'guest.name'       => ['required', 'string', 'max:255'],
-            'guest.email'      => $settings->guestFieldRule('email', ['email', 'max:255']),
-            'guest.phone'      => $settings->guestFieldRule('phone', ['string', 'max:30']),
-            'guest.count'      => ['required', 'integer', 'min:1', 'max:20'],
-            'guest.notes'      => $settings->guestFieldRule('notes', ['string']),
-            'legal_accepted'   => 'accepted',
-            'age_confirmed'    => 'nullable|boolean',
-            'slots'            => 'required|array|min:1',
-            'slots.*.slot_id'  => 'required|integer',
-            'slots.*.table_id' => 'required|integer',
-            'slots.*.items'    => 'required|array|min:1',
+            'guest'                 => 'required|array',
+            'guest.first_name'      => ['required', 'string', 'max:255'],
+            'guest.last_name'       => ['required', 'string', 'max:255'],
+            'guest.company'         => ['nullable', 'string', 'max:255'],
+            'guest.email'           => $settings->guestFieldRule('email', ['email', 'max:255']),
+            'guest.phone'           => $settings->guestFieldRule('phone', ['string', 'max:40']),
+            'guest.count'           => ['required', 'integer', 'min:1', 'max:20'],
+            'guest.notes'           => $settings->guestFieldRule('notes', ['string']),
+            'guest.billing'         => ['nullable', 'array'],
+            'guest.billing.street'  => ['nullable', 'string', 'max:255'],
+            'guest.billing.zip'     => ['nullable', 'string', 'max:20'],
+            'guest.billing.city'    => ['nullable', 'string', 'max:255'],
+            'guest.billing.country' => ['nullable', 'string', 'size:2'],
+            'legal_accepted'        => 'accepted',
+            'age_confirmed'         => 'nullable|boolean',
+            'slots'                 => 'required|array|min:1',
+            'slots.*.slot_id'       => 'required|integer',
+            'slots.*.table_id'      => 'required|integer',
+            'slots.*.items'         => 'required|array|min:1',
         ]);
 
         $model->loadMissing(['slots', 'eventRooms']);
@@ -292,11 +303,14 @@ class EventController extends ApiController
             $result = $service->place(
                 $model,
                 [
-                    'name'  => $data['guest']['name'],
-                    'email' => $data['guest']['email'] ?? null,
-                    'phone' => $data['guest']['phone'] ?? null,
-                    'count' => (int) $data['guest']['count'],
-                    'notes' => $data['guest']['notes'] ?? null,
+                    'first_name' => $data['guest']['first_name'],
+                    'last_name'  => $data['guest']['last_name'],
+                    'company'    => $data['guest']['company'] ?? null,
+                    'email'      => $data['guest']['email'] ?? null,
+                    'phone'      => $data['guest']['phone'] ?? null,
+                    'count'      => (int) $data['guest']['count'],
+                    'notes'      => $data['guest']['notes'] ?? null,
+                    'billing'    => $data['guest']['billing'] ?? [],
                 ],
                 $data['slots'],
                 (bool) ($data['age_confirmed'] ?? false),
@@ -340,6 +354,14 @@ class EventController extends ApiController
             'status'         => $orderModel->status,
             'total_amount'   => round((float) $orderModel->total_amount, 2),
             'payment_status' => $orderModel->payment?->status,
+            'customer'       => [
+                'first_name' => $orderModel->first_name,
+                'last_name'  => $orderModel->last_name,
+                'company'    => $orderModel->company,
+                'email'      => $orderModel->email,
+                'phone'      => $orderModel->phone,
+                'billing'    => $orderModel->billingAddress(),
+            ],
             'bookings'       => $orderModel->bookings->map(fn ($b) => [
                 'uuid'   => $b->uuid,
                 'slot'   => $b->slot?->name,

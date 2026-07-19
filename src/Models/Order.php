@@ -29,6 +29,15 @@ class Order extends Model
         'team_id',
         'event_id',
         'status',
+        'first_name',
+        'last_name',
+        'company',
+        'email',
+        'phone',
+        'billing_street',
+        'billing_zip',
+        'billing_city',
+        'billing_country',
     ];
 
     protected static function booted(): void
@@ -64,5 +73,28 @@ class Order extends Model
     public function getTotalAmountAttribute(): float
     {
         return (float) $this->bookings->sum(fn (Booking $booking) => $booking->total_amount);
+    }
+
+    /** Anzeigename: "Vorname Nachname", sonst Firma. */
+    public function customerName(): string
+    {
+        $name = trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
+
+        return $name !== '' ? $name : (string) ($this->company ?? '');
+    }
+
+    /** Rechnungsadresse als Array (oder null, wenn nichts hinterlegt). */
+    public function billingAddress(): ?array
+    {
+        if (! $this->billing_street && ! $this->billing_zip && ! $this->billing_city) {
+            return null;
+        }
+
+        return [
+            'street'  => $this->billing_street,
+            'zip'     => $this->billing_zip,
+            'city'    => $this->billing_city,
+            'country' => $this->billing_country,
+        ];
     }
 }

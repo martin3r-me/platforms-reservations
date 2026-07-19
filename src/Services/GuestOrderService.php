@@ -27,7 +27,7 @@ class GuestOrderService
     }
 
     /**
-     * @param array{name:string,email:?string,phone:?string,count:int,notes:?string} $guest
+     * @param array{first_name?:string,last_name?:string,company?:?string,email:?string,phone:?string,count:int,notes:?string,billing?:array} $guest
      * @param array<int, array{slot_id:int, table_id:int, items:array<int,int>}> $slotOrders
      * @return array{order: Order, checkout_url: ?string}
      *
@@ -83,11 +83,25 @@ class GuestOrderService
         }
 
         $order = DB::transaction(function () use ($event, $guest, $prepared, $allLines) {
+            $billing = (array) ($guest['billing'] ?? []);
+
             $order = Order::create([
-                'team_id'  => $event->team_id,
-                'event_id' => $event->id,
-                'status'   => Order::STATUS_PENDING,
+                'team_id'         => $event->team_id,
+                'event_id'        => $event->id,
+                'status'          => Order::STATUS_PENDING,
+                'first_name'      => $guest['first_name'] ?? null,
+                'last_name'       => $guest['last_name'] ?? null,
+                'company'         => ($guest['company'] ?? null) ?: null,
+                'email'           => ($guest['email'] ?? null) ?: null,
+                'phone'           => ($guest['phone'] ?? null) ?: null,
+                'billing_street'  => ($billing['street'] ?? null) ?: null,
+                'billing_zip'     => ($billing['zip'] ?? null) ?: null,
+                'billing_city'    => ($billing['city'] ?? null) ?: null,
+                'billing_country' => ($billing['country'] ?? null) ?: null,
             ]);
+
+            // Denormalisierter Anzeigename für Küche/Laufzettel/Mails.
+            $displayName = $order->customerName();
 
             $ageAt = $this->calc->containsAgeRestricted($allLines) ? now() : null;
 
@@ -98,9 +112,9 @@ class GuestOrderService
                     'event_id'               => $event->id,
                     'event_slot_id'          => $p['slot']->id,
                     'table_id'               => $p['table']->id,
-                    'guest_name'             => $guest['name'],
-                    'guest_email'            => $guest['email'] ?: null,
-                    'guest_phone'            => $guest['phone'] ?: null,
+                    'guest_name'             => $displayName,
+                    'guest_email'            => ($guest['email'] ?? null) ?: null,
+                    'guest_phone'            => ($guest['phone'] ?? null) ?: null,
                     'guest_count'            => (int) $guest['count'],
                     'notes'                  => $guest['notes'] ?: null,
                     'date'                   => $event->date->toDateString(),
