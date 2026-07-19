@@ -98,6 +98,22 @@
                         </td>
                     </tr>
 
+                    {{-- Belege (PDF) --}}
+                    @isset($receiptUrl)
+                        <tr>
+                            <td style="padding:0 32px 4px;">
+                                <div style="border-top:1px solid #e5e7eb; padding-top:16px; font-size:13px; color:#374151;">
+                                    <strong>Belege zum Download:</strong><br>
+                                    <a href="{{ $receiptUrl }}" style="display:inline-block; margin-top:8px; color:#285567; font-weight:bold;">Bestellbestätigung (PDF)</a>
+                                    @isset($bewirtungUrl)
+                                        <span style="color:#9ca3af;"> · </span>
+                                        <a href="{{ $bewirtungUrl }}" style="color:#285567; font-weight:bold;">Bewirtungsbeleg (PDF)</a>
+                                    @endisset
+                                </div>
+                            </td>
+                        </tr>
+                    @endisset
+
                     {{-- Storno --}}
                     @isset($cancelUrl)
                         @if ($cancelUrl)

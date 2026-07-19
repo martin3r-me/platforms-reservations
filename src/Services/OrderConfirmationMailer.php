@@ -67,10 +67,20 @@ class OrderConfirmationMailer
             ? \Illuminate\Support\Facades\URL::signedRoute('reservation.guest.order.cancel', ['uuid' => $order->uuid])
             : null;
 
+        // Signierte Beleg-Links (PDF) – Bestellbestätigung & Bewirtungsbeleg.
+        $receiptUrl = \Illuminate\Support\Facades\URL::signedRoute(
+            'reservation.guest.order.receipt', ['uuid' => $order->uuid, 'type' => 'confirmation'],
+        );
+        $bewirtungUrl = \Illuminate\Support\Facades\URL::signedRoute(
+            'reservation.guest.order.receipt', ['uuid' => $order->uuid, 'type' => 'bewirtungsbeleg'],
+        );
+
         $subject  = 'Vielen Dank für Ihre Bestellung – ' . ($order->event?->name ?? 'PausePlus');
         $htmlBody = view('reservation::emails.order-confirmation', [
-            'order'     => $order,
-            'cancelUrl' => $cancelUrl,
+            'order'        => $order,
+            'cancelUrl'    => $cancelUrl,
+            'receiptUrl'   => $receiptUrl,
+            'bewirtungUrl' => $bewirtungUrl,
         ])->render();
 
         try {
