@@ -403,6 +403,10 @@ class EventController extends ApiController
             return $this->notFound('Bestellung nicht gefunden.');
         }
 
+        if ($type === 'bewirtungsbeleg' && ! $orderModel->hasBusinessData()) {
+            return $this->error('Bewirtungsbeleg nur mit Unternehmensdaten (Firma) verfügbar.', ['code' => 'NO_BUSINESS_DATA'], 422);
+        }
+
         $url = \Illuminate\Support\Facades\URL::signedRoute(
             'reservation.guest.order.receipt',
             ['uuid' => $orderModel->uuid, 'type' => $type],

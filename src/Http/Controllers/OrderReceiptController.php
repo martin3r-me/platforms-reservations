@@ -32,6 +32,11 @@ class OrderReceiptController
             abort(404);
         }
 
+        // Bewirtungsbeleg nur mit Unternehmensdaten (Firma).
+        if ($type === 'bewirtungsbeleg' && ! $order->hasBusinessData()) {
+            abort(403, 'Bewirtungsbeleg nur mit Unternehmensdaten verfügbar.');
+        }
+
         $data = $this->buildData($order);
         $view = $type === 'bewirtungsbeleg' ? 'reservation::pdf.bewirtungsbeleg' : 'reservation::pdf.order-receipt';
         $html = view($view, $data)->render();

@@ -104,6 +104,12 @@ class Order extends Model
         ];
     }
 
+    /** Unternehmensdaten vorhanden (Firma) → Bewirtungsbeleg möglich. */
+    public function hasBusinessData(): bool
+    {
+        return trim((string) $this->company) !== '';
+    }
+
     /** Storno-Frist: X Stunden vor dem Veranstaltungsdatum (null = keine Frist). */
     public function cancellationDeadline(CheckoutSetting $settings): ?\Carbon\Carbon
     {

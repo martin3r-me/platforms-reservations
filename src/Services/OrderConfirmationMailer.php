@@ -71,9 +71,10 @@ class OrderConfirmationMailer
         $receiptUrl = \Illuminate\Support\Facades\URL::signedRoute(
             'reservation.guest.order.receipt', ['uuid' => $order->uuid, 'type' => 'confirmation'],
         );
-        $bewirtungUrl = \Illuminate\Support\Facades\URL::signedRoute(
-            'reservation.guest.order.receipt', ['uuid' => $order->uuid, 'type' => 'bewirtungsbeleg'],
-        );
+        // Bewirtungsbeleg nur bei vorhandenen Unternehmensdaten (Firma).
+        $bewirtungUrl = $order->hasBusinessData()
+            ? \Illuminate\Support\Facades\URL::signedRoute('reservation.guest.order.receipt', ['uuid' => $order->uuid, 'type' => 'bewirtungsbeleg'])
+            : null;
 
         $subject  = 'Vielen Dank für Ihre Bestellung – ' . ($order->event?->name ?? 'PausePlus');
         $htmlBody = view('reservation::emails.order-confirmation', [
