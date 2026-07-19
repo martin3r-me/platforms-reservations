@@ -20,6 +20,107 @@ class BookingList extends Component
     public bool $showDetail = false;
     public ?int $detailBookingId = null;
 
+    // Bon-Druck (optionaler Printing-Service)
+    public bool $printModalShow = false;
+    public ?int $printBookingId = null;
+    public string $printTarget = 'printer'; // printer|group
+    public ?int $selectedPrinterId = null;
+    public ?int $selectedPrinterGroupId = null;
+
+    private const PRINTING_INTERFACE = 'Platform\\Printing\\Contracts\\PrintingServiceInterface';
+
+    /** Printing-Service, wenn im System verfügbar – sonst null. */
+    protected function printingService()
+    {
+        return (interface_exists(self::PRINTING_INTERFACE) && app()->bound(self::PRINTING_INTERFACE))
+            ? app(self::PRINTING_INTERFACE)
+            : null;
+    }
+
+    #[Computed]
+    public function printingAvailable(): bool
+    {
+        return $this->printingService() !== null;
+    }
+
+    #[Computed]
+    public function printers(): \Illuminate\Support\Collection
+    {
+        return $this->printingService()?->listPrinters() ?? collect();
+    }
+
+    #[Computed]
+    public function printerGroups(): \Illuminate\Support\Collection
+    {
+        return $this->printingService()?->listPrinterGroups() ?? collect();
+    }
+
+    public function openPrintModal(int $bookingId): void
+    {
+        if (! $this->printingAvailable) {
+            return;
+        }
+
+        $this->printBookingId = $bookingId;
+        $this->printTarget = 'printer';
+        $this->selectedPrinterId = null;
+        $this->selectedPrinterGroupId = null;
+
+        // Einzigen Drucker automatisch vorwählen.
+        if ($this->printers->count() === 1) {
+            $this->selectedPrinterId = (int) $this->printers->first()->id;
+        }
+
+        $this->printModalShow = true;
+    }
+
+    public function updatedPrintTarget(): void
+    {
+        $this->selectedPrinterId = null;
+        $this->selectedPrinterGroupId = null;
+    }
+
+    public function closePrintModal(): void
+    {
+        $this->printModalShow = false;
+        $this->printBookingId = null;
+        $this->selectedPrinterId = null;
+        $this->selectedPrinterGroupId = null;
+    }
+
+    public function printBookingConfirm(): void
+    {
+        $service = $this->printingService();
+
+        if (! $service || ! $this->printBookingId) {
+            return;
+        }
+
+        if (! $this->selectedPrinterId && ! $this->selectedPrinterGroupId) {
+            session()->flash('booking_error', 'Bitte einen Drucker oder eine Gruppe wählen.');
+            return;
+        }
+
+        $booking = Booking::with(['items.menuItem', 'table.floorPlan', 'event', 'slot'])
+            ->where('team_id', Auth::user()?->current_team_id)
+            ->find($this->printBookingId);
+
+        if (! $booking) {
+            $this->closePrintModal();
+            return;
+        }
+
+        $service->createJob(
+            printable: $booking,
+            data: ['requested_by' => Auth::user()?->name],
+            printerId: $this->selectedPrinterId ? (int) $this->selectedPrinterId : null,
+            printerGroupId: $this->selectedPrinterGroupId ? (int) $this->selectedPrinterGroupId : null,
+        );
+
+        $this->closePrintModal();
+        session()->flash('booking_message', 'Bon-Druckauftrag wurde erstellt.');
+    }
+
     #[Computed]
     public function bookings()
     {

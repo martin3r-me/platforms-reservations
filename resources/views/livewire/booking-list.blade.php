@@ -18,6 +18,13 @@
     <x-ui-page-container>
     <div class="pt-4 space-y-4">
 
+    @if (session('booking_message'))
+        <div class="rounded-lg border border-[var(--ui-success)]/30 bg-[var(--ui-success-10)] p-3 text-sm text-[var(--ui-success)]">{{ session('booking_message') }}</div>
+    @endif
+    @if (session('booking_error'))
+        <div class="rounded-lg border border-[var(--ui-danger)]/30 bg-[var(--ui-danger-10)] p-3 text-sm text-[var(--ui-danger)]">{{ session('booking_error') }}</div>
+    @endif
+
     {{-- Filter --}}
     <div class="flex flex-wrap items-end gap-2">
         <div class="w-44">
@@ -105,6 +112,11 @@
                                     <x-ui-button variant="success" size="sm" wire:click="confirmBooking({{ $booking->id }})">Bestätigen</x-ui-button>
                                 @endif
                                 <x-ui-button variant="secondary-outline" size="sm" wire:click="openDetail({{ $booking->id }})">Details</x-ui-button>
+                                @if ($this->printingAvailable)
+                                    <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openPrintModal({{ $booking->id }})" title="Bon drucken">
+                                        @svg('heroicon-o-printer', 'w-4 h-4')
+                                    </x-ui-button>
+                                @endif
                                 @if ($booking->status === 'pending')
                                     <div class="shrink-0">
                                         <x-ui-confirm-button
@@ -224,8 +236,75 @@
         @endif
 
         <x-slot name="footer">
-            <div class="flex justify-end">
+            <div class="flex justify-end gap-2">
+                @if ($this->printingAvailable && $this->detailBooking)
+                    <x-ui-button variant="secondary-outline" size="sm" wire:click="openPrintModal({{ $this->detailBooking->id }})">
+                        @svg('heroicon-o-printer', 'w-4 h-4')
+                        <span>Bon drucken</span>
+                    </x-ui-button>
+                @endif
                 <x-ui-button variant="secondary-outline" size="sm" wire:click="$set('showDetail', false)">Schließen</x-ui-button>
+            </div>
+        </x-slot>
+    </x-ui-modal>
+
+    {{-- Bon drucken: Drucker/Gruppe wählen --}}
+    <x-ui-modal size="sm" wire:model="printModalShow">
+        <x-slot name="header">
+            <div class="flex items-center gap-3">
+                <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--ui-primary-10)] flex-shrink-0">
+                    @svg('heroicon-o-printer', 'w-5 h-5 text-[var(--ui-primary)]')
+                </div>
+                <div class="min-w-0">
+                    <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">Bon drucken</h3>
+                    <p class="text-[12px] text-[var(--ui-muted)] m-0 mt-0.5">Buchung als Beleg an einen Drucker senden</p>
+                </div>
+            </div>
+        </x-slot>
+
+        <div class="space-y-4">
+            {{-- Ziel: Einzeldrucker oder Gruppe --}}
+            <div class="inline-flex overflow-hidden rounded-lg border border-[var(--ui-border)]">
+                <button type="button" wire:click="$set('printTarget', 'printer')" class="px-3 py-1.5 text-sm {{ $printTarget === 'printer' ? 'bg-[var(--ui-primary)] text-white' : 'text-[var(--ui-secondary)]' }}">Drucker</button>
+                <button type="button" wire:click="$set('printTarget', 'group')" class="px-3 py-1.5 text-sm {{ $printTarget === 'group' ? 'bg-[var(--ui-primary)] text-white' : 'text-[var(--ui-secondary)]' }}">Gruppe</button>
+            </div>
+
+            @if ($printTarget === 'printer')
+                @if ($this->printers->isEmpty())
+                    <p class="text-sm text-[var(--ui-muted)] m-0">Kein Drucker verfügbar.</p>
+                @else
+                    <x-ui-input-select
+                        name="selectedPrinterId"
+                        label="Drucker"
+                        :options="$this->printers->map(fn ($p) => ['value' => $p->id, 'label' => $p->name])->values()->all()"
+                        :nullable="true"
+                        nullLabel="– wählen –"
+                        wire:model="selectedPrinterId"
+                    />
+                @endif
+            @else
+                @if ($this->printerGroups->isEmpty())
+                    <p class="text-sm text-[var(--ui-muted)] m-0">Keine Drucker-Gruppe verfügbar.</p>
+                @else
+                    <x-ui-input-select
+                        name="selectedPrinterGroupId"
+                        label="Drucker-Gruppe"
+                        :options="$this->printerGroups->map(fn ($g) => ['value' => $g->id, 'label' => $g->name])->values()->all()"
+                        :nullable="true"
+                        nullLabel="– wählen –"
+                        wire:model="selectedPrinterGroupId"
+                    />
+                @endif
+            @endif
+        </div>
+
+        <x-slot name="footer">
+            <div class="flex justify-end gap-2">
+                <x-ui-button variant="secondary-outline" size="sm" wire:click="closePrintModal">Abbrechen</x-ui-button>
+                <x-ui-button variant="primary" size="sm" wire:click="printBookingConfirm">
+                    @svg('heroicon-o-printer', 'w-4 h-4')
+                    <span>Drucken</span>
+                </x-ui-button>
             </div>
         </x-slot>
     </x-ui-modal>
