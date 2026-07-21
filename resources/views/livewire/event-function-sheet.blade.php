@@ -17,6 +17,10 @@
         </x-ui-page-actionbar>
     </x-slot>
 
+    <x-slot name="sidebar">
+        @include('reservation::partials.event-sidebar', ['event' => $this->event, 'active' => 'function'])
+    </x-slot>
+
     <x-ui-page-container>
     <div class="pt-4 space-y-4">
         @php $sheet = $this->sheet; @endphp

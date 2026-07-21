@@ -18,6 +18,10 @@
         </x-ui-page-actionbar>
     </x-slot>
 
+    <x-slot name="sidebar">
+        @include('reservation::partials.event-sidebar', ['event' => $this->event, 'active' => 'dashboard'])
+    </x-slot>
+
     <x-ui-page-container>
     @php
         $currency = strtoupper((string) config('reservation.currency', 'EUR'));
@@ -28,11 +32,6 @@
             ['Gäste', $s['guests']],
             ['Umsatz', number_format($s['revenue'], 2, ',', '.') . ' ' . $sym],
             [$s['pauses'] === 1 ? 'Pause' : 'Pausen', $s['pauses']],
-        ];
-        $nav = [
-            ['reservation.events.orders', 'heroicon-o-fire', 'Küche', 'Gesamtbestellungen je Pause'],
-            ['reservation.events.function', 'heroicon-o-clipboard-document-list', 'Laufzettel', 'Laufrunden: Klasse → Tisch → Bestellung'],
-            ['reservation.events.overview', 'heroicon-o-presentation-chart-bar', 'Abend-Übersicht', 'Kennzahlen, Top-Speisen, Gästeliste'],
         ];
         $statusColors = ['published' => '#2f9e44', 'draft' => '#868e96', 'closed' => '#e8590c', 'cancelled' => '#e03131'];
         $statusDot = $statusColors[$this->event->status->value] ?? '#868e96';
@@ -65,24 +64,6 @@
                     <div class="text-2xl font-bold leading-none tabular-nums text-[color:var(--nx-text)]">{{ $value }}</div>
                     <div class="mt-1.5 text-xs text-[color:var(--nx-muted)]">{{ $label }}</div>
                 </div>
-            @endforeach
-        </div>
-
-        {{-- Einstiege --}}
-        <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            @foreach ($nav as [$route, $icon, $title, $desc])
-                <a href="{{ route($route, $this->event->id) }}" wire:navigate class="block">
-                    <x-nx-card hover>
-                        <div class="flex items-center gap-3">
-                            <span class="shrink-0 text-[color:var(--nx-muted)]">@svg($icon, 'w-5 h-5')</span>
-                            <span class="min-w-0">
-                                <span class="block text-sm font-semibold text-[color:var(--nx-text)]">{{ $title }}</span>
-                                <span class="block truncate text-xs text-[color:var(--nx-faint)]">{{ $desc }}</span>
-                            </span>
-                            <span class="ml-auto shrink-0 text-[color:var(--nx-faint)]">@svg('heroicon-o-arrow-right', 'w-4 h-4')</span>
-                        </div>
-                    </x-nx-card>
-                </a>
             @endforeach
         </div>
 

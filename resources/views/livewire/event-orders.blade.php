@@ -17,6 +17,10 @@
         </x-ui-page-actionbar>
     </x-slot>
 
+    <x-slot name="sidebar">
+        @include('reservation::partials.event-sidebar', ['event' => $this->event, 'active' => 'kitchen'])
+    </x-slot>
+
     <x-ui-page-container>
     <div class="pt-4 space-y-4">
 
