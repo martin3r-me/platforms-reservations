@@ -29,161 +29,196 @@
             ['Umsatz', number_format($s['revenue'], 2, ',', '.') . ' ' . $sym],
             ['Pausen', $s['pauses']],
         ];
+        $nav = [
+            ['reservation.events.orders', 'heroicon-o-fire', 'Küche', 'Gesamtbestellungen je Pause'],
+            ['reservation.events.function', 'heroicon-o-clipboard-document-list', 'Laufzettel', 'Laufrunden: Klasse → Tisch → Bestellung'],
+            ['reservation.events.overview', 'heroicon-o-presentation-chart-bar', 'Abend-Übersicht', 'Kennzahlen, Top-Speisen, Gästeliste'],
+        ];
+        $statusColors = ['published' => '#2f9e44', 'draft' => '#868e96', 'closed' => '#e8590c', 'cancelled' => '#e03131'];
+        $statusDot = $statusColors[$this->event->status->value] ?? '#868e96';
     @endphp
 
-    <div class="pt-5 space-y-6">
+    <style>
+        .pp-dash{
+            --pp-bg:#faf9f7; --pp-surface:#fff; --pp-text:#37352f; --pp-muted:#787774; --pp-faint:#9b9a97;
+            --pp-line:rgba(55,53,47,.09); --pp-line-2:rgba(55,53,47,.06); --pp-hover:rgba(55,53,47,.045);
+            --pp-accent:#285567; --pp-accent-soft:rgba(40,85,103,.10);
+            background:var(--pp-bg); color:var(--pp-text);
+            margin:-1rem -1.5rem -2rem; padding:2.25rem 2rem 3rem;
+            min-height:calc(100vh - 7.5rem);
+            -webkit-font-smoothing:antialiased;
+        }
+        .pp-wrap{max-width:1040px; margin:0 auto;}
+        .pp-title{font-size:1.9rem; font-weight:700; line-height:1.15; letter-spacing:-.01em; margin:0; color:var(--pp-text);}
+        .pp-meta{font-size:.875rem; color:var(--pp-muted); margin:.35rem 0 0;}
+        .pp-status{display:inline-flex; align-items:center; gap:.4rem; font-size:.8rem; color:var(--pp-muted); vertical-align:middle; margin-left:.6rem;}
+        .pp-status .dot{width:.5rem; height:.5rem; border-radius:50%;}
+        .pp-today{margin-left:.5rem; font-size:.7rem; font-weight:600; color:#2f9e44; background:rgba(47,158,68,.12); padding:.1rem .5rem; border-radius:999px; vertical-align:middle;}
 
-        {{-- Titelzeile --}}
+        .pp-stats{display:flex; flex-wrap:wrap; margin-top:1.75rem; border-top:1px solid var(--pp-line); border-bottom:1px solid var(--pp-line);}
+        .pp-stat{flex:1 1 0; min-width:120px; padding:1rem 1.25rem 1rem 0; }
+        .pp-stat + .pp-stat{padding-left:1.5rem; border-left:1px solid var(--pp-line);}
+        .pp-stat .num{font-size:1.6rem; font-weight:650; line-height:1; letter-spacing:-.01em; font-variant-numeric:tabular-nums;}
+        .pp-stat .lbl{font-size:.78rem; color:var(--pp-muted); margin-top:.35rem;}
+
+        .pp-nav{display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin-top:1.5rem;}
+        @media (max-width:720px){ .pp-nav{grid-template-columns:1fr;} }
+        .pp-navitem{display:flex; align-items:center; gap:.75rem; padding:.7rem .85rem; border-radius:8px; text-decoration:none; color:var(--pp-text); transition:background .12s ease;}
+        .pp-navitem:hover{background:var(--pp-hover);}
+        .pp-navitem .ico{color:var(--pp-muted); flex:none; display:flex;}
+        .pp-navitem:hover .ico{color:var(--pp-accent);}
+        .pp-navitem .t{font-size:.9rem; font-weight:600; line-height:1.2;}
+        .pp-navitem .d{font-size:.75rem; color:var(--pp-faint); margin-top:.1rem; line-height:1.2;}
+        .pp-navitem .arrow{margin-left:auto; color:var(--pp-faint); flex:none; transition:transform .12s ease, color .12s ease;}
+        .pp-navitem:hover .arrow{transform:translateX(2px); color:var(--pp-muted);}
+
+        .pp-sec{margin-top:2.25rem;}
+        .pp-sec-head{display:flex; align-items:baseline; gap:.5rem; margin-bottom:.85rem;}
+        .pp-sec-title{font-size:.95rem; font-weight:650; color:var(--pp-text); margin:0;}
+        .pp-sec-count{font-size:.78rem; color:var(--pp-faint); margin-left:auto;}
+
+        .pp-cats{display:grid; grid-template-columns:repeat(3,1fr); gap:0 2.25rem;}
+        @media (max-width:820px){ .pp-cats{grid-template-columns:repeat(2,1fr);} }
+        @media (max-width:520px){ .pp-cats{grid-template-columns:1fr;} }
+        .pp-cat{padding:.25rem 0 1rem;}
+        .pp-cat-h{display:flex; align-items:center; justify-content:space-between; font-size:.78rem; color:var(--pp-muted); font-weight:600; padding:.4rem 0; border-bottom:1px solid var(--pp-line);}
+        .pp-cat-h .c{color:var(--pp-faint); font-variant-numeric:tabular-nums;}
+        .pp-item{display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.4rem 0; font-size:.875rem; border-bottom:1px solid var(--pp-line-2);}
+        .pp-item .n{color:var(--pp-text); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+        .pp-item .q{flex:none; font-weight:650; color:var(--pp-text); font-variant-numeric:tabular-nums;}
+
+        .pp-2col{display:grid; grid-template-columns:1fr 1fr; gap:2.5rem;}
+        @media (max-width:820px){ .pp-2col{grid-template-columns:1fr; gap:2.25rem;} }
+        .pp-bar-row{margin-bottom:1rem;}
+        .pp-bar-row:last-child{margin-bottom:0;}
+        .pp-bar-head{display:flex; align-items:center; gap:.5rem; font-size:.875rem; margin-bottom:.4rem;}
+        .pp-bar-head .name{color:var(--pp-text); font-weight:500;}
+        .pp-bar-head .val{margin-left:auto; color:var(--pp-muted); font-variant-numeric:tabular-nums; font-size:.8rem;}
+        .pp-bar-head .val b{color:var(--pp-text); font-weight:650;}
+        .pp-dot{width:.6rem; height:.6rem; border-radius:50%; flex:none;}
+        .pp-pill{font-size:.68rem; color:var(--pp-muted); background:rgba(55,53,47,.05); padding:.05rem .4rem; border-radius:999px;}
+        .pp-track{height:6px; background:rgba(55,53,47,.06); border-radius:999px; overflow:hidden; display:flex;}
+        .pp-track > span{height:100%; display:block;}
+        .pp-legend{display:flex; gap:.9rem; font-size:.7rem; color:var(--pp-faint);}
+        .pp-legend i{display:inline-block; width:.55rem; height:.55rem; border-radius:2px; margin-right:.3rem; vertical-align:middle;}
+        .pp-empty{color:var(--pp-faint); font-size:.85rem; padding:.5rem 0;}
+    </style>
+
+    <div class="pp-dash">
+    <div class="pp-wrap">
+
+        {{-- Titel --}}
         <div>
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <h1 class="m-0 text-xl font-bold leading-tight text-[var(--ui-secondary)]">{{ $this->event->name }}</h1>
-                <x-ui-badge :variant="$this->event->status->badgeVariant()" size="xs">{{ $this->event->status->label() }}</x-ui-badge>
-                @if ($this->event->date->isToday())
-                    <x-ui-badge variant="success" size="xs">Heute</x-ui-badge>
-                @endif
-            </div>
-            <p class="m-0 mt-1 text-sm text-[var(--ui-muted)]">
+            <h1 class="pp-title">
+                {{ $this->event->name }}
+                <span class="pp-status"><span class="dot" style="background:{{ $statusDot }}"></span>{{ $this->event->status->label() }}</span>
+                @if ($this->event->date->isToday())<span class="pp-today">Heute</span>@endif
+            </h1>
+            <p class="pp-meta">
                 {{ $this->event->date->format('d.m.Y') }}
                 @if ($this->event->venue) · {{ $this->event->venue->name }} @endif
                 @if ($this->event->slots->isNotEmpty()) · {{ $this->event->slots->map(fn ($sl) => $sl->displayLabel())->implode(', ') }} @endif
             </p>
         </div>
 
-        {{-- Kennzahlen-Leiste --}}
-        <div class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--ui-border)]/40 bg-[var(--ui-border)]/25 shadow-sm sm:grid-cols-4">
+        {{-- Kennzahlen --}}
+        <div class="pp-stats">
             @foreach ($tiles as [$label, $value])
-                <div class="bg-white px-4 py-3.5">
-                    <span class="block whitespace-nowrap text-2xl font-bold leading-none tabular-nums text-[var(--ui-secondary)]">{{ $value }}</span>
-                    <span class="mt-1.5 block text-[11px] font-medium uppercase tracking-wider text-[var(--ui-muted)]">{{ $label }}</span>
+                <div class="pp-stat">
+                    <div class="num">{{ $value }}</div>
+                    <div class="lbl">{{ $label }}</div>
                 </div>
             @endforeach
         </div>
 
-        {{-- Aktionen (kompakt) --}}
-        <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            @php
-                $nav = [
-                    ['reservation.events.orders', 'heroicon-o-fire', 'Küche'],
-                    ['reservation.events.function', 'heroicon-o-clipboard-document-list', 'Laufzettel'],
-                    ['reservation.events.overview', 'heroicon-o-presentation-chart-bar', 'Abend-Übersicht'],
-                ];
-            @endphp
-            @foreach ($nav as [$route, $icon, $title])
-                <a href="{{ route($route, $this->event->id) }}" wire:navigate
-                   class="group flex items-center gap-3 rounded-xl border border-[var(--ui-border)]/40 bg-white px-4 py-3 shadow-sm transition-colors hover:border-[var(--ui-primary)]/50 hover:bg-[var(--ui-primary-10)]/30">
-                    <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-primary-10)] text-[var(--ui-primary)]">
-                        @svg($icon, 'w-5 h-5')
+        {{-- Einstiege --}}
+        <div class="pp-nav">
+            @foreach ($nav as [$route, $icon, $title, $desc])
+                <a href="{{ route($route, $this->event->id) }}" wire:navigate class="pp-navitem">
+                    <span class="ico">@svg($icon, 'w-5 h-5')</span>
+                    <span>
+                        <span class="t">{{ $title }}</span>
+                        <span class="d" style="display:block">{{ $desc }}</span>
                     </span>
-                    <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $title }}</span>
-                    @svg('heroicon-o-arrow-right', 'w-4 h-4 ml-auto shrink-0 text-[var(--ui-muted)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--ui-primary)]')
+                    <span class="arrow">@svg('heroicon-o-arrow-right', 'w-4 h-4')</span>
                 </a>
             @endforeach
         </div>
 
-        {{-- Bestellte Artikel, geclustert nach Kategorie --}}
+        {{-- Bestellte Artikel --}}
         @if ($this->itemsByCategory->isNotEmpty())
-            <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-                <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-                    @svg('heroicon-o-rectangle-stack', 'w-4 h-4 text-[var(--ui-muted)]')
-                    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Bestellte Artikel</h2>
-                    <span class="ml-auto text-[11px] text-[var(--ui-muted)]">{{ $this->totalItems }} Stk.</span>
+            <div class="pp-sec">
+                <div class="pp-sec-head">
+                    <h2 class="pp-sec-title">Bestellte Artikel</h2>
+                    <span class="pp-sec-count">{{ $this->totalItems }} Stück</span>
                 </div>
-                <div class="grid grid-cols-1 gap-px bg-[var(--ui-border)]/20 sm:grid-cols-2 lg:grid-cols-3">
+                <div class="pp-cats">
                     @foreach ($this->itemsByCategory as $category => $items)
-                        <div class="bg-white p-4" wire:key="cat-{{ $loop->index }}">
-                            <p class="m-0 mb-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">
-                                <span class="truncate">{{ $category }}</span>
-                                <span class="rounded-full bg-[var(--ui-muted-5)] px-2 py-0.5 tabular-nums text-[var(--ui-secondary)]">{{ $items->sum('quantity') }}</span>
-                            </p>
-                            <div class="divide-y divide-[var(--ui-border)]/20">
-                                @foreach ($items as $item)
-                                    <div class="flex items-center justify-between gap-2 py-1.5 text-sm" wire:key="cat-{{ $loop->parent->index }}-item-{{ $loop->index }}">
-                                        <span class="min-w-0 truncate text-[var(--ui-secondary)]">{{ $item['name'] }}</span>
-                                        <span class="shrink-0 font-bold tabular-nums text-[var(--ui-primary)]">{{ $item['quantity'] }}×</span>
-                                    </div>
-                                @endforeach
+                        <div class="pp-cat" wire:key="cat-{{ $loop->index }}">
+                            <div class="pp-cat-h"><span>{{ $category }}</span><span class="c">{{ $items->sum('quantity') }}</span></div>
+                            @foreach ($items as $item)
+                                <div class="pp-item" wire:key="cat-{{ $loop->parent->index }}-i-{{ $loop->index }}">
+                                    <span class="n">{{ $item['name'] }}</span>
+                                    <span class="q">{{ $item['quantity'] }}×</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        <div class="pp-2col pp-sec">
+            {{-- Standzeit-Klassen --}}
+            @if ($this->holdingClassDistribution->isNotEmpty())
+                @php $hcTotal = max(1, $this->totalItems); @endphp
+                <div>
+                    <div class="pp-sec-head"><h2 class="pp-sec-title">Standzeit-Klassen</h2><span class="pp-sec-count">Timing</span></div>
+                    @foreach ($this->holdingClassDistribution as $hc)
+                        @php $share = round($hc['quantity'] / $hcTotal * 100); $color = $hc['color'] ?: '#9b9a97'; @endphp
+                        <div class="pp-bar-row" wire:key="hc-{{ $loop->index }}">
+                            <div class="pp-bar-head">
+                                <span class="pp-dot" style="background:{{ $color }}"></span>
+                                <span class="name">{{ $hc['name'] }}</span>
+                                @if ($hc['lead_time_minutes'] !== null)<span class="pp-pill">{{ $hc['lead_time_minutes'] }} min vor</span>@endif
+                                <span class="val"><b>{{ $hc['quantity'] }}×</b> · {{ $share }} %</span>
+                            </div>
+                            <div class="pp-track"><span style="width:{{ $share }}%; background:{{ $color }}"></span></div>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
+            {{-- Auslastung --}}
+            @if ($this->roomUtilization->isNotEmpty())
+                <div>
+                    <div class="pp-sec-head">
+                        <h2 class="pp-sec-title">Auslastung</h2>
+                        <span class="pp-legend" style="margin-left:auto">
+                            <span><i style="background:var(--pp-accent)"></i>belegt</span>
+                            <span><i style="background:#e03131"></i>gesperrt</span>
+                            <span><i style="background:rgba(55,53,47,.10)"></i>frei</span>
+                        </span>
+                    </div>
+                    @foreach ($this->roomUtilization as $r)
+                        @php $total = max(1, $r['total']); @endphp
+                        <div class="pp-bar-row" wire:key="util-{{ $loop->index }}">
+                            <div class="pp-bar-head">
+                                <span class="name">{{ $r['room'] }}</span>
+                                <span class="val"><b>{{ $r['occupied'] }}</b> belegt@if ($r['blocked'] > 0) · {{ $r['blocked'] }} gesperrt @endif · {{ $r['free'] }} frei / {{ $r['total'] }}</span>
+                            </div>
+                            <div class="pp-track">
+                                <span style="width:{{ $r['occupied'] / $total * 100 }}%; background:var(--pp-accent)"></span>
+                                <span style="width:{{ $r['blocked'] / $total * 100 }}%; background:#e03131"></span>
+                                <span style="width:{{ $r['free'] / $total * 100 }}%; background:transparent"></span>
                             </div>
                         </div>
                     @endforeach
                 </div>
-            </section>
-        @endif
-
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {{-- Standzeit-Klassen-Verteilung (Timing) --}}
-            @if ($this->holdingClassDistribution->isNotEmpty())
-                @php $hcTotal = max(1, $this->totalItems); @endphp
-                <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-                    <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-                        @svg('heroicon-o-fire', 'w-4 h-4 text-[var(--ui-muted)]')
-                        <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Standzeit-Klassen</h2>
-                        <span class="ml-auto text-[11px] text-[var(--ui-muted)]">Timing</span>
-                    </div>
-                    <div class="space-y-3.5 p-4">
-                        @foreach ($this->holdingClassDistribution as $hc)
-                            @php
-                                $share = round($hc['quantity'] / $hcTotal * 100);
-                                $color = $hc['color'] ?: '#94a3b8';
-                            @endphp
-                            <div wire:key="hc-dist-{{ $loop->index }}">
-                                <div class="mb-1 flex items-center gap-2 text-sm">
-                                    <span class="inline-block h-3 w-3 shrink-0 rounded-full border border-black/10" style="background: {{ $color }}"></span>
-                                    <span class="font-medium text-[var(--ui-secondary)]">{{ $hc['name'] }}</span>
-                                    @if ($hc['lead_time_minutes'] !== null)
-                                        <span class="rounded-full bg-[var(--ui-muted-5)] px-2 py-0.5 text-[10px] font-medium text-[var(--ui-muted)]">{{ $hc['lead_time_minutes'] }} min vor</span>
-                                    @endif
-                                    <span class="ml-auto shrink-0 tabular-nums text-[var(--ui-secondary)]"><span class="font-bold">{{ $hc['quantity'] }}×</span> <span class="text-[var(--ui-muted)]">· {{ $share }} %</span></span>
-                                </div>
-                                <div class="h-2 w-full overflow-hidden rounded-full bg-[var(--ui-muted-5)]">
-                                    <div class="h-full rounded-full transition-all" style="width: {{ $share }}%; background: {{ $color }}"></div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </section>
-            @endif
-
-            {{-- Tisch-Auslastung je Raum --}}
-            @if ($this->roomUtilization->isNotEmpty())
-                <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-                    <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-3">
-                        @svg('heroicon-o-squares-2x2', 'w-4 h-4 text-[var(--ui-muted)]')
-                        <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Auslastung</h2>
-                        <span class="ml-auto flex items-center gap-3 text-[10px] text-[var(--ui-muted)]">
-                            <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-sm bg-[var(--ui-primary)]"></span>belegt</span>
-                            <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-sm bg-[var(--ui-danger)]"></span>gesperrt</span>
-                            <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-sm bg-[var(--ui-muted-5)] border border-[var(--ui-border)]"></span>frei</span>
-                        </span>
-                    </div>
-                    <div class="space-y-3.5 p-4">
-                        @foreach ($this->roomUtilization as $r)
-                            @php
-                                $total = max(1, $r['total']);
-                                $occPct  = $r['occupied'] / $total * 100;
-                                $blkPct  = $r['blocked'] / $total * 100;
-                                $freePct = $r['free'] / $total * 100;
-                            @endphp
-                            <div wire:key="util-{{ $loop->index }}">
-                                <div class="mb-1 flex items-center gap-2 text-sm">
-                                    <span class="font-medium text-[var(--ui-secondary)]">{{ $r['room'] }}</span>
-                                    <span class="ml-auto shrink-0 text-xs tabular-nums text-[var(--ui-muted)]">
-                                        <span class="font-semibold text-[var(--ui-secondary)]">{{ $r['occupied'] }}</span> belegt
-                                        @if ($r['blocked'] > 0) · <span class="font-semibold text-[var(--ui-danger)]">{{ $r['blocked'] }}</span> gesperrt @endif
-                                        · {{ $r['free'] }} frei / {{ $r['total'] }}
-                                    </span>
-                                </div>
-                                <div class="flex h-2.5 w-full overflow-hidden rounded-full bg-[var(--ui-muted-5)]">
-                                    <div class="h-full bg-[var(--ui-primary)]" style="width: {{ $occPct }}%"></div>
-                                    <div class="h-full bg-[var(--ui-danger)]" style="width: {{ $blkPct }}%"></div>
-                                    <div class="h-full" style="width: {{ $freePct }}%"></div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </section>
             @endif
         </div>
 
+    </div>
     </div>
     </x-ui-page-container>
 </x-ui-page>
