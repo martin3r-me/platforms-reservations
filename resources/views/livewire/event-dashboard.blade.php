@@ -24,31 +24,20 @@
 
     <x-ui-page-container width="contained">
 
-    {{-- Ultrawide-Ambient: CSS-Bauhaus-Komposition als ruhiges Kunst-Panel rechts (nur >=1900px) --}}
+    {{-- Ultrawide-Ambient: generatives Bauhaus-Panel im Passepartout (nur >=1900px, hinter allem Interaktiven) --}}
     @verbatim
     <style>
-        .pp-art{ position:fixed; top:88px; bottom:52px; right:0; width:min(40vw,880px); z-index:5; pointer-events:none;
-            display:none; overflow:hidden; background:var(--nx-bg); border-left:1px solid var(--nx-line); }
+        .pp-art{ position:fixed; top:88px; bottom:52px; right:0; width:min(40vw,880px); z-index:0; pointer-events:none;
+            display:none; padding:56px; background:#fff; border-left:1px solid var(--nx-line); }
         @media (min-width:1900px){ .pp-art{ display:block; } }
-        .pp-art i{ position:absolute; display:block; }
-        .pp-art .c{ border-radius:50%; }
-        /* Bauhaus-Komposition — gedämpfte, warme Palette */
-        .pp-art .s1{ width:48%; padding-bottom:48%; top:-10%; right:-12%; background:#6f8ca8; }               /* großer Kreis, gedämpftes Blau */
-        .pp-art .s2{ width:40%; height:26%; left:8%; bottom:12%; background:#bd7358; }                        /* Rechteck, Terracotta */
-        .pp-art .s3{ width:16%; padding-bottom:16%; left:22%; top:19%; background:#cca25a; }                  /* kleiner Kreis, Ocker */
-        .pp-art .s4{ width:2px; height:70%; right:27%; top:9%; background:#2b2a26; transform:rotate(23deg); transform-origin:top center; } /* Diagonale, Schwarz */
-        .pp-art .s5{ width:32%; height:3px; left:7%; top:23%; background:#2b2a26; }                           /* Balken, Schwarz */
-        .pp-art .s6{ width:14%; padding-bottom:14%; right:14%; bottom:16%; background:transparent;
-            border:3px solid #6f8ca8; border-radius:50%; }                                                   /* Kreis-Umriss, Blau */
+        .pp-art .plate{ position:relative; width:100%; height:100%; overflow:hidden;
+            background:var(--nx-bg); border:1px solid var(--nx-line); border-radius:2px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
     </style>
     @endverbatim
     <div class="pp-art" aria-hidden="true">
-        <i class="c s1"></i>
-        <i class="s2"></i>
-        <i class="c s3"></i>
-        <i class="s4"></i>
-        <i class="s5"></i>
-        <i class="c s6"></i>
+        <div class="plate">
+            <x-nx-bauhaus :seed="$artSeed" :count="7" />
+        </div>
     </div>
 
     @php

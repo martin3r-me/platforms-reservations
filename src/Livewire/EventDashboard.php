@@ -21,9 +21,14 @@ class EventDashboard extends Component
     #[Locked]
     public int $eventId;
 
+    /** Seed für die generative Ambient-Komposition – pro Seitenaufruf neu, stabil über Re-Renders. */
+    #[Locked]
+    public int $artSeed = 0;
+
     public function mount(int $eventId): void
     {
         $this->eventId = $eventId;
+        $this->artSeed = random_int(1, 999_999);
         $this->event; // Team-Scope prüfen (404 bei fremdem Team)
     }
 
