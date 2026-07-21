@@ -24,42 +24,31 @@
 
     <x-ui-page-container width="contained">
 
-    {{-- Ultrawide-Ambient: Event-Bild als ruhige Stimmungszone im leeren rechten Rand (nur >=1900px) --}}
-    @php $ambientImg = $this->event->imageUrl('medium_16_9') ?: route('reservation.guest.brand.hero'); @endphp
+    {{-- Ultrawide-Ambient: CSS-Bauhaus-Komposition als ruhiges Kunst-Panel rechts (nur >=1900px) --}}
     @verbatim
     <style>
-        .pp-ambient{ position:fixed; top:88px; bottom:52px; right:0; width:min(46vw,1040px); z-index:5; pointer-events:none; display:none; overflow:hidden; }
-        @media (min-width:1900px){ .pp-ambient{ display:block; } }
-        /* Bild */
-        .pp-ambient .img{ position:absolute; inset:0; background-size:cover; background-position:center; filter:saturate(.92); }
-        /* weiche Auflösung zur Content-Kante (links) + oben/unten in den weißen Grund */
-        .pp-ambient .fade{ position:absolute; inset:0; background:
-            linear-gradient(90deg, #fff 0%, rgba(255,255,255,.9) 14%, rgba(255,255,255,0) 46%),
-            linear-gradient(0deg, #fff 0%, transparent 10%),
-            linear-gradient(180deg, #fff 0%, transparent 10%); }
-        /* zarter Schleier für Tiefe */
-        .pp-ambient .veil{ position:absolute; inset:0; background:radial-gradient(85% 80% at 92% 42%, rgba(25,32,40,.10), transparent 72%); }
-        /* Fallback ohne Bild */
-        .pp-ambient .grad{ position:absolute; inset:0; background:
-            radial-gradient(90% 70% at 100% 22%, rgba(40,85,103,.055), transparent 60%),
-            radial-gradient(70% 60% at 88% 92%, rgba(232,152,60,.045), transparent 55%); }
-        .pp-ambient .mark{ position:absolute; right:5.5rem; top:50%; transform:translateY(-50%);
-            display:flex; flex-direction:column; align-items:center; gap:.6rem; opacity:.06; color:#37352f; }
-        .pp-ambient .mark span{ font-size:1.9rem; font-weight:800; letter-spacing:-.03em; }
+        .pp-art{ position:fixed; top:88px; bottom:52px; right:0; width:min(40vw,880px); z-index:5; pointer-events:none;
+            display:none; overflow:hidden; background:var(--nx-bg); border-left:1px solid var(--nx-line); }
+        @media (min-width:1900px){ .pp-art{ display:block; } }
+        .pp-art i{ position:absolute; display:block; }
+        .pp-art .c{ border-radius:50%; }
+        /* Bauhaus-Komposition — gedämpfte, warme Palette */
+        .pp-art .s1{ width:48%; padding-bottom:48%; top:-10%; right:-12%; background:#6f8ca8; }               /* großer Kreis, gedämpftes Blau */
+        .pp-art .s2{ width:40%; height:26%; left:8%; bottom:12%; background:#bd7358; }                        /* Rechteck, Terracotta */
+        .pp-art .s3{ width:16%; padding-bottom:16%; left:22%; top:19%; background:#cca25a; }                  /* kleiner Kreis, Ocker */
+        .pp-art .s4{ width:2px; height:70%; right:27%; top:9%; background:#2b2a26; transform:rotate(23deg); transform-origin:top center; } /* Diagonale, Schwarz */
+        .pp-art .s5{ width:32%; height:3px; left:7%; top:23%; background:#2b2a26; }                           /* Balken, Schwarz */
+        .pp-art .s6{ width:14%; padding-bottom:14%; right:14%; bottom:16%; background:transparent;
+            border:3px solid #6f8ca8; border-radius:50%; }                                                   /* Kreis-Umriss, Blau */
     </style>
     @endverbatim
-    <div class="pp-ambient" aria-hidden="true">
-        @if($ambientImg)
-            <div class="img" style="background-image:url('{{ $ambientImg }}')"></div>
-            <div class="veil"></div>
-            <div class="fade"></div>
-        @else
-            <div class="grad"></div>
-            <div class="mark">
-                @svg('heroicon-o-fire', 'w-40 h-40')
-                <span>PausePlus</span>
-            </div>
-        @endif
+    <div class="pp-art" aria-hidden="true">
+        <i class="c s1"></i>
+        <i class="s2"></i>
+        <i class="c s3"></i>
+        <i class="s4"></i>
+        <i class="s5"></i>
+        <i class="c s6"></i>
     </div>
 
     @php
