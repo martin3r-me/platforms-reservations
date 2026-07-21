@@ -27,7 +27,7 @@
             ['Buchungen', $s['bookings']],
             ['Gäste', $s['guests']],
             ['Umsatz', number_format($s['revenue'], 2, ',', '.') . ' ' . $sym],
-            ['Pausen', $s['pauses']],
+            [$s['pauses'] === 1 ? 'Pause' : 'Pausen', $s['pauses']],
         ];
         $nav = [
             ['reservation.events.orders', 'heroicon-o-fire', 'Küche', 'Gesamtbestellungen je Pause'],
@@ -49,7 +49,7 @@
             min-height:calc(100vh - 7.5rem);
             -webkit-font-smoothing:antialiased;
         }
-        .pp-wrap{max-width:1040px; margin:0 auto;}
+        .pp-wrap{max-width:1120px; margin:0;}
         .pp-title{font-size:1.9rem; font-weight:700; line-height:1.15; letter-spacing:-.01em; margin:0; color:var(--pp-text);}
         .pp-meta{font-size:.875rem; color:var(--pp-muted); margin:.35rem 0 0;}
         .pp-status{display:inline-flex; align-items:center; gap:.4rem; font-size:.8rem; color:var(--pp-muted); vertical-align:middle; margin-left:.6rem;}
