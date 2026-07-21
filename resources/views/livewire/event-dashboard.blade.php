@@ -23,6 +23,28 @@
     </x-slot>
 
     <x-ui-page-container width="contained">
+
+    {{-- Ultrawide-Ambient: ruhige Stimmungszone im leeren rechten Rand (nur >=1900px) --}}
+    @verbatim
+    <style>
+        .pp-ambient{ position:fixed; top:88px; bottom:52px; right:0; width:min(42vw,900px); z-index:5; pointer-events:none; display:none; }
+        @media (min-width:1900px){ .pp-ambient{ display:block; } }
+        .pp-ambient .grad{ position:absolute; inset:0; background:
+            radial-gradient(90% 70% at 100% 22%, rgba(40,85,103,.055), transparent 60%),
+            radial-gradient(70% 60% at 88% 92%, rgba(232,152,60,.045), transparent 55%); }
+        .pp-ambient .mark{ position:absolute; right:5.5rem; top:50%; transform:translateY(-50%);
+            display:flex; flex-direction:column; align-items:center; gap:.6rem; opacity:.06; color:#37352f; }
+        .pp-ambient .mark span{ font-size:1.9rem; font-weight:800; letter-spacing:-.03em; }
+    </style>
+    @endverbatim
+    <div class="pp-ambient" aria-hidden="true">
+        <div class="grad"></div>
+        <div class="mark">
+            @svg('heroicon-o-fire', 'w-40 h-40')
+            <span>PausePlus</span>
+        </div>
+    </div>
+
     @php
         $currency = strtoupper((string) config('reservation.currency', 'EUR'));
         $sym = $currency === 'EUR' ? '€' : $currency;
