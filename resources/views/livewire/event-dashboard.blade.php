@@ -39,6 +39,7 @@
     @endphp
 
     <style>
+        @verbatim
         .pp-dash{
             --pp-bg:#faf9f7; --pp-surface:#fff; --pp-text:#37352f; --pp-muted:#787774; --pp-faint:#9b9a97;
             --pp-line:rgba(55,53,47,.09); --pp-line-2:rgba(55,53,47,.06); --pp-hover:rgba(55,53,47,.045);
@@ -102,6 +103,7 @@
         .pp-legend{display:flex; gap:.9rem; font-size:.7rem; color:var(--pp-faint);}
         .pp-legend i{display:inline-block; width:.55rem; height:.55rem; border-radius:2px; margin-right:.3rem; vertical-align:middle;}
         .pp-empty{color:var(--pp-faint); font-size:.85rem; padding:.5rem 0;}
+        @endverbatim
     </style>
 
     <div class="pp-dash">
