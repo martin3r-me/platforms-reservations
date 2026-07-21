@@ -24,11 +24,22 @@
 
     <x-ui-page-container width="contained">
 
-    {{-- Ultrawide-Ambient: ruhige Stimmungszone im leeren rechten Rand (nur >=1900px) --}}
+    {{-- Ultrawide-Ambient: Event-Bild als ruhige Stimmungszone im leeren rechten Rand (nur >=1900px) --}}
+    @php $ambientImg = $this->event->imageUrl('medium_16_9'); @endphp
     @verbatim
     <style>
-        .pp-ambient{ position:fixed; top:88px; bottom:52px; right:0; width:min(42vw,900px); z-index:5; pointer-events:none; display:none; }
+        .pp-ambient{ position:fixed; top:88px; bottom:52px; right:0; width:min(46vw,1040px); z-index:5; pointer-events:none; display:none; overflow:hidden; }
         @media (min-width:1900px){ .pp-ambient{ display:block; } }
+        /* Bild */
+        .pp-ambient .img{ position:absolute; inset:0; background-size:cover; background-position:center; filter:saturate(.92); }
+        /* weiche Auflösung zur Content-Kante (links) + oben/unten in den weißen Grund */
+        .pp-ambient .fade{ position:absolute; inset:0; background:
+            linear-gradient(90deg, #fff 0%, rgba(255,255,255,.9) 14%, rgba(255,255,255,0) 46%),
+            linear-gradient(0deg, #fff 0%, transparent 10%),
+            linear-gradient(180deg, #fff 0%, transparent 10%); }
+        /* zarter Schleier für Tiefe */
+        .pp-ambient .veil{ position:absolute; inset:0; background:radial-gradient(85% 80% at 92% 42%, rgba(25,32,40,.10), transparent 72%); }
+        /* Fallback ohne Bild */
         .pp-ambient .grad{ position:absolute; inset:0; background:
             radial-gradient(90% 70% at 100% 22%, rgba(40,85,103,.055), transparent 60%),
             radial-gradient(70% 60% at 88% 92%, rgba(232,152,60,.045), transparent 55%); }
@@ -38,11 +49,17 @@
     </style>
     @endverbatim
     <div class="pp-ambient" aria-hidden="true">
-        <div class="grad"></div>
-        <div class="mark">
-            @svg('heroicon-o-fire', 'w-40 h-40')
-            <span>PausePlus</span>
-        </div>
+        @if($ambientImg)
+            <div class="img" style="background-image:url('{{ $ambientImg }}')"></div>
+            <div class="veil"></div>
+            <div class="fade"></div>
+        @else
+            <div class="grad"></div>
+            <div class="mark">
+                @svg('heroicon-o-fire', 'w-40 h-40')
+                <span>PausePlus</span>
+            </div>
+        @endif
     </div>
 
     @php
