@@ -7,12 +7,22 @@
     $sep   = str_repeat('=', $width);
     $line  = str_repeat('-', $width);
 
-    // Zeile mit Bezeichnung links, Wert rechtsbündig
+    // Zeile mit Bezeichnung links, Wert rechtsbündig.
+    // WICHTIG: mb_strlen (Zeichen), nicht strlen (Bytes) – sonst verrutscht
+    // die Wert-Spalte bei Umlauten/ß (ä/ö/ü/ß sind in UTF-8 je 2 Bytes).
     $row = function (string $left, string $right) use ($width) {
         $right = (string) $right;
-        $left  = \Illuminate\Support\Str::limit($left, max(1, $width - strlen($right) - 1), '');
-        $pad   = max(1, $width - strlen($left) - strlen($right));
+        $left  = \Illuminate\Support\Str::limit($left, max(1, $width - mb_strlen($right) - 1), '');
+        $pad   = max(1, $width - mb_strlen($left) - mb_strlen($right));
         return $left . str_repeat(' ', $pad) . $right;
+    };
+
+    // Mittig zentrieren – mb-aware, ohne mb_str_pad (PHP-Version-unabhängig)
+    $center = function (string $s, int $w) {
+        $s   = (string) $s;
+        $pad = max(0, $w - mb_strlen($s));
+        $l   = intdiv($pad, 2);
+        return str_repeat(' ', $l) . $s . str_repeat(' ', $pad - $l);
     };
 
     $money = fn ($v) => number_format((float) $v, 2, ',', '.');
@@ -54,18 +64,18 @@
     $ratePct = fn ($r) => rtrim(rtrim(number_format((float) $r, 1, ',', ''), '0'), ',');
 @endphp
 @if($issuer)
-{{ str_pad($issuer['name'], $width, ' ', STR_PAD_BOTH) }}
-@if($issuer['street']){{ str_pad($issuer['street'], $width, ' ', STR_PAD_BOTH) }}
+{{ $center($issuer['name'], $width) }}
+@if($issuer['street']){{ $center($issuer['street'], $width) }}
 @endif
-@if($issuer['zip'] || $issuer['city']){{ str_pad(trim(($issuer['zip'] ?? '') . ' ' . ($issuer['city'] ?? '')), $width, ' ', STR_PAD_BOTH) }}
+@if($issuer['zip'] || $issuer['city']){{ $center(trim(($issuer['zip'] ?? '') . ' ' . ($issuer['city'] ?? '')), $width) }}
 @endif
-@if($issuer['vat_id']){{ str_pad('USt-IdNr: ' . $issuer['vat_id'], $width, ' ', STR_PAD_BOTH) }}
+@if($issuer['vat_id']){{ $center('USt-IdNr: ' . $issuer['vat_id'], $width) }}
 @endif
-@if($issuer['tax_number']){{ str_pad('Steuer-Nr: ' . $issuer['tax_number'], $width, ' ', STR_PAD_BOTH) }}
+@if($issuer['tax_number']){{ $center('Steuer-Nr: ' . $issuer['tax_number'], $width) }}
 @endif
 @endif
 {{ $sep }}
-{{ str_pad('BON  Buchung #' . $printable->id, $width, ' ', STR_PAD_BOTH) }}
+{{ $center('BON  Buchung #' . $printable->id, $width) }}
 {{ $sep }}
 
 @if($printable->event)
@@ -139,11 +149,11 @@
 @endif
 {{ $sep }}
 @if($issuer && ($issuer['email'] || $issuer['phone'] || $issuer['website']))
-{{ str_pad(trim(implode(' · ', array_filter([$issuer['phone'], $issuer['email'], $issuer['website']]))), $width, ' ', STR_PAD_BOTH) }}
+{{ $center(trim(implode(' · ', array_filter([$issuer['phone'], $issuer['email'], $issuer['website']]))), $width) }}
 @endif
 @if(isset($data['requested_by']))
-{{ str_pad('Gedruckt von: ' . $data['requested_by'], $width, ' ', STR_PAD_BOTH) }}
+{{ $center('Gedruckt von: ' . $data['requested_by'], $width) }}
 @endif
-{{ str_pad(now()->format('d.m.Y H:i:s'), $width, ' ', STR_PAD_BOTH) }}
+{{ $center(now()->format('d.m.Y H:i:s'), $width) }}
 {{ $sep }}
 {{ "\n\n\n" }}
