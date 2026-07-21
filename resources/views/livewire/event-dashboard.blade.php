@@ -22,7 +22,7 @@
         @include('reservation::partials.event-sidebar', ['event' => $this->event, 'active' => 'dashboard'])
     </x-slot>
 
-    <x-ui-page-container>
+    <x-ui-page-container width="contained">
     @php
         $currency = strtoupper((string) config('reservation.currency', 'EUR'));
         $sym = $currency === 'EUR' ? '€' : $currency;
@@ -37,7 +37,7 @@
         $statusDot = $statusColors[$this->event->status->value] ?? '#868e96';
     @endphp
 
-    <div class="max-w-6xl space-y-6 pt-1">
+    <div class="space-y-6">
 
         {{-- Titel --}}
         <div>
