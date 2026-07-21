@@ -25,7 +25,7 @@
     <x-ui-page-container width="contained">
 
     {{-- Ultrawide-Ambient: Event-Bild als ruhige Stimmungszone im leeren rechten Rand (nur >=1900px) --}}
-    @php $ambientImg = $this->event->imageUrl('medium_16_9'); @endphp
+    @php $ambientImg = $this->event->imageUrl('medium_16_9') ?: route('reservation.guest.brand.hero'); @endphp
     @verbatim
     <style>
         .pp-ambient{ position:fixed; top:88px; bottom:52px; right:0; width:min(46vw,1040px); z-index:5; pointer-events:none; display:none; overflow:hidden; }

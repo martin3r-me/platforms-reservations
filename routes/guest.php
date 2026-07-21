@@ -14,6 +14,10 @@ use Platform\Reservation\Livewire\Guest\PaymentReturn;
 Route::get('/brand/logo', [\Platform\Reservation\Http\Controllers\BrandAssetController::class, 'logo'])
     ->name('reservation.guest.brand.logo');
 
+// Standard-Stimmungsbild (Stadthalle) für die Ultrawide-Ambient-Zone
+Route::get('/brand/hero', [\Platform\Reservation\Http\Controllers\BrandAssetController::class, 'hero'])
+    ->name('reservation.guest.brand.hero');
+
 // Termin-Übersicht für Endkunden
 Route::get('/termine', EventOverview::class)->name('reservation.guest.events.index');
 
