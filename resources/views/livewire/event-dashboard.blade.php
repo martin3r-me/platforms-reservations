@@ -207,7 +207,7 @@
                         <div class="pp-bar-row" wire:key="util-{{ $loop->index }}">
                             <div class="pp-bar-head">
                                 <span class="name">{{ $r['room'] }}</span>
-                                <span class="val"><b>{{ $r['occupied'] }}</b> belegt@if ($r['blocked'] > 0) · {{ $r['blocked'] }} gesperrt @endif · {{ $r['free'] }} frei / {{ $r['total'] }}</span>
+                                <span class="val"><b>{{ $r['occupied'] }}</b> belegt @if ($r['blocked'] > 0)· {{ $r['blocked'] }} gesperrt @endif· {{ $r['free'] }} frei / {{ $r['total'] }}</span>
                             </div>
                             <div class="pp-track">
                                 <span style="width:{{ $r['occupied'] / $total * 100 }}%; background:var(--pp-accent)"></span>
