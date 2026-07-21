@@ -7,23 +7,69 @@
     $sep   = str_repeat('=', $width);
     $line  = str_repeat('-', $width);
 
-    // Zeile mit Bezeichnung links, Betrag rechtsbündig
+    // Zeile mit Bezeichnung links, Wert rechtsbündig
     $row = function (string $left, string $right) use ($width) {
         $right = (string) $right;
-        $left  = \Illuminate\Support\Str::limit($left, $width - strlen($right) - 1, '');
+        $left  = \Illuminate\Support\Str::limit($left, max(1, $width - strlen($right) - 1), '');
         $pad   = max(1, $width - strlen($left) - strlen($right));
         return $left . str_repeat(' ', $pad) . $right;
     };
 
+    $money = fn ($v) => number_format((float) $v, 2, ',', '.');
+
     $currency = strtoupper((string) config('reservation.currency', 'EUR'));
     $sym      = $currency === 'EUR' ? 'EUR' : $currency;
+
+    // Aussteller-Stammdaten (Team der Buchung)
+    $settings = \Platform\Reservation\Models\CheckoutSetting::forTeam((int) $printable->team_id);
+    $issuer   = $settings->hasIssuer() ? $settings->issuer() : null;
+
+    // Order-/Zahlungs-Kontext
+    $order   = $printable->order;
+    $payment = $printable->payment; // Accessor: order->payment
+    $payLabels = ['card' => 'Karte', 'paypal' => 'PayPal', 'applepay' => 'Apple Pay', 'ideal' => 'iDEAL', 'sofort' => 'Sofort'];
+
+    // Steuersatz-Klassen (A, B, C …) + MwSt-Summen je Satz
+    $byRate = [];
+    foreach ($printable->items as $it) {
+        $r = (float) $it->tax_rate;
+        $byRate[(string) $r] = ($byRate[(string) $r] ?? 0) + ((float) $it->unit_price * $it->quantity);
+    }
+    ksort($byRate, SORT_NUMERIC);
+    $letters = [];
+    $i = 0;
+    foreach (array_keys($byRate) as $rk) {
+        $letters[$rk] = chr(65 + $i);
+        $i++;
+    }
+    $letterFor = fn ($rate) => $letters[(string) (float) $rate] ?? '';
+
+    $netTotal = 0.0; $vatTotal = 0.0; $grossTotal = 0.0;
+    $vatRows = [];
+    foreach ($byRate as $rk => $gross) {
+        $v = \Platform\Reservation\Support\Vat::fromGross((float) $gross, (float) $rk);
+        $vatRows[] = ['letter' => $letters[$rk], 'rate' => (float) $rk] + $v;
+        $netTotal += $v['net']; $vatTotal += $v['vat']; $grossTotal += $v['gross'];
+    }
+    $ratePct = fn ($r) => rtrim(rtrim(number_format((float) $r, 1, ',', ''), '0'), ',');
 @endphp
+@if($issuer)
+{{ str_pad($issuer['name'], $width, ' ', STR_PAD_BOTH) }}
+@if($issuer['street']){{ str_pad($issuer['street'], $width, ' ', STR_PAD_BOTH) }}
+@endif
+@if($issuer['zip'] || $issuer['city']){{ str_pad(trim(($issuer['zip'] ?? '') . ' ' . ($issuer['city'] ?? '')), $width, ' ', STR_PAD_BOTH) }}
+@endif
+@if($issuer['vat_id']){{ str_pad('USt-IdNr: ' . $issuer['vat_id'], $width, ' ', STR_PAD_BOTH) }}
+@endif
+@if($issuer['tax_number']){{ str_pad('Steuer-Nr: ' . $issuer['tax_number'], $width, ' ', STR_PAD_BOTH) }}
+@endif
+@endif
 {{ $sep }}
 {{ str_pad('BON  Buchung #' . $printable->id, $width, ' ', STR_PAD_BOTH) }}
 {{ $sep }}
 
 @if($printable->event)
-{{ str_pad('VA:', 12) }}{{ Str::limit($printable->event->name, $width - 12) }}
+{{ $row('VA:', Str::limit($printable->event->name, $width - 5)) }}
 @endif
 {{ str_pad('Datum:', 12) }}{{ $printable->date?->format('d.m.Y') }}@if($printable->time_start) · {{ substr($printable->time_start, 0, 5) }} Uhr @endif
 @if($printable->slot)
@@ -34,23 +80,56 @@
 @endif
 {{ str_pad('Gast:', 12) }}{{ Str::limit($printable->guest_name ?? '-', $width - 12) }}
 {{ str_pad('Personen:', 12) }}{{ $printable->guest_count }}
+@if($order)
+{{ str_pad('Bestellung:', 12) }}{{ $order->uuid }}
+@endif
+@if($payment)
+{{ str_pad('Zahlung:', 12) }}{{ $payment->status }}@if($printable->payment_method) · {{ $payLabels[$printable->payment_method] ?? $printable->payment_method }}@endif
+@endif
+{{ str_pad('Gebucht:', 12) }}{{ $printable->created_at?->format('d.m.Y H:i') }}
 
 {{ $line }}
 {{ str_pad('ARTIKEL', 12) }}
 {{ $line }}
 @forelse($printable->items as $item)
-@php $itemSum = number_format($item->unit_price * $item->quantity, 2, ',', '.') . ' ' . $sym; @endphp
-{{ $row($item->quantity . 'x ' . ($item->menuItem?->name ?? 'Artikel'), $itemSum) }}
+@php $right = $money($item->unit_price * $item->quantity) . ' ' . $sym . ' ' . $letterFor($item->tax_rate); @endphp
+{{ $row($item->quantity . 'x ' . ($item->menuItem?->name ?? 'Artikel'), $right) }}
 @if($item->notes)
    > {{ Str::limit($item->notes, $width - 5) }}
 @endif
 @empty
 {{ 'Keine Vorbestellung - nur Tischreservierung' }}
 @endforelse
-
 @if($printable->items->isNotEmpty())
 {{ $line }}
-{{ $row('SUMME', number_format($printable->total_amount, 2, ',', '.') . ' ' . $sym) }}
+{{ $row('SUMME (brutto)', $money($grossTotal) . ' ' . $sym) }}
+
+{{ $line }}
+{{ str_pad('MWST-AUSWEIS', 12) }}
+{{ $line }}
+@foreach($vatRows as $vr)
+{{ $vr['letter'] }} · {{ $ratePct($vr['rate']) }}% · Netto {{ $money($vr['net']) }}
+{{ $row('     MwSt', $money($vr['vat']) . ' ' . $sym) }}
+@endforeach
+{{ $line }}
+{{ $row('Netto gesamt', $money($netTotal) . ' ' . $sym) }}
+{{ $row('MwSt gesamt', $money($vatTotal) . ' ' . $sym) }}
+{{ $row('Brutto gesamt', $money($grossTotal) . ' ' . $sym) }}
+@endif
+
+@if($order && $order->hasBusinessData())
+{{ $line }}
+{{ str_pad('RECHNUNGSANSCHRIFT', 12) }}
+{{ $line }}
+{{ Str::limit($order->company, $width) }}
+@if($order->customerName()){{ Str::limit($order->customerName(), $width) }}
+@endif
+@php $ba = $order->billingAddress(); @endphp
+@if($ba)
+@if($ba['street']){{ Str::limit($ba['street'], $width) }}
+@endif
+{{ trim(($ba['zip'] ?? '') . ' ' . ($ba['city'] ?? '')) }}@if($ba['country']) · {{ $ba['country'] }}@endif
+@endif
 @endif
 
 @if($printable->notes)
@@ -58,12 +137,13 @@
 {{ str_pad('Anmerkung:', 12) }}
 {{ wordwrap($printable->notes, $width, "\n", true) }}
 @endif
-
-@if(isset($data['requested_by']))
-{{ $line }}
-{{ str_pad('Gedruckt von:', 15) }}{{ Str::limit($data['requested_by'], $width - 15) }}
-@endif
 {{ $sep }}
+@if($issuer && ($issuer['email'] || $issuer['phone'] || $issuer['website']))
+{{ str_pad(trim(implode(' · ', array_filter([$issuer['phone'], $issuer['email'], $issuer['website']]))), $width, ' ', STR_PAD_BOTH) }}
+@endif
+@if(isset($data['requested_by']))
+{{ str_pad('Gedruckt von: ' . $data['requested_by'], $width, ' ', STR_PAD_BOTH) }}
+@endif
 {{ str_pad(now()->format('d.m.Y H:i:s'), $width, ' ', STR_PAD_BOTH) }}
 {{ $sep }}
 {{ "\n\n\n" }}
