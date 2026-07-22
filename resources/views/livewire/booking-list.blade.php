@@ -145,22 +145,15 @@
     {{-- Detail-Modal: Buchung mit Bestellpositionen --}}
     <x-nx-modal size="md" wire:model="showDetail">
         <x-slot name="header">
-            <div class="flex items-center gap-3">
-                <div class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--nx-accent-soft)]">
-                    @svg('heroicon-o-clipboard-document-list', 'w-5 h-5 text-[color:var(--nx-text)]')
-                </div>
-                <div class="min-w-0">
-                    <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">
-                        Buchung {{ $this->detailBooking?->guest_name }}
-                    </h3>
-                    @if ($this->detailBooking)
-                        <p class="m-0 mt-0.5 text-xs text-[color:var(--nx-muted)]">
-                            {{ $this->detailBooking->date->format('d.m.Y') }}@if ($this->detailBooking->time_start) · {{ substr($this->detailBooking->time_start, 0, 5) }} Uhr @endif
-                            @if ($this->detailBooking->table) · Tisch {{ $this->detailBooking->table->label }} @endif
-                        </p>
-                    @endif
-                </div>
-            </div>
+            <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">
+                Buchung {{ $this->detailBooking?->guest_name }}
+            </h3>
+            @if ($this->detailBooking)
+                <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">
+                    {{ $this->detailBooking->date->format('d.m.Y') }}@if ($this->detailBooking->time_start) · {{ substr($this->detailBooking->time_start, 0, 5) }} Uhr @endif
+                    @if ($this->detailBooking->table) · Tisch {{ $this->detailBooking->table->label }} @endif
+                </p>
+            @endif
         </x-slot>
 
         @if ($this->detailBooking)
@@ -240,15 +233,8 @@
     {{-- Bon drucken: Drucker/Gruppe wählen --}}
     <x-nx-modal size="sm" wire:model="printModalShow">
         <x-slot name="header">
-            <div class="flex items-center gap-3">
-                <div class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--nx-accent-soft)]">
-                    @svg('heroicon-o-printer', 'w-5 h-5 text-[color:var(--nx-text)]')
-                </div>
-                <div class="min-w-0">
-                    <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">Bon drucken</h3>
-                    <p class="m-0 mt-0.5 text-xs text-[color:var(--nx-muted)]">Buchung als Beleg an einen Drucker senden</p>
-                </div>
-            </div>
+            <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">Bon drucken</h3>
+            <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">Buchung als Beleg an einen Drucker senden</p>
         </x-slot>
 
         <div class="space-y-4">
