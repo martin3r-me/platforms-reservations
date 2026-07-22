@@ -16,7 +16,7 @@
     </x-slot>
 
     <x-ui-page-container>
-    <div class="pt-4 space-y-4">
+    <div class="space-y-5">
 
     @if (session('booking_message'))
         <div class="rounded-[8px] border border-[rgba(47,158,68,.3)] bg-[rgba(47,158,68,.08)] p-3 text-sm text-[color:var(--nx-success)]">{{ session('booking_message') }}</div>
@@ -25,74 +25,66 @@
         <div class="rounded-[8px] border border-[rgba(224,49,49,.3)] bg-[rgba(224,49,49,.08)] p-3 text-sm text-[color:var(--nx-danger)]">{{ session('booking_error') }}</div>
     @endif
 
-    <x-nx-card flush>
-        {{-- Karten-Header --}}
-        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-            @svg('heroicon-o-calendar-days', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-muted)]">Buchungen</h2>
-            <span class="ml-auto text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $this->bookings->total() }}</span>
-        </div>
-
-        {{-- Filter --}}
-        <div class="flex flex-wrap items-center gap-1.5 border-b border-[color:var(--nx-line)] px-4 py-2 text-xs">
-            <span class="text-[color:var(--nx-muted)]">Status:</span>
+    {{-- Filter: rahmenlos, luftig --}}
+    <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
+        <div class="flex flex-wrap items-center gap-1">
             @foreach (['' => 'Alle', 'pending' => 'Ausstehend', 'confirmed' => 'Bestätigt', 'cancelled' => 'Storniert', 'no_show' => 'No-Show', 'completed' => 'Abgeschlossen'] as $val => $label)
                 <button type="button" wire:click="$set('filterStatus', '{{ $val }}')"
-                    class="rounded-full px-2.5 py-0.5 transition-colors {{ $filterStatus === $val ? 'bg-[color:var(--nx-accent)] font-medium text-[color:var(--nx-on-accent)]' : 'text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]' }}">{{ $label }}</button>
+                    class="rounded-full px-2.5 py-1 transition-colors {{ $filterStatus === $val ? 'bg-[color:var(--nx-active)] font-medium text-[color:var(--nx-text)]' : 'text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]' }}">{{ $label }}</button>
             @endforeach
-            <span class="ml-3 text-[color:var(--nx-muted)]">Datum:</span>
-            <div class="w-40">
-                <x-ui-input-date name="filterDate" size="sm" wire:model.live="filterDate" />
-            </div>
-            <div class="ml-auto w-56">
-                <x-ui-input-text name="search" size="sm" wire:model.live.debounce.300ms="search" placeholder="Name oder E-Mail suchen…" />
-            </div>
         </div>
+        <div class="w-40">
+            <x-ui-input-date name="filterDate" size="sm" wire:model.live="filterDate" />
+        </div>
+        <div class="ml-auto w-64">
+            <x-ui-input-text name="search" size="sm" wire:model.live.debounce.300ms="search" placeholder="Suchen…" />
+        </div>
+    </div>
 
-        {{-- Tabelle --}}
-        <x-nx-table>
+    {{-- Tabelle: rahmenlos, Hairlines --}}
+    <x-nx-table>
             <x-nx-table-header>
-                <x-nx-table-header-cell compact>VA-Datum</x-nx-table-header-cell>
-                <x-nx-table-header-cell compact>Veranstaltung</x-nx-table-header-cell>
-                <x-nx-table-header-cell compact>Uhrzeit</x-nx-table-header-cell>
-                <x-nx-table-header-cell compact>Tisch</x-nx-table-header-cell>
-                <x-nx-table-header-cell compact>Gast</x-nx-table-header-cell>
-                <x-nx-table-header-cell compact align="center">Personen</x-nx-table-header-cell>
-                <x-nx-table-header-cell compact align="right">Bestellung</x-nx-table-header-cell>
-                <x-nx-table-header-cell compact>Status</x-nx-table-header-cell>
-                <x-nx-table-header-cell compact>Gebucht am</x-nx-table-header-cell>
-                <x-nx-table-header-cell compact>Aktionen</x-nx-table-header-cell>
+                <x-nx-table-header-cell>VA-Datum</x-nx-table-header-cell>
+                <x-nx-table-header-cell>Veranstaltung</x-nx-table-header-cell>
+                <x-nx-table-header-cell>Uhrzeit</x-nx-table-header-cell>
+                <x-nx-table-header-cell>Tisch</x-nx-table-header-cell>
+                <x-nx-table-header-cell>Gast</x-nx-table-header-cell>
+                <x-nx-table-header-cell align="center">Personen</x-nx-table-header-cell>
+                <x-nx-table-header-cell align="right">Bestellung</x-nx-table-header-cell>
+                <x-nx-table-header-cell>Status</x-nx-table-header-cell>
+                <x-nx-table-header-cell>Gebucht am</x-nx-table-header-cell>
+                <x-nx-table-header-cell><span class="sr-only">Aktionen</span></x-nx-table-header-cell>
             </x-nx-table-header>
             <x-nx-table-body>
                 @forelse ($this->bookings as $booking)
-                    <x-nx-table-row compact wire:key="booking-{{ $booking->id }}">
-                        <x-nx-table-cell compact>{{ $booking->date->format('d.m.Y') }}</x-nx-table-cell>
-                        <x-nx-table-cell compact>
+                    <x-nx-table-row wire:key="booking-{{ $booking->id }}" class="group">
+                        <x-nx-table-cell class="whitespace-nowrap tabular-nums text-[color:var(--nx-muted)]">{{ $booking->date->format('d.m.Y') }}</x-nx-table-cell>
+                        <x-nx-table-cell>
                             <span class="font-medium text-[color:var(--nx-text)]">{{ $booking->event?->name ?? '—' }}</span>
                             @if ($booking->slot)
-                                <span class="block text-xs text-[color:var(--nx-muted)]">{{ $booking->slot->name }}</span>
+                                <span class="block text-xs text-[color:var(--nx-faint)]">{{ $booking->slot->name }}</span>
                             @endif
                         </x-nx-table-cell>
-                        <x-nx-table-cell compact>{{ $booking->time_start ? substr($booking->time_start, 0, 5) : '–' }}</x-nx-table-cell>
-                        <x-nx-table-cell compact>{{ $booking->table?->label }}</x-nx-table-cell>
-                        <x-nx-table-cell compact>
+                        <x-nx-table-cell class="tabular-nums text-[color:var(--nx-muted)]">{{ $booking->time_start ? substr($booking->time_start, 0, 5) : '–' }}</x-nx-table-cell>
+                        <x-nx-table-cell class="text-[color:var(--nx-muted)]">{{ $booking->table?->label }}</x-nx-table-cell>
+                        <x-nx-table-cell>
                             <span class="font-medium text-[color:var(--nx-text)]">{{ $booking->guest_name }}</span>
                             @if ($booking->guest_email)
-                                <span class="block text-xs text-[color:var(--nx-muted)]">{{ $booking->guest_email }}</span>
+                                <span class="block text-xs text-[color:var(--nx-faint)]">{{ $booking->guest_email }}</span>
                             @endif
                         </x-nx-table-cell>
-                        <x-nx-table-cell compact align="center">{{ $booking->guest_count }}</x-nx-table-cell>
-                        <x-nx-table-cell compact align="right">
+                        <x-nx-table-cell align="center" class="tabular-nums text-[color:var(--nx-muted)]">{{ $booking->guest_count }}</x-nx-table-cell>
+                        <x-nx-table-cell align="right">
                             @if ($booking->items_count > 0)
                                 <button wire:click="openDetail({{ $booking->id }})" type="button"
-                                    class="inline-flex items-center gap-1 whitespace-nowrap text-[color:var(--nx-text)] hover:underline">
-                                    <span class="tabular-nums">{{ $booking->items_count }} Pos. · {{ number_format($booking->total_amount, 2, ',', '.') }} €</span>
+                                    class="whitespace-nowrap tabular-nums text-[color:var(--nx-text)] hover:underline">
+                                    {{ $booking->items_count }} Pos. · {{ number_format($booking->total_amount, 2, ',', '.') }} €
                                 </button>
                             @else
-                                <span class="text-[color:var(--nx-muted)]">–</span>
+                                <span class="text-[color:var(--nx-faint)]">–</span>
                             @endif
                         </x-nx-table-cell>
-                        <x-nx-table-cell compact>
+                        <x-nx-table-cell>
                             @php
                                 [$statusLabel, $statusVariant] = [
                                     'pending'   => ['Ausstehend', 'warning'],
@@ -104,37 +96,35 @@
                             @endphp
                             <x-nx-badge :variant="$statusVariant">{{ $statusLabel }}</x-nx-badge>
                         </x-nx-table-cell>
-                        <x-nx-table-cell compact>
+                        <x-nx-table-cell class="whitespace-nowrap text-[color:var(--nx-muted)]">
                             @if ($booking->created_at)
-                                <span class="whitespace-nowrap tabular-nums text-[color:var(--nx-text)]">{{ $booking->created_at->format('d.m.Y') }}</span>
-                                <span class="block text-xs tabular-nums text-[color:var(--nx-muted)]">{{ $booking->created_at->format('H:i') }} Uhr</span>
+                                <span class="tabular-nums">{{ $booking->created_at->format('d.m.Y') }}</span>
+                                <span class="block text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $booking->created_at->format('H:i') }} Uhr</span>
                             @else
-                                <span class="text-[color:var(--nx-muted)]">–</span>
+                                <span class="text-[color:var(--nx-faint)]">–</span>
                             @endif
                         </x-nx-table-cell>
-                        <x-nx-table-cell compact>
-                            <div class="flex flex-wrap gap-1.5">
+                        <x-nx-table-cell align="right">
+                            {{-- Aktionen erscheinen beim Hover über die Zeile (Notion-Stil) --}}
+                            <div class="flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
                                 @if ($booking->status === 'pending')
-                                    <x-nx-button variant="primary" wire:click="confirmBooking({{ $booking->id }})">Bestätigen</x-nx-button>
+                                    <x-nx-button icon variant="ghost" wire:click="confirmBooking({{ $booking->id }})" title="Bestätigen">
+                                        @svg('heroicon-o-check', 'w-4 h-4')
+                                    </x-nx-button>
                                 @endif
-                                <x-nx-button wire:click="openDetail({{ $booking->id }})">Details</x-nx-button>
+                                <x-nx-button icon variant="ghost" wire:click="openDetail({{ $booking->id }})" title="Details">
+                                    @svg('heroicon-o-eye', 'w-4 h-4')
+                                </x-nx-button>
                                 @if ($this->printingAvailable)
-                                    <x-nx-button icon wire:click="openPrintModal({{ $booking->id }})" title="Bon drucken">
+                                    <x-nx-button icon variant="ghost" wire:click="openPrintModal({{ $booking->id }})" title="Bon drucken">
                                         @svg('heroicon-o-printer', 'w-4 h-4')
                                     </x-nx-button>
                                 @endif
                                 @if ($booking->status === 'pending')
-                                    <div class="shrink-0">
-                                        <x-ui-confirm-button
-                                            action="cancelBooking"
-                                            :value="$booking->id"
-                                            text=""
-                                            confirmText="Wirklich stornieren?"
-                                            variant="danger-outline"
-                                            size="sm"
-                                            :icon="svg('heroicon-o-x-mark', 'w-4 h-4')->toHtml()"
-                                        />
-                                    </div>
+                                    <button type="button" wire:click="cancelBooking({{ $booking->id }})" wire:confirm="Wirklich stornieren?" title="Stornieren"
+                                        class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
+                                        @svg('heroicon-o-x-mark', 'w-4 h-4')
+                                    </button>
                                 @endif
                             </div>
                         </x-nx-table-cell>
@@ -142,7 +132,7 @@
                 @empty
                     <tr>
                         <td colspan="10">
-                            <div class="flex flex-col items-center justify-center py-8 text-[color:var(--nx-muted)]">
+                            <div class="flex flex-col items-center justify-center py-14 text-[color:var(--nx-faint)]">
                                 @svg('heroicon-o-inbox', 'w-8 h-8 mb-2 opacity-40')
                                 <span class="text-xs">Keine Buchungen gefunden</span>
                             </div>
@@ -151,10 +141,10 @@
                 @endforelse
             </x-nx-table-body>
         </x-nx-table>
-    </x-nx-card>
 
-    <div>
-        {{ $this->bookings->links() }}
+    <div class="flex items-center justify-between gap-3 text-xs text-[color:var(--nx-faint)]">
+        <span class="tabular-nums">{{ $this->bookings->total() }} Buchungen</span>
+        <div>{{ $this->bookings->links() }}</div>
     </div>
 
     {{-- Detail-Modal: Buchung mit Bestellpositionen --}}
