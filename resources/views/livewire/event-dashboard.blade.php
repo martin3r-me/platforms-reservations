@@ -24,15 +24,41 @@
 
     <x-ui-page-container width="contained">
 
-    {{-- Ultrawide-Ambient: generatives Bauhaus-Panel im Passepartout (nur >=1900px, hinter allem Interaktiven) --}}
+    {{-- Ultrawide-Ambient: generatives Bauhaus-Panel im Passepartout.
+         Sichtbarkeit/Breite platz-getrieben (JS): füllt nur den echten freien Rand rechts,
+         blendet aus sobald der Content ihn braucht (Sidebars offen). Hinter allem Interaktiven. --}}
     @verbatim
     <style>
-        .pp-art{ position:fixed; top:88px; bottom:52px; right:0; width:min(40vw,880px); z-index:0; pointer-events:none;
+        .pp-art{ position:fixed; top:88px; bottom:52px; right:0; z-index:0; pointer-events:none;
             display:none; padding:56px; background:#fff; border-left:1px solid var(--nx-line); }
-        @media (min-width:1900px){ .pp-art{ display:block; } }
         .pp-art .plate{ position:relative; width:100%; height:100%; overflow:hidden;
             background:var(--nx-bg); border:1px solid var(--nx-line); border-radius:2px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
     </style>
+    <script>
+    (function(){
+        if (window.__ppArtInit) return; window.__ppArtInit = true;
+        var MIN = 380, MAX = 880, ro;
+        function measure(){
+            var panel = document.querySelector('.pp-art');
+            if (!panel) return;
+            var content = document.querySelector('[data-nx-content]');
+            if (!content){ panel.style.display = 'none'; return; }
+            var gap = window.innerWidth - content.getBoundingClientRect().right;
+            if (gap >= MIN){ panel.style.display = 'block'; panel.style.width = Math.min(gap, MAX) + 'px'; }
+            else { panel.style.display = 'none'; }
+        }
+        function bind(){
+            if (ro) ro.disconnect();
+            ro = new ResizeObserver(measure);
+            var region = document.querySelector('[data-nx-region]');
+            if (region) ro.observe(region);   // Breite ändert sich bei Sidebar-Toggle + Viewport
+            measure();
+        }
+        window.addEventListener('resize', measure);
+        document.addEventListener('livewire:navigated', bind);
+        bind();
+    })();
+    </script>
     @endverbatim
     <div class="pp-art" aria-hidden="true">
         <div class="plate">
