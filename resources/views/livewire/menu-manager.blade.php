@@ -11,7 +11,7 @@
             {{-- Inline-Control (Filter) links neben der Navigation --}}
             <x-slot name="left">
                 <div class="w-40">
-                    <x-ui-input-select
+                    <x-nx-input-select
                         name="approvalFilter"
                         size="sm"
                         :options="[
@@ -42,176 +42,144 @@
         </x-ui-page-actionbar>
     </x-slot>
 
-    <x-ui-page-container>
-    <div class="pt-4 space-y-4">
+    <x-ui-page-container width="contained">
+    <div class="space-y-5">
 
     @if (session('menu_message'))
-        <div class="rounded-lg border border-[var(--ui-success)]/30 bg-[var(--ui-success-10)] p-3 text-sm text-[var(--ui-success)]">
-            {{ session('menu_message') }}
-        </div>
+        <x-nx-callout variant="success">{{ session('menu_message') }}</x-nx-callout>
     @endif
     @if (session('menu_error'))
-        <div class="rounded-lg border border-[var(--ui-danger)]/30 bg-[var(--ui-danger-10)] p-3 text-sm text-[var(--ui-danger)]">
-            {{ session('menu_error') }}
-        </div>
+        <x-nx-callout variant="danger">{{ session('menu_error') }}</x-nx-callout>
     @endif
 
     @if ($this->categories->isEmpty())
-        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm">
-            <div class="flex flex-col items-center justify-center py-16 text-[var(--ui-muted)]">
-                @svg('heroicon-o-rectangle-stack', 'w-10 h-10 mb-3 opacity-40')
-                <span class="text-sm font-medium text-[var(--ui-secondary)]">Noch keine Kategorien</span>
-                <span class="text-xs mt-1 opacity-70">Lege zuerst eine Kategorie an, dann Artikel.</span>
-            </div>
-        </section>
+        <x-nx-card>
+            <x-nx-empty icon="heroicon-o-rectangle-stack">
+                <span class="text-sm font-medium text-[color:var(--nx-text)]">Noch keine Kategorien</span>
+                <span class="mt-1 block">Lege zuerst eine Kategorie an, dann Artikel.</span>
+            </x-nx-empty>
+        </x-nx-card>
     @endif
 
     @foreach ($this->categories as $category)
-        <section wire:key="cat-{{ $category->id }}" class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-                @svg('heroicon-o-tag', 'w-4 h-4 text-[var(--ui-muted)]')
-                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">{{ $category->name }}</h2>
-                <span class="text-[11px] text-[var(--ui-muted)]">{{ $category->menuItems->count() }}</span>
-                <div class="ml-auto flex items-center gap-1.5">
-                    <x-ui-button variant="primary" size="sm" wire:click="openItemForm(null, {{ $category->id }})">
+        <x-nx-card flush wire:key="cat-{{ $category->id }}">
+            <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+                @svg('heroicon-o-tag', 'w-4 h-4 text-[color:var(--nx-muted)]')
+                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">{{ $category->name }}</h2>
+                <span class="text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $category->menuItems->count() }}</span>
+                <div class="ml-auto flex items-center gap-1">
+                    <x-nx-button variant="primary" wire:click="openItemForm(null, {{ $category->id }})">
                         @svg('heroicon-o-plus', 'w-4 h-4')
                         <span>Artikel</span>
-                    </x-ui-button>
-                    <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openCategoryForm({{ $category->id }})" title="Kategorie bearbeiten">
+                    </x-nx-button>
+                    <x-nx-button icon variant="ghost" wire:click="openCategoryForm({{ $category->id }})" title="Kategorie bearbeiten">
                         @svg('heroicon-o-pencil', 'w-4 h-4')
-                    </x-ui-button>
-                    <div class="shrink-0">
-                        <x-ui-confirm-button
-                            action="deleteCategory"
-                            :value="$category->id"
-                            text=""
-                            confirmText="Wirklich löschen?"
-                            variant="danger-outline"
-                            size="sm"
-                            :icon="svg('heroicon-o-trash', 'w-4 h-4')->toHtml()"
-                        />
-                    </div>
+                    </x-nx-button>
+                    <button type="button" wire:click="deleteCategory({{ $category->id }})" wire:confirm="Kategorie wirklich löschen?" title="Löschen"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
+                        @svg('heroicon-o-trash', 'w-4 h-4')
+                    </button>
                 </div>
             </div>
 
-            <div class="divide-y divide-[var(--ui-border)]/30">
+            <div>
                 @foreach ($category->menuItems as $item)
-                    <div wire:key="item-{{ $item->id }}" class="flex items-center px-4 py-2.5 hover:bg-[var(--ui-muted-5)] transition-colors">
+                    <div wire:key="item-{{ $item->id }}" class="group flex items-center border-b border-[color:var(--nx-line)] px-4 py-2.5 transition-colors last:border-0 hover:bg-[color:var(--nx-hover)]">
                         @if ($item->image_context_file_id && $item->imageFile)
                             <img src="{{ $item->imageUrl('thumbnail_1_1') }}" alt=""
-                                class="mr-3 h-12 w-12 shrink-0 rounded-lg object-cover" />
+                                class="mr-3 h-12 w-12 shrink-0 rounded-[8px] object-cover" />
                         @else
-                            <div class="mr-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-muted-5)] text-[var(--ui-muted)]">
+                            <div class="mr-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--nx-bg)] text-[color:var(--nx-faint)]">
                                 @svg('heroicon-o-photo', 'w-5 h-5 opacity-40')
                             </div>
                         @endif
-                        <div class="flex-1 min-w-0">
+                        <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-1.5">
-                                <span class="text-sm font-medium text-[var(--ui-secondary)]">{{ $item->name }}</span>
+                                <span class="text-sm font-medium text-[color:var(--nx-text)]">{{ $item->name }}</span>
                                 @if ($item->portion_size)
-                                    <span class="text-xs text-[var(--ui-muted)]">{{ $item->portion_size }}</span>
+                                    <span class="text-xs text-[color:var(--nx-muted)]">{{ $item->portion_size }}</span>
                                 @endif
 
                                 @php
                                     [$approvalLabel, $approvalVariant] = [
-                                        'draft'    => ['Entwurf', 'muted'],
+                                        'draft'    => ['Entwurf', 'neutral'],
                                         'review'   => ['In Prüfung', 'warning'],
                                         'approved' => ['Freigegeben', 'success'],
-                                    ][$item->approval_status] ?? ['Entwurf', 'muted'];
+                                    ][$item->approval_status] ?? ['Entwurf', 'neutral'];
                                 @endphp
-                                <x-ui-badge :variant="$approvalVariant" size="xs">{{ $approvalLabel }}</x-ui-badge>
+                                <x-nx-badge :variant="$approvalVariant">{{ $approvalLabel }}</x-nx-badge>
 
                                 @if ($item->is_vegan)
-                                    <x-ui-badge variant="success" size="xs">Vegan</x-ui-badge>
+                                    <x-nx-badge variant="success">Vegan</x-nx-badge>
                                 @elseif ($item->is_vegetarian)
-                                    <x-ui-badge variant="success" size="xs">Vegetarisch</x-ui-badge>
+                                    <x-nx-badge variant="success">Vegetarisch</x-nx-badge>
                                 @endif
                                 @if ($item->is_alcoholic)
-                                    <x-ui-badge variant="info" size="xs">18+</x-ui-badge>
+                                    <x-nx-badge variant="info">18+</x-nx-badge>
                                 @endif
                                 @if (!$item->available)
-                                    <x-ui-badge variant="muted" size="xs">Nicht verfügbar</x-ui-badge>
+                                    <x-nx-badge>Nicht verfügbar</x-nx-badge>
                                 @endif
                             </div>
                             @if ($item->description)
-                                <p class="text-xs text-[var(--ui-muted)] m-0 mt-0.5">{{ $item->description }}</p>
+                                <p class="m-0 mt-0.5 text-xs text-[color:var(--nx-muted)]">{{ $item->description }}</p>
                             @endif
                             @if ($item->allergens->isNotEmpty() || $item->additives->isNotEmpty())
-                                <p class="text-[11px] text-[var(--ui-muted)] m-0 mt-0.5">
+                                <p class="m-0 mt-0.5 text-[11px] text-[color:var(--nx-faint)]">
                                     {{ $item->allergens->pluck('code')->merge($item->additives->pluck('code'))->filter()->map(fn ($c) => "($c)")->implode(' ') }}
                                 </p>
                             @endif
                         </div>
-                        <div class="ml-4 flex shrink-0 items-center justify-end gap-1.5">
-                            <span class="mr-2 whitespace-nowrap text-sm font-semibold tabular-nums text-[var(--ui-secondary)]">
+                        <div class="ml-4 flex shrink-0 items-center justify-end gap-1">
+                            <span class="mr-2 whitespace-nowrap text-sm font-semibold tabular-nums text-[color:var(--nx-text)]">
                                 {{ number_format($item->price, 2, ',', '.') }} €
                             </span>
 
+                            {{-- Freigabe-Workflow bleibt sichtbar (Kernaktion) --}}
                             @if ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_DRAFT)
-                                <x-ui-button variant="secondary-outline" size="sm" wire:click="submitItemForReview({{ $item->id }})">Zur Prüfung</x-ui-button>
+                                <x-nx-button wire:click="submitItemForReview({{ $item->id }})">Zur Prüfung</x-nx-button>
                             @elseif ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_REVIEW)
-                                <x-ui-button variant="success" size="sm" wire:click="approveItem({{ $item->id }})">Freigeben</x-ui-button>
+                                <x-nx-button variant="primary" wire:click="approveItem({{ $item->id }})">Freigeben</x-nx-button>
                             @elseif ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_APPROVED)
-                                <div class="shrink-0">
-                                    <x-ui-confirm-button
-                                        action="resetItemApproval"
-                                        :value="$item->id"
-                                        text="Zurückziehen"
-                                        confirmText="Sicher?"
-                                        variant="secondary-outline"
-                                        size="sm"
-                                    />
-                                </div>
+                                <x-nx-button wire:click="resetItemApproval({{ $item->id }})" wire:confirm="Freigabe zurückziehen?">Zurückziehen</x-nx-button>
                             @endif
 
-                            <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openItemForm({{ $item->id }})" title="Bearbeiten">
-                                @svg('heroicon-o-pencil', 'w-4 h-4')
-                            </x-ui-button>
-                            <div class="shrink-0">
-                                <x-ui-confirm-button
-                                    action="deleteItem"
-                                    :value="$item->id"
-                                    text=""
-                                    confirmText="Wirklich löschen?"
-                                    variant="danger-outline"
-                                    size="sm"
-                                    :icon="svg('heroicon-o-trash', 'w-4 h-4')->toHtml()"
-                                />
+                            {{-- Sekundär: erscheint beim Hover --}}
+                            <div class="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                                <x-nx-button icon variant="ghost" wire:click="openItemForm({{ $item->id }})" title="Bearbeiten">
+                                    @svg('heroicon-o-pencil', 'w-4 h-4')
+                                </x-nx-button>
+                                <button type="button" wire:click="deleteItem({{ $item->id }})" wire:confirm="Artikel wirklich löschen?" title="Löschen"
+                                    class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
+                                    @svg('heroicon-o-trash', 'w-4 h-4')
+                                </button>
                             </div>
                         </div>
                     </div>
                 @endforeach
 
                 @if ($category->menuItems->isEmpty())
-                    <div class="flex flex-col items-center justify-center py-6 text-[var(--ui-muted)]">
-                        @svg('heroicon-o-inbox', 'w-6 h-6 mb-1 opacity-40')
-                        <span class="text-xs">{{ $approvalFilter !== '' ? 'Keine Artikel mit diesem Status.' : 'Keine Artikel vorhanden.' }}</span>
-                    </div>
+                    <x-nx-empty icon="heroicon-o-inbox">{{ $approvalFilter !== '' ? 'Keine Artikel mit diesem Status.' : 'Keine Artikel vorhanden.' }}</x-nx-empty>
                 @endif
             </div>
-        </section>
+        </x-nx-card>
     @endforeach
 
     {{-- Kategorie-Modal --}}
-    <x-ui-modal size="sm" wire:model="showCategoryForm">
+    <x-nx-modal size="sm" wire:model="showCategoryForm">
         <x-slot name="header">
-            <div class="flex items-center gap-3">
-                <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--ui-primary-10)] flex-shrink-0">
-                    @svg('heroicon-o-tag', 'w-5 h-5 text-[var(--ui-primary)]')
-                </div>
-                <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">
-                    {{ $editingCategoryId ? 'Kategorie bearbeiten' : 'Neue Kategorie' }}
-                </h3>
-            </div>
+            <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">
+                {{ $editingCategoryId ? 'Kategorie bearbeiten' : 'Neue Kategorie' }}
+            </h3>
         </x-slot>
 
         <div class="space-y-3">
-            <x-ui-input-text name="categoryName" label="Name" wire:model="categoryName" required errorKey="categoryName" />
-            <x-ui-input-textarea name="categoryDescription" label="Beschreibung" wire:model="categoryDescription" rows="2" />
+            <x-nx-input-text name="categoryName" label="Name" wire:model="categoryName" required errorKey="categoryName" />
+            <x-nx-input-textarea name="categoryDescription" label="Beschreibung" wire:model="categoryDescription" rows="2" />
 
             {{-- Kategoriebild (16:9) --}}
             <div>
-                <label class="block text-[12px] font-medium text-[var(--ui-muted)] mb-1">Bild (16:9)</label>
+                <label class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Bild (16:9)</label>
                 @php $editingCategory = $editingCategoryId ? $this->categories->firstWhere('id', $editingCategoryId) : null; @endphp
                 @if ($categoryImage)
                     <img src="{{ $categoryImage->temporaryUrl() }}" alt="" class="mb-2 aspect-video w-full rounded-lg object-cover" />
@@ -230,33 +198,24 @@
         </div>
 
         <x-slot name="footer">
-            <div class="flex justify-end gap-2">
-                <x-ui-button variant="secondary-outline" size="sm" wire:click="$set('showCategoryForm', false)">Abbrechen</x-ui-button>
-                <x-ui-button variant="primary" size="sm" wire:click="saveCategory">Speichern</x-ui-button>
-            </div>
+            <x-nx-button wire:click="$set('showCategoryForm', false)">Abbrechen</x-nx-button>
+            <x-nx-button variant="primary" wire:click="saveCategory">Speichern</x-nx-button>
         </x-slot>
-    </x-ui-modal>
+    </x-nx-modal>
 
     {{-- Produkt-Modal --}}
-    <x-ui-modal size="md" wire:model="showItemForm">
+    <x-nx-modal size="md" wire:model="showItemForm">
         <x-slot name="header">
-            <div class="flex items-center gap-3">
-                <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--ui-primary-10)] flex-shrink-0">
-                    @svg('heroicon-o-cake', 'w-5 h-5 text-[var(--ui-primary)]')
-                </div>
-                <div class="min-w-0">
-                    <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">
-                        {{ $editingItemId ? 'Artikel bearbeiten' : 'Neuer Artikel' }}
-                    </h3>
-                    <p class="text-[12px] text-[var(--ui-muted)] m-0 mt-0.5">Keine Pflichtfelder bei Allergenen/MwSt – Verantwortung beim Bearbeiter</p>
-                </div>
-            </div>
+            <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">
+                {{ $editingItemId ? 'Artikel bearbeiten' : 'Neuer Artikel' }}
+            </h3>
+            <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">Keine Pflichtfelder bei Allergenen/MwSt – Verantwortung beim Bearbeiter</p>
         </x-slot>
 
         <div class="space-y-4" x-data x-on:menu-item-form-reset.window="$nextTick(() => $refs.itemName?.querySelector('input')?.focus())">
-            <x-ui-form-grid :cols="2" :gap="3">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div class="sm:col-span-2">
-                    <x-ui-input-select
+                    <x-nx-input-select
                         name="itemCategoryId"
                         label="Kategorie"
                         :options="$this->categories"
@@ -267,7 +226,7 @@
                     />
                 </div>
                 <div class="sm:col-span-2">
-                    <x-ui-input-select
+                    <x-nx-input-select
                         name="itemHoldingClassId"
                         label="Standzeit / Zeitkritikalität"
                         :options="$this->holdingClasses"
@@ -279,20 +238,20 @@
                         errorKey="itemHoldingClassId"
                     />
                     @if ($this->holdingClasses->isEmpty())
-                        <p class="mt-1 text-[11px] text-[var(--ui-muted)]">Noch keine Stufen angelegt – unter <a href="{{ route('reservation.settings.holding-classes') }}" class="underline" wire:navigate>Einstellungen → Standzeit-Klassen</a>.</p>
+                        <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Noch keine Stufen angelegt – unter <a href="{{ route('reservation.settings.holding-classes') }}" class="underline" wire:navigate>Einstellungen → Standzeit-Klassen</a>.</p>
                     @endif
                 </div>
                 <div class="sm:col-span-2" x-ref="itemName">
-                    <x-ui-input-text name="itemName" label="Name" wire:model="itemName" required errorKey="itemName" />
+                    <x-nx-input-text name="itemName" label="Name" wire:model="itemName" required errorKey="itemName" />
                 </div>
                 <div class="sm:col-span-2">
-                    <x-ui-input-textarea name="itemDescription" label="Beschreibung" wire:model="itemDescription" rows="2" />
+                    <x-nx-input-textarea name="itemDescription" label="Beschreibung" wire:model="itemDescription" rows="2" />
                 </div>
                 <div class="sm:col-span-2">
-                    <x-ui-input-text name="itemPortionSize" label="Portionsgröße" wire:model="itemPortionSize" placeholder="z.B. 0,2 l · 0,5 l · 250 g" errorKey="itemPortionSize" />
+                    <x-nx-input-text name="itemPortionSize" label="Portionsgröße" wire:model="itemPortionSize" placeholder="z.B. 0,2 l · 0,5 l · 250 g" errorKey="itemPortionSize" />
                 </div>
-                <x-ui-input-number name="itemPrice" label="Preis (€)" step="0.01" min="0" wire:model="itemPrice" required errorKey="itemPrice" />
-                <x-ui-input-select
+                <x-nx-input-number name="itemPrice" label="Preis (€)" step="0.01" min="0" wire:model="itemPrice" required errorKey="itemPrice" />
+                <x-nx-input-select
                     name="itemTaxRate"
                     label="MwSt. (%)"
                     :options="[
@@ -302,11 +261,11 @@
                     ]"
                     wire:model="itemTaxRate"
                 />
-            </x-ui-form-grid>
+            </div>
 
             {{-- Produktbild (1:1) --}}
             <div>
-                <label class="block text-[12px] font-medium text-[var(--ui-muted)] mb-1">Produktbild (quadratisch)</label>
+                <label class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Produktbild (quadratisch)</label>
                 @php $editingItem = $editingItemId ? \Platform\Reservation\Models\MenuItem::with('imageFile.variants')->find($editingItemId) : null; @endphp
                 <div class="flex items-start gap-3">
                     @if ($itemImage)
@@ -336,16 +295,13 @@
                     'itemAlcoholic'  => 'Alkoholisch',
                     'itemCaffeinated' => 'Koffeinhaltig',
                 ] as $prop => $label)
-                    <label class="flex items-center gap-2 text-sm text-[var(--ui-secondary)] cursor-pointer">
-                        <input wire:model.live="{{ $prop }}" type="checkbox" class="rounded border-[var(--ui-border)]" />
-                        {{ $label }}
-                    </label>
+                    <x-nx-input-checkbox wire:model.live="{{ $prop }}" :label="$label" wire:key="prop-{{ $prop }}" />
                 @endforeach
             </div>
 
-            <x-ui-form-grid :cols="2" :gap="3">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {{-- Altersgrenze --}}
-                <x-ui-input-select
+                <x-nx-input-select
                     name="itemMinAge"
                     label="Altersgrenze (Jugendschutz)"
                     :options="[
@@ -359,13 +315,13 @@
 
                 {{-- Koffeingehalt (nur wenn koffeinhaltig) --}}
                 @if ($itemCaffeinated)
-                    <x-ui-input-number name="itemCaffeineMg" label="Koffeingehalt (mg/100 ml)" step="0.1" min="0" wire:model="itemCaffeineMg" placeholder="z. B. 32,0" errorKey="itemCaffeineMg" />
+                    <x-nx-input-number name="itemCaffeineMg" label="Koffeingehalt (mg/100 ml)" step="0.1" min="0" wire:model="itemCaffeineMg" placeholder="z. B. 32,0" errorKey="itemCaffeineMg" />
                 @endif
-            </x-ui-form-grid>
+            </div>
 
             {{-- Allergene --}}
             <div>
-                <label class="block text-[12px] font-medium text-[var(--ui-muted)] mb-1">Allergene</label>
+                <label class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Allergene</label>
                 @include('reservation::partials.tag-select', [
                     'options'     => $this->allergens,
                     'selected'    => $itemAllergenIds,
@@ -378,7 +334,7 @@
 
             {{-- Zusatzstoffe --}}
             <div>
-                <label class="block text-[12px] font-medium text-[var(--ui-muted)] mb-1">Zusatzstoffe</label>
+                <label class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Zusatzstoffe</label>
                 @include('reservation::partials.tag-select', [
                     'options'     => $this->additives,
                     'selected'    => $itemAdditiveIds,
@@ -391,15 +347,13 @@
         </div>
 
         <x-slot name="footer">
-            <div class="flex justify-end gap-2">
-                <x-ui-button variant="secondary-outline" size="sm" wire:click="$set('showItemForm', false)">Abbrechen</x-ui-button>
-                @unless ($editingItemId)
-                    <x-ui-button variant="primary-outline" size="sm" wire:click="saveItem(true)">Speichern &amp; Neu</x-ui-button>
-                @endunless
-                <x-ui-button variant="primary" size="sm" wire:click="saveItem">Speichern</x-ui-button>
-            </div>
+            <x-nx-button wire:click="$set('showItemForm', false)">Abbrechen</x-nx-button>
+            @unless ($editingItemId)
+                <x-nx-button wire:click="saveItem(true)">Speichern &amp; Neu</x-nx-button>
+            @endunless
+            <x-nx-button variant="primary" wire:click="saveItem">Speichern</x-nx-button>
         </x-slot>
-    </x-ui-modal>
+    </x-nx-modal>
 
     </div>
     </x-ui-page-container>
