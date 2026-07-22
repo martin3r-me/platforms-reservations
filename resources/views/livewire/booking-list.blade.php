@@ -57,7 +57,7 @@
             </x-nx-table-header>
             <x-nx-table-body>
                 @forelse ($this->bookings as $booking)
-                    <x-nx-table-row wire:key="booking-{{ $booking->id }}" class="group">
+                    <x-nx-table-row wire:key="booking-{{ $booking->id }}" wire:click="openDetail({{ $booking->id }})" class="group cursor-pointer">
                         <x-nx-table-cell class="whitespace-nowrap tabular-nums text-[color:var(--nx-muted)]">{{ $booking->date->format('d.m.Y') }}</x-nx-table-cell>
                         <x-nx-table-cell>
                             <span class="font-medium text-[color:var(--nx-text)]">{{ $booking->event?->name ?? '—' }}</span>
@@ -76,10 +76,7 @@
                         <x-nx-table-cell align="center" class="tabular-nums text-[color:var(--nx-muted)]">{{ $booking->guest_count }}</x-nx-table-cell>
                         <x-nx-table-cell align="right">
                             @if ($booking->items_count > 0)
-                                <button wire:click="openDetail({{ $booking->id }})" type="button"
-                                    class="whitespace-nowrap tabular-nums text-[color:var(--nx-text)] hover:underline">
-                                    {{ $booking->items_count }} Pos. · {{ number_format($booking->total_amount, 2, ',', '.') }} €
-                                </button>
+                                <span class="whitespace-nowrap tabular-nums text-[color:var(--nx-text)]">{{ $booking->items_count }} Pos. · {{ number_format($booking->total_amount, 2, ',', '.') }} €</span>
                             @else
                                 <span class="text-[color:var(--nx-faint)]">–</span>
                             @endif
@@ -106,22 +103,20 @@
                         </x-nx-table-cell>
                         <x-nx-table-cell align="right">
                             {{-- Aktionen erscheinen beim Hover über die Zeile (Notion-Stil) --}}
+                            {{-- Klick auf die Zeile öffnet Details; diese Aktionen stoppen daher den Zeilen-Klick --}}
                             <div class="flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
                                 @if ($booking->status === 'pending')
-                                    <x-nx-button icon variant="ghost" wire:click="confirmBooking({{ $booking->id }})" title="Bestätigen">
+                                    <x-nx-button icon variant="ghost" wire:click.stop="confirmBooking({{ $booking->id }})" title="Bestätigen">
                                         @svg('heroicon-o-check', 'w-4 h-4')
                                     </x-nx-button>
                                 @endif
-                                <x-nx-button icon variant="ghost" wire:click="openDetail({{ $booking->id }})" title="Details">
-                                    @svg('heroicon-o-eye', 'w-4 h-4')
-                                </x-nx-button>
                                 @if ($this->printingAvailable)
-                                    <x-nx-button icon variant="ghost" wire:click="openPrintModal({{ $booking->id }})" title="Bon drucken">
+                                    <x-nx-button icon variant="ghost" wire:click.stop="openPrintModal({{ $booking->id }})" title="Bon drucken">
                                         @svg('heroicon-o-printer', 'w-4 h-4')
                                     </x-nx-button>
                                 @endif
                                 @if ($booking->status === 'pending')
-                                    <button type="button" wire:click="cancelBooking({{ $booking->id }})" wire:confirm="Wirklich stornieren?" title="Stornieren"
+                                    <button type="button" wire:click.stop="cancelBooking({{ $booking->id }})" wire:confirm="Wirklich stornieren?" title="Stornieren"
                                         class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
                                         @svg('heroicon-o-x-mark', 'w-4 h-4')
                                     </button>
