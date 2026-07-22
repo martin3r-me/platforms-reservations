@@ -143,18 +143,18 @@
     </div>
 
     {{-- Detail-Modal: Buchung mit Bestellpositionen --}}
-    <x-ui-modal size="md" wire:model="showDetail">
+    <x-nx-modal size="md" wire:model="showDetail">
         <x-slot name="header">
             <div class="flex items-center gap-3">
-                <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--ui-primary-10)] flex-shrink-0">
-                    @svg('heroicon-o-clipboard-document-list', 'w-5 h-5 text-[var(--ui-primary)]')
+                <div class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--nx-accent-soft)]">
+                    @svg('heroicon-o-clipboard-document-list', 'w-5 h-5 text-[color:var(--nx-text)]')
                 </div>
                 <div class="min-w-0">
-                    <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">
+                    <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">
                         Buchung {{ $this->detailBooking?->guest_name }}
                     </h3>
                     @if ($this->detailBooking)
-                        <p class="text-[12px] text-[var(--ui-muted)] m-0 mt-0.5">
+                        <p class="m-0 mt-0.5 text-xs text-[color:var(--nx-muted)]">
                             {{ $this->detailBooking->date->format('d.m.Y') }}@if ($this->detailBooking->time_start) · {{ substr($this->detailBooking->time_start, 0, 5) }} Uhr @endif
                             @if ($this->detailBooking->table) · Tisch {{ $this->detailBooking->table->label }} @endif
                         </p>
@@ -167,57 +167,57 @@
             @php $detail = $this->detailBooking; @endphp
             <div class="space-y-4">
                 {{-- Kontext --}}
-                <div class="rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 p-3 text-sm space-y-1">
+                <div class="space-y-1 rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] p-3 text-sm">
                     @if ($detail->event)
-                        <p class="m-0 text-[var(--ui-secondary)]">
+                        <p class="m-0 text-[color:var(--nx-text)]">
                             <span class="font-medium">{{ $detail->event->name }}</span>
                             @if ($detail->slot) · {{ $detail->slot->displayLabel() }} @endif
                             @if ($detail->table?->floorPlan) · {{ $detail->table->floorPlan->name }} @endif
                         </p>
                     @endif
-                    <p class="m-0 text-[var(--ui-muted)]">
+                    <p class="m-0 text-[color:var(--nx-muted)]">
                         {{ $detail->guest_count }} {{ $detail->guest_count === 1 ? 'Person' : 'Personen' }}
                         @if ($detail->guest_email) · {{ $detail->guest_email }} @endif
                         @if ($detail->guest_phone) · {{ $detail->guest_phone }} @endif
                     </p>
                     @if ($detail->payment_method)
-                        <p class="m-0 text-[var(--ui-muted)]">Zahlart: {{ ['card' => 'Karte', 'paypal' => 'PayPal', 'applepay' => 'Apple Pay'][$detail->payment_method] ?? $detail->payment_method }}</p>
+                        <p class="m-0 text-[color:var(--nx-muted)]">Zahlart: {{ ['card' => 'Karte', 'paypal' => 'PayPal', 'applepay' => 'Apple Pay'][$detail->payment_method] ?? $detail->payment_method }}</p>
                     @endif
                     @if ($detail->notes)
-                        <p class="m-0 text-[var(--ui-muted)]">Anmerkung: {{ $detail->notes }}</p>
+                        <p class="m-0 text-[color:var(--nx-muted)]">Anmerkung: {{ $detail->notes }}</p>
                     @endif
                 </div>
 
                 {{-- Bestellpositionen --}}
                 @if ($detail->items->isEmpty())
-                    <div class="flex flex-col items-center justify-center py-6 text-[var(--ui-muted)]">
+                    <div class="flex flex-col items-center justify-center py-6 text-[color:var(--nx-faint)]">
                         @svg('heroicon-o-inbox', 'w-6 h-6 mb-1 opacity-40')
                         <span class="text-xs">Keine Vorbestellung – nur Tischreservierung</span>
                     </div>
                 @else
-                    <section class="rounded-lg border border-[var(--ui-border)]/40 overflow-hidden">
-                        <div class="divide-y divide-[var(--ui-border)]/30">
+                    <section class="overflow-hidden rounded-[8px] border border-[color:var(--nx-line)]">
+                        <div class="divide-y divide-[color:var(--nx-line)]">
                             @foreach ($detail->items as $item)
                                 <div wire:key="detail-item-{{ $item->id }}" class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                                     <div class="min-w-0">
-                                        <span class="text-[var(--ui-secondary)]">
+                                        <span class="text-[color:var(--nx-text)]">
                                             <span class="font-semibold tabular-nums">{{ $item->quantity }}×</span>
                                             {{ $item->menuItem?->name ?? 'Gelöschter Artikel' }}
                                         </span>
                                         @if ($item->notes)
-                                            <p class="text-xs text-[var(--ui-muted)] m-0">{{ $item->notes }}</p>
+                                            <p class="m-0 text-xs text-[color:var(--nx-muted)]">{{ $item->notes }}</p>
                                         @endif
                                     </div>
                                     <div class="shrink-0 text-right">
-                                        <span class="whitespace-nowrap tabular-nums text-[var(--ui-secondary)]">{{ number_format($item->quantity * $item->unit_price, 2, ',', '.') }} €</span>
-                                        <span class="block text-[11px] text-[var(--ui-muted)] tabular-nums">
+                                        <span class="whitespace-nowrap tabular-nums text-[color:var(--nx-text)]">{{ number_format($item->quantity * $item->unit_price, 2, ',', '.') }} €</span>
+                                        <span class="block text-[11px] tabular-nums text-[color:var(--nx-muted)]">
                                             à {{ number_format($item->unit_price, 2, ',', '.') }} € · {{ rtrim(rtrim($item->tax_rate, '0'), '.') }} %
                                         </span>
                                     </div>
                                 </div>
                             @endforeach
                         </div>
-                        <div class="flex justify-between border-t border-[var(--ui-border)]/40 bg-[var(--ui-muted-5)] px-3 py-2 text-sm font-semibold text-[var(--ui-secondary)]">
+                        <div class="flex justify-between border-t border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] px-3 py-2 text-sm font-semibold text-[color:var(--nx-text)]">
                             <span>Gesamt</span>
                             <span class="whitespace-nowrap tabular-nums">{{ number_format($detail->total_amount, 2, ',', '.') }} €</span>
                         </div>
@@ -227,42 +227,40 @@
         @endif
 
         <x-slot name="footer">
-            <div class="flex justify-end gap-2">
-                @if ($this->printingAvailable && $this->detailBooking)
-                    <x-ui-button variant="secondary-outline" size="sm" wire:click="openPrintModal({{ $this->detailBooking->id }})">
-                        @svg('heroicon-o-printer', 'w-4 h-4')
-                        <span>Bon drucken</span>
-                    </x-ui-button>
-                @endif
-                <x-ui-button variant="secondary-outline" size="sm" wire:click="$set('showDetail', false)">Schließen</x-ui-button>
-            </div>
+            @if ($this->printingAvailable && $this->detailBooking)
+                <x-nx-button wire:click="openPrintModal({{ $this->detailBooking->id }})">
+                    @svg('heroicon-o-printer', 'w-4 h-4')
+                    <span>Bon drucken</span>
+                </x-nx-button>
+            @endif
+            <x-nx-button wire:click="$set('showDetail', false)">Schließen</x-nx-button>
         </x-slot>
-    </x-ui-modal>
+    </x-nx-modal>
 
     {{-- Bon drucken: Drucker/Gruppe wählen --}}
-    <x-ui-modal size="sm" wire:model="printModalShow">
+    <x-nx-modal size="sm" wire:model="printModalShow">
         <x-slot name="header">
             <div class="flex items-center gap-3">
-                <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--ui-primary-10)] flex-shrink-0">
-                    @svg('heroicon-o-printer', 'w-5 h-5 text-[var(--ui-primary)]')
+                <div class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--nx-accent-soft)]">
+                    @svg('heroicon-o-printer', 'w-5 h-5 text-[color:var(--nx-text)]')
                 </div>
                 <div class="min-w-0">
-                    <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">Bon drucken</h3>
-                    <p class="text-[12px] text-[var(--ui-muted)] m-0 mt-0.5">Buchung als Beleg an einen Drucker senden</p>
+                    <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">Bon drucken</h3>
+                    <p class="m-0 mt-0.5 text-xs text-[color:var(--nx-muted)]">Buchung als Beleg an einen Drucker senden</p>
                 </div>
             </div>
         </x-slot>
 
         <div class="space-y-4">
             {{-- Ziel: Einzeldrucker oder Gruppe --}}
-            <div class="inline-flex overflow-hidden rounded-lg border border-[var(--ui-border)]">
-                <button type="button" wire:click="$set('printTarget', 'printer')" class="px-3 py-1.5 text-sm {{ $printTarget === 'printer' ? 'bg-[var(--ui-primary)] text-white' : 'text-[var(--ui-secondary)]' }}">Drucker</button>
-                <button type="button" wire:click="$set('printTarget', 'group')" class="px-3 py-1.5 text-sm {{ $printTarget === 'group' ? 'bg-[var(--ui-primary)] text-white' : 'text-[var(--ui-secondary)]' }}">Gruppe</button>
+            <div class="inline-flex overflow-hidden rounded-[8px] border border-[color:var(--nx-line-strong)]">
+                <button type="button" wire:click="$set('printTarget', 'printer')" class="px-3 py-1.5 text-sm transition-colors {{ $printTarget === 'printer' ? 'bg-[color:var(--nx-accent)] text-[color:var(--nx-on-accent)]' : 'text-[color:var(--nx-text)] hover:bg-[color:var(--nx-hover)]' }}">Drucker</button>
+                <button type="button" wire:click="$set('printTarget', 'group')" class="px-3 py-1.5 text-sm transition-colors {{ $printTarget === 'group' ? 'bg-[color:var(--nx-accent)] text-[color:var(--nx-on-accent)]' : 'text-[color:var(--nx-text)] hover:bg-[color:var(--nx-hover)]' }}">Gruppe</button>
             </div>
 
             @if ($printTarget === 'printer')
                 @if ($this->printers->isEmpty())
-                    <p class="text-sm text-[var(--ui-muted)] m-0">Kein Drucker verfügbar.</p>
+                    <p class="m-0 text-sm text-[color:var(--nx-muted)]">Kein Drucker verfügbar.</p>
                 @else
                     <x-ui-input-select
                         name="selectedPrinterId"
@@ -275,7 +273,7 @@
                 @endif
             @else
                 @if ($this->printerGroups->isEmpty())
-                    <p class="text-sm text-[var(--ui-muted)] m-0">Keine Drucker-Gruppe verfügbar.</p>
+                    <p class="m-0 text-sm text-[color:var(--nx-muted)]">Keine Drucker-Gruppe verfügbar.</p>
                 @else
                     <x-ui-input-select
                         name="selectedPrinterGroupId"
@@ -290,15 +288,13 @@
         </div>
 
         <x-slot name="footer">
-            <div class="flex justify-end gap-2">
-                <x-ui-button variant="secondary-outline" size="sm" wire:click="closePrintModal">Abbrechen</x-ui-button>
-                <x-ui-button variant="primary" size="sm" wire:click="printBookingConfirm">
-                    @svg('heroicon-o-printer', 'w-4 h-4')
-                    <span>Drucken</span>
-                </x-ui-button>
-            </div>
+            <x-nx-button wire:click="closePrintModal">Abbrechen</x-nx-button>
+            <x-nx-button variant="primary" wire:click="printBookingConfirm">
+                @svg('heroicon-o-printer', 'w-4 h-4')
+                <span>Drucken</span>
+            </x-nx-button>
         </x-slot>
-    </x-ui-modal>
+    </x-nx-modal>
 
     </div>
     </x-ui-page-container>
