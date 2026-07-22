@@ -15,125 +15,84 @@
         </x-ui-page-actionbar>
     </x-slot>
 
-    <x-ui-page-container>
-    <div class="pt-4 space-y-4">
+    <x-ui-page-container width="contained">
+    <div class="space-y-6">
 
     {{-- Kennzahlen --}}
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        @foreach ([
-            [
-                'label' => 'Offene Buchungen',
-                'value' => (string) $this->stats->pending_bookings,
-                'hint'  => 'warten auf Bestätigung',
-                'icon'  => 'heroicon-o-inbox',
-                'color' => 'var(--ui-warning)',
-                'href'  => route('reservation.bookings.index'),
-            ],
-            [
-                'label' => 'Kommende Termine',
-                'value' => (string) $this->stats->upcoming_events,
-                'hint'  => null,
-                'icon'  => 'heroicon-o-ticket',
-                'color' => 'var(--ui-primary)',
-                'href'  => route('reservation.events.index'),
-            ],
-            [
-                'label' => 'Umsatz im Monat',
-                'value' => number_format($this->stats->month_revenue, 2, ',', '.') . ' €',
-                'hint'  => now()->locale('de')->isoFormat('MMMM Y'),
-                'icon'  => 'heroicon-o-banknotes',
-                'color' => 'var(--ui-success)',
-                'href'  => route('reservation.finance.index'),
-            ],
-            [
-                'label' => 'Freigegebene Artikel',
-                'value' => $this->stats->approved_items . ' / ' . $this->stats->total_items,
-                'hint'  => 'Vier-Augen-Freigabe',
-                'icon'  => 'heroicon-o-rectangle-stack',
-                'color' => 'var(--ui-info)',
-                'href'  => route('reservation.menu.index'),
-            ],
-        ] as $tile)
-            <a href="{{ $tile['href'] }}" wire:navigate wire:key="tile-{{ $loop->index }}"
-                class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm p-3 transition hover:shadow-md">
-                <div class="flex items-center justify-between gap-2">
-                    <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">{{ $tile['label'] }}</span>
-                    @svg($tile['icon'], 'w-4 h-4 shrink-0', ['style' => 'color: ' . $tile['color']])
-                </div>
-                <p class="m-0 mt-1 whitespace-nowrap text-lg font-bold tabular-nums text-[var(--ui-secondary)]">{{ $tile['value'] }}</p>
-                @if ($tile['hint'])
-                    <p class="m-0 mt-0.5 text-[11px] text-[var(--ui-muted)]">{{ $tile['hint'] }}</p>
-                @endif
-            </a>
-        @endforeach
-    </div>
+    <x-nx-stat-grid>
+        <x-nx-stat label="Offene Buchungen" :value="(string) $this->stats->pending_bookings" hint="warten auf Bestätigung"
+            icon="heroicon-o-inbox" accent="var(--nx-warning)" :href="route('reservation.bookings.index')" wire:navigate />
+        <x-nx-stat label="Kommende Termine" :value="(string) $this->stats->upcoming_events"
+            icon="heroicon-o-ticket" accent="var(--nx-accent)" :href="route('reservation.events.index')" wire:navigate />
+        <x-nx-stat label="Umsatz im Monat" :value="number_format($this->stats->month_revenue, 2, ',', '.') . ' €'" :hint="now()->locale('de')->isoFormat('MMMM Y')"
+            icon="heroicon-o-banknotes" accent="var(--nx-success)" :href="route('reservation.finance.index')" wire:navigate />
+        <x-nx-stat label="Freigegebene Artikel" :value="$this->stats->approved_items . ' / ' . $this->stats->total_items" hint="Vier-Augen-Freigabe"
+            icon="heroicon-o-rectangle-stack" accent="var(--nx-info)" :href="route('reservation.menu.index')" wire:navigate />
+    </x-nx-stat-grid>
 
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {{-- Nächste Termine --}}
-        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-                @svg('heroicon-o-ticket', 'w-4 h-4 text-[var(--ui-muted)]')
-                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Nächste Termine</h2>
-                <a href="{{ route('reservation.events.index') }}" wire:navigate class="ml-auto text-[11px] text-[var(--ui-primary)] hover:underline">Alle</a>
+        <x-nx-card flush>
+            <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+                @svg('heroicon-o-ticket', 'w-4 h-4 text-[color:var(--nx-muted)]')
+                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-muted)]">Nächste Termine</h2>
+                <a href="{{ route('reservation.events.index') }}" wire:navigate class="ml-auto text-xs text-[color:var(--nx-muted)] transition-colors hover:text-[color:var(--nx-text)]">Alle</a>
             </div>
-            <div class="divide-y divide-[var(--ui-border)]/30">
+            <div>
                 @forelse ($this->upcomingEvents as $event)
-                    <div wire:key="dash-event-{{ $event->id }}" class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-[var(--ui-muted-5)] transition-colors">
+                    <a href="{{ route('reservation.events.dashboard', $event->id) }}" wire:navigate wire:key="dash-event-{{ $event->id }}"
+                        class="flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 transition-colors last:border-0 hover:bg-[color:var(--nx-hover)]">
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
-                                <span class="text-sm font-medium text-[var(--ui-secondary)] truncate">{{ $event->name }}</span>
+                                <span class="truncate text-sm font-medium text-[color:var(--nx-text)]">{{ $event->name }}</span>
                                 @if ($event->status->value !== 'published')
-                                    <x-ui-badge variant="muted" size="xs">Entwurf</x-ui-badge>
+                                    <x-nx-badge>Entwurf</x-nx-badge>
                                 @endif
                             </div>
-                            <p class="text-xs text-[var(--ui-muted)] m-0 mt-0.5">
+                            <p class="m-0 mt-0.5 text-xs text-[color:var(--nx-muted)]">
                                 {{ $event->date->locale('de')->isoFormat('dd, D. MMM') }}
                                 @if ($event->venue) · {{ $event->venue->name }} @endif
                                 · {{ $event->bookings_count }} {{ $event->bookings_count === 1 ? 'Buchung' : 'Buchungen' }}
                             </p>
                         </div>
-                        @if ($event->bookings_count > 0)
-                            <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.events.orders', $event->id)" wire:navigate>
-                                @svg('heroicon-o-fire', 'w-4 h-4')
-                                <span>Küche</span>
-                            </x-ui-button>
-                        @endif
-                    </div>
+                        @svg('heroicon-o-chevron-right', 'w-4 h-4 shrink-0 text-[color:var(--nx-faint)]')
+                    </a>
                 @empty
-                    <div class="flex flex-col items-center justify-center py-8 text-[var(--ui-muted)]">
-                        @svg('heroicon-o-ticket', 'w-8 h-8 mb-2 opacity-40')
-                        <span class="text-xs">Keine kommenden Termine</span>
-                        <a href="{{ route('reservation.events.index') }}" wire:navigate class="mt-1 text-[11px] text-[var(--ui-primary)] hover:underline">Termin anlegen</a>
-                    </div>
+                    <x-nx-empty icon="heroicon-o-ticket">
+                        Keine kommenden Termine
+                        <x-slot name="action">
+                            <a href="{{ route('reservation.events.index') }}" wire:navigate class="text-xs text-[color:var(--nx-text)] hover:underline">Termin anlegen</a>
+                        </x-slot>
+                    </x-nx-empty>
                 @endforelse
             </div>
-        </section>
+        </x-nx-card>
 
         {{-- Neueste Buchungen --}}
-        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-                @svg('heroicon-o-calendar-days', 'w-4 h-4 text-[var(--ui-muted)]')
-                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Neueste Buchungen</h2>
-                <a href="{{ route('reservation.bookings.index') }}" wire:navigate class="ml-auto text-[11px] text-[var(--ui-primary)] hover:underline">Alle</a>
+        <x-nx-card flush>
+            <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+                @svg('heroicon-o-calendar-days', 'w-4 h-4 text-[color:var(--nx-muted)]')
+                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-muted)]">Neueste Buchungen</h2>
+                <a href="{{ route('reservation.bookings.index') }}" wire:navigate class="ml-auto text-xs text-[color:var(--nx-muted)] transition-colors hover:text-[color:var(--nx-text)]">Alle</a>
             </div>
-            <div class="divide-y divide-[var(--ui-border)]/30">
+            <div>
                 @forelse ($this->recentBookings as $booking)
-                    <div wire:key="dash-booking-{{ $booking->id }}" class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-[var(--ui-muted-5)] transition-colors">
+                    <div wire:key="dash-booking-{{ $booking->id }}" class="flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 last:border-0">
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
-                                <span class="text-sm font-medium text-[var(--ui-secondary)] truncate">{{ $booking->guest_name }}</span>
+                                <span class="truncate text-sm font-medium text-[color:var(--nx-text)]">{{ $booking->guest_name }}</span>
                                 @php
                                     [$statusLabel, $statusVariant] = [
                                         'pending'   => ['Ausstehend', 'warning'],
                                         'confirmed' => ['Bestätigt', 'success'],
                                         'cancelled' => ['Storniert', 'danger'],
-                                        'no_show'   => ['No-Show', 'muted'],
+                                        'no_show'   => ['No-Show', 'neutral'],
                                         'completed' => ['Abgeschlossen', 'info'],
-                                    ][$booking->status] ?? [ucfirst($booking->status), 'muted'];
+                                    ][$booking->status] ?? [ucfirst($booking->status), 'neutral'];
                                 @endphp
-                                <x-ui-badge :variant="$statusVariant" size="xs">{{ $statusLabel }}</x-ui-badge>
+                                <x-nx-badge :variant="$statusVariant">{{ $statusLabel }}</x-nx-badge>
                             </div>
-                            <p class="text-xs text-[var(--ui-muted)] m-0 mt-0.5">
+                            <p class="m-0 mt-0.5 text-xs text-[color:var(--nx-muted)]">
                                 {{ $booking->date->format('d.m.Y') }}
                                 @if ($booking->event) · {{ $booking->event->name }} @endif
                                 @if ($booking->table) · Tisch {{ $booking->table->label }} @endif
@@ -141,19 +100,16 @@
                             </p>
                         </div>
                         @if ($booking->items_count > 0)
-                            <span class="shrink-0 whitespace-nowrap text-xs font-semibold tabular-nums text-[var(--ui-secondary)]">
+                            <span class="shrink-0 whitespace-nowrap text-xs font-semibold tabular-nums text-[color:var(--nx-text)]">
                                 {{ number_format($booking->total_amount, 2, ',', '.') }} €
                             </span>
                         @endif
                     </div>
                 @empty
-                    <div class="flex flex-col items-center justify-center py-8 text-[var(--ui-muted)]">
-                        @svg('heroicon-o-inbox', 'w-8 h-8 mb-2 opacity-40')
-                        <span class="text-xs">Noch keine Buchungen</span>
-                    </div>
+                    <x-nx-empty icon="heroicon-o-inbox">Noch keine Buchungen</x-nx-empty>
                 @endforelse
             </div>
-        </section>
+        </x-nx-card>
     </div>
 
     </div>
