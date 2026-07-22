@@ -10,10 +10,10 @@
             ['label' => $this->event->name],
         ]">
             @if (\Illuminate\Support\Facades\Route::has('reservation.guest.checkout') && $this->event->status->value === 'published')
-                <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.guest.checkout', $this->event->uuid)" target="_blank">
+                <x-nx-button :href="route('reservation.guest.checkout', $this->event->uuid)" target="_blank">
                     @svg('heroicon-o-eye', 'w-4 h-4')
                     <span>Gast-Ansicht</span>
-                </x-ui-button>
+                </x-nx-button>
             @endif
         </x-ui-page-actionbar>
     </x-slot>
@@ -95,7 +95,7 @@
                     <span class="h-2 w-2 rounded-full" style="background:{{ $statusDot }}"></span>{{ $this->event->status->label() }}
                 </span>
                 @if ($this->event->date->isToday())
-                    <span class="rounded-full px-2 py-0.5 text-xs font-semibold" style="color:#2f9e44;background:rgba(47,158,68,.12)">Heute</span>
+                    <x-nx-badge variant="success">Heute</x-nx-badge>
                 @endif
             </div>
             <p class="m-0 mt-1 text-sm text-[color:var(--nx-muted)]">
