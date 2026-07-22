@@ -10,10 +10,10 @@
             ['label' => $this->event->name, 'href' => route('reservation.events.dashboard', $this->event->id)],
             ['label' => 'Abend-Übersicht'],
         ]">
-            <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.events.briefing', $this->event->id)" target="_blank">
+            <x-nx-button :href="route('reservation.events.briefing', $this->event->id)" target="_blank">
                 @svg('heroicon-o-printer', 'w-4 h-4')
                 <span>Drucken</span>
-            </x-ui-button>
+            </x-nx-button>
         </x-ui-page-actionbar>
     </x-slot>
 

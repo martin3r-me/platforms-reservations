@@ -8,7 +8,7 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Einstellungen'],
         ]">
-            <x-ui-button variant="primary" size="sm" wire:click="save">Speichern</x-ui-button>
+            <x-nx-button variant="primary" wire:click="save">Speichern</x-nx-button>
         </x-ui-page-actionbar>
     </x-slot>
 

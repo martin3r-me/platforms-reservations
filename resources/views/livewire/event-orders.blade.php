@@ -10,10 +10,10 @@
             ['label' => $this->event->name, 'href' => route('reservation.events.dashboard', $this->event->id)],
             ['label' => 'Küche'],
         ]">
-            <x-ui-button variant="secondary-outline" size="sm" onclick="window.print()">
+            <x-nx-button onclick="window.print()">
                 @svg('heroicon-o-printer', 'w-4 h-4')
                 <span>Drucken</span>
-            </x-ui-button>
+            </x-nx-button>
         </x-ui-page-actionbar>
     </x-slot>
 

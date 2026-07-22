@@ -8,10 +8,10 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Drop-off'],
         ]">
-            <x-ui-button variant="primary" size="sm" wire:click="openForm()">
+            <x-nx-button variant="primary" wire:click="openForm()">
                 @svg('heroicon-o-plus', 'w-4 h-4')
                 <span>Neuer Slot</span>
-            </x-ui-button>
+            </x-nx-button>
         </x-ui-page-actionbar>
     </x-slot>
 

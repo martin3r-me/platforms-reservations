@@ -8,10 +8,10 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Alle Buchungen'],
         ]">
-            <x-ui-button variant="primary" size="sm" :href="route('reservation.bookings.create')">
+            <x-nx-button variant="primary" :href="route('reservation.bookings.create')">
                 @svg('heroicon-o-plus', 'w-4 h-4')
                 <span>Neue Buchung</span>
-            </x-ui-button>
+            </x-nx-button>
         </x-ui-page-actionbar>
     </x-slot>
 

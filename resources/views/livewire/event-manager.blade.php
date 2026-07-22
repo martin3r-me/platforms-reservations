@@ -8,12 +8,10 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Termine'],
         ]">
-            <div class="flex items-center gap-2">
-                <x-ui-button variant="primary" size="sm" wire:click="openForm()">
-                    @svg('heroicon-o-plus', 'w-4 h-4')
-                    <span>Termin</span>
-                </x-ui-button>
-            </div>
+            <x-nx-button variant="primary" wire:click="openForm()">
+                @svg('heroicon-o-plus', 'w-4 h-4')
+                <span>Termin</span>
+            </x-nx-button>
         </x-ui-page-actionbar>
     </x-slot>
 

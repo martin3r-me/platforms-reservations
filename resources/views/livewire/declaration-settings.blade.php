@@ -8,11 +8,11 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Allergene & Zusatzstoffe'],
         ]">
-            <x-ui-button variant="secondary-outline" size="sm" wire:click="loadStandard"
+            <x-nx-button wire:click="loadStandard"
                 wire:confirm="Fehlende Einträge der Standard-Legende ergänzen? Vorhandene bleiben unverändert.">
                 @svg('heroicon-o-arrow-path', 'w-4 h-4')
                 <span>Standard-Legende ergänzen</span>
-            </x-ui-button>
+            </x-nx-button>
         </x-ui-page-actionbar>
     </x-slot>
 

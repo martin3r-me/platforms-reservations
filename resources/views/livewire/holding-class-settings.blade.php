@@ -8,11 +8,11 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Standzeit-Klassen'],
         ]">
-            <x-ui-button variant="secondary-outline" size="sm" wire:click="loadStandard"
+            <x-nx-button wire:click="loadStandard"
                 wire:confirm="Die drei Standard-Stufen (erneut) anlegen?">
                 @svg('heroicon-o-arrow-path', 'w-4 h-4')
                 <span>Standard-Stufen anlegen</span>
-            </x-ui-button>
+            </x-nx-button>
         </x-ui-page-actionbar>
     </x-slot>
 
