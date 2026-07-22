@@ -19,28 +19,28 @@
     <div class="pt-4 space-y-4">
 
     @if (session('booking_message'))
-        <div class="rounded-lg border border-[var(--ui-success)]/30 bg-[var(--ui-success-10)] p-3 text-sm text-[var(--ui-success)]">{{ session('booking_message') }}</div>
+        <div class="rounded-[8px] border border-[rgba(47,158,68,.3)] bg-[rgba(47,158,68,.08)] p-3 text-sm text-[color:var(--nx-success)]">{{ session('booking_message') }}</div>
     @endif
     @if (session('booking_error'))
-        <div class="rounded-lg border border-[var(--ui-danger)]/30 bg-[var(--ui-danger-10)] p-3 text-sm text-[var(--ui-danger)]">{{ session('booking_error') }}</div>
+        <div class="rounded-[8px] border border-[rgba(224,49,49,.3)] bg-[rgba(224,49,49,.08)] p-3 text-sm text-[color:var(--nx-danger)]">{{ session('booking_error') }}</div>
     @endif
 
-    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+    <x-nx-card flush>
         {{-- Karten-Header --}}
-        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-            @svg('heroicon-o-calendar-days', 'w-4 h-4 text-[var(--ui-muted)]')
-            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Buchungen</h2>
-            <span class="ml-auto text-[11px] text-[var(--ui-muted)]">{{ $this->bookings->total() }}</span>
+        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+            @svg('heroicon-o-calendar-days', 'w-4 h-4 text-[color:var(--nx-muted)]')
+            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-muted)]">Buchungen</h2>
+            <span class="ml-auto text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $this->bookings->total() }}</span>
         </div>
 
         {{-- Filter --}}
-        <div class="flex flex-wrap items-center gap-1.5 border-b border-[var(--ui-border)]/30 px-4 py-2 text-[11px]">
-            <span class="text-[var(--ui-muted)]">Status:</span>
+        <div class="flex flex-wrap items-center gap-1.5 border-b border-[color:var(--nx-line)] px-4 py-2 text-xs">
+            <span class="text-[color:var(--nx-muted)]">Status:</span>
             @foreach (['' => 'Alle', 'pending' => 'Ausstehend', 'confirmed' => 'Bestätigt', 'cancelled' => 'Storniert', 'no_show' => 'No-Show', 'completed' => 'Abgeschlossen'] as $val => $label)
                 <button type="button" wire:click="$set('filterStatus', '{{ $val }}')"
-                    class="rounded-full px-2.5 py-0.5 transition-colors {{ $filterStatus === $val ? 'bg-[var(--ui-primary)] font-medium text-white' : 'text-[var(--ui-muted)] hover:bg-[var(--ui-muted-5)]' }}">{{ $label }}</button>
+                    class="rounded-full px-2.5 py-0.5 transition-colors {{ $filterStatus === $val ? 'bg-[color:var(--nx-accent)] font-medium text-[color:var(--nx-on-accent)]' : 'text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]' }}">{{ $label }}</button>
             @endforeach
-            <span class="ml-3 text-[var(--ui-muted)]">Datum:</span>
+            <span class="ml-3 text-[color:var(--nx-muted)]">Datum:</span>
             <div class="w-40">
                 <x-ui-input-date name="filterDate" size="sm" wire:model.live="filterDate" />
             </div>
@@ -50,78 +50,78 @@
         </div>
 
         {{-- Tabelle --}}
-        <x-ui-table compact="true">
-            <x-ui-table-header>
-                <x-ui-table-header-cell compact="true">VA-Datum</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true">Veranstaltung</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true">Uhrzeit</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true">Tisch</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true">Gast</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true" align="center">Personen</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true" align="right">Bestellung</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true">Status</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true">Gebucht am</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true">Aktionen</x-ui-table-header-cell>
-            </x-ui-table-header>
-            <x-ui-table-body>
+        <x-nx-table>
+            <x-nx-table-header>
+                <x-nx-table-header-cell compact>VA-Datum</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact>Veranstaltung</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact>Uhrzeit</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact>Tisch</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact>Gast</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact align="center">Personen</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact align="right">Bestellung</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact>Status</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact>Gebucht am</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact>Aktionen</x-nx-table-header-cell>
+            </x-nx-table-header>
+            <x-nx-table-body>
                 @forelse ($this->bookings as $booking)
-                    <x-ui-table-row compact="true" wire:key="booking-{{ $booking->id }}">
-                        <x-ui-table-cell compact="true">{{ $booking->date->format('d.m.Y') }}</x-ui-table-cell>
-                        <x-ui-table-cell compact="true">
-                            <span class="font-medium text-[var(--ui-secondary)]">{{ $booking->event?->name ?? '—' }}</span>
+                    <x-nx-table-row compact wire:key="booking-{{ $booking->id }}">
+                        <x-nx-table-cell compact>{{ $booking->date->format('d.m.Y') }}</x-nx-table-cell>
+                        <x-nx-table-cell compact>
+                            <span class="font-medium text-[color:var(--nx-text)]">{{ $booking->event?->name ?? '—' }}</span>
                             @if ($booking->slot)
-                                <span class="block text-xs text-[var(--ui-muted)]">{{ $booking->slot->name }}</span>
+                                <span class="block text-xs text-[color:var(--nx-muted)]">{{ $booking->slot->name }}</span>
                             @endif
-                        </x-ui-table-cell>
-                        <x-ui-table-cell compact="true">{{ $booking->time_start ? substr($booking->time_start, 0, 5) : '–' }}</x-ui-table-cell>
-                        <x-ui-table-cell compact="true">{{ $booking->table?->label }}</x-ui-table-cell>
-                        <x-ui-table-cell compact="true">
-                            <span class="font-medium text-[var(--ui-secondary)]">{{ $booking->guest_name }}</span>
+                        </x-nx-table-cell>
+                        <x-nx-table-cell compact>{{ $booking->time_start ? substr($booking->time_start, 0, 5) : '–' }}</x-nx-table-cell>
+                        <x-nx-table-cell compact>{{ $booking->table?->label }}</x-nx-table-cell>
+                        <x-nx-table-cell compact>
+                            <span class="font-medium text-[color:var(--nx-text)]">{{ $booking->guest_name }}</span>
                             @if ($booking->guest_email)
-                                <span class="block text-xs text-[var(--ui-muted)]">{{ $booking->guest_email }}</span>
+                                <span class="block text-xs text-[color:var(--nx-muted)]">{{ $booking->guest_email }}</span>
                             @endif
-                        </x-ui-table-cell>
-                        <x-ui-table-cell compact="true" align="center">{{ $booking->guest_count }}</x-ui-table-cell>
-                        <x-ui-table-cell compact="true" align="right">
+                        </x-nx-table-cell>
+                        <x-nx-table-cell compact align="center">{{ $booking->guest_count }}</x-nx-table-cell>
+                        <x-nx-table-cell compact align="right">
                             @if ($booking->items_count > 0)
                                 <button wire:click="openDetail({{ $booking->id }})" type="button"
-                                    class="inline-flex items-center gap-1 whitespace-nowrap text-[var(--ui-primary)] hover:underline">
+                                    class="inline-flex items-center gap-1 whitespace-nowrap text-[color:var(--nx-text)] hover:underline">
                                     <span class="tabular-nums">{{ $booking->items_count }} Pos. · {{ number_format($booking->total_amount, 2, ',', '.') }} €</span>
                                 </button>
                             @else
-                                <span class="text-[var(--ui-muted)]">–</span>
+                                <span class="text-[color:var(--nx-muted)]">–</span>
                             @endif
-                        </x-ui-table-cell>
-                        <x-ui-table-cell compact="true">
+                        </x-nx-table-cell>
+                        <x-nx-table-cell compact>
                             @php
                                 [$statusLabel, $statusVariant] = [
                                     'pending'   => ['Ausstehend', 'warning'],
                                     'confirmed' => ['Bestätigt', 'success'],
                                     'cancelled' => ['Storniert', 'danger'],
-                                    'no_show'   => ['No-Show', 'muted'],
+                                    'no_show'   => ['No-Show', 'neutral'],
                                     'completed' => ['Abgeschlossen', 'info'],
-                                ][$booking->status] ?? [ucfirst($booking->status), 'muted'];
+                                ][$booking->status] ?? [ucfirst($booking->status), 'neutral'];
                             @endphp
-                            <x-ui-badge :variant="$statusVariant" size="xs">{{ $statusLabel }}</x-ui-badge>
-                        </x-ui-table-cell>
-                        <x-ui-table-cell compact="true">
+                            <x-nx-badge :variant="$statusVariant">{{ $statusLabel }}</x-nx-badge>
+                        </x-nx-table-cell>
+                        <x-nx-table-cell compact>
                             @if ($booking->created_at)
-                                <span class="whitespace-nowrap tabular-nums text-[var(--ui-secondary)]">{{ $booking->created_at->format('d.m.Y') }}</span>
-                                <span class="block text-xs text-[var(--ui-muted)] tabular-nums">{{ $booking->created_at->format('H:i') }} Uhr</span>
+                                <span class="whitespace-nowrap tabular-nums text-[color:var(--nx-text)]">{{ $booking->created_at->format('d.m.Y') }}</span>
+                                <span class="block text-xs tabular-nums text-[color:var(--nx-muted)]">{{ $booking->created_at->format('H:i') }} Uhr</span>
                             @else
-                                <span class="text-[var(--ui-muted)]">–</span>
+                                <span class="text-[color:var(--nx-muted)]">–</span>
                             @endif
-                        </x-ui-table-cell>
-                        <x-ui-table-cell compact="true">
+                        </x-nx-table-cell>
+                        <x-nx-table-cell compact>
                             <div class="flex flex-wrap gap-1.5">
                                 @if ($booking->status === 'pending')
-                                    <x-ui-button variant="success" size="sm" wire:click="confirmBooking({{ $booking->id }})">Bestätigen</x-ui-button>
+                                    <x-nx-button variant="primary" wire:click="confirmBooking({{ $booking->id }})">Bestätigen</x-nx-button>
                                 @endif
-                                <x-ui-button variant="secondary-outline" size="sm" wire:click="openDetail({{ $booking->id }})">Details</x-ui-button>
+                                <x-nx-button wire:click="openDetail({{ $booking->id }})">Details</x-nx-button>
                                 @if ($this->printingAvailable)
-                                    <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openPrintModal({{ $booking->id }})" title="Bon drucken">
+                                    <x-nx-button icon wire:click="openPrintModal({{ $booking->id }})" title="Bon drucken">
                                         @svg('heroicon-o-printer', 'w-4 h-4')
-                                    </x-ui-button>
+                                    </x-nx-button>
                                 @endif
                                 @if ($booking->status === 'pending')
                                     <div class="shrink-0">
@@ -137,21 +137,21 @@
                                     </div>
                                 @endif
                             </div>
-                        </x-ui-table-cell>
-                    </x-ui-table-row>
+                        </x-nx-table-cell>
+                    </x-nx-table-row>
                 @empty
                     <tr>
                         <td colspan="10">
-                            <div class="flex flex-col items-center justify-center py-8 text-[var(--ui-muted)]">
+                            <div class="flex flex-col items-center justify-center py-8 text-[color:var(--nx-muted)]">
                                 @svg('heroicon-o-inbox', 'w-8 h-8 mb-2 opacity-40')
                                 <span class="text-xs">Keine Buchungen gefunden</span>
                             </div>
                         </td>
                     </tr>
                 @endforelse
-            </x-ui-table-body>
-        </x-ui-table>
-    </section>
+            </x-nx-table-body>
+        </x-nx-table>
+    </x-nx-card>
 
     <div>
         {{ $this->bookings->links() }}
