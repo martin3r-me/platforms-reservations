@@ -10,66 +10,58 @@
         ]" />
     </x-slot>
 
-    <x-ui-page-container>
-    <div class="pt-4 space-y-4">
+    <x-ui-page-container width="contained">
+    <div class="space-y-5">
 
-        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-                @svg('heroicon-o-fire', 'w-4 h-4 text-[var(--ui-muted)]')
-                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">
-                    Veranstaltungen mit Buchungen
-                </h2>
-                <span class="ml-auto text-[11px] text-[var(--ui-muted)]">{{ $this->events->count() }}</span>
-            </div>
-
-            {{-- Zeitfilter --}}
-            <div class="flex flex-wrap items-center gap-1.5 border-b border-[var(--ui-border)]/30 px-4 py-2 text-[11px]">
-                <span class="text-[var(--ui-muted)]">Zeit:</span>
+        {{-- Zeitfilter (rahmenlos) --}}
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+            <div class="flex items-center gap-1">
+                <span class="text-[color:var(--nx-faint)]">Zeit</span>
                 @foreach (['upcoming' => 'Kommend', 'past' => 'Vergangen', 'all' => 'Alle'] as $val => $label)
                     <button type="button" wire:click="$set('timeFilter', '{{ $val }}')"
-                        class="rounded-full px-2.5 py-0.5 transition-colors {{ $timeFilter === $val ? 'bg-[var(--ui-primary)] font-medium text-white' : 'text-[var(--ui-muted)] hover:bg-[var(--ui-muted-5)]' }}">{{ $label }}</button>
+                        class="rounded-full px-2.5 py-1 transition-colors {{ $timeFilter === $val ? 'bg-[color:var(--nx-active)] font-medium text-[color:var(--nx-text)]' : 'text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]' }}">{{ $label }}</button>
                 @endforeach
             </div>
+            <span class="ml-auto tabular-nums text-[color:var(--nx-faint)]">{{ $this->events->count() }} mit Buchungen</span>
+        </div>
 
-            @if ($this->events->isEmpty())
-                <div class="flex flex-col items-center justify-center py-16 text-[var(--ui-muted)]">
-                    @svg('heroicon-o-fire', 'w-10 h-10 mb-3 opacity-40')
-                    <span class="text-sm font-medium text-[var(--ui-secondary)]">Keine Veranstaltung mit Buchungen</span>
-                    <span class="text-xs mt-1 opacity-70">Sobald für einen Termin Buchungen eingehen, erscheint er hier für die operative Durchführung.</span>
-                </div>
-            @else
-                <div class="divide-y divide-[var(--ui-border)]/30">
+        @if ($this->events->isEmpty())
+            <x-nx-card>
+                <x-nx-empty icon="heroicon-o-fire">
+                    <span class="text-sm font-medium text-[color:var(--nx-text)]">Keine Veranstaltung mit Buchungen</span>
+                    <span class="mt-1 block">Sobald für einen Termin Buchungen eingehen, erscheint er hier für die operative Durchführung.</span>
+                </x-nx-empty>
+            </x-nx-card>
+        @else
+            <x-nx-card flush>
+                <div>
                     @foreach ($this->events as $event)
-                        <div wire:key="op-event-{{ $event->id }}" class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--ui-muted-5)] transition-colors">
+                        <a href="{{ route('reservation.events.dashboard', $event->id) }}" wire:navigate wire:key="op-event-{{ $event->id }}"
+                            class="flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-3 transition-colors last:border-0 hover:bg-[color:var(--nx-hover)]">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="text-sm font-medium text-[var(--ui-secondary)]">{{ $event->name }}</span>
+                                    <span class="text-sm font-medium text-[color:var(--nx-text)]">{{ $event->name }}</span>
                                     @if ($event->date->isToday())
-                                        <x-ui-badge variant="success" size="xs">Heute</x-ui-badge>
+                                        <x-nx-badge variant="success">Heute</x-nx-badge>
                                     @elseif ($event->date->isPast())
-                                        <x-ui-badge variant="muted" size="xs">Vergangen</x-ui-badge>
+                                        <x-nx-badge>Vergangen</x-nx-badge>
                                     @endif
                                 </div>
-                                <p class="mt-0.5 text-xs text-[var(--ui-muted)] m-0">
+                                <p class="m-0 mt-0.5 text-xs text-[color:var(--nx-muted)]">
                                     {{ $event->date->format('d.m.Y') }}
                                     @if ($event->slots->isNotEmpty())
                                         · {{ $event->slots->map(fn ($s) => $s->displayLabel())->implode(', ') }}
                                     @endif
                                     @if ($event->venue) · {{ $event->venue->name }} @endif
-                                    · <span class="font-medium text-[var(--ui-secondary)]">{{ $event->bookings_count }} {{ $event->bookings_count === 1 ? 'Buchung' : 'Buchungen' }}</span>
+                                    · <span class="font-medium text-[color:var(--nx-text)]">{{ $event->bookings_count }} {{ $event->bookings_count === 1 ? 'Buchung' : 'Buchungen' }}</span>
                                 </p>
                             </div>
-                            <div class="flex shrink-0 items-center justify-end">
-                                <x-ui-button variant="primary" size="sm" :href="route('reservation.events.dashboard', $event->id)" wire:navigate>
-                                    <span>Öffnen</span>
-                                    @svg('heroicon-o-arrow-right', 'w-4 h-4')
-                                </x-ui-button>
-                            </div>
-                        </div>
+                            @svg('heroicon-o-chevron-right', 'w-4 h-4 shrink-0 text-[color:var(--nx-faint)]')
+                        </a>
                     @endforeach
                 </div>
-            @endif
-        </section>
+            </x-nx-card>
+        @endif
 
     </div>
     </x-ui-page-container>
