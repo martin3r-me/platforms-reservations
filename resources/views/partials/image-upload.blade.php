@@ -17,20 +17,20 @@
     tabindex="0"
     x-on:keydown.enter.prevent="$refs.file.click()"
     x-on:keydown.space.prevent="$refs.file.click()"
-    :class="over ? 'border-[var(--ui-primary)] bg-[var(--ui-primary-10)]' : 'border-[var(--ui-border)]'"
-    class="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors hover:border-[var(--ui-primary)] hover:bg-[var(--ui-muted-5)]"
+    :class="over ? 'border-[color:var(--nx-accent)] bg-[color:var(--nx-accent-soft)]' : 'border-[color:var(--nx-line-strong)]'"
+    class="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[8px] border-2 border-dashed px-4 py-6 text-center transition-colors hover:border-[color:var(--nx-accent)] hover:bg-[color:var(--nx-hover)]"
 >
-    @svg('heroicon-o-arrow-up-tray', 'w-6 h-6 text-[var(--ui-muted)]')
-    <span class="text-sm font-medium text-[var(--ui-secondary)]">
-        Bild hierher ziehen oder <span class="text-[var(--ui-primary)] underline">auswählen</span>
+    @svg('heroicon-o-arrow-up-tray', 'w-6 h-6 text-[color:var(--nx-muted)]')
+    <span class="text-sm font-medium text-[color:var(--nx-text)]">
+        Bild hierher ziehen oder <span class="underline">auswählen</span>
     </span>
-    <span class="text-[11px] text-[var(--ui-muted)]">{{ $hint }}</span>
+    <span class="text-[11px] text-[color:var(--nx-muted)]">{{ $hint }}</span>
 
     <input x-ref="file" type="file" wire:model="{{ $model }}" accept="{{ $accept }}" class="hidden" />
 
-    <span wire:loading wire:target="{{ $model }}" class="mt-1 inline-flex items-center gap-1 text-[11px] text-[var(--ui-primary)]">
+    <span wire:loading wire:target="{{ $model }}" class="mt-1 inline-flex items-center gap-1 text-[11px] text-[color:var(--nx-muted)]">
         @svg('heroicon-o-arrow-path', 'w-3.5 h-3.5 animate-spin')
         Wird hochgeladen…
     </span>
 </div>
-@error($model) <p class="mt-1 text-xs text-[var(--ui-danger)]">{{ $message }}</p> @enderror
+@error($model) <p class="mt-1 text-xs text-[color:var(--nx-danger)]">{{ $message }}</p> @enderror
