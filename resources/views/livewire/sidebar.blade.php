@@ -95,7 +95,7 @@
             <a href="{{ route('reservation.operations.index') }}" wire:navigate class="relative flex items-center justify-center p-2 rounded-md text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]" title="Veranstaltungen">
                 @svg('heroicon-o-fire', 'w-5 h-5')
                 @if ($this->operationsCount > 0)
-                    <span class="absolute right-1 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[var(--ui-secondary)] px-1 text-[9px] font-semibold text-white">{{ $this->operationsCount > 99 ? '99+' : $this->operationsCount }}</span>
+                    <span class="absolute right-1 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[color:var(--nx-accent)] px-1 text-[9px] font-semibold text-white">{{ $this->operationsCount > 99 ? '99+' : $this->operationsCount }}</span>
                 @endif
             </a>
             <a href="{{ route('reservation.bookings.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]">
