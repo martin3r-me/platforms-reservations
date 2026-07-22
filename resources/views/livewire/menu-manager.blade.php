@@ -8,7 +8,8 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Artikel'],
         ]">
-            <div class="flex items-center gap-2">
+            {{-- Inline-Control (Filter) links neben der Navigation --}}
+            <x-slot name="left">
                 <div class="w-40">
                     <x-ui-input-select
                         name="approvalFilter"
@@ -23,17 +24,21 @@
                         wire:model.live="approvalFilter"
                     />
                 </div>
+            </x-slot>
+
+            {{-- Seiten-Aktionen rechts gebündelt in EINEM Dropdown --}}
+            <x-nx-dropdown label="Aktionen">
                 @if (\Illuminate\Support\Facades\Route::has('reservation.menu.import'))
-                    <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.menu.import')">
+                    <x-nx-dropdown-item :href="route('reservation.menu.import')">
                         @svg('heroicon-o-arrow-up-tray', 'w-4 h-4')
                         <span>Import</span>
-                    </x-ui-button>
+                    </x-nx-dropdown-item>
                 @endif
-                <x-ui-button variant="primary" size="sm" wire:click="openCategoryForm()">
+                <x-nx-dropdown-item wire:click="openCategoryForm()">
                     @svg('heroicon-o-plus', 'w-4 h-4')
                     <span>Kategorie</span>
-                </x-ui-button>
-            </div>
+                </x-nx-dropdown-item>
+            </x-nx-dropdown>
         </x-ui-page-actionbar>
     </x-slot>
 
