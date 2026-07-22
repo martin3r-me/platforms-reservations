@@ -8,14 +8,7 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Veranstaltungen', 'href' => route('reservation.operations.index')],
             ['label' => $this->event->name],
-        ]">
-            @if (\Illuminate\Support\Facades\Route::has('reservation.guest.checkout') && $this->event->status->value === 'published')
-                <x-nx-button :href="route('reservation.guest.checkout', $this->event->uuid)" target="_blank">
-                    @svg('heroicon-o-eye', 'w-4 h-4')
-                    <span>Gast-Ansicht</span>
-                </x-nx-button>
-            @endif
-        </x-ui-page-actionbar>
+        ]" />
     </x-slot>
 
     <x-slot name="sidebar">
