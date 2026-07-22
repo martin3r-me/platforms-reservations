@@ -90,11 +90,6 @@
                                         @svg('heroicon-o-pencil-square', 'w-4 h-4')
                                         <span>Editor</span>
                                     </x-ui-button>
-                                    <x-ui-button variant="secondary-outline" size="sm"
-                                        :href="route('reservation.floor-plan.viewer', ['floorPlanId' => $plan->id])" target="_blank">
-                                        @svg('heroicon-o-eye', 'w-4 h-4')
-                                        <span>3D-Ansicht</span>
-                                    </x-ui-button>
                                     <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openFloorPlanForm({{ $venue->id }}, {{ $plan->id }})" title="Umbenennen">
                                         @svg('heroicon-o-pencil', 'w-4 h-4')
                                     </x-ui-button>

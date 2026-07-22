@@ -10,7 +10,6 @@
             <div class="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900">
                 <div class="text-5xl mb-4">🔍</div>
                 <h1 class="text-lg font-semibold dark:text-white">Bestellung nicht gefunden</h1>
-                <a href="{{ route('reservation.guest.events.index') }}" class="mt-4 inline-block text-sm text-[var(--ui-primary)] hover:underline">Zur Terminübersicht</a>
             </div>
 
         {{-- Ergebnis nach Aktion --}}
@@ -63,7 +62,6 @@
                         <span wire:loading.remove wire:target="confirmCancel">Jetzt stornieren</span>
                         <span wire:loading wire:target="confirmCancel">Wird storniert …</span>
                     </button>
-                    <a href="{{ route('reservation.guest.events.index') }}" class="mt-3 block text-center text-xs text-[var(--ui-muted)] hover:underline">Doch nicht stornieren</a>
                 @else
                     <div class="mt-4 rounded-xl border border-[var(--ui-border)]/40 p-4 text-sm text-[var(--ui-muted)]">
                         Ein Storno ist für diese Bestellung nicht (mehr) möglich

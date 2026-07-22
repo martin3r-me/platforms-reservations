@@ -9,12 +9,6 @@
             ['label' => 'Dashboard'],
         ]">
             <div class="flex items-center gap-2">
-                @if (\Illuminate\Support\Facades\Route::has('reservation.guest.events.index'))
-                    <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.guest.events.index')" target="_blank">
-                        @svg('heroicon-o-globe-alt', 'w-4 h-4')
-                        <span>Gast-Übersicht</span>
-                    </x-ui-button>
-                @endif
                 <x-ui-button variant="primary" size="sm" :href="route('reservation.events.index')" wire:navigate>
                     @svg('heroicon-o-plus', 'w-4 h-4')
                     <span>Termin anlegen</span>

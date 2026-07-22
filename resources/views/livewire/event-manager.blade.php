@@ -9,12 +9,6 @@
             ['label' => 'Termine'],
         ]">
             <div class="flex items-center gap-2">
-                @if (\Illuminate\Support\Facades\Route::has('reservation.guest.events.index'))
-                    <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.guest.events.index')" target="_blank">
-                        @svg('heroicon-o-globe-alt', 'w-4 h-4')
-                        <span>Zur Termin-Übersicht</span>
-                    </x-ui-button>
-                @endif
                 <x-ui-button variant="primary" size="sm" wire:click="openForm()">
                     @svg('heroicon-o-plus', 'w-4 h-4')
                     <span>Termin</span>
@@ -108,12 +102,6 @@
                                 </x-ui-button>
                             @endif
                             @if ($event->status->value === 'published')
-                                @if (\Illuminate\Support\Facades\Route::has('reservation.guest.checkout'))
-                                    <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.guest.checkout', $event->uuid)" target="_blank">
-                                        @svg('heroicon-o-eye', 'w-4 h-4')
-                                        <span>Gast-Ansicht</span>
-                                    </x-ui-button>
-                                @endif
                                 <x-ui-button variant="secondary-outline" size="sm" wire:click="unpublish({{ $event->id }})">Zurückziehen</x-ui-button>
                                 <x-ui-button variant="secondary-outline" size="sm" wire:click="close({{ $event->id }})" title="Bestellschluss setzen">Bestellschluss</x-ui-button>
                             @endif
