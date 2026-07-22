@@ -15,150 +15,122 @@
         </x-ui-page-actionbar>
     </x-slot>
 
-    <x-ui-page-container>
-    <div class="pt-4 space-y-4">
+    <x-ui-page-container width="contained">
+    <div class="space-y-5">
 
     {{-- Leer-Zustand --}}
     @if ($this->venues->isEmpty())
-        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm">
-            <div class="flex flex-col items-center justify-center py-16 text-[var(--ui-muted)]">
-                @svg('heroicon-o-building-storefront', 'w-10 h-10 mb-3 opacity-40')
-                <span class="text-sm font-medium text-[var(--ui-secondary)]">Noch kein Venue vorhanden</span>
-                <span class="text-xs mt-1 opacity-70">Lege dein erstes Venue an, um Tischpläne zu erstellen.</span>
-                <div class="mt-4">
-                    <x-ui-button variant="primary" size="sm" wire:click="openVenueForm()">
+        <x-nx-card>
+            <x-nx-empty icon="heroicon-o-building-storefront">
+                <span class="text-sm font-medium text-[color:var(--nx-text)]">Noch kein Venue vorhanden</span>
+                <span class="mt-1 block">Lege dein erstes Venue an, um Tischpläne zu erstellen.</span>
+                <x-slot name="action">
+                    <x-nx-button variant="primary" wire:click="openVenueForm()">
                         @svg('heroicon-o-plus', 'w-4 h-4')
                         <span>Venue erstellen</span>
-                    </x-ui-button>
-                </div>
-            </div>
-        </section>
+                    </x-nx-button>
+                </x-slot>
+            </x-nx-empty>
+        </x-nx-card>
     @else
         @foreach ($this->venues as $venue)
-            <section wire:key="venue-{{ $venue->id }}" class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
+            <x-nx-card flush wire:key="venue-{{ $venue->id }}">
                 {{-- Venue-Kopfzeile --}}
-                <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-                    @svg('heroicon-o-building-storefront', 'w-4 h-4 text-[var(--ui-muted)]')
+                <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+                    @svg('heroicon-o-building-storefront', 'w-4 h-4 text-[color:var(--nx-muted)]')
                     <div class="min-w-0">
-                        <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">{{ $venue->name }}</h2>
+                        <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">{{ $venue->name }}</h2>
                         @if ($venue->address)
-                            <p class="text-[11px] text-[var(--ui-muted)] m-0 normal-case tracking-normal">{{ $venue->address }}</p>
+                            <p class="m-0 text-[11px] text-[color:var(--nx-muted)]">{{ $venue->address }}</p>
                         @endif
                     </div>
-                    <div class="ml-auto flex shrink-0 items-center justify-end gap-1.5">
-                        <x-ui-button variant="primary" size="sm" wire:click="openFloorPlanForm({{ $venue->id }})">
+                    <div class="ml-auto flex shrink-0 items-center justify-end gap-1">
+                        <x-nx-button variant="primary" wire:click="openFloorPlanForm({{ $venue->id }})">
                             @svg('heroicon-o-plus', 'w-4 h-4')
                             <span>Tischplan</span>
-                        </x-ui-button>
-                        <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openVenueForm({{ $venue->id }})" title="Venue bearbeiten">
+                        </x-nx-button>
+                        <x-nx-button icon variant="ghost" wire:click="openVenueForm({{ $venue->id }})" title="Venue bearbeiten">
                             @svg('heroicon-o-pencil', 'w-4 h-4')
-                        </x-ui-button>
-                        <div class="shrink-0">
-                            <x-ui-confirm-button
-                                action="deleteVenue"
-                                :value="$venue->id"
-                                text=""
-                                confirmText="Wirklich löschen?"
-                                variant="danger-outline"
-                                size="sm"
-                                :icon="svg('heroicon-o-trash', 'w-4 h-4')->toHtml()"
-                            />
-                        </div>
+                        </x-nx-button>
+                        <button type="button" wire:click="deleteVenue({{ $venue->id }})" wire:confirm="Venue wirklich löschen?" title="Löschen"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
+                            @svg('heroicon-o-trash', 'w-4 h-4')
+                        </button>
                     </div>
                 </div>
 
                 {{-- Tischplan-Liste --}}
                 @if ($venue->floorPlans->isEmpty())
-                    <div class="px-4 py-4 text-sm text-[var(--ui-muted)]">
+                    <div class="px-4 py-4 text-sm text-[color:var(--nx-muted)]">
                         Noch kein Tischplan vorhanden. Klicke auf <em>+ Tischplan</em>.
                     </div>
                 @else
-                    <div class="divide-y divide-[var(--ui-border)]/30">
+                    <div>
                         @foreach ($venue->floorPlans as $plan)
-                            <div wire:key="plan-{{ $plan->id }}" class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-[var(--ui-muted-5)] transition-colors">
+                            <div wire:key="plan-{{ $plan->id }}" class="group flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 transition-colors last:border-0 hover:bg-[color:var(--nx-hover)]">
                                 <div class="min-w-0">
-                                    <span class="text-sm font-medium text-[var(--ui-secondary)]">{{ $plan->name }}</span>
-                                    <span class="ml-2 text-xs text-[var(--ui-muted)]">
+                                    <span class="text-sm font-medium text-[color:var(--nx-text)]">{{ $plan->name }}</span>
+                                    <span class="ml-2 text-xs text-[color:var(--nx-faint)]">
                                         {{ $plan->tables_count }} {{ $plan->tables_count === 1 ? 'Tisch' : 'Tische' }}
                                     </span>
                                 </div>
-                                <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                                    <x-ui-button variant="secondary-outline" size="sm"
-                                        :href="route('reservation.floor-plan.editor', ['venueId' => $venue->id, 'floorPlanId' => $plan->id])">
+                                <div class="flex shrink-0 items-center justify-end gap-1">
+                                    <x-nx-button :href="route('reservation.floor-plan.editor', ['venueId' => $venue->id, 'floorPlanId' => $plan->id])">
                                         @svg('heroicon-o-pencil-square', 'w-4 h-4')
                                         <span>Editor</span>
-                                    </x-ui-button>
-                                    <x-ui-button variant="secondary-outline" size="sm" :iconOnly="true" wire:click="openFloorPlanForm({{ $venue->id }}, {{ $plan->id }})" title="Umbenennen">
-                                        @svg('heroicon-o-pencil', 'w-4 h-4')
-                                    </x-ui-button>
-                                    <div class="shrink-0">
-                                        <x-ui-confirm-button
-                                            action="deleteFloorPlan"
-                                            :value="$plan->id"
-                                            text=""
-                                            confirmText="Wirklich löschen?"
-                                            variant="danger-outline"
-                                            size="sm"
-                                            :icon="svg('heroicon-o-trash', 'w-4 h-4')->toHtml()"
-                                        />
+                                    </x-nx-button>
+                                    <div class="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                                        <x-nx-button icon variant="ghost" wire:click="openFloorPlanForm({{ $venue->id }}, {{ $plan->id }})" title="Umbenennen">
+                                            @svg('heroicon-o-pencil', 'w-4 h-4')
+                                        </x-nx-button>
+                                        <button type="button" wire:click="deleteFloorPlan({{ $plan->id }})" wire:confirm="Tischplan wirklich löschen?" title="Löschen"
+                                            class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
+                                            @svg('heroicon-o-trash', 'w-4 h-4')
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                         @endforeach
                     </div>
                 @endif
-            </section>
+            </x-nx-card>
         @endforeach
     @endif
 
     {{-- Modal: Venue erstellen / bearbeiten --}}
-    <x-ui-modal size="sm" wire:model="showVenueForm">
+    <x-nx-modal size="sm" wire:model="showVenueForm">
         <x-slot name="header">
-            <div class="flex items-center gap-3">
-                <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--ui-primary-10)] flex-shrink-0">
-                    @svg('heroicon-o-building-storefront', 'w-5 h-5 text-[var(--ui-primary)]')
-                </div>
-                <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">
-                    {{ $editingVenueId ? 'Venue bearbeiten' : 'Neues Venue' }}
-                </h3>
-            </div>
+            <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">
+                {{ $editingVenueId ? 'Venue bearbeiten' : 'Neues Venue' }}
+            </h3>
         </x-slot>
 
         <div class="space-y-3">
-            <x-ui-input-text name="venueName" label="Name" wire:model="venueName" placeholder="z.B. Foyer, Hauptsaal, Galerie …" required errorKey="venueName" />
-            <x-ui-input-text name="venueAddress" label="Adresse / Beschreibung" wire:model="venueAddress" placeholder="Haus 1, EG, links …" />
+            <x-nx-input-text name="venueName" label="Name" wire:model="venueName" placeholder="z.B. Foyer, Hauptsaal, Galerie …" required errorKey="venueName" />
+            <x-nx-input-text name="venueAddress" label="Adresse / Beschreibung" wire:model="venueAddress" placeholder="Haus 1, EG, links …" />
         </div>
 
         <x-slot name="footer">
-            <div class="flex justify-end gap-2">
-                <x-ui-button variant="secondary-outline" size="sm" wire:click="$set('showVenueForm', false)">Abbrechen</x-ui-button>
-                <x-ui-button variant="primary" size="sm" wire:click="saveVenue">Speichern</x-ui-button>
-            </div>
+            <x-nx-button wire:click="$set('showVenueForm', false)">Abbrechen</x-nx-button>
+            <x-nx-button variant="primary" wire:click="saveVenue">Speichern</x-nx-button>
         </x-slot>
-    </x-ui-modal>
+    </x-nx-modal>
 
     {{-- Modal: Tischplan erstellen / umbenennen --}}
-    <x-ui-modal size="sm" wire:model="showFloorPlanForm">
+    <x-nx-modal size="sm" wire:model="showFloorPlanForm">
         <x-slot name="header">
-            <div class="flex items-center gap-3">
-                <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--ui-primary-10)] flex-shrink-0">
-                    @svg('heroicon-o-map', 'w-5 h-5 text-[var(--ui-primary)]')
-                </div>
-                <h3 class="text-base font-semibold text-[var(--ui-secondary)] m-0 leading-tight">
-                    {{ $editingFloorPlanId ? 'Tischplan umbenennen' : 'Neuer Tischplan' }}
-                </h3>
-            </div>
+            <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">
+                {{ $editingFloorPlanId ? 'Tischplan umbenennen' : 'Neuer Tischplan' }}
+            </h3>
         </x-slot>
 
-        <x-ui-input-text name="floorPlanName" label="Name" wire:model="floorPlanName" placeholder="z.B. Erdgeschoss, Terrasse …" required errorKey="floorPlanName" />
+        <x-nx-input-text name="floorPlanName" label="Name" wire:model="floorPlanName" placeholder="z.B. Erdgeschoss, Terrasse …" required errorKey="floorPlanName" />
 
         <x-slot name="footer">
-            <div class="flex justify-end gap-2">
-                <x-ui-button variant="secondary-outline" size="sm" wire:click="$set('showFloorPlanForm', false)">Abbrechen</x-ui-button>
-                <x-ui-button variant="primary" size="sm" wire:click="saveFloorPlan">Speichern</x-ui-button>
-            </div>
+            <x-nx-button wire:click="$set('showFloorPlanForm', false)">Abbrechen</x-nx-button>
+            <x-nx-button variant="primary" wire:click="saveFloorPlan">Speichern</x-nx-button>
         </x-slot>
-    </x-ui-modal>
+    </x-nx-modal>
 
     </div>
     </x-ui-page-container>
