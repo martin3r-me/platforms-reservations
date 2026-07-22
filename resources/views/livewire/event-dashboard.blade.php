@@ -37,26 +37,31 @@
     <script>
     (function(){
         if (window.__ppArtInit) return; window.__ppArtInit = true;
-        var MIN = 380, MAX = 880, ro;
-        function measure(){
+        var MIN = 380, MAX = 880, BUFFER = 24, t = 0;
+        function apply(){
             var panel = document.querySelector('.pp-art');
             if (!panel) return;
             var content = document.querySelector('[data-nx-content]');
             if (!content){ panel.style.display = 'none'; return; }
-            var gap = window.innerWidth - content.getBoundingClientRect().right;
+            // freier Rand rechts der echten Content-Kante, minus Sicherheitsabstand
+            var gap = window.innerWidth - content.getBoundingClientRect().right - BUFFER;
             if (gap >= MIN){ panel.style.display = 'block'; panel.style.width = Math.min(gap, MAX) + 'px'; }
             else { panel.style.display = 'none'; }
         }
-        function bind(){
-            if (ro) ro.disconnect();
-            ro = new ResizeObserver(measure);
-            var region = document.querySelector('[data-nx-region]');
-            if (region) ro.observe(region);   // Breite ändert sich bei Sidebar-Toggle + Viewport
-            measure();
-        }
+        // Trailing-Debounce via setTimeout (feuert auch im Hintergrund-Tab, anders als rAF)
+        // und wartet, bis der Livewire-Morph des Sidebar-Toggles eingerastet ist.
+        function measure(){ clearTimeout(t); t = setTimeout(apply, 60); }
+        // Neu berechnen bei jeder Layout-Änderung: Viewport, Sidebar-Toggle (DOM-Mutation,
+        // meist ein instanter Livewire-Morph ohne Transition), evtl. Transition, Navigation.
         window.addEventListener('resize', measure);
-        document.addEventListener('livewire:navigated', bind);
-        bind();
+        document.addEventListener('transitionend', measure, true);
+        document.addEventListener('livewire:navigated', measure);
+        try {
+            new MutationObserver(measure).observe(document.body, {
+                subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style'],
+            });
+        } catch (e) {}
+        apply();
     })();
     </script>
     @endverbatim
