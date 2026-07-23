@@ -9,7 +9,6 @@ use Livewire\Component;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\Event;
-use Platform\Reservation\Models\MenuItem;
 
 /**
  * VA-Dashboard: operativer Hub einer Veranstaltung. Bündelt Kennzahlen und
@@ -63,123 +62,47 @@ class EventDashboard extends Component
     }
 
     /**
-     * Bestellte Artikel des gesamten Termins (aktive Buchungen), als
-     * Gesamtmenge je Artikel – geclustert nach Kategorie.
+     * Aktive Buchungen des Termins, gruppiert nach Pause (Slot). Eine VA kann
+     * mehrere Pausen haben; alle Slots erscheinen (auch leere), am Ende ggf.
+     * eine „Ohne Pause"-Gruppe.
      *
-     * @return \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<int, array{name: string, quantity: int}>>
+     * @return \Illuminate\Support\Collection<int, array{label: string, bookings: \Illuminate\Support\Collection, count: int, guests: int, revenue: float}>
      */
     #[Computed]
-    public function itemsByCategory(): \Illuminate\Support\Collection
+    public function bookingsBySlot(): \Illuminate\Support\Collection
     {
-        $totals = BookingItem::query()
-            ->join('reservation_bookings as b', 'b.id', '=', 'reservation_booking_items.booking_id')
-            ->where('b.event_id', $this->eventId)
-            ->whereNotIn('b.status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
-            ->groupBy('reservation_booking_items.menu_item_id')
-            ->selectRaw('reservation_booking_items.menu_item_id, SUM(reservation_booking_items.quantity) as qty')
-            ->pluck('qty', 'menu_item_id');
-
-        if ($totals->isEmpty()) {
-            return collect();
-        }
-
-        return MenuItem::with('category')
-            ->whereIn('id', $totals->keys())
-            ->get()
-            ->sortBy([['category.sort_order', 'asc'], ['sort_order', 'asc'], ['name', 'asc']])
-            ->groupBy(fn (MenuItem $item) => $item->category?->name ?? 'Sonstiges')
-            ->map(fn ($items) => $items->map(fn (MenuItem $item) => [
-                'name'     => $item->name,
-                'quantity' => (int) $totals[$item->id],
-            ])->values());
-    }
-
-    /** Gesamtmenge bestellter Artikel (für die Section-Überschrift). */
-    #[Computed]
-    public function totalItems(): int
-    {
-        return (int) $this->itemsByCategory->flatten(1)->sum('quantity');
-    }
-
-    /**
-     * Verteilung der bestellten Menge auf die Standzeit-Klassen (Timing) –
-     * Artikel ohne Klasse gelten als zeitlich unkritisch.
-     *
-     * @return \Illuminate\Support\Collection<int, array{name: string, color: ?string, lead_time_minutes: ?int, quantity: int}>
-     */
-    #[Computed]
-    public function holdingClassDistribution(): \Illuminate\Support\Collection
-    {
-        $totals = BookingItem::query()
-            ->join('reservation_bookings as b', 'b.id', '=', 'reservation_booking_items.booking_id')
-            ->where('b.event_id', $this->eventId)
-            ->whereNotIn('b.status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
-            ->groupBy('reservation_booking_items.menu_item_id')
-            ->selectRaw('reservation_booking_items.menu_item_id, SUM(reservation_booking_items.quantity) as qty')
-            ->pluck('qty', 'menu_item_id');
-
-        if ($totals->isEmpty()) {
-            return collect();
-        }
-
-        return MenuItem::with('holdingClass')
-            ->whereIn('id', $totals->keys())
-            ->get()
-            ->groupBy(fn (MenuItem $item) => $item->holding_class_id ?? 0)
-            ->map(function ($items) use ($totals) {
-                $hc = $items->first()->holdingClass;
-
-                return [
-                    'name'              => $hc?->name ?? 'Zeitlich egal / vorab',
-                    'color'             => $hc?->color,
-                    'lead_time_minutes' => $hc?->lead_time_minutes,
-                    'sort_order'        => $hc?->sort_order ?? PHP_INT_MAX,
-                    'quantity'          => (int) $items->sum(fn (MenuItem $item) => $totals[$item->id]),
-                ];
-            })
-            ->sortBy([['sort_order', 'asc'], ['name', 'asc']])
-            ->values();
-    }
-
-    /**
-     * Tisch-Auslastung je Raum: belegt (aktive Buchung) / gesperrt (für den
-     * Termin deaktiviert) / frei.
-     *
-     * @return \Illuminate\Support\Collection<int, array{room: string, total: int, occupied: int, blocked: int, free: int}>
-     */
-    #[Computed]
-    public function roomUtilization(): \Illuminate\Support\Collection
-    {
-        $disabled = collect($this->event->disabled_table_ids ?? [])->map(fn ($id) => (int) $id);
-
-        $occupied = Booking::where('event_id', $this->eventId)
+        $bookings = Booking::where('event_id', $this->eventId)
             ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
-            ->whereNotNull('table_id')
-            ->pluck('table_id')
-            ->map(fn ($id) => (int) $id)
-            ->unique();
+            ->with('table')
+            ->withCount('items')
+            ->orderBy('guest_name')
+            ->get();
 
-        return $this->event->eventRooms()
-            ->with(['floorPlan.tables' => fn ($q) => $q->where('is_active', true)])
-            ->get()
-            ->map(function ($room) use ($disabled, $occupied) {
-                $ids        = ($room->floorPlan?->tables ?? collect())->pluck('id')->map(fn ($id) => (int) $id);
-                $blockedIds = $ids->intersect($disabled);
-                $occupiedIds = $ids->intersect($occupied)->diff($blockedIds);
-                $total   = $ids->count();
-                $blocked = $blockedIds->count();
-                $occ     = $occupiedIds->count();
+        $bySlot = $bookings->groupBy('slot_id');
 
-                return [
-                    'room'     => $room->floorPlan?->name ?? 'Raum',
-                    'total'    => $total,
-                    'occupied' => $occ,
-                    'blocked'  => $blocked,
-                    'free'     => max(0, $total - $blocked - $occ),
-                ];
-            })
-            ->filter(fn ($r) => $r['total'] > 0)
+        $groups = $this->event->slots
+            ->sortBy(fn ($s) => (string) $s->time_start)
+            ->map(fn ($slot) => $this->slotGroup($slot->displayLabel(), $bySlot->get($slot->id, collect())))
             ->values();
+
+        $noSlot = $bookings->filter(fn ($b) => $b->slot_id === null);
+        if ($noSlot->isNotEmpty()) {
+            $groups->push($this->slotGroup('Ohne Pause', $noSlot));
+        }
+
+        return $groups;
+    }
+
+    /** @param  \Illuminate\Support\Collection  $bookings */
+    private function slotGroup(string $label, $bookings): array
+    {
+        return [
+            'label'    => $label,
+            'bookings' => $bookings->values(),
+            'count'    => $bookings->count(),
+            'guests'   => (int) $bookings->sum('guest_count'),
+            'revenue'  => (float) $bookings->sum('total_amount'),
+        ];
     }
 
     public function render()

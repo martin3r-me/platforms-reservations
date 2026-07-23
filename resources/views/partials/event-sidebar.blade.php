@@ -1,15 +1,14 @@
 {{--
     Innere Sidebar für den Veranstaltungs-Kontext (page-sidebar-Slot).
-    Erwartet: $event (Event), $active ('dashboard'|'kitchen'|'function'|'overview').
+    Erwartet: $event (Event), $active ('dashboard'|'kitchen'|'function').
     nx-styled.
 --}}
 @php
     $active = $active ?? 'dashboard';
     $links = [
-        ['reservation.events.dashboard', 'heroicon-o-squares-2x2', 'Übersicht', 'dashboard'],
+        ['reservation.events.dashboard', 'heroicon-o-calendar-days', 'Buchungen', 'dashboard'],
         ['reservation.events.orders', 'heroicon-o-fire', 'Küche', 'kitchen'],
         ['reservation.events.function', 'heroicon-o-clipboard-document-list', 'Laufzettel', 'function'],
-        ['reservation.events.overview', 'heroicon-o-presentation-chart-bar', 'Abend-Übersicht', 'overview'],
     ];
 @endphp
 <x-ui-page-sidebar title="Veranstaltung" :defaultOpen="true" width="w-72" icon="heroicon-o-fire">

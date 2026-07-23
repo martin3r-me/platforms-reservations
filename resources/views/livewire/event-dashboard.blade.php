@@ -108,94 +108,63 @@
             @endforeach
         </div>
 
-        {{-- Bestellte Artikel --}}
-        @if ($this->itemsByCategory->isNotEmpty())
-            <section class="space-y-3">
-                <div class="flex items-baseline gap-2">
-                    <h2 class="m-0 text-sm font-semibold text-[color:var(--nx-text)]">Bestellte Artikel</h2>
-                    <span class="ml-auto text-xs text-[color:var(--nx-faint)]">{{ $this->totalItems }} Stück</span>
-                </div>
-                <x-nx-card flush>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                        @foreach ($this->itemsByCategory as $category => $items)
-                            <div class="p-4" wire:key="cat-{{ $loop->index }}">
-                                <div class="mb-1 flex items-center justify-between border-b border-[color:var(--nx-line)] pb-2 text-xs font-semibold text-[color:var(--nx-muted)]">
-                                    <span class="truncate">{{ $category }}</span>
-                                    <span class="tabular-nums">{{ $items->sum('quantity') }}</span>
-                                </div>
-                                @foreach ($items as $item)
-                                    <div class="flex items-center justify-between gap-2 border-b border-[color:var(--nx-line)] py-1.5 text-sm" wire:key="cat-{{ $loop->parent->index }}-i-{{ $loop->index }}">
-                                        <span class="min-w-0 truncate text-[color:var(--nx-text)]">{{ $item['name'] }}</span>
-                                        <span class="shrink-0 font-semibold tabular-nums text-[color:var(--nx-text)]">{{ $item['quantity'] }}×</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endforeach
-                    </div>
-                </x-nx-card>
-            </section>
-        @endif
-
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {{-- Standzeit-Klassen --}}
-            @if ($this->holdingClassDistribution->isNotEmpty())
-                @php $hcTotal = max(1, $this->totalItems); @endphp
-                <section class="space-y-3">
-                    <div class="flex items-baseline gap-2">
-                        <h2 class="m-0 text-sm font-semibold text-[color:var(--nx-text)]">Standzeit-Klassen</h2>
-                        <span class="ml-auto text-xs text-[color:var(--nx-faint)]">Timing</span>
-                    </div>
-                    <div class="space-y-3.5">
-                        @foreach ($this->holdingClassDistribution as $hc)
-                            @php $share = round($hc['quantity'] / $hcTotal * 100); $color = $hc['color'] ?: '#9b9a97'; @endphp
-                            <div wire:key="hc-{{ $loop->index }}">
-                                <div class="mb-1 flex items-center gap-2 text-sm">
-                                    <span class="h-3 w-3 shrink-0 rounded-full" style="background:{{ $color }}"></span>
-                                    <span class="text-[color:var(--nx-text)]">{{ $hc['name'] }}</span>
-                                    @if ($hc['lead_time_minutes'] !== null)
-                                        <span class="rounded-full px-2 py-0.5 text-xs text-[color:var(--nx-muted)]" style="background:var(--nx-accent-soft)">{{ $hc['lead_time_minutes'] }} min vor</span>
-                                    @endif
-                                    <span class="ml-auto shrink-0 tabular-nums text-[color:var(--nx-muted)]"><span class="font-semibold text-[color:var(--nx-text)]">{{ $hc['quantity'] }}×</span> · {{ $share }} %</span>
-                                </div>
-                                <div class="h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--nx-active)]">
-                                    <div class="h-full rounded-full" style="width:{{ $share }}%;background:{{ $color }}"></div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </section>
-            @endif
-
-            {{-- Auslastung --}}
-            @if ($this->roomUtilization->isNotEmpty())
-                <section class="space-y-3">
-                    <div class="flex items-center gap-3">
-                        <h2 class="m-0 text-sm font-semibold text-[color:var(--nx-text)]">Auslastung</h2>
-                        <span class="ml-auto flex items-center gap-3 text-xs text-[color:var(--nx-faint)]">
-                            <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm" style="background:var(--nx-accent)"></span>belegt</span>
-                            <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm" style="background:#e03131"></span>gesperrt</span>
-                            <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm bg-[color:var(--nx-active)]"></span>frei</span>
+        {{-- Buchungen nach Pause (eine VA kann mehrere Pausen haben) --}}
+        <div class="space-y-5">
+            @forelse ($this->bookingsBySlot as $group)
+                <x-nx-card flush wire:key="slot-{{ $loop->index }}">
+                    {{-- Pausen-Kopf --}}
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[color:var(--nx-line)] px-4 py-3">
+                        @svg('heroicon-o-clock', 'w-4 h-4 shrink-0 text-[color:var(--nx-muted)]')
+                        <h2 class="m-0 text-sm font-semibold text-[color:var(--nx-text)]">{{ $group['label'] }}</h2>
+                        <span class="text-xs tabular-nums text-[color:var(--nx-faint)]">
+                            {{ $group['count'] }} {{ $group['count'] === 1 ? 'Buchung' : 'Buchungen' }} · {{ $group['guests'] }} Gäste · {{ number_format($group['revenue'], 2, ',', '.') }} {{ $sym }}
                         </span>
                     </div>
-                    <div class="space-y-3.5">
-                        @foreach ($this->roomUtilization as $r)
-                            @php $total = max(1, $r['total']); @endphp
-                            <div wire:key="util-{{ $loop->index }}">
-                                <div class="mb-1 flex items-center gap-2 text-sm">
-                                    <span class="text-[color:var(--nx-text)]">{{ $r['room'] }}</span>
-                                    <span class="ml-auto shrink-0 text-xs tabular-nums text-[color:var(--nx-muted)]">
-                                        <span class="font-semibold text-[color:var(--nx-text)]">{{ $r['occupied'] }}</span> belegt @if ($r['blocked'] > 0)· {{ $r['blocked'] }} gesperrt @endif· {{ $r['free'] }} frei / {{ $r['total'] }}
-                                    </span>
-                                </div>
-                                <div class="flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--nx-active)]">
-                                    <div class="h-full" style="width:{{ $r['occupied'] / $total * 100 }}%;background:var(--nx-accent)"></div>
-                                    <div class="h-full" style="width:{{ $r['blocked'] / $total * 100 }}%;background:#e03131"></div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </section>
-            @endif
+
+                    @if ($group['count'] === 0)
+                        <div class="px-4 py-4 text-xs text-[color:var(--nx-faint)]">Noch keine Buchungen für diese Pause.</div>
+                    @else
+                        <x-nx-table>
+                            <x-nx-table-header>
+                                <x-nx-table-header-cell compact>Gast</x-nx-table-header-cell>
+                                <x-nx-table-header-cell compact>Tisch</x-nx-table-header-cell>
+                                <x-nx-table-header-cell compact align="center">Personen</x-nx-table-header-cell>
+                                <x-nx-table-header-cell compact align="right">Bestellung</x-nx-table-header-cell>
+                                <x-nx-table-header-cell compact>Status</x-nx-table-header-cell>
+                            </x-nx-table-header>
+                            <x-nx-table-body>
+                                @foreach ($group['bookings'] as $b)
+                                    <x-nx-table-row compact wire:key="b-{{ $b->id }}">
+                                        <x-nx-table-cell compact>
+                                            <span class="font-medium text-[color:var(--nx-text)]">{{ $b->guest_name }}</span>
+                                            @if ($b->guest_email)<span class="block text-xs text-[color:var(--nx-faint)]">{{ $b->guest_email }}</span>@endif
+                                        </x-nx-table-cell>
+                                        <x-nx-table-cell compact class="text-[color:var(--nx-muted)]">{{ $b->table?->label ?? '–' }}</x-nx-table-cell>
+                                        <x-nx-table-cell compact align="center" class="tabular-nums text-[color:var(--nx-muted)]">{{ $b->guest_count }}</x-nx-table-cell>
+                                        <x-nx-table-cell compact align="right" class="tabular-nums text-[color:var(--nx-text)]">
+                                            @if ($b->items_count > 0){{ $b->items_count }} Pos. · {{ number_format($b->total_amount, 2, ',', '.') }} {{ $sym }}@else<span class="text-[color:var(--nx-faint)]">–</span>@endif
+                                        </x-nx-table-cell>
+                                        <x-nx-table-cell compact>
+                                            @php [$sl, $sv] = [
+                                                'pending'   => ['Ausstehend', 'warning'],
+                                                'confirmed' => ['Bestätigt', 'success'],
+                                                'cancelled' => ['Storniert', 'danger'],
+                                                'no_show'   => ['No-Show', 'neutral'],
+                                                'completed' => ['Abgeschlossen', 'info'],
+                                            ][$b->status] ?? [ucfirst($b->status), 'neutral']; @endphp
+                                            <x-nx-badge :variant="$sv">{{ $sl }}</x-nx-badge>
+                                        </x-nx-table-cell>
+                                    </x-nx-table-row>
+                                @endforeach
+                            </x-nx-table-body>
+                        </x-nx-table>
+                    @endif
+                </x-nx-card>
+            @empty
+                <x-nx-card>
+                    <x-nx-empty icon="heroicon-o-calendar-days">Noch keine Pausen oder Buchungen für diesen Termin.</x-nx-empty>
+                </x-nx-card>
+            @endforelse
         </div>
 
     </div>
