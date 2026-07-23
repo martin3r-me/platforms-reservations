@@ -10,12 +10,12 @@
         ]" />
     </x-slot>
 
-    <x-ui-page-container>
-    <div class="pt-4 space-y-4">
+    <x-ui-page-container width="contained">
+    <div class="space-y-5">
 
     {{-- Zeitraum --}}
     <div class="flex flex-wrap items-end justify-between gap-3">
-        <div class="flex flex-wrap items-center gap-1 p-1 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
+        <div class="flex flex-wrap items-center gap-1 rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] p-1">
             @foreach ([
                 'year'      => 'Dieses Jahr',
                 'last_year' => 'Letztes Jahr',
@@ -23,57 +23,40 @@
                 'all'       => 'Gesamt',
             ] as $preset => $label)
                 <button type="button" wire:click="setPreset('{{ $preset }}')"
-                    class="inline-flex items-center px-3 h-7 text-xs font-medium rounded-md transition-colors
-                        {{ $activePreset === $preset ? 'bg-white text-[var(--ui-primary)] shadow-sm' : 'bg-transparent text-[var(--ui-muted)] hover:text-[var(--ui-secondary)]' }}">
+                    class="inline-flex h-7 items-center rounded-[6px] px-3 text-xs font-medium transition-colors
+                        {{ $activePreset === $preset ? 'bg-[color:var(--nx-surface)] font-semibold text-[color:var(--nx-text)]' : 'bg-transparent text-[color:var(--nx-muted)] hover:text-[color:var(--nx-text)]' }}">
                     {{ $label }}
                 </button>
             @endforeach
         </div>
         <div class="flex items-end gap-2">
             <div class="w-40">
-                <x-ui-input-date name="dateFrom" label="Von" size="sm" wire:model.live="dateFrom" />
+                <x-nx-input-date name="dateFrom" label="Von" size="sm" wire:model.live="dateFrom" />
             </div>
             <div class="w-40">
-                <x-ui-input-date name="dateTo" label="Bis" size="sm" wire:model.live="dateTo" />
+                <x-nx-input-date name="dateTo" label="Bis" size="sm" wire:model.live="dateTo" />
             </div>
         </div>
     </div>
 
-    {{-- KPI-Kacheln --}}
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm p-3">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">Umsatz im Zeitraum</span>
-            <p class="m-0 mt-1 text-lg font-bold tabular-nums text-[var(--ui-secondary)]">{{ number_format($this->totals->revenue, 2, ',', '.') }} €</p>
-        </div>
-        <div class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm p-3">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">Buchungen mit Bestellung</span>
-            <p class="m-0 mt-1 text-lg font-bold tabular-nums text-[var(--ui-secondary)]">{{ $this->totals->bookings }}</p>
-        </div>
-        <div class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm p-3">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">Ø pro Buchung</span>
-            <p class="m-0 mt-1 text-lg font-bold tabular-nums text-[var(--ui-secondary)]">{{ number_format($this->totals->average, 2, ',', '.') }} €</p>
-        </div>
-        <div class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm p-3">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">Stärkster Monat</span>
-            <p class="m-0 mt-1 text-lg font-bold text-[var(--ui-secondary)]">
-                {{ $this->totals->best_month ? \Illuminate\Support\Carbon::parse($this->totals->best_month . '-01')->locale('de')->isoFormat('MMM Y') : '–' }}
-            </p>
-        </div>
-    </div>
+    {{-- KPIs --}}
+    <x-nx-stat-grid>
+        <x-nx-stat label="Umsatz im Zeitraum" :value="number_format($this->totals->revenue, 2, ',', '.') . ' €'" />
+        <x-nx-stat label="Buchungen mit Bestellung" :value="(string) $this->totals->bookings" />
+        <x-nx-stat label="Ø pro Buchung" :value="number_format($this->totals->average, 2, ',', '.') . ' €'" />
+        <x-nx-stat label="Stärkster Monat" :value="$this->totals->best_month ? \Illuminate\Support\Carbon::parse($this->totals->best_month . '-01')->locale('de')->isoFormat('MMM Y') : '–'" />
+    </x-nx-stat-grid>
 
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {{-- Umsatz nach Monaten --}}
-        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden lg:col-span-2">
-            <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-                @svg('heroicon-o-chart-bar', 'w-4 h-4 text-[var(--ui-muted)]')
-                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Umsatz nach Monaten</h2>
+        <x-nx-card flush class="lg:col-span-2">
+            <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+                @svg('heroicon-o-chart-bar', 'w-4 h-4 text-[color:var(--nx-muted)]')
+                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Umsatz nach Monaten</h2>
             </div>
             <div class="p-4">
                 @if ($this->monthlyRevenue->isEmpty() || $this->totals->revenue == 0)
-                    <div class="flex flex-col items-center justify-center py-8 text-[var(--ui-muted)]">
-                        @svg('heroicon-o-chart-bar', 'w-8 h-8 mb-2 opacity-40')
-                        <span class="text-xs">Kein Umsatz im gewählten Zeitraum</span>
-                    </div>
+                    <x-nx-empty icon="heroicon-o-chart-bar">Kein Umsatz im gewählten Zeitraum</x-nx-empty>
                 @else
                     <div class="space-y-2">
                         @foreach ($this->monthlyRevenue as $ym => $month)
@@ -81,17 +64,17 @@
                                 $pct = $this->totals->max_month > 0 ? ($month->revenue / $this->totals->max_month) * 100 : 0;
                             @endphp
                             <div wire:key="month-{{ $ym }}" class="flex items-center gap-3">
-                                <span class="w-20 shrink-0 text-xs text-[var(--ui-muted)]">
+                                <span class="w-20 shrink-0 text-xs text-[color:var(--nx-muted)]">
                                     {{ \Illuminate\Support\Carbon::parse($ym . '-01')->locale('de')->isoFormat('MMM YY') }}
                                 </span>
-                                <div class="h-4 flex-1 overflow-hidden rounded-full bg-[var(--ui-muted-5)]">
-                                    <div class="h-full rounded-full bg-[var(--ui-primary)] transition-all"
+                                <div class="h-4 flex-1 overflow-hidden rounded-full bg-[color:var(--nx-active)]">
+                                    <div class="h-full rounded-full bg-[color:var(--nx-accent)] transition-all"
                                         style="width: {{ max($month->revenue > 0 ? 2 : 0, $pct) }}%"></div>
                                 </div>
-                                <span class="w-28 shrink-0 whitespace-nowrap text-right text-xs font-semibold tabular-nums text-[var(--ui-secondary)]">
+                                <span class="w-28 shrink-0 whitespace-nowrap text-right text-xs font-semibold tabular-nums text-[color:var(--nx-text)]">
                                     {{ number_format($month->revenue, 2, ',', '.') }} €
                                 </span>
-                                <span class="w-16 shrink-0 text-right text-[11px] tabular-nums text-[var(--ui-muted)]">
+                                <span class="w-16 shrink-0 text-right text-[11px] tabular-nums text-[color:var(--nx-faint)]">
                                     {{ $month->bookings }} Buch.
                                 </span>
                             </div>
@@ -99,89 +82,87 @@
                     </div>
                 @endif
             </div>
-        </section>
+        </x-nx-card>
 
         {{-- MwSt-Aufschlüsselung --}}
-        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-                @svg('heroicon-o-receipt-percent', 'w-4 h-4 text-[var(--ui-muted)]')
-                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Umsatz je MwSt-Satz</h2>
+        <x-nx-card flush>
+            <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+                @svg('heroicon-o-receipt-percent', 'w-4 h-4 text-[color:var(--nx-muted)]')
+                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Umsatz je MwSt-Satz</h2>
             </div>
-            <div class="divide-y divide-[var(--ui-border)]/30">
+            <div>
                 @forelse ($this->taxBreakdown as $tax)
-                    <div class="px-4 py-2.5 text-sm">
+                    <div class="border-b border-[color:var(--nx-line)] px-4 py-2.5 text-sm last:border-0">
                         <div class="flex items-center justify-between">
-                            <span class="text-[var(--ui-muted)]">{{ rtrim(rtrim($tax->tax_rate, '0'), '.') }} % MwSt.</span>
-                            <span class="whitespace-nowrap font-semibold tabular-nums text-[var(--ui-secondary)]">{{ number_format($tax->gross, 2, ',', '.') }} €</span>
+                            <span class="text-[color:var(--nx-muted)]">{{ rtrim(rtrim($tax->tax_rate, '0'), '.') }} % MwSt.</span>
+                            <span class="whitespace-nowrap font-semibold tabular-nums text-[color:var(--nx-text)]">{{ number_format($tax->gross, 2, ',', '.') }} €</span>
                         </div>
-                        <div class="mt-0.5 flex items-center justify-between text-[11px] text-[var(--ui-muted)] tabular-nums">
+                        <div class="mt-0.5 flex items-center justify-between text-[11px] tabular-nums text-[color:var(--nx-faint)]">
                             <span>Netto {{ number_format($tax->net, 2, ',', '.') }} €</span>
                             <span>MwSt {{ number_format($tax->vat, 2, ',', '.') }} €</span>
                         </div>
                     </div>
                 @empty
-                    <div class="px-4 py-6 text-center text-xs text-[var(--ui-muted)]">Keine Daten</div>
+                    <x-nx-empty icon="heroicon-o-receipt-percent">Keine Daten</x-nx-empty>
                 @endforelse
             </div>
-        </section>
+        </x-nx-card>
     </div>
 
     {{-- Umsatz nach Terminen --}}
-    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-            @svg('heroicon-o-ticket', 'w-4 h-4 text-[var(--ui-muted)]')
-            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Umsatz nach Terminen</h2>
-            <span class="ml-auto text-[11px] text-[var(--ui-muted)]">{{ $this->eventRevenue->count() }}</span>
+    <x-nx-card flush>
+        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+            @svg('heroicon-o-ticket', 'w-4 h-4 text-[color:var(--nx-muted)]')
+            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Umsatz nach Terminen</h2>
+            <span class="ml-auto text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $this->eventRevenue->count() }}</span>
         </div>
-        <x-ui-table compact="true">
-            <x-ui-table-header>
-                <x-ui-table-header-cell compact="true">Termin</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true">Datum</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true" align="center">Buchungen</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true" align="center">Gäste</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true" align="right">Ø / Buchung</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true" align="right">Umsatz</x-ui-table-header-cell>
-                <x-ui-table-header-cell compact="true"></x-ui-table-header-cell>
-            </x-ui-table-header>
-            <x-ui-table-body>
+        <x-nx-table>
+            <x-nx-table-header>
+                <x-nx-table-header-cell compact>Termin</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact>Datum</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact align="center">Buchungen</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact align="center">Gäste</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact align="right">Ø / Buchung</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact align="right">Umsatz</x-nx-table-header-cell>
+                <x-nx-table-header-cell compact><span class="sr-only">Aktion</span></x-nx-table-header-cell>
+            </x-nx-table-header>
+            <x-nx-table-body>
                 @forelse ($this->eventRevenue as $row)
-                    <x-ui-table-row compact="true" wire:key="event-rev-{{ $row->event_id ?? 'none' }}">
-                        <x-ui-table-cell compact="true">
-                            <span class="font-medium text-[var(--ui-secondary)]">{{ $row->name }}</span>
-                        </x-ui-table-cell>
-                        <x-ui-table-cell compact="true">{{ $row->date?->format('d.m.Y') ?? '–' }}</x-ui-table-cell>
-                        <x-ui-table-cell compact="true" align="center">{{ $row->bookings }}</x-ui-table-cell>
-                        <x-ui-table-cell compact="true" align="center">{{ $row->guests }}</x-ui-table-cell>
-                        <x-ui-table-cell compact="true" align="right">
-                            <span class="whitespace-nowrap tabular-nums">{{ number_format($row->bookings > 0 ? $row->revenue / $row->bookings : 0, 2, ',', '.') }} €</span>
-                        </x-ui-table-cell>
-                        <x-ui-table-cell compact="true" align="right">
-                            <span class="whitespace-nowrap font-semibold tabular-nums text-[var(--ui-secondary)]">{{ number_format($row->revenue, 2, ',', '.') }} €</span>
-                        </x-ui-table-cell>
-                        <x-ui-table-cell compact="true">
+                    <x-nx-table-row compact wire:key="event-rev-{{ $row->event_id ?? 'none' }}" class="group">
+                        <x-nx-table-cell compact>
+                            <span class="font-medium text-[color:var(--nx-text)]">{{ $row->name }}</span>
+                        </x-nx-table-cell>
+                        <x-nx-table-cell compact class="tabular-nums text-[color:var(--nx-muted)]">{{ $row->date?->format('d.m.Y') ?? '–' }}</x-nx-table-cell>
+                        <x-nx-table-cell compact align="center" class="tabular-nums text-[color:var(--nx-muted)]">{{ $row->bookings }}</x-nx-table-cell>
+                        <x-nx-table-cell compact align="center" class="tabular-nums text-[color:var(--nx-muted)]">{{ $row->guests }}</x-nx-table-cell>
+                        <x-nx-table-cell compact align="right" class="tabular-nums text-[color:var(--nx-muted)]">
+                            {{ number_format($row->bookings > 0 ? $row->revenue / $row->bookings : 0, 2, ',', '.') }} €
+                        </x-nx-table-cell>
+                        <x-nx-table-cell compact align="right">
+                            <span class="whitespace-nowrap font-semibold tabular-nums text-[color:var(--nx-text)]">{{ number_format($row->revenue, 2, ',', '.') }} €</span>
+                        </x-nx-table-cell>
+                        <x-nx-table-cell compact align="right">
                             @if ($row->event_id)
-                                <x-ui-button variant="secondary-outline" size="sm" :href="route('reservation.events.orders', $row->event_id)" wire:navigate>
-                                    @svg('heroicon-o-fire', 'w-4 h-4')
-                                    <span>Küche</span>
-                                </x-ui-button>
+                                <span class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                                    <x-nx-button icon variant="ghost" :href="route('reservation.events.orders', $row->event_id)" wire:navigate title="Küche">
+                                        @svg('heroicon-o-fire', 'w-4 h-4')
+                                    </x-nx-button>
+                                </span>
                             @endif
-                        </x-ui-table-cell>
-                    </x-ui-table-row>
+                        </x-nx-table-cell>
+                    </x-nx-table-row>
                 @empty
                     <tr>
                         <td colspan="7">
-                            <div class="flex flex-col items-center justify-center py-8 text-[var(--ui-muted)]">
-                                @svg('heroicon-o-inbox', 'w-8 h-8 mb-2 opacity-40')
-                                <span class="text-xs">Keine Umsätze im gewählten Zeitraum</span>
-                            </div>
+                            <x-nx-empty icon="heroicon-o-inbox">Keine Umsätze im gewählten Zeitraum</x-nx-empty>
                         </td>
                     </tr>
                 @endforelse
-            </x-ui-table-body>
-        </x-ui-table>
-    </section>
+            </x-nx-table-body>
+        </x-nx-table>
+    </x-nx-card>
 
-    <p class="text-[11px] text-[var(--ui-muted)] m-0">
+    <p class="m-0 text-[11px] text-[color:var(--nx-faint)]">
         Umsatz = Bestellwert aktiver Buchungen (ohne Stornos/No-Shows). Bestätigte Zahlungseingänge folgen mit der Mollie-Integration.
     </p>
 
