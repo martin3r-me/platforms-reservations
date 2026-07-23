@@ -16,87 +16,87 @@
         </x-ui-page-actionbar>
     </x-slot>
 
-    <x-ui-page-container>
-    <div class="pt-4 space-y-4">
+    <x-ui-page-container width="contained">
+    <div class="space-y-5">
 
     @if (session('hc_message'))
-        <div class="rounded-lg border border-[var(--ui-success)]/30 bg-[var(--ui-success-10)] p-3 text-sm text-[var(--ui-success)]">
-            {{ session('hc_message') }}
-        </div>
+        <x-nx-callout variant="success">{{ session('hc_message') }}</x-nx-callout>
     @endif
 
-    <p class="text-sm text-[var(--ui-muted)] m-0">
-        Standzeit-/Zeitkritikalitäts-Stufen (z. B. „Unbedenklich", „Sollte kalt sein", „Sollte heiß sein"). Sie werden im Artikel zugewiesen; die <strong>Vorlaufzeit</strong> (Minuten vor Pausenbeginn) bestimmt Ziel-Uhrzeit und Reihenfolge der Laufrunde im Function Sheet. <strong>Leer = egal</strong> (zeitunkritisch, vorab platzierbar).
+    <p class="m-0 text-sm text-[color:var(--nx-muted)]">
+        Standzeit-/Zeitkritikalitäts-Stufen (z. B. „Unbedenklich", „Sollte kalt sein", „Sollte heiß sein"). Sie werden im Artikel zugewiesen; die <strong class="text-[color:var(--nx-text)]">Vorlaufzeit</strong> (Minuten vor Pausenbeginn) bestimmt Ziel-Uhrzeit und Reihenfolge der Laufrunde. <strong class="text-[color:var(--nx-text)]">Leer = egal</strong> (zeitunkritisch, vorab platzierbar).
     </p>
 
-    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-            @svg('heroicon-o-fire', 'w-4 h-4 text-[var(--ui-primary)]')
-            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Stufen</h2>
-            <span class="ml-auto text-[11px] text-[var(--ui-muted)]">{{ $this->classes->count() }}</span>
+    <x-nx-card flush>
+        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+            @svg('heroicon-o-fire', 'w-4 h-4 text-[color:var(--nx-muted)]')
+            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Stufen</h2>
+            <span class="ml-auto text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $this->classes->count() }}</span>
         </div>
 
         {{-- Neu anlegen --}}
-        <div class="flex items-end gap-2 border-b border-[var(--ui-border)]/30 p-3">
+        <div class="flex flex-wrap items-end gap-2 border-b border-[color:var(--nx-line)] p-3">
             <div class="w-12">
-                <label class="block text-[11px] font-medium text-[var(--ui-muted)] mb-1">Farbe</label>
-                <input type="color" wire:model="newColor" class="h-9 w-full cursor-pointer rounded-md border border-[var(--ui-border)] bg-white p-1" />
+                <label class="mb-1 block text-[11px] font-medium text-[color:var(--nx-text)]">Farbe</label>
+                <input type="color" wire:model="newColor" class="h-9 w-full cursor-pointer rounded-[6px] border border-[color:var(--nx-line-strong)] bg-[color:var(--nx-surface)] p-1" />
             </div>
             <div class="w-48">
-                <x-ui-input-text name="newName" label="Bezeichnung" size="sm" wire:model="newName" placeholder="Sollte heiß sein" errorKey="newName" />
+                <x-nx-input-text name="newName" label="Bezeichnung" size="sm" wire:model="newName" placeholder="Sollte heiß sein" errorKey="newName" />
             </div>
-            <div class="flex-1">
-                <x-ui-input-text name="newDescription" label="Beschreibung (optional)" size="sm" wire:model="newDescription" placeholder="Kühlt schnell aus …" errorKey="newDescription" />
+            <div class="min-w-[160px] flex-1">
+                <x-nx-input-text name="newDescription" label="Beschreibung (optional)" size="sm" wire:model="newDescription" placeholder="Kühlt schnell aus …" errorKey="newDescription" />
             </div>
             <div class="w-28">
-                <x-ui-input-text type="number" name="newLeadTime" label="Vorlauf (Min.)" size="sm" wire:model="newLeadTime" placeholder="leer = egal" errorKey="newLeadTime" />
+                <x-nx-input-text type="number" name="newLeadTime" label="Vorlauf (Min.)" size="sm" wire:model="newLeadTime" placeholder="leer = egal" errorKey="newLeadTime" />
             </div>
-            <x-ui-button variant="primary" size="sm" wire:click="add">Hinzufügen</x-ui-button>
+            <x-nx-button variant="primary" wire:click="add">Hinzufügen</x-nx-button>
         </div>
 
-        <div class="divide-y divide-[var(--ui-border)]/30">
+        <div>
             @forelse ($this->classes as $index => $c)
-                <div wire:key="hc-{{ $c->id }}" class="flex items-center gap-2 px-4 py-2 text-sm">
+                <div wire:key="hc-{{ $c->id }}" class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-2 text-sm last:border-0">
                     @if ($editingId === $c->id)
-                        <input type="color" wire:model="editColor" class="h-8 w-10 shrink-0 cursor-pointer rounded-md border border-[var(--ui-border)] bg-white p-0.5" />
-                        <input wire:model="editName" class="w-44 rounded-md border border-[var(--ui-border)] px-2 py-1 text-sm dark:bg-gray-800 dark:text-white" />
-                        <input wire:model="editDescription" class="flex-1 rounded-md border border-[var(--ui-border)] px-2 py-1 text-sm dark:bg-gray-800 dark:text-white" />
-                        <input type="number" wire:model="editLeadTime" placeholder="egal" title="Vorlaufzeit in Minuten (leer = egal)" class="w-20 shrink-0 rounded-md border border-[var(--ui-border)] px-2 py-1 text-sm dark:bg-gray-800 dark:text-white" />
-                        <x-ui-button variant="primary" size="sm" wire:click="update">Speichern</x-ui-button>
-                        <x-ui-button variant="secondary-ghost" size="sm" wire:click="cancelEdit">Abbrechen</x-ui-button>
+                        @php $fieldCls = 'rounded-[6px] border border-[color:var(--nx-line-strong)] bg-[color:var(--nx-surface)] px-2 py-1 text-sm text-[color:var(--nx-text)] focus:border-[color:var(--nx-accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--nx-accent)]'; @endphp
+                        <input type="color" wire:model="editColor" class="h-8 w-10 shrink-0 cursor-pointer rounded-[6px] border border-[color:var(--nx-line-strong)] bg-[color:var(--nx-surface)] p-0.5" />
+                        <input wire:model="editName" class="w-44 {{ $fieldCls }}" />
+                        <input wire:model="editDescription" class="flex-1 {{ $fieldCls }}" />
+                        <input type="number" wire:model="editLeadTime" placeholder="egal" title="Vorlaufzeit in Minuten (leer = egal)" class="w-20 shrink-0 {{ $fieldCls }}" />
+                        <x-nx-button variant="primary" wire:click="update">Speichern</x-nx-button>
+                        <x-nx-button variant="ghost" wire:click="cancelEdit">Abbrechen</x-nx-button>
                     @else
-                        <span class="inline-block h-4 w-4 shrink-0 rounded-full border border-black/10" style="background: {{ $c->color ?: '#94a3b8' }}"></span>
+                        <span class="inline-block h-4 w-4 shrink-0 rounded-full" style="background:{{ $c->color ?: '#9b9a97' }}"></span>
                         <div class="min-w-0 flex-1">
-                            <span class="font-medium text-[var(--ui-secondary)]">{{ $c->name }}</span>
+                            <span class="font-medium text-[color:var(--nx-text)]">{{ $c->name }}</span>
                             @if ($c->description)
-                                <span class="ml-2 text-xs text-[var(--ui-muted)]">{{ $c->description }}</span>
+                                <span class="ml-2 text-xs text-[color:var(--nx-muted)]">{{ $c->description }}</span>
                             @endif
                         </div>
-                        <span class="shrink-0 rounded-full bg-[var(--ui-muted-5)] px-2 py-0.5 text-[11px] font-medium text-[var(--ui-muted)]" title="Vorlaufzeit vor Pausenbeginn">
+                        <span class="shrink-0 rounded-full bg-[color:var(--nx-accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--nx-muted)]" title="Vorlaufzeit vor Pausenbeginn">
                             {{ $c->lead_time_minutes !== null ? $c->lead_time_minutes . ' min vor' : 'egal' }}
                         </span>
-                        <span class="shrink-0 text-[11px] text-[var(--ui-muted)]" title="zugeordnete Artikel">{{ $c->menu_items_count }} Art.</span>
+                        <span class="shrink-0 text-[11px] text-[color:var(--nx-faint)]" title="zugeordnete Artikel">{{ $c->menu_items_count }} Art.</span>
                         <div class="flex shrink-0 items-center">
-                            <x-ui-button variant="secondary-ghost" size="sm" :iconOnly="true" wire:click="moveUp({{ $c->id }})" title="Nach oben" :disabled="$index === 0">
+                            <x-nx-button icon variant="ghost" wire:click="moveUp({{ $c->id }})" title="Nach oben" :disabled="$index === 0">
                                 @svg('heroicon-o-chevron-up', 'w-4 h-4')
-                            </x-ui-button>
-                            <x-ui-button variant="secondary-ghost" size="sm" :iconOnly="true" wire:click="moveDown({{ $c->id }})" title="Nach unten" :disabled="$index === $this->classes->count() - 1">
+                            </x-nx-button>
+                            <x-nx-button icon variant="ghost" wire:click="moveDown({{ $c->id }})" title="Nach unten" :disabled="$index === $this->classes->count() - 1">
                                 @svg('heroicon-o-chevron-down', 'w-4 h-4')
-                            </x-ui-button>
+                            </x-nx-button>
                         </div>
-                        <x-ui-button variant="secondary-ghost" size="sm" :iconOnly="true" wire:click="edit({{ $c->id }})" title="Bearbeiten">
+                        <x-nx-button icon variant="ghost" wire:click="edit({{ $c->id }})" title="Bearbeiten">
                             @svg('heroicon-o-pencil', 'w-4 h-4')
-                        </x-ui-button>
-                        <div class="shrink-0">
-                            <x-ui-confirm-button action="delete" :value="$c->id" text="" confirmText="Löschen? Zugeordnete Artikel verlieren nur die Zuordnung." variant="danger-outline" size="sm" :icon="svg('heroicon-o-trash','w-4 h-4')->toHtml()" />
-                        </div>
+                        </x-nx-button>
+                        <button type="button" wire:click="delete({{ $c->id }})" wire:confirm="Löschen? Zugeordnete Artikel verlieren nur die Zuordnung." title="Löschen"
+                            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
+                            @svg('heroicon-o-trash', 'w-4 h-4')
+                        </button>
                     @endif
                 </div>
             @empty
-                <p class="px-4 py-6 text-center text-xs text-[var(--ui-muted)]">Noch keine Stufen. Lege oben welche an oder nutze „Standard-Stufen anlegen".</p>
+                <x-nx-empty icon="heroicon-o-fire">Noch keine Stufen. Lege oben welche an oder nutze „Standard-Stufen anlegen".</x-nx-empty>
             @endforelse
         </div>
-    </section>
+    </x-nx-card>
 
     </div>
     </x-ui-page-container>

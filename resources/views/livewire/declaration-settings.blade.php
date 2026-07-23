@@ -16,106 +16,108 @@
         </x-ui-page-actionbar>
     </x-slot>
 
-    <x-ui-page-container>
-    <div class="pt-4 space-y-4">
+    <x-ui-page-container width="contained">
+    <div class="space-y-5">
 
     @if (session('decl_message'))
-        <div class="rounded-lg border border-[var(--ui-success)]/30 bg-[var(--ui-success-10)] p-3 text-sm text-[var(--ui-success)]">
-            {{ session('decl_message') }}
-        </div>
+        <x-nx-callout variant="success">{{ session('decl_message') }}</x-nx-callout>
     @endif
 
-    <p class="text-sm text-[var(--ui-muted)] m-0">
+    <p class="m-0 text-sm text-[color:var(--nx-muted)]">
         Diese Listen werden in den Artikeln zur Auswahl angeboten und beim Gast angezeigt. Änderungen wirken sofort.
     </p>
 
+    @php $declField = 'rounded-[6px] border border-[color:var(--nx-line-strong)] bg-[color:var(--nx-surface)] px-2 py-1 text-sm text-[color:var(--nx-text)] focus:border-[color:var(--nx-accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--nx-accent)]'; @endphp
+
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {{-- Allergene --}}
-        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-                @svg('heroicon-o-exclamation-triangle', 'w-4 h-4 text-[var(--ui-warning)]')
-                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Allergene</h2>
-                <span class="ml-auto text-[11px] text-[var(--ui-muted)]">{{ $this->allergens->count() }}</span>
+        <x-nx-card flush>
+            <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+                @svg('heroicon-o-exclamation-triangle', 'w-4 h-4', ['style' => 'color:var(--nx-warning)'])
+                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Allergene</h2>
+                <span class="ml-auto text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $this->allergens->count() }}</span>
             </div>
 
             {{-- Neu anlegen --}}
-            <div class="flex items-end gap-2 border-b border-[var(--ui-border)]/30 p-3">
+            <div class="flex items-end gap-2 border-b border-[color:var(--nx-line)] p-3">
                 <div class="w-20">
-                    <x-ui-input-text name="newAllergenCode" label="Code" size="sm" wire:model="newAllergenCode" placeholder="A1" errorKey="newAllergenCode" />
+                    <x-nx-input-text name="newAllergenCode" label="Code" size="sm" wire:model="newAllergenCode" placeholder="A1" errorKey="newAllergenCode" />
                 </div>
                 <div class="flex-1">
-                    <x-ui-input-text name="newAllergenName" label="Bezeichnung" size="sm" wire:model="newAllergenName" placeholder="enthält Weizen" errorKey="newAllergenName" />
+                    <x-nx-input-text name="newAllergenName" label="Bezeichnung" size="sm" wire:model="newAllergenName" placeholder="enthält Weizen" errorKey="newAllergenName" />
                 </div>
-                <x-ui-button variant="primary" size="sm" wire:click="addAllergen">Hinzufügen</x-ui-button>
+                <x-nx-button variant="primary" wire:click="addAllergen">Hinzufügen</x-nx-button>
             </div>
 
-            <div class="divide-y divide-[var(--ui-border)]/30">
+            <div>
                 @forelse ($this->allergens as $a)
-                    <div wire:key="al-{{ $a->id }}" class="flex items-center gap-2 px-4 py-2 text-sm">
+                    <div wire:key="al-{{ $a->id }}" class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-2 text-sm last:border-0">
                         @if ($editingAllergenId === $a->id)
-                            <input wire:model="editAllergenCode" class="w-16 rounded-md border border-[var(--ui-border)] px-2 py-1 text-sm dark:bg-gray-800 dark:text-white" />
-                            <input wire:model="editAllergenName" class="flex-1 rounded-md border border-[var(--ui-border)] px-2 py-1 text-sm dark:bg-gray-800 dark:text-white" />
-                            <x-ui-button variant="primary" size="sm" wire:click="updateAllergen">Speichern</x-ui-button>
-                            <x-ui-button variant="secondary-ghost" size="sm" wire:click="$set('editingAllergenId', null)">Abbrechen</x-ui-button>
+                            <input wire:model="editAllergenCode" class="w-16 {{ $declField }}" />
+                            <input wire:model="editAllergenName" class="flex-1 {{ $declField }}" />
+                            <x-nx-button variant="primary" wire:click="updateAllergen">Speichern</x-nx-button>
+                            <x-nx-button variant="ghost" wire:click="$set('editingAllergenId', null)">Abbrechen</x-nx-button>
                         @else
-                            <span class="w-12 shrink-0 font-mono text-xs font-semibold text-[var(--ui-warning)]">{{ $a->code }}</span>
-                            <span class="flex-1 text-[var(--ui-secondary)]">{{ $a->name }}</span>
-                            <x-ui-button variant="secondary-ghost" size="sm" :iconOnly="true" wire:click="editAllergen({{ $a->id }})" title="Bearbeiten">
+                            <span class="w-12 shrink-0 font-mono text-xs font-semibold" style="color:var(--nx-warning)">{{ $a->code }}</span>
+                            <span class="flex-1 text-[color:var(--nx-text)]">{{ $a->name }}</span>
+                            <x-nx-button icon variant="ghost" wire:click="editAllergen({{ $a->id }})" title="Bearbeiten">
                                 @svg('heroicon-o-pencil', 'w-4 h-4')
-                            </x-ui-button>
-                            <div class="shrink-0">
-                                <x-ui-confirm-button action="deleteAllergen" :value="$a->id" text="" confirmText="Löschen?" variant="danger-outline" size="sm" :icon="svg('heroicon-o-trash','w-4 h-4')->toHtml()" />
-                            </div>
+                            </x-nx-button>
+                            <button type="button" wire:click="deleteAllergen({{ $a->id }})" wire:confirm="Löschen?" title="Löschen"
+                                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
+                                @svg('heroicon-o-trash', 'w-4 h-4')
+                            </button>
                         @endif
                     </div>
                 @empty
-                    <p class="px-4 py-6 text-center text-xs text-[var(--ui-muted)]">Noch keine Allergene.</p>
+                    <x-nx-empty icon="heroicon-o-exclamation-triangle">Noch keine Allergene.</x-nx-empty>
                 @endforelse
             </div>
-        </section>
+        </x-nx-card>
 
         {{-- Zusatzstoffe --}}
-        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-                @svg('heroicon-o-beaker', 'w-4 h-4 text-[var(--ui-info)]')
-                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Zusatzstoffe</h2>
-                <span class="ml-auto text-[11px] text-[var(--ui-muted)]">{{ $this->additives->count() }}</span>
+        <x-nx-card flush>
+            <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+                @svg('heroicon-o-beaker', 'w-4 h-4', ['style' => 'color:var(--nx-info)'])
+                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Zusatzstoffe</h2>
+                <span class="ml-auto text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $this->additives->count() }}</span>
             </div>
 
-            <div class="flex items-end gap-2 border-b border-[var(--ui-border)]/30 p-3">
+            <div class="flex items-end gap-2 border-b border-[color:var(--nx-line)] p-3">
                 <div class="w-20">
-                    <x-ui-input-text name="newAdditiveCode" label="Code" size="sm" wire:model="newAdditiveCode" placeholder="1.1" errorKey="newAdditiveCode" />
+                    <x-nx-input-text name="newAdditiveCode" label="Code" size="sm" wire:model="newAdditiveCode" placeholder="1.1" errorKey="newAdditiveCode" />
                 </div>
                 <div class="flex-1">
-                    <x-ui-input-text name="newAdditiveName" label="Bezeichnung" size="sm" wire:model="newAdditiveName" placeholder="Zuckerkulör E150d" errorKey="newAdditiveName" />
+                    <x-nx-input-text name="newAdditiveName" label="Bezeichnung" size="sm" wire:model="newAdditiveName" placeholder="Zuckerkulör E150d" errorKey="newAdditiveName" />
                 </div>
-                <x-ui-button variant="primary" size="sm" wire:click="addAdditive">Hinzufügen</x-ui-button>
+                <x-nx-button variant="primary" wire:click="addAdditive">Hinzufügen</x-nx-button>
             </div>
 
-            <div class="divide-y divide-[var(--ui-border)]/30">
+            <div>
                 @forelse ($this->additives as $z)
-                    <div wire:key="ad-{{ $z->id }}" class="flex items-center gap-2 px-4 py-2 text-sm">
+                    <div wire:key="ad-{{ $z->id }}" class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-2 text-sm last:border-0">
                         @if ($editingAdditiveId === $z->id)
-                            <input wire:model="editAdditiveCode" class="w-16 rounded-md border border-[var(--ui-border)] px-2 py-1 text-sm dark:bg-gray-800 dark:text-white" />
-                            <input wire:model="editAdditiveName" class="flex-1 rounded-md border border-[var(--ui-border)] px-2 py-1 text-sm dark:bg-gray-800 dark:text-white" />
-                            <x-ui-button variant="primary" size="sm" wire:click="updateAdditive">Speichern</x-ui-button>
-                            <x-ui-button variant="secondary-ghost" size="sm" wire:click="$set('editingAdditiveId', null)">Abbrechen</x-ui-button>
+                            <input wire:model="editAdditiveCode" class="w-16 {{ $declField }}" />
+                            <input wire:model="editAdditiveName" class="flex-1 {{ $declField }}" />
+                            <x-nx-button variant="primary" wire:click="updateAdditive">Speichern</x-nx-button>
+                            <x-nx-button variant="ghost" wire:click="$set('editingAdditiveId', null)">Abbrechen</x-nx-button>
                         @else
-                            <span class="w-12 shrink-0 font-mono text-xs font-semibold text-[var(--ui-info)]">{{ $z->code }}</span>
-                            <span class="flex-1 text-[var(--ui-secondary)]">{{ $z->name }}</span>
-                            <x-ui-button variant="secondary-ghost" size="sm" :iconOnly="true" wire:click="editAdditive({{ $z->id }})" title="Bearbeiten">
+                            <span class="w-12 shrink-0 font-mono text-xs font-semibold" style="color:var(--nx-info)">{{ $z->code }}</span>
+                            <span class="flex-1 text-[color:var(--nx-text)]">{{ $z->name }}</span>
+                            <x-nx-button icon variant="ghost" wire:click="editAdditive({{ $z->id }})" title="Bearbeiten">
                                 @svg('heroicon-o-pencil', 'w-4 h-4')
-                            </x-ui-button>
-                            <div class="shrink-0">
-                                <x-ui-confirm-button action="deleteAdditive" :value="$z->id" text="" confirmText="Löschen?" variant="danger-outline" size="sm" :icon="svg('heroicon-o-trash','w-4 h-4')->toHtml()" />
-                            </div>
+                            </x-nx-button>
+                            <button type="button" wire:click="deleteAdditive({{ $z->id }})" wire:confirm="Löschen?" title="Löschen"
+                                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
+                                @svg('heroicon-o-trash', 'w-4 h-4')
+                            </button>
                         @endif
                     </div>
                 @empty
-                    <p class="px-4 py-6 text-center text-xs text-[var(--ui-muted)]">Noch keine Zusatzstoffe.</p>
+                    <x-nx-empty icon="heroicon-o-beaker">Noch keine Zusatzstoffe.</x-nx-empty>
                 @endforelse
             </div>
-        </section>
+        </x-nx-card>
     </div>
 
     </div>
