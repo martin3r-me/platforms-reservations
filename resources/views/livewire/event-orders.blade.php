@@ -21,107 +21,75 @@
         @include('reservation::partials.event-sidebar', ['event' => $this->event, 'active' => 'kitchen'])
     </x-slot>
 
-    <x-ui-page-container>
-    <div class="pt-4 space-y-4">
+    <x-ui-page-container width="contained">
+    <div class="space-y-5">
 
-    {{-- Kennzahlen --}}
-    @php $totals = $this->slotStats->get(0); @endphp
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm p-3">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">Termin</span>
-            <p class="m-0 mt-1 text-sm font-bold text-[var(--ui-secondary)]">{{ $this->event->date->format('d.m.Y') }}</p>
+        @php $totals = $this->slotStats->get(0); @endphp
+        {{-- dünne Kennzahl-Zeile --}}
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-[color:var(--nx-line)] pb-3">
+            <div>
+                <div class="text-xl font-bold leading-none tabular-nums text-[color:var(--nx-text)]">{{ $totals?->bookings ?? 0 }}</div>
+                <div class="mt-1 text-xs text-[color:var(--nx-muted)]">Buchungen</div>
+            </div>
+            <div>
+                <div class="text-xl font-bold leading-none tabular-nums text-[color:var(--nx-text)]">{{ $totals?->guests ?? 0 }}</div>
+                <div class="mt-1 text-xs text-[color:var(--nx-muted)]">Gäste</div>
+            </div>
+            <div>
+                <div class="text-xl font-bold leading-none tabular-nums text-[color:var(--nx-text)]">{{ $this->event->slots->count() }}</div>
+                <div class="mt-1 text-xs text-[color:var(--nx-muted)]">{{ $this->event->slots->count() === 1 ? 'Pause' : 'Pausen' }}</div>
+            </div>
+            <span class="ml-auto text-xs text-[color:var(--nx-faint)]">ohne Stornos / No-Shows</span>
         </div>
-        <div class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm p-3">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">Buchungen</span>
-            <p class="m-0 mt-1 text-lg font-bold tabular-nums text-[var(--ui-secondary)]">{{ $totals?->bookings ?? 0 }}</p>
-        </div>
-        <div class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm p-3">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">Gäste</span>
-            <p class="m-0 mt-1 text-lg font-bold tabular-nums text-[var(--ui-secondary)]">{{ $totals?->guests ?? 0 }}</p>
-        </div>
-        <div class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm p-3">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">Bestellte Artikel</span>
-            <p class="m-0 mt-1 text-lg font-bold tabular-nums text-[var(--ui-secondary)]">{{ $this->totalQuantity }}</p>
-        </div>
-    </div>
 
-    @if ($this->itemsByCategory->isEmpty())
-        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm">
-            <div class="flex flex-col items-center justify-center py-16 text-[var(--ui-muted)]">
-                @svg('heroicon-o-inbox', 'w-10 h-10 mb-3 opacity-40')
-                <span class="text-sm font-medium text-[var(--ui-secondary)]">Noch keine Bestellungen</span>
-                <span class="text-xs mt-1 opacity-70">Sobald Gäste vorbestellen, erscheint hier die Bereitstellungsliste.</span>
-            </div>
-        </section>
-    @else
-        {{-- Bereitstellungsliste --}}
-        <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-                @svg('heroicon-o-fire', 'w-4 h-4 text-[var(--ui-muted)]')
-                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">
-                    Bereitstellung je Pause
-                </h2>
-                <span class="ml-auto text-[11px] text-[var(--ui-muted)]">ohne stornierte Buchungen / No-Shows</span>
-            </div>
-            <x-ui-table compact="true">
-                <x-ui-table-header>
-                    <x-ui-table-header-cell compact="true">Artikel</x-ui-table-header-cell>
-                    @foreach ($this->event->slots as $slot)
-                        <x-ui-table-header-cell compact="true" align="center">
-                            {{ $slot->name }}<br>
-                            @if ($slot->time_range)<span class="font-normal normal-case">{{ $slot->time_range }} Uhr</span>@endif
-                        </x-ui-table-header-cell>
-                    @endforeach
-                    <x-ui-table-header-cell compact="true" align="center">Gesamt</x-ui-table-header-cell>
-                </x-ui-table-header>
-                <x-ui-table-body>
-                    @foreach ($this->itemsByCategory as $categoryName => $items)
-                        <tr>
-                            <td colspan="{{ 2 + $this->event->slots->count() }}"
-                                class="bg-[var(--ui-muted-5)] px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">
-                                {{ $categoryName }}
-                            </td>
-                        </tr>
-                        @foreach ($items as $item)
-                            @php $bySlot = $this->quantities->get($item->id, collect()); @endphp
-                            <x-ui-table-row compact="true" wire:key="order-item-{{ $item->id }}">
-                                <x-ui-table-cell compact="true">
-                                    <span class="font-medium text-[var(--ui-secondary)]">{{ $item->name }}</span>
-                                    @if ($item->is_alcoholic)
-                                        <x-ui-badge variant="info" size="xs">18+</x-ui-badge>
-                                    @endif
-                                </x-ui-table-cell>
-                                @foreach ($this->event->slots as $slot)
-                                    <x-ui-table-cell compact="true" align="center">
-                                        <span class="tabular-nums {{ $bySlot->get($slot->id) ? 'text-[var(--ui-secondary)]' : 'text-[var(--ui-muted)] opacity-50' }}">
-                                            {{ $bySlot->get($slot->id, 0) }}
-                                        </span>
-                                    </x-ui-table-cell>
+        {{-- Vorbereitungsplan: pro Pause → Standzeit-Klasse (Timing) → Mengen --}}
+        @forelse ($this->prepBySlot as $slot)
+            <x-nx-card flush wire:key="prep-slot-{{ $loop->index }}">
+                {{-- Pausen-Kopf --}}
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[color:var(--nx-line)] px-4 py-3">
+                    @svg('heroicon-o-clock', 'w-4 h-4 shrink-0 text-[color:var(--nx-muted)]')
+                    <h2 class="m-0 text-sm font-semibold text-[color:var(--nx-text)]">{{ $slot['slot']->displayLabel() }}</h2>
+                    <span class="text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $slot['total'] }} Artikel gesamt</span>
+                </div>
+
+                {{-- Timing-Gruppen: was wann vorbereiten --}}
+                <div class="divide-y divide-[color:var(--nx-line)]">
+                    @foreach ($slot['groups'] as $g)
+                        @php $color = $g['color'] ?: '#9b9a97'; @endphp
+                        <div wire:key="prep-{{ $loop->parent->index }}-g-{{ $loop->index }}" class="px-4 py-3">
+                            <div class="mb-2 flex flex-wrap items-center gap-2">
+                                <span class="h-3 w-3 shrink-0 rounded-full" style="background:{{ $color }}"></span>
+                                <span class="text-sm font-medium text-[color:var(--nx-text)]">{{ $g['name'] }}</span>
+                                @if ($g['target_time'])
+                                    <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold" style="color:{{ $color }};background:{{ $color }}1a">
+                                        @svg('heroicon-o-clock', 'w-3.5 h-3.5')
+                                        zubereiten ab {{ $g['target_time'] }} Uhr
+                                    </span>
+                                @else
+                                    <span class="rounded-full bg-[color:var(--nx-accent-soft)] px-2 py-0.5 text-xs text-[color:var(--nx-muted)]">vorab / jederzeit</span>
+                                @endif
+                                <span class="ml-auto text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $g['total'] }} Stück</span>
+                            </div>
+                            <div class="space-y-1">
+                                @foreach ($g['items'] as $it)
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="min-w-0 truncate text-sm text-[color:var(--nx-text)]">{{ $it['name'] }}</span>
+                                        <span class="shrink-0 text-lg font-bold tabular-nums text-[color:var(--nx-text)]">{{ $it['qty'] }}×</span>
+                                    </div>
                                 @endforeach
-                                <x-ui-table-cell compact="true" align="center">
-                                    <span class="font-bold tabular-nums text-[var(--ui-secondary)]">{{ $bySlot->sum() }}</span>
-                                </x-ui-table-cell>
-                            </x-ui-table-row>
-                        @endforeach
+                            </div>
+                        </div>
                     @endforeach
-
-                    {{-- Summenzeile Buchungen/Gäste je Slot --}}
-                    <tr class="border-t border-[var(--ui-border)]/40 bg-[var(--ui-muted-5)]">
-                        <td class="px-2 py-1.5 text-xs font-semibold text-[var(--ui-secondary)]">Buchungen / Gäste</td>
-                        @foreach ($this->event->slots as $slot)
-                            @php $stat = $this->slotStats->get($slot->id); @endphp
-                            <td class="px-2 py-1.5 text-center text-xs tabular-nums text-[var(--ui-muted)]">
-                                {{ $stat?->bookings ?? 0 }} / {{ $stat?->guests ?? 0 }}
-                            </td>
-                        @endforeach
-                        <td class="px-2 py-1.5 text-center text-xs font-semibold tabular-nums text-[var(--ui-secondary)]">
-                            {{ $totals?->bookings ?? 0 }} / {{ $totals?->guests ?? 0 }}
-                        </td>
-                    </tr>
-                </x-ui-table-body>
-            </x-ui-table>
-        </section>
-    @endif
+                </div>
+            </x-nx-card>
+        @empty
+            <x-nx-card>
+                <x-nx-empty icon="heroicon-o-inbox">
+                    <span class="text-sm font-medium text-[color:var(--nx-text)]">Noch keine Bestellungen</span>
+                    <span class="mt-1 block">Sobald Gäste vorbestellen, erscheint hier der Vorbereitungsplan je Pause.</span>
+                </x-nx-empty>
+            </x-nx-card>
+        @endforelse
 
     </div>
     </x-ui-page-container>

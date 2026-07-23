@@ -37,35 +37,70 @@ class EventOrders extends Component
     }
 
     /**
-     * Aggregierte Mengen: [menu_item_id => [event_slot_id => qty]].
+     * Vorbereitungsplan je Pause, gruppiert nach Standzeit-Klasse (Timing):
+     * pro Gruppe die aggregierten Mengen je Artikel + „Zubereiten ab"-Zeit
+     * (Pausenbeginn − Vorlaufzeit). Zeitlich egal/vorab zuerst, dann nach Zeit.
+     *
+     * @return \Illuminate\Support\Collection<int, array{slot: mixed, total: int, groups: \Illuminate\Support\Collection}>
      */
     #[Computed]
-    public function quantities(): \Illuminate\Support\Collection
+    public function prepBySlot(): \Illuminate\Support\Collection
     {
-        return BookingItem::query()
+        $rows = BookingItem::query()
             ->join('reservation_bookings as b', 'b.id', '=', 'reservation_booking_items.booking_id')
             ->where('b.event_id', $this->eventId)
             ->whereNotIn('b.status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
             ->groupBy('reservation_booking_items.menu_item_id', 'b.event_slot_id')
-            ->selectRaw('reservation_booking_items.menu_item_id, b.event_slot_id, SUM(reservation_booking_items.quantity) as qty')
-            ->get()
-            ->groupBy('menu_item_id')
-            ->map(fn ($rows) => $rows->pluck('qty', 'event_slot_id')->map(fn ($q) => (int) $q));
-    }
+            ->selectRaw('reservation_booking_items.menu_item_id as item_id, b.event_slot_id as slot_id, SUM(reservation_booking_items.quantity) as qty')
+            ->get();
 
-    /** Artikel der Bestellungen, nach Kategorie gruppiert. */
-    #[Computed]
-    public function itemsByCategory(): \Illuminate\Support\Collection
-    {
-        if ($this->quantities->isEmpty()) {
+        if ($rows->isEmpty()) {
             return collect();
         }
 
-        return MenuItem::with('category')
-            ->whereIn('id', $this->quantities->keys())
+        $items = MenuItem::with('holdingClass')
+            ->whereIn('id', $rows->pluck('item_id')->unique())
             ->get()
-            ->sortBy([['category.sort_order', 'asc'], ['sort_order', 'asc'], ['name', 'asc']])
-            ->groupBy(fn (MenuItem $item) => $item->category?->name ?? 'Sonstiges');
+            ->keyBy('id');
+
+        return $this->event->slots
+            ->sortBy(fn ($s) => (string) $s->time_start)
+            ->map(function ($slot) use ($rows, $items) {
+                $slotRows = $rows->where('slot_id', $slot->id);
+
+                $groups = $slotRows
+                    ->groupBy(fn ($r) => $items[$r->item_id]?->holding_class_id ?? 0)
+                    ->map(function ($grp) use ($items, $slot) {
+                        $hc   = $items[$grp->first()->item_id]?->holdingClass;
+                        $lead = $hc?->lead_time_minutes;
+                        $target = ($lead !== null && $slot->time_start)
+                            ? \Carbon\Carbon::createFromFormat('H:i', substr((string) $slot->time_start, 0, 5))->subMinutes((int) $lead)->format('H:i')
+                            : null;
+
+                        return [
+                            'name'        => $hc?->name ?? 'Zeitlich egal / vorab',
+                            'color'       => $hc?->color,
+                            'lead'        => $lead,
+                            'target_time' => $target,
+                            'sort_order'  => $hc?->sort_order ?? 9999,
+                            'total'       => (int) $grp->sum('qty'),
+                            'items'       => $grp->map(fn ($r) => [
+                                'name' => $items[$r->item_id]?->name ?? 'Artikel',
+                                'qty'  => (int) $r->qty,
+                            ])->sortByDesc('qty')->values(),
+                        ];
+                    })
+                    ->sortBy(fn ($g) => ($g['target_time'] === null ? '0' : '1') . ($g['target_time'] ?? str_pad((string) $g['sort_order'], 5, '0', STR_PAD_LEFT)))
+                    ->values();
+
+                return [
+                    'slot'   => $slot,
+                    'total'  => (int) $slotRows->sum('qty'),
+                    'groups' => $groups,
+                ];
+            })
+            ->filter(fn ($s) => $s['groups']->isNotEmpty())
+            ->values();
     }
 
     /** Buchungs-/Gäste-Statistik je Slot (+ Gesamt unter Key 0). */
@@ -86,12 +121,6 @@ class EventOrders extends Component
         ]);
 
         return $stats;
-    }
-
-    #[Computed]
-    public function totalQuantity(): int
-    {
-        return (int) $this->quantities->sum(fn ($bySlot) => $bySlot->sum());
     }
 
     public function render()
