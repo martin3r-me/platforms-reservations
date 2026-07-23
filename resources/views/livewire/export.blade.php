@@ -10,19 +10,19 @@
         ]" />
     </x-slot>
 
-    <x-ui-page-container>
-    <div class="pt-4 space-y-4">
+    <x-ui-page-container width="contained">
+    <div class="space-y-5">
 
-    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-            @svg('heroicon-o-funnel', 'w-4 h-4 text-[var(--ui-muted)]')
-            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Zeitraum &amp; Filter</h2>
+    <x-nx-card flush>
+        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+            @svg('heroicon-o-funnel', 'w-4 h-4 text-[color:var(--nx-muted)]')
+            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Zeitraum &amp; Filter</h2>
         </div>
         <div class="p-5 space-y-4">
-            <x-ui-form-grid :cols="2" :gap="3">
-                <x-ui-input-date name="dateFrom" label="Von" wire:model.live="dateFrom" />
-                <x-ui-input-date name="dateTo" label="Bis" wire:model.live="dateTo" />
-                <x-ui-input-select
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <x-nx-input-date name="dateFrom" label="Von" wire:model.live="dateFrom" />
+                <x-nx-input-date name="dateTo" label="Bis" wire:model.live="dateTo" />
+                <x-nx-input-select
                     name="filterStatus"
                     label="Status"
                     :options="[
@@ -36,7 +36,7 @@
                     nullLabel="Alle Status"
                     wire:model.live="filterStatus"
                 />
-                <x-ui-input-select
+                <x-nx-input-select
                     name="format"
                     label="Format"
                     :options="[
@@ -45,35 +45,35 @@
                     ]"
                     wire:model="format"
                 />
-            </x-ui-form-grid>
+            </div>
 
-            <div class="flex items-center justify-between rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 p-3">
-                <p class="text-sm text-[var(--ui-muted)] m-0">
-                    <strong class="text-[var(--ui-secondary)] tabular-nums">{{ $this->previewCount }}</strong>
+            <div class="flex items-center justify-between rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] p-3">
+                <p class="text-sm text-[color:var(--nx-muted)] m-0">
+                    <strong class="text-[color:var(--nx-text)] tabular-nums">{{ $this->previewCount }}</strong>
                     Buchungen im Zeitraum
                 </p>
-                <x-ui-button variant="primary" size="sm" wire:click="export" :disabled="$this->previewCount === 0">
+                <x-nx-button variant="primary" wire:click="export" :disabled="$this->previewCount === 0">
                     @svg('heroicon-o-arrow-down-tray', 'w-4 h-4')
                     <span>Exportieren</span>
-                </x-ui-button>
+                </x-nx-button>
             </div>
         </div>
-    </section>
+    </x-nx-card>
 
     {{-- Felder-Übersicht --}}
-    <section class="rounded-xl bg-white border border-[var(--ui-border)]/40 shadow-sm overflow-hidden">
-        <div class="px-4 py-3 border-b border-[var(--ui-border)]/30 flex items-center gap-2">
-            @svg('heroicon-o-table-cells', 'w-4 h-4 text-[var(--ui-muted)]')
-            <h2 class="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-muted)] m-0">Exportierte Felder</h2>
+    <x-nx-card flush>
+        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+            @svg('heroicon-o-table-cells', 'w-4 h-4 text-[color:var(--nx-muted)]')
+            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Exportierte Felder</h2>
         </div>
         <div class="p-5">
             <div class="flex flex-wrap gap-1.5">
                 @foreach(['Buchungs-ID', 'Datum', 'Uhrzeit', 'Tisch', 'Venue', 'Gast', 'E-Mail', 'Telefon', 'Personen', 'Status', 'Betrag', 'Zahlungsart', 'Mollie-ID', 'Steuersatz', 'Erstellt'] as $field)
-                    <x-ui-badge variant="muted" size="xs">{{ $field }}</x-ui-badge>
+                    <x-nx-badge >{{ $field }}</x-nx-badge>
                 @endforeach
             </div>
         </div>
-    </section>
+    </x-nx-card>
 
     </div>
     </x-ui-page-container>
