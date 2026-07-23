@@ -114,7 +114,9 @@
                                 @elseif ($item->is_vegetarian)
                                     <x-nx-badge variant="success">Vegetarisch</x-nx-badge>
                                 @endif
-                                @if ($item->is_alcoholic)
+                                @if ($item->min_age)
+                                    <x-nx-badge variant="info">{{ $item->min_age->label() }}</x-nx-badge>
+                                @elseif ($item->is_alcoholic)
                                     <x-nx-badge variant="info">18+</x-nx-badge>
                                 @endif
                                 @if (!$item->available)
