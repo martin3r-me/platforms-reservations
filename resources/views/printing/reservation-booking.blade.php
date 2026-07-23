@@ -79,14 +79,23 @@
 {{ $sep }}
 
 @if($printable->event)
-{{ $row('VA:', Str::limit($printable->event->name, $width - 5)) }}
+{{ $center(Str::limit($printable->event->name, $width), $width) }}
+
 @endif
-{{ str_pad('Datum:', 12) }}{{ $printable->date?->format('d.m.Y') }}@if($printable->time_start) · {{ substr($printable->time_start, 0, 5) }} Uhr @endif
+@php
+    $datum = (string) $printable->date?->format('d.m.Y');
+    if ($printable->time_start) { $datum = trim($datum . ' - ' . substr($printable->time_start, 0, 5) . ' Uhr'); }
+@endphp
+{{ str_pad('Datum:', 12) }}{{ $datum }}
 @if($printable->slot)
 {{ str_pad('Pause:', 12) }}{{ Str::limit($printable->slot->name, $width - 12) }}
 @endif
 @if($printable->table)
-{{ str_pad('Tisch:', 12) }}{{ $printable->table->label }}@if($printable->table->floorPlan) · {{ Str::limit($printable->table->floorPlan->name, 24) }}@endif
+@php
+    $tisch = (string) $printable->table->label;
+    if ($printable->table->floorPlan) { $tisch .= ' - ' . Str::limit($printable->table->floorPlan->name, 24); }
+@endphp
+{{ str_pad('Tisch:', 12) }}{{ $tisch }}
 @endif
 {{ str_pad('Gast:', 12) }}{{ Str::limit($printable->guest_name ?? '-', $width - 12) }}
 {{ str_pad('Personen:', 12) }}{{ $printable->guest_count }}
@@ -94,7 +103,11 @@
 {{ str_pad('Bestellung:', 12) }}{{ $order->uuid }}
 @endif
 @if($payment)
-{{ str_pad('Zahlung:', 12) }}{{ $payment->status }}@if($printable->payment_method) · {{ $payLabels[$printable->payment_method] ?? $printable->payment_method }}@endif
+@php
+    $zahlung = (string) $payment->status;
+    if ($printable->payment_method) { $zahlung .= ' - ' . ($payLabels[$printable->payment_method] ?? $printable->payment_method); }
+@endphp
+{{ str_pad('Zahlung:', 12) }}{{ $zahlung }}
 @endif
 {{ str_pad('Gebucht:', 12) }}{{ $printable->created_at?->format('d.m.Y H:i') }}
 
@@ -118,8 +131,7 @@
 {{ str_pad('MWST-AUSWEIS', 12) }}
 {{ $line }}
 @foreach($vatRows as $vr)
-{{ $vr['letter'] }} · {{ $ratePct($vr['rate']) }}% · Netto {{ $money($vr['net']) }}
-{{ $row('     MwSt', $money($vr['vat']) . ' ' . $sym) }}
+{{ $row($vr['letter'] . '  ' . $ratePct($vr['rate']) . '%   Netto ' . $money($vr['net']), 'MwSt ' . $money($vr['vat']) . ' ' . $sym) }}
 @endforeach
 {{ $line }}
 {{ $row('Netto gesamt', $money($netTotal) . ' ' . $sym) }}
