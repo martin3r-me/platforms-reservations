@@ -4,11 +4,14 @@ namespace Platform\Reservation\Http\Controllers\Api;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Platform\Reservation\Models\Additive;
+use Platform\Reservation\Models\Allergen;
 use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\SalesList;
+use Platform\Reservation\Models\Translation;
 use Platform\Reservation\Services\SeatAvailabilityService;
 
 /**
@@ -83,7 +86,7 @@ class GuestEventController extends GuestApiController
     }
 
     /** GET /guest/events/{uuid}/products – gast-sichtbare Artikel der Verkaufsliste. */
-    public function products(string $uuid): JsonResponse
+    public function products(Request $request, string $uuid): JsonResponse
     {
         $event = $this->findEvent($uuid);
 
@@ -91,19 +94,25 @@ class GuestEventController extends GuestApiController
             return response()->json(['message' => 'Termin nicht gefunden.'], 404);
         }
 
+        $locale = $this->requestLocale($request);
+
         $items = $this->visibleItems($event)->map(fn (MenuItem $item) => [
             'id'            => $item->id,
-            'name'          => $item->name,
-            'description'   => $item->description,
+            'name'          => $item->translate('name', $locale),
+            'description'   => $item->translate('description', $locale),
             'portion_size'  => $item->portion_size,
             'price'         => (float) $item->price,
             'tax_rate'      => (float) $item->tax_rate,
             'is_vegetarian' => $item->is_vegetarian,
             'is_vegan'      => $item->is_vegan,
             'is_alcoholic'  => $item->is_alcoholic,
-            'category'      => $item->category?->name,
-            'allergens'     => $item->allergens->pluck('code')->values(),
-            'additives'     => $item->additives->pluck('code')->values(),
+            'category'      => $item->category?->translate('name', $locale),
+            // Je Artikel Code UND (übersetzten) Klartext – das Frontend braucht
+            // die Legende nicht zwingend zum Auflösen.
+            'allergens'     => $item->allergens
+                ->map(fn (Allergen $a) => $this->term($a, $locale))->values(),
+            'additives'     => $item->additives
+                ->map(fn (Additive $z) => $this->term($z, $locale))->values(),
             'image_url'     => $item->image_context_file_id ? $item->imageUrl('medium_1_1') : null,
         ]);
 
@@ -165,6 +174,46 @@ class GuestEventController extends GuestApiController
             ])->values(),
             'availability'   => $availability, // { slot_id: { table_id: remaining } }
         ]);
+    }
+
+    /**
+     * GET /guest/legend – komplette Allergen-/Zusatzstoff-Legende des Gast-Teams,
+     * unabhängig von Termin/Artikel (alle gepflegten Codes). ?lang= für die Sprache.
+     */
+    public function legend(Request $request): JsonResponse
+    {
+        $teamId = $this->guestTeamId();
+        $locale = $this->requestLocale($request);
+
+        $allergens = Allergen::forTeam($teamId)->orderBy('code')->get()
+            ->map(fn (Allergen $a) => $this->term($a, $locale))->values();
+        $additives = Additive::forTeam($teamId)->orderBy('code')->get()
+            ->map(fn (Additive $z) => $this->term($z, $locale))->values();
+
+        return response()->json([
+            'legend' => [
+                'allergens' => $allergens,
+                'additives' => $additives,
+            ],
+        ]);
+    }
+
+    /** Einheitliches Ausgabeformat für Allergen/Zusatzstoff: Code + übersetzter Name + Icon. */
+    protected function term(Allergen|Additive $term, string $locale): array
+    {
+        return [
+            'code' => $term->code,
+            'name' => $term->translate('name', $locale),
+            'icon' => $term->icon,
+        ];
+    }
+
+    /** Locale aus ?lang= (Fallback Basis-Sprache DE), locale-Format normalisiert. */
+    protected function requestLocale(Request $request): string
+    {
+        $lang = strtolower(trim((string) $request->query('lang', '')));
+
+        return preg_match('/^[a-z]{2}(_[a-z]{2})?$/', $lang) ? $lang : Translation::DEFAULT_LOCALE;
     }
 
     /** Gast-sichtbare Artikel der Event-Verkaufsliste (scope-sicher, mit Relationen). */

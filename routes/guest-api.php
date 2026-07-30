@@ -14,6 +14,9 @@ Route::prefix('guest')->name('reservation.api.guest.')->middleware('throttle:120
     Route::get('/events/{uuid}/products', [GuestEventController::class, 'products'])->name('events.products');
     Route::get('/events/{uuid}/floor-plan', [GuestEventController::class, 'floorPlan'])->name('events.floor-plan');
 
+    // Komplette Allergen-/Zusatzstoff-Legende des Gast-Teams (ohne Artikelbezug).
+    Route::get('/legend', [GuestEventController::class, 'legend'])->name('legend');
+
     // Write
     Route::post('/bookings', [GuestBookingController::class, 'store'])->name('bookings.store');
     Route::get('/bookings/{uuid}', [GuestBookingController::class, 'show'])->name('bookings.show');
