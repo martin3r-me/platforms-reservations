@@ -36,6 +36,11 @@ class FloorPlanEditor extends Component
 
     // Tisch-Formular
     public bool $showTableForm = false;
+
+    // #[Locked], weil Löschen und Duplizieren jetzt darauf arbeiten statt auf
+    // einem übergebenen Parameter – gesetzt wird es ausschließlich serverseitig
+    // in openTableForm().
+    #[Locked]
     public ?int $editingTableId = null;
     public string $tableLabel = '';
     public int $tableCapacity = 2;
@@ -293,7 +298,13 @@ class FloorPlanEditor extends Component
             ]);
         }
 
-        $this->showTableForm = false;
+        $this->closeTableForm();
+    }
+
+    /** Formular schließen und zurücksetzen; Tischliste neu laden. */
+    protected function closeTableForm(): void
+    {
+        $this->showTableForm  = false;
         $this->editingTableId = null;
         $this->resetTableForm();
         unset($this->tables);
@@ -329,10 +340,19 @@ class FloorPlanEditor extends Component
      * Tisch duplizieren: Kapazität, Form und Größe übernehmen, leicht versetzt
      * daneben legen und die Nummer im Label hochzählen. Einen Tisch einstellen
      * und dann duplizieren ist schneller als jeden neu zu konfigurieren.
+     *
+     * Ohne Parameter, arbeitet auf $editingTableId: x-ui-confirm-button ruft
+     * sein action= als Methodennamen auf, Argumente in Klammern landen als Teil
+     * des Namens beim Server ("deleteTable(9) not found"). Plattformweit sind
+     * daher alle action-Methoden parameterlos (deleteXAndCloseModal-Muster).
      */
-    public function duplicateTable(int $tableId): void
+    public function duplicateTable(): void
     {
-        $source = Table::findOrFail($tableId);
+        if (! $this->editingTableId) {
+            return;
+        }
+
+        $source = Table::findOrFail($this->editingTableId);
 
         // Versatz nach rechts unten, aber innerhalb der Fläche bleiben.
         $offset = 0.04;
@@ -350,11 +370,7 @@ class FloorPlanEditor extends Component
 
         // Modal zu, damit die Kopie im Plan sichtbar ist – sonst liegt sie
         // hinter dem Dialog und man sieht nicht, wo sie gelandet ist.
-        $this->showTableForm  = false;
-        $this->editingTableId = null;
-        $this->resetTableForm();
-
-        unset($this->tables);
+        $this->closeTableForm();
         $this->dispatch('floor-plan-saved');
     }
 
@@ -420,10 +436,18 @@ class FloorPlanEditor extends Component
         $this->skipRender(); // siehe updateTablePosition()
     }
 
-    public function deleteTable(int $tableId): void
+    /**
+     * Löscht den gerade bearbeiteten Tisch und schließt das Formular.
+     * Parameterlos – siehe Hinweis an duplicateTable().
+     */
+    public function deleteTableAndCloseModal(): void
     {
-        Table::findOrFail($tableId)->delete();
-        unset($this->tables);
+        if ($this->editingTableId) {
+            Table::findOrFail($this->editingTableId)->delete();
+        }
+
+        $this->closeTableForm();
+        $this->dispatch('floor-plan-saved');
     }
 
     protected function resetTableForm(): void

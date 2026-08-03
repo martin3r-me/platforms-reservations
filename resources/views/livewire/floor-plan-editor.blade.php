@@ -250,8 +250,11 @@
                 <div class="flex items-center justify-between gap-2">
                     @if ($editingTableId)
                         <div class="shrink-0">
+                            {{-- action= wird als Methodenname aufgerufen, nicht als
+                                 wire:click-Ausdruck – Argumente in Klammern landen
+                                 als Teil des Namens beim Server. Daher parameterlos. --}}
                             <x-ui-confirm-button
-                                action="deleteTable({{ $editingTableId }})"
+                                action="deleteTableAndCloseModal"
                                 text="Löschen"
                                 confirmText="Wirklich löschen?"
                                 variant="danger-outline"
@@ -267,7 +270,7 @@
                             <x-ui-button
                                 variant="secondary-outline"
                                 size="sm"
-                                wire:click="duplicateTable({{ $editingTableId }})"
+                                wire:click="duplicateTable"
                             >Duplizieren</x-ui-button>
                         @endif
 
