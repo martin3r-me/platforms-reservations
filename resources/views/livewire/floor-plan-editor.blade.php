@@ -91,14 +91,11 @@
                     </div>
                 @endif
 
-                <label class="block">
-                    <input type="file" wire:model="atmosphereUploads" multiple accept="image/*"
-                        class="block w-full text-sm text-[var(--ui-secondary)] file:mr-3 file:rounded-md file:border file:border-[var(--ui-border)] file:bg-gray-50 file:px-3 file:py-1.5 file:text-sm hover:file:bg-gray-100" />
-                    <span class="mt-1 block text-[11px] text-[var(--ui-muted)]">Mehrere möglich · JPG, PNG oder WebP · max. 20 MB je Bild.</span>
-                </label>
-                <div wire:loading wire:target="atmosphereUploads" class="text-xs text-[var(--ui-muted)]">Lade hoch …</div>
-                @error('atmosphereUploads.*') <p class="text-xs text-[var(--ui-danger)] m-0">{{ $message }}</p> @enderror
-                @error('atmosphereUploads') <p class="text-xs text-[var(--ui-danger)] m-0">{{ $message }}</p> @enderror
+                @include('reservation::partials.image-upload', [
+                    'model'    => 'atmosphereUploads',
+                    'multiple' => true,
+                    'hint'     => 'Mehrere möglich · JPG, PNG oder WebP · max. 20 MB je Bild.',
+                ])
             </div>
         @endif
 
@@ -133,7 +130,8 @@
                 @foreach ($this->tables as $table)
                     <div
                         wire:key="table-{{ $table->id }}"
-                        class="group absolute flex cursor-move select-none items-center justify-center bg-indigo-600 text-xs font-bold text-white shadow-md ring-2 ring-white/70 transition hover:bg-indigo-500 dark:ring-gray-900/70"
+                        {{-- touch-none: sonst scrollt die Seite beim Ziehen auf dem Tablet --}}
+                        class="group absolute flex touch-none cursor-move select-none items-center justify-center bg-indigo-600 text-xs font-bold text-white shadow-md ring-2 ring-white/70 transition hover:bg-indigo-500 dark:ring-gray-900/70"
                         style="
                             {{ $table->surfaceStyle() }}
                             border-radius: {{ $table->shape === 'round' ? '50%' : '8px' }};
@@ -157,8 +155,7 @@
                             data-resize-handle
                             title="Größe ändern (oder im Formular eintragen)"
                             class="absolute -bottom-2 -right-2 h-5 w-5 cursor-se-resize rounded-full border-2 border-indigo-600 bg-white opacity-80 shadow transition hover:scale-110 hover:opacity-100"
-                            x-on:mousedown.stop.prevent="startResize($event.clientX, $event.clientY)"
-                            x-on:touchstart.stop.prevent="startResize($event.touches[0].clientX, $event.touches[0].clientY)"
+                            x-on:pointerdown.stop.prevent="startResize($event.clientX, $event.clientY)"
                         ></div>
                     </div>
                 @endforeach
@@ -177,96 +174,118 @@
             </p>
         </div>
 
-        {{-- Tisch-Formular Modal --}}
-        @if ($showTableForm)
-            <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900">
-                    <h2 class="mb-4 text-lg font-semibold dark:text-white">
-                        {{ $editingTableId ? 'Tisch bearbeiten' : 'Neuer Tisch' }}
-                    </h2>
+        {{-- Tisch-Formular: Plattform-Modal statt handgebautes Overlay --}}
+        <x-ui-modal size="md" wire:model="showTableForm" :backdropClosable="true" :escClosable="true">
+            <x-slot name="header">
+                <div class="flex items-center gap-3">
+                    <div class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-600/10">
+                        @svg('heroicon-o-squares-2x2', 'w-5 h-5 text-indigo-600')
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="m-0 text-base font-semibold leading-tight text-[var(--ui-secondary)]">
+                            {{ $editingTableId ? 'Tisch bearbeiten' : 'Neuer Tisch' }}
+                        </h3>
+                        <p class="m-0 mt-0.5 text-[12px] text-[var(--ui-muted)]">
+                            Bezeichnung, Kapazität, Form und Größe
+                        </p>
+                    </div>
+                </div>
+            </x-slot>
 
-                    <div class="space-y-3">
-                        <div>
-                            <label class="block text-sm text-gray-700 dark:text-gray-300">Label</label>
-                            <input wire:model="tableLabel" type="text"
-                                class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                            @error('tableLabel') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
-                        </div>
+            <div class="space-y-4">
+                <x-ui-input-text name="tableLabel" label="Label" wire:model="tableLabel" />
 
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-sm text-gray-700 dark:text-gray-300">Kapazität</label>
-                                <input wire:model="tableCapacity" type="number" min="1" max="50"
-                                    class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-700 dark:text-gray-300">Form</label>
-                                <select wire:model="tableShape"
-                                    class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                                    <option value="square">Eckig</option>
-                                    <option value="rectangle">Rechteck</option>
-                                    <option value="round">Rund</option>
-                                </select>
-                            </div>
-                        </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <x-ui-input-number name="tableCapacity" label="Kapazität" wire:model="tableCapacity" min="1" max="50" />
 
-                        <div>
-                            <div class="flex items-center justify-between">
-                                <label class="block text-sm text-gray-700 dark:text-gray-300">Größe</label>
-                                <span class="text-xs text-[var(--ui-muted)]">{{ $tableSizePct }} % der Planbreite</span>
-                            </div>
-                            <div class="mt-1 flex items-center gap-2">
-                                <input wire:model.live.debounce.250ms="tableSizePct" type="range" min="2" max="40" step="1"
-                                    class="h-2 flex-1 cursor-pointer accent-indigo-600" />
-                                <input wire:model.live.debounce.250ms="tableSizePct" type="number" min="2" max="40"
-                                    class="w-20 rounded-md border px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-                            </div>
-                            @error('tableSizePct') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
+                    <x-ui-input-select
+                        name="tableShape"
+                        label="Form"
+                        :options="[
+                            ['value' => 'square', 'label' => 'Eckig'],
+                            ['value' => 'rectangle', 'label' => 'Rechteck'],
+                            ['value' => 'round', 'label' => 'Rund'],
+                        ]"
+                        wire:model.live="tableShape"
+                    />
+                </div>
 
-                            <button
-                                type="button"
-                                wire:click="applySizeToAll"
-                                wire:confirm="Diese Größe auf alle Tische des Plans übertragen?"
-                                class="mt-2 text-xs text-indigo-600 underline hover:text-indigo-700 dark:text-indigo-400"
-                            >Größe auf alle Tische übertragen</button>
-                            <p class="mt-1 text-xs text-[var(--ui-muted)]">
-                                Die Höhe wird automatisch passend zur Form berechnet.
-                            </p>
-                        </div>
+                {{-- Größe: Slider und Zahlenfeld auf denselben Wert; die Höhe
+                     folgt automatisch aus Form und Seitenverhältnis. --}}
+                <div class="rounded-xl border border-[var(--ui-border)]/40 bg-[var(--ui-muted-5)]/40 p-3">
+                    <div class="flex items-baseline justify-between">
+                        <h4 class="m-0 text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">Größe</h4>
+                        <span class="text-[12px] tabular-nums text-[var(--ui-muted)]">{{ $tableSizePct }} % der Planbreite</span>
                     </div>
 
-                    <div class="mt-6 flex justify-between">
-                        @if ($editingTableId)
-                            <div class="flex gap-2">
-                                <button
-                                    wire:click="deleteTable({{ $editingTableId }})"
-                                    wire:confirm="Tisch wirklich löschen?"
-                                    class="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
-                                >Löschen</button>
-                                <button
-                                    wire:click="duplicateTable({{ $editingTableId }})"
-                                    class="rounded-md border px-4 py-2 text-sm dark:border-gray-700 dark:text-white"
-                                    title="Kopie mit gleicher Größe, Form und Kapazität daneben legen"
-                                >Duplizieren</button>
-                            </div>
-                        @else
-                            <div></div>
-                        @endif
+                    <div class="mt-2 flex items-center gap-3">
+                        <input
+                            wire:model.live.debounce.250ms="tableSizePct"
+                            type="range" min="2" max="40" step="1"
+                            class="h-1.5 flex-1 cursor-pointer accent-indigo-600"
+                        />
+                        <div class="w-20 shrink-0">
+                            <x-ui-input-number name="tableSizePct" label="" wire:model.live.debounce.250ms="tableSizePct" min="2" max="40" />
+                        </div>
+                    </div>
+                    @error('tableSizePct') <p class="mt-1 text-xs text-[var(--ui-danger)]">{{ $message }}</p> @enderror
 
-                        <div class="flex gap-2">
-                            <button
-                                wire:click="$set('showTableForm', false)"
-                                class="rounded-md border px-4 py-2 text-sm dark:border-gray-700 dark:text-white"
-                            >Abbrechen</button>
-                            <button
-                                wire:click="saveTable"
-                                class="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
-                            >Speichern</button>
+                    <div class="mt-3 flex items-center justify-between gap-3">
+                        <p class="m-0 text-[12px] text-[var(--ui-muted)]">
+                            Höhe wird passend zur Form berechnet.
+                        </p>
+                        <div class="shrink-0">
+                            <x-ui-button
+                                variant="secondary-outline"
+                                size="xs"
+                                wire:click="applySizeToAll"
+                                wire:confirm="Diese Größe auf alle Tische übertragen?"
+                            >Auf alle Tische</x-ui-button>
                         </div>
                     </div>
                 </div>
             </div>
-        @endif
+
+            <x-slot name="footer">
+                <div class="flex items-center justify-between gap-2">
+                    @if ($editingTableId)
+                        <div class="shrink-0">
+                            <x-ui-confirm-button
+                                action="deleteTable({{ $editingTableId }})"
+                                text="Löschen"
+                                confirmText="Wirklich löschen?"
+                                variant="danger-outline"
+                                size="sm"
+                            />
+                        </div>
+                    @else
+                        <div></div>
+                    @endif
+
+                    <div class="flex shrink-0 items-center gap-2">
+                        @if ($editingTableId)
+                            <x-ui-button
+                                variant="secondary-outline"
+                                size="sm"
+                                wire:click="duplicateTable({{ $editingTableId }})"
+                            >Duplizieren</x-ui-button>
+                        @endif
+
+                        <x-ui-button variant="secondary-outline" size="sm" wire:click="$set('showTableForm', false)">
+                            Abbrechen
+                        </x-ui-button>
+
+                        <x-ui-button
+                            variant="primary"
+                            size="sm"
+                            wire:click="saveTable"
+                            wire:loading.attr="disabled"
+                            wire:target="saveTable"
+                        >Speichern</x-ui-button>
+                    </div>
+                </div>
+            </x-slot>
+        </x-ui-modal>
     @else
         <p class="text-sm text-gray-500">Speichere zuerst den Tischplan, um Tische hinzuzufügen.</p>
     @endif
@@ -321,73 +340,107 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
     sx: 0, sy: 0,               // Start-Mausposition (px)
     ox: 0, oy: 0, ow: 0, oh: 0, // Start x/y/w/h (Anteile)
 
+    // Handler-Referenzen, damit sie wieder abgemeldet werden können.
+    onMoveRef: null, onEndRef: null,
+
     init() {
-        const el     = this.$el;
-        const canvas = () => document.getElementById('floor-plan-canvas');
-        const getRect = () => { const c = canvas(); return c ? c.getBoundingClientRect() : { width: 1, height: 1 }; };
-
-        const apply = () => {
-            el.style.left   = ((this.x - this.w / 2) * 100) + '%';
-            el.style.top    = ((this.y - this.h / 2) * 100) + '%';
-            el.style.width  = (this.w * 100) + '%';
-            el.style.height = (this.h * 100) + '%';
-        };
-
-        const onMove = (cx, cy) => {
-            const r = getRect();
-            const dxp = (cx - this.sx) / r.width;
-            const dyp = (cy - this.sy) / r.height;
-            if (this.mode === 'move') {
-                this.x = Math.min(1, Math.max(0, this.ox + dxp));
-                this.y = Math.min(1, Math.max(0, this.oy + dyp));
-            } else if (this.mode === 'resize') {
-                // Nur die Breite kommt aus der Zeigerbewegung; die Höhe folgt
-                // daraus. Egal wie schief man zieht, die Proportion bleibt.
-                this.w = Math.min(0.4, Math.max(0.02, this.ow + dxp));
-                this.h = Math.min(0.9, Math.max(0.02, this.w * this.hFactor));
-            }
-            apply();
-        };
-        const onEnd = () => {
-            if (!this.mode) return;
-            const m = this.mode; this.mode = null;
-            if (m === 'move') {
-                this.$wire.updateTablePosition(this.tableId, this.x, this.y);
-            } else {
-                // Nur die Breite senden – die Höhe rechnet der Server aus der Form.
-                this.$wire.updateTableSize(this.tableId, this.w);
-            }
-        };
-
-        // Verschieben (Klick auf den Tisch selbst, nicht auf den Resize-Griff)
-        el.addEventListener('mousedown', (e) => {
-            if (e.detail > 1 || e.button !== 0) return;
+        // Pointer-Events deckt Maus und Touch in einem ab.
+        this.$el.addEventListener('pointerdown', (e) => {
+            if (e.detail > 1 || (e.pointerType === 'mouse' && e.button !== 0)) return;
             if (e.target.dataset.resizeHandle !== undefined) return;
-            this.mode = 'move';
-            this.sx = e.clientX; this.sy = e.clientY;
-            this.ox = this.x; this.oy = this.y;
+            this.begin('move', e.clientX, e.clientY);
             e.preventDefault();
         });
-        el.addEventListener('touchstart', (e) => {
-            if (e.touches.length !== 1) return;
-            if (e.target.dataset.resizeHandle !== undefined) return;
-            const t = e.touches[0];
-            this.mode = 'move';
-            this.sx = t.clientX; this.sy = t.clientY;
-            this.ox = this.x; this.oy = this.y;
-        }, { passive: true });
+    },
 
-        document.addEventListener('mousemove', (e) => { if (this.mode) onMove(e.clientX, e.clientY); });
-        document.addEventListener('mouseup', onEnd);
-        document.addEventListener('touchmove', (e) => { if (this.mode) { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
-        document.addEventListener('touchend', onEnd);
+    // Wird beim Entfernen der Komponente aufgerufen – ohne das blieben bei jedem
+    // Re-Render Listener zurück.
+    destroy() {
+        this.stopTracking();
+    },
+
+    rect() {
+        const c = document.getElementById('floor-plan-canvas');
+        return c ? c.getBoundingClientRect() : { width: 1, height: 1 };
+    },
+
+    apply() {
+        const el = this.$el;
+        el.style.left   = ((this.x - this.w / 2) * 100) + '%';
+        el.style.top    = ((this.y - this.h / 2) * 100) + '%';
+        el.style.width  = (this.w * 100) + '%';
+        el.style.height = (this.h * 100) + '%';
+    },
+
+    begin(mode, cx, cy) {
+        this.mode = mode;
+        this.sx = cx; this.sy = cy;
+        this.ox = this.x; this.oy = this.y; this.ow = this.w;
+        this.startTracking();
+    },
+
+    /**
+     * Listener NUR für die Dauer der Interaktion. Vorher hingen vier Handler
+     * dauerhaft an document, und zwar pro Tisch und pro Alpine-Initialisierung:
+     * 14 Tische x jedes Re-Rendern = immer mehr Handler, die bei jeder
+     * Mausbewegung liefen. Das war die Ursache für das Ruckeln.
+     */
+    startTracking() {
+        this.onMoveRef = (e) => this.onMove(e.clientX, e.clientY);
+        this.onEndRef  = () => this.end();
+        document.addEventListener('pointermove', this.onMoveRef);
+        document.addEventListener('pointerup', this.onEndRef);
+        document.addEventListener('pointercancel', this.onEndRef);
+    },
+
+    stopTracking() {
+        if (this.onMoveRef) document.removeEventListener('pointermove', this.onMoveRef);
+        if (this.onEndRef) {
+            document.removeEventListener('pointerup', this.onEndRef);
+            document.removeEventListener('pointercancel', this.onEndRef);
+        }
+        this.onMoveRef = null;
+        this.onEndRef  = null;
+    },
+
+    onMove(cx, cy) {
+        if (!this.mode) return;
+
+        const r = this.rect();
+        const dxp = (cx - this.sx) / r.width;
+        const dyp = (cy - this.sy) / r.height;
+
+        if (this.mode === 'move') {
+            this.x = Math.min(1, Math.max(0, this.ox + dxp));
+            this.y = Math.min(1, Math.max(0, this.oy + dyp));
+        } else {
+            // Nur die Breite kommt aus der Zeigerbewegung; die Höhe folgt
+            // daraus. Egal wie schief man zieht, die Proportion bleibt.
+            this.w = Math.min(0.4, Math.max(0.02, this.ow + dxp));
+            this.h = Math.min(0.9, Math.max(0.02, this.w * this.hFactor));
+        }
+
+        this.apply();
+    },
+
+    end() {
+        if (!this.mode) return;
+
+        const m = this.mode;
+        this.mode = null;
+        this.stopTracking();
+
+        if (m === 'move') {
+            this.$wire.updateTablePosition(this.tableId, this.x, this.y);
+        } else {
+            // Nur die Breite senden – die Höhe rechnet der Server aus der Form.
+            this.$wire.updateTableSize(this.tableId, this.w);
+        }
     },
 
     // Vom Resize-Griff aufgerufen
     startResize(cx, cy) {
-        this.mode = 'resize';
-        this.sx = cx; this.sy = cy;
-        this.ow = this.w; this.oh = this.h;
+        this.begin('resize', cx, cy);
     },
 }));
 </script>

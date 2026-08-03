@@ -348,6 +348,12 @@ class FloorPlanEditor extends Component
             'y_pct'         => min(1, $source->y_pct + $offset),
         ]);
 
+        // Modal zu, damit die Kopie im Plan sichtbar ist – sonst liegt sie
+        // hinter dem Dialog und man sieht nicht, wo sie gelandet ist.
+        $this->showTableForm  = false;
+        $this->editingTableId = null;
+        $this->resetTableForm();
+
         unset($this->tables);
         $this->dispatch('floor-plan-saved');
     }
@@ -376,14 +382,23 @@ class FloorPlanEditor extends Component
         return mb_substr($candidate, 0, 50);
     }
 
-    /** Position (Mittelpunkt) als Anteil 0…1 speichern. */
+    /**
+     * Position (Mittelpunkt) als Anteil 0…1 speichern.
+     *
+     * skipRender() ist hier wesentlich: Alpine hat die neue Position bereits per
+     * inline-style gesetzt. Käme frisches HTML zurück, würde der Livewire-Morph
+     * das style-Attribut überschreiben – bei jeder Latenzspitze sichtbar als
+     * Zurückspringen des Tischs.
+     */
     public function updateTablePosition(int $tableId, float $xPct, float $yPct): void
     {
         Table::findOrFail($tableId)->update([
             'x_pct' => min(1, max(0, $xPct)),
             'y_pct' => min(1, max(0, $yPct)),
         ]);
+
         unset($this->tables);
+        $this->skipRender();
     }
 
     /**
@@ -402,6 +417,7 @@ class FloorPlanEditor extends Component
         ]);
 
         unset($this->tables);
+        $this->skipRender(); // siehe updateTablePosition()
     }
 
     public function deleteTable(int $tableId): void
