@@ -497,9 +497,8 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
     commit(mode) {
         const s = this.root.style;
 
-        s.transform  = '';
-        s.transition = '';
-        s.willChange = '';
+        // transform weg, Position als Prozent – transition bleibt vorerst aus.
+        s.transform = '';
 
         if (mode === 'resize') {
             s.width  = pct(this.w);
@@ -508,6 +507,15 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
 
         s.left = pct(this.x - this.w / 2);
         s.top  = pct(this.y - this.h / 2);
+
+        // Transition ERST im nächsten Frame zurückgeben. Zusammen mit dem
+        // Wegfall des transform in einem Durchlauf würde der Browser diesen
+        // über 150ms nach null animieren, während left/top sofort springen –
+        // der Tisch federt dann aus der alten Richtung nach.
+        requestAnimationFrame(() => {
+            s.transition = '';
+            s.willChange = '';
+        });
     },
 
     cancelFrame() {
