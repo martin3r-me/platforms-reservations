@@ -154,8 +154,8 @@
                         <div
                             data-resize-handle
                             title="Größe ändern (oder im Formular eintragen)"
-                            class="absolute -bottom-2 -right-2 h-5 w-5 cursor-se-resize rounded-full border-2 border-indigo-600 bg-white opacity-80 shadow transition hover:scale-110 hover:opacity-100"
-                            x-on:pointerdown.stop.prevent="startResize($event.clientX, $event.clientY)"
+                            class="absolute -bottom-2 -right-2 h-5 w-5 touch-none cursor-se-resize rounded-full border-2 border-indigo-600 bg-white opacity-80 shadow transition hover:scale-110 hover:opacity-100"
+                            x-on:pointerdown.stop="startResize($event)"
                         ></div>
                     </div>
                 @endforeach
@@ -336,79 +336,89 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
     x: initialX, y: initialY,   // Mittelpunkt (0…1)
     w: initialW, h: initialH,   // Größe (Anteil 0…1)
     hFactor,                    // h = w * hFactor (Seitenverhältnis x Form) – hält die Proportion
-    mode: null,                 // null | 'move' | 'resize'
-    sx: 0, sy: 0,               // Start-Mausposition (px)
-    ox: 0, oy: 0, ow: 0, oh: 0, // Start x/y/w/h (Anteile)
 
-    // Handler-Referenzen, damit sie wieder abgemeldet werden können.
-    onMoveRef: null, onEndRef: null,
+    mode: null,                 // null | 'move' | 'resize'
+    sx: 0, sy: 0,               // Zeigerposition beim Start (px)
+    ox: 0, oy: 0, ow: 0,        // x/y/w beim Start (Anteile)
+
+    /**
+     * Wurzelelement (der Tisch) EINMAL festhalten.
+     *
+     * $el darf zur Laufzeit nicht benutzt werden: wird eine Methode aus dem
+     * Handler des Resize-Griffs aufgerufen, zeigt $el auf den Griff – dann
+     * bekommt der kleine Punkt die neue Größe statt der Tisch.
+     */
+    root: null,
+
+    /** Canvas-Maße beim Start gemerkt – getBoundingClientRect() pro
+     *  Zeigerbewegung erzwingt sonst jedes Mal ein Layout. */
+    rect: null,
+
+    /** Letzte Zeigerposition + rAF-Handle: pro Frame wird höchstens einmal
+     *  gezeichnet, egal wie viele pointermove-Events hereinkommen. */
+    pending: null,
+    frame: null,
 
     init() {
-        // Pointer-Events deckt Maus und Touch in einem ab.
-        this.$el.addEventListener('pointerdown', (e) => {
-            if (e.detail > 1 || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        this.root = this.$el;
+
+        // Alle Listener hängen am Element selbst, nicht an document. Damit
+        // verschwinden sie automatisch mit dem Element – vorher blieben sie
+        // bei jedem Re-Render liegen und summierten sich (Ursache des Ruckelns).
+        this.root.addEventListener('pointerdown', (e) => {
             if (e.target.dataset.resizeHandle !== undefined) return;
-            this.begin('move', e.clientX, e.clientY);
-            e.preventDefault();
+            this.begin('move', e);
+        });
+
+        // Dank Pointer-Capture landen move/up hier, auch wenn der Zeiger den
+        // Tisch verlässt – kein Abriss beim schnellen Ziehen.
+        this.root.addEventListener('pointermove', (e) => this.onMove(e));
+        this.root.addEventListener('pointerup', () => this.end());
+        this.root.addEventListener('pointercancel', () => this.end());
+        this.root.addEventListener('lostpointercapture', () => this.end());
+    },
+
+    destroy() {
+        this.cancelFrame();
+    },
+
+    begin(mode, e) {
+        if (this.mode) return;                                   // schon aktiv
+        if (e.detail > 1) return;                                // Doppelklick -> Formular
+        if (e.pointerType === 'mouse' && e.button !== 0) return;  // nur links
+
+        const canvas = document.getElementById('floor-plan-canvas');
+        if (!canvas) return;
+
+        this.mode = mode;
+        this.rect = canvas.getBoundingClientRect();
+        this.sx = e.clientX; this.sy = e.clientY;
+        this.ox = this.x; this.oy = this.y; this.ow = this.w;
+
+        try { this.root.setPointerCapture(e.pointerId); } catch (_) {}
+
+        // Kein preventDefault(): das würde laut Pointer-Events-Spec die
+        // Kompatibilitäts-Mausevents unterdrücken und damit den Doppelklick
+        // zum Bearbeiten kaputtmachen. Scrollen verhindert touch-none,
+        // Textauswahl select-none – beides per CSS am Tisch.
+        e.stopPropagation();
+    },
+
+    onMove(e) {
+        if (!this.mode) return;
+
+        this.pending = { cx: e.clientX, cy: e.clientY };
+
+        if (this.frame !== null) return;
+        this.frame = requestAnimationFrame(() => {
+            this.frame = null;
+            if (this.mode && this.pending) this.compute(this.pending.cx, this.pending.cy);
         });
     },
 
-    // Wird beim Entfernen der Komponente aufgerufen – ohne das blieben bei jedem
-    // Re-Render Listener zurück.
-    destroy() {
-        this.stopTracking();
-    },
-
-    rect() {
-        const c = document.getElementById('floor-plan-canvas');
-        return c ? c.getBoundingClientRect() : { width: 1, height: 1 };
-    },
-
-    apply() {
-        const el = this.$el;
-        el.style.left   = ((this.x - this.w / 2) * 100) + '%';
-        el.style.top    = ((this.y - this.h / 2) * 100) + '%';
-        el.style.width  = (this.w * 100) + '%';
-        el.style.height = (this.h * 100) + '%';
-    },
-
-    begin(mode, cx, cy) {
-        this.mode = mode;
-        this.sx = cx; this.sy = cy;
-        this.ox = this.x; this.oy = this.y; this.ow = this.w;
-        this.startTracking();
-    },
-
-    /**
-     * Listener NUR für die Dauer der Interaktion. Vorher hingen vier Handler
-     * dauerhaft an document, und zwar pro Tisch und pro Alpine-Initialisierung:
-     * 14 Tische x jedes Re-Rendern = immer mehr Handler, die bei jeder
-     * Mausbewegung liefen. Das war die Ursache für das Ruckeln.
-     */
-    startTracking() {
-        this.onMoveRef = (e) => this.onMove(e.clientX, e.clientY);
-        this.onEndRef  = () => this.end();
-        document.addEventListener('pointermove', this.onMoveRef);
-        document.addEventListener('pointerup', this.onEndRef);
-        document.addEventListener('pointercancel', this.onEndRef);
-    },
-
-    stopTracking() {
-        if (this.onMoveRef) document.removeEventListener('pointermove', this.onMoveRef);
-        if (this.onEndRef) {
-            document.removeEventListener('pointerup', this.onEndRef);
-            document.removeEventListener('pointercancel', this.onEndRef);
-        }
-        this.onMoveRef = null;
-        this.onEndRef  = null;
-    },
-
-    onMove(cx, cy) {
-        if (!this.mode) return;
-
-        const r = this.rect();
-        const dxp = (cx - this.sx) / r.width;
-        const dyp = (cy - this.sy) / r.height;
+    compute(cx, cy) {
+        const dxp = (cx - this.sx) / this.rect.width;
+        const dyp = (cy - this.sy) / this.rect.height;
 
         if (this.mode === 'move') {
             this.x = Math.min(1, Math.max(0, this.ox + dxp));
@@ -416,11 +426,30 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         } else {
             // Nur die Breite kommt aus der Zeigerbewegung; die Höhe folgt
             // daraus. Egal wie schief man zieht, die Proportion bleibt.
+            // Grenzen identisch zu FloorPlanEditor::updateTableSize(), damit
+            // Anzeige und gespeicherter Wert nie auseinanderlaufen.
             this.w = Math.min(0.4, Math.max(0.02, this.ow + dxp));
             this.h = Math.min(0.9, Math.max(0.02, this.w * this.hFactor));
         }
 
-        this.apply();
+        this.paint();
+    },
+
+    /** Schreibt den Zustand auf den Tisch – bewusst this.root, nicht $el. */
+    paint() {
+        const s = this.root.style;
+        s.left   = ((this.x - this.w / 2) * 100) + '%';
+        s.top    = ((this.y - this.h / 2) * 100) + '%';
+        s.width  = (this.w * 100) + '%';
+        s.height = (this.h * 100) + '%';
+    },
+
+    cancelFrame() {
+        if (this.frame !== null) {
+            cancelAnimationFrame(this.frame);
+            this.frame = null;
+        }
+        this.pending = null;
     },
 
     end() {
@@ -428,8 +457,25 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
 
         const m = this.mode;
         this.mode = null;
-        this.stopTracking();
 
+        // Letzte Zeigerposition noch anwenden, falls der Frame noch aussteht –
+        // sonst geht die letzte Bewegung vor dem Loslassen verloren.
+        if (this.pending) this.compute(this.pending.cx, this.pending.cy);
+        this.cancelFrame();
+
+        // Nichts bewegt? Dann auch nicht speichern. Ein Klick (und damit jeder
+        // Doppelklick zum Bearbeiten) durchläuft diesen Pfad ebenfalls und
+        // hätte sonst jedes Mal einen Request mit unveränderten Werten erzeugt.
+        const eps = 0.0005;
+        const changed = m === 'move'
+            ? (Math.abs(this.x - this.ox) > eps || Math.abs(this.y - this.oy) > eps)
+            : Math.abs(this.w - this.ow) > eps;
+
+        if (!changed) return;
+
+        // Pro Geste genau ein Request (nur beim Loslassen) – Livewire
+        // serialisiert Aufrufe derselben Komponente, ein eigener Sende-Guard
+        // würde nur riskieren, eine Änderung stillschweigend zu verwerfen.
         if (m === 'move') {
             this.$wire.updateTablePosition(this.tableId, this.x, this.y);
         } else {
@@ -439,8 +485,8 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
     },
 
     // Vom Resize-Griff aufgerufen
-    startResize(cx, cy) {
-        this.begin('resize', cx, cy);
+    startResize(e) {
+        this.begin('resize', e);
     },
 }));
 </script>
