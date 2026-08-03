@@ -123,28 +123,40 @@
                     />
                 @endif
 
+                @php
+                    // Höhe folgt der Breite: Seitenverhältnis des Plans mal Form-Faktor.
+                    // Muss zu FloorPlanEditor::heightFor() passen.
+                    $aspect      = $this->floorPlan?->displayAspect() ?? (4 / 3);
+                    $shapeRatios = ['round' => 1.0, 'square' => 1.0, 'rectangle' => 0.6];
+                @endphp
+
                 @foreach ($this->tables as $table)
                     <div
                         wire:key="table-{{ $table->id }}"
-                        class="group absolute flex cursor-move select-none items-center justify-center text-xs font-bold text-white shadow-md transition"
+                        class="group absolute flex cursor-move select-none items-center justify-center bg-indigo-600 text-xs font-bold text-white shadow-md ring-2 ring-white/70 transition hover:bg-indigo-500 dark:ring-gray-900/70"
                         style="
                             {{ $table->surfaceStyle() }}
-                            background-color: {{ $table->color ?? '#4F46E5' }};
                             border-radius: {{ $table->shape === 'round' ? '50%' : '8px' }};
                         "
                         x-on:dblclick="$wire.openTableForm({{ $table->id }})"
-                        x-data="draggable({{ $table->id }}, {{ $table->x_pct }}, {{ $table->y_pct }}, {{ $table->w_pct }}, {{ $table->h_pct }}, {{ $table->shape === 'round' ? 'true' : 'false' }})"
+                        x-data="draggable({{ $table->id }}, {{ $table->x_pct }}, {{ $table->y_pct }}, {{ $table->w_pct }}, {{ $table->h_pct }}, {{ $aspect * ($shapeRatios[$table->shape] ?? 1.0) }})"
                     >
                         <div class="pointer-events-none text-center leading-tight">
                             <div>{{ $table->label }}</div>
                             <div class="opacity-75">{{ $table->capacity }}P</div>
                         </div>
 
-                        {{-- Resize-Griff (unten rechts) --}}
+                        {{-- Kapazitäts-Badge oben rechts, wie in der Shop-Ansicht --}}
+                        <span class="pointer-events-none absolute -right-1.5 -top-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-white px-1 text-[9px] font-semibold text-indigo-700 ring-1 ring-indigo-200">
+                            {{ $table->capacity }}
+                        </span>
+
+                        {{-- Resize-Griff: dauerhaft sichtbar und deutlich größer als
+                             vorher (14px, nur bei Hover) – sonst kaum zu treffen. --}}
                         <div
                             data-resize-handle
-                            title="Größe ändern"
-                            class="absolute -bottom-1 -right-1 h-3.5 w-3.5 cursor-se-resize rounded-full bg-white opacity-0 shadow ring-2 ring-indigo-500 transition group-hover:opacity-100"
+                            title="Größe ändern (oder im Formular eintragen)"
+                            class="absolute -bottom-2 -right-2 h-5 w-5 cursor-se-resize rounded-full border-2 border-indigo-600 bg-white opacity-80 shadow transition hover:scale-110 hover:opacity-100"
                             x-on:mousedown.stop.prevent="startResize($event.clientX, $event.clientY)"
                             x-on:touchstart.stop.prevent="startResize($event.touches[0].clientX, $event.touches[0].clientY)"
                         ></div>
@@ -159,7 +171,10 @@
                     + Tisch
                 </button>
             </div>
-            <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">Tische ziehen zum Positionieren · Ecke ziehen zum Skalieren · Doppelklick zum Bearbeiten</p>
+            <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
+                Tische ziehen zum Positionieren · Ecke ziehen oder Größe im Formular eintragen ·
+                Doppelklick zum Bearbeiten, Duplizieren und Übertragen auf alle
+            </p>
         </div>
 
         {{-- Tisch-Formular Modal --}}
@@ -196,19 +211,44 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm text-gray-700 dark:text-gray-300">Farbe</label>
-                            <input wire:model="tableColor" type="color"
-                                class="mt-1 h-10 w-full rounded-md border" />
+                            <div class="flex items-center justify-between">
+                                <label class="block text-sm text-gray-700 dark:text-gray-300">Größe</label>
+                                <span class="text-xs text-[var(--ui-muted)]">{{ $tableSizePct }} % der Planbreite</span>
+                            </div>
+                            <div class="mt-1 flex items-center gap-2">
+                                <input wire:model.live.debounce.250ms="tableSizePct" type="range" min="2" max="40" step="1"
+                                    class="h-2 flex-1 cursor-pointer accent-indigo-600" />
+                                <input wire:model.live.debounce.250ms="tableSizePct" type="number" min="2" max="40"
+                                    class="w-20 rounded-md border px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                            </div>
+                            @error('tableSizePct') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
+
+                            <button
+                                type="button"
+                                wire:click="applySizeToAll"
+                                wire:confirm="Diese Größe auf alle Tische des Plans übertragen?"
+                                class="mt-2 text-xs text-indigo-600 underline hover:text-indigo-700 dark:text-indigo-400"
+                            >Größe auf alle Tische übertragen</button>
+                            <p class="mt-1 text-xs text-[var(--ui-muted)]">
+                                Die Höhe wird automatisch passend zur Form berechnet.
+                            </p>
                         </div>
                     </div>
 
                     <div class="mt-6 flex justify-between">
                         @if ($editingTableId)
-                            <button
-                                wire:click="deleteTable({{ $editingTableId }})"
-                                wire:confirm="Tisch wirklich löschen?"
-                                class="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
-                            >Löschen</button>
+                            <div class="flex gap-2">
+                                <button
+                                    wire:click="deleteTable({{ $editingTableId }})"
+                                    wire:confirm="Tisch wirklich löschen?"
+                                    class="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+                                >Löschen</button>
+                                <button
+                                    wire:click="duplicateTable({{ $editingTableId }})"
+                                    class="rounded-md border px-4 py-2 text-sm dark:border-gray-700 dark:text-white"
+                                    title="Kopie mit gleicher Größe, Form und Kapazität daneben legen"
+                                >Duplizieren</button>
+                            </div>
                         @else
                             <div></div>
                         @endif
@@ -272,11 +312,11 @@ Alpine.data('rotatableBg', (rotation) => ({
 // x/y = Mittelpunkt (Anteil der Flächenbreite/-höhe), w/h = Größe (Anteil).
 // Deltas werden über die aktuelle Canvas-Pixelgröße in Anteile umgerechnet –
 // dadurch stimmen die Positionen unabhängig von Bildschirm/Zoom.
-Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, uniform = false) => ({
+Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFactor = 1) => ({
     tableId,
     x: initialX, y: initialY,   // Mittelpunkt (0…1)
     w: initialW, h: initialH,   // Größe (Anteil 0…1)
-    uniform,                    // runde Tische: pixel-quadratisch skalieren (Kreis bleibt Kreis)
+    hFactor,                    // h = w * hFactor (Seitenverhältnis x Form) – hält die Proportion
     mode: null,                 // null | 'move' | 'resize'
     sx: 0, sy: 0,               // Start-Mausposition (px)
     ox: 0, oy: 0, ow: 0, oh: 0, // Start x/y/w/h (Anteile)
@@ -301,14 +341,10 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, unifo
                 this.x = Math.min(1, Math.max(0, this.ox + dxp));
                 this.y = Math.min(1, Math.max(0, this.oy + dyp));
             } else if (this.mode === 'resize') {
-                if (this.uniform) {
-                    const dPx = cx - this.sx; // gleicher Pixel-Zuwachs auf beiden Achsen
-                    this.w = Math.min(1, Math.max(0.03, this.ow + dPx / r.width));
-                    this.h = Math.min(1, Math.max(0.03, this.oh + dPx / r.height));
-                } else {
-                    this.w = Math.min(1, Math.max(0.03, this.ow + dxp));
-                    this.h = Math.min(1, Math.max(0.03, this.oh + dyp));
-                }
+                // Nur die Breite kommt aus der Zeigerbewegung; die Höhe folgt
+                // daraus. Egal wie schief man zieht, die Proportion bleibt.
+                this.w = Math.min(0.4, Math.max(0.02, this.ow + dxp));
+                this.h = Math.min(0.9, Math.max(0.02, this.w * this.hFactor));
             }
             apply();
         };
@@ -318,7 +354,8 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, unifo
             if (m === 'move') {
                 this.$wire.updateTablePosition(this.tableId, this.x, this.y);
             } else {
-                this.$wire.updateTableSize(this.tableId, this.w, this.h);
+                // Nur die Breite senden – die Höhe rechnet der Server aus der Form.
+                this.$wire.updateTableSize(this.tableId, this.w);
             }
         };
 

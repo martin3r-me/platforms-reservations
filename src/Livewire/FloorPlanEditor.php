@@ -40,13 +40,25 @@ class FloorPlanEditor extends Component
     public string $tableLabel = '';
     public int $tableCapacity = 2;
     public string $tableShape = 'square';
-    public string $tableColor = '';
+
+    // Größe = Breite in Prozent der Planbreite. Die Höhe wird daraus abgeleitet
+    // (heightFor()), damit runde Tische rund und eckige quadratisch bleiben –
+    // per Hand lässt sich das Verhältnis nicht mehr verstellen.
+    public int $tableSizePct = 10;
+
+    /** Höhe/Breite-Verhältnis je Form (1 = optisch quadratisch/rund). */
+    protected const SHAPE_RATIO = [
+        'round'     => 1.0,
+        'square'    => 1.0,
+        'rectangle' => 0.6,
+    ];
 
     protected $rules = [
         'floorPlanName'  => 'required|string|max:255',
         'tableLabel'     => 'required|string|max:50',
         'tableCapacity'  => 'required|integer|min:1|max:50',
         'tableShape'     => 'required|in:round,square,rectangle',
+        'tableSizePct'   => 'required|integer|min:2|max:40',
     ];
 
     public function mount(int $venueId, ?int $floorPlanId = null): void
@@ -220,6 +232,19 @@ class FloorPlanEditor extends Component
         unset($this->floorPlan);
     }
 
+    /**
+     * Höhe (Anteil 0…1) aus Breite und Form. w_pct und h_pct beziehen sich auf
+     * unterschiedliche Achsen – ohne die Korrektur um displayAspect() wäre ein
+     * "quadratischer" Tisch auf einem 4:3-Plan sichtbar flachgedrückt.
+     */
+    protected function heightFor(float $wPct, string $shape): float
+    {
+        $aspect = $this->floorPlan?->displayAspect() ?? (4 / 3);
+        $ratio  = self::SHAPE_RATIO[$shape] ?? 1.0;
+
+        return min(0.9, max(0.02, $wPct * $aspect * $ratio));
+    }
+
     public function openTableForm(?int $tableId = null): void
     {
         $this->showTableForm = true;
@@ -230,7 +255,7 @@ class FloorPlanEditor extends Component
             $this->tableLabel    = $table->label;
             $this->tableCapacity = $table->capacity;
             $this->tableShape    = $table->shape;
-            $this->tableColor    = $table->color ?? '';
+            $this->tableSizePct  = (int) round(min(40, max(2, $table->w_pct * 100)));
         } else {
             $this->resetTableForm();
         }
@@ -242,31 +267,29 @@ class FloorPlanEditor extends Component
             'tableLabel'    => 'required|string|max:50',
             'tableCapacity' => 'required|integer|min:1|max:50',
             'tableShape'    => 'required|in:round,square,rectangle',
+            'tableSizePct'  => 'required|integer|min:2|max:40',
         ]);
+
+        $wPct = $this->tableSizePct / 100;
 
         $data = [
             'label'    => $this->tableLabel,
             'capacity' => $this->tableCapacity,
             'shape'    => $this->tableShape,
-            'color'    => $this->tableColor ?: null,
+            'w_pct'    => $wPct,
+            'h_pct'    => $this->heightFor($wPct, $this->tableShape),
         ];
 
         if ($this->editingTableId) {
-            // Position/Größe bleiben unangetastet (werden per Drag/Resize gepflegt).
+            // Position bleibt unangetastet (wird per Drag gepflegt); die Größe
+            // kommt jetzt aus dem Formular statt nur aus dem Resize-Griff.
             Table::findOrFail($this->editingTableId)->update($data);
         } else {
-            // Neuer Tisch: mittig, dezente Standardgröße. Höhe an Seitenverhältnis
-            // angepasst, damit ein runder Tisch auch kreisrund erscheint.
-            $aspect = $this->floorPlan?->displayAspect() ?? (4 / 3);
-            $wPct = 0.10;
-            $hPct = min(0.9, $wPct * $aspect);
-
+            // Neuer Tisch: mittig platziert.
             Table::create($data + [
                 'floor_plan_id' => $this->floorPlanId,
                 'x_pct' => 0.5,
                 'y_pct' => 0.5,
-                'w_pct' => $wPct,
-                'h_pct' => $hPct,
             ]);
         }
 
@@ -274,6 +297,83 @@ class FloorPlanEditor extends Component
         $this->editingTableId = null;
         $this->resetTableForm();
         unset($this->tables);
+    }
+
+    /**
+     * Aktuelle Formulargröße auf alle Tische des Plans übertragen – erspart das
+     * Aufziehen jedes einzelnen Tischs. Die Höhe wird je Tisch aus dessen
+     * eigener Form gerechnet, Positionen bleiben unberührt.
+     */
+    public function applySizeToAll(): void
+    {
+        $this->validate(['tableSizePct' => 'required|integer|min:2|max:40']);
+
+        if (! $this->floorPlanId) {
+            return;
+        }
+
+        $wPct = $this->tableSizePct / 100;
+
+        foreach (Table::where('floor_plan_id', $this->floorPlanId)->get() as $table) {
+            $table->update([
+                'w_pct' => $wPct,
+                'h_pct' => $this->heightFor($wPct, $table->shape),
+            ]);
+        }
+
+        unset($this->tables);
+        $this->dispatch('floor-plan-saved');
+    }
+
+    /**
+     * Tisch duplizieren: Kapazität, Form und Größe übernehmen, leicht versetzt
+     * daneben legen und die Nummer im Label hochzählen. Einen Tisch einstellen
+     * und dann duplizieren ist schneller als jeden neu zu konfigurieren.
+     */
+    public function duplicateTable(int $tableId): void
+    {
+        $source = Table::findOrFail($tableId);
+
+        // Versatz nach rechts unten, aber innerhalb der Fläche bleiben.
+        $offset = 0.04;
+
+        Table::create([
+            'floor_plan_id' => $source->floor_plan_id,
+            'label'         => $this->nextLabel($source),
+            'capacity'      => $source->capacity,
+            'shape'         => $source->shape,
+            'w_pct'         => $source->w_pct,
+            'h_pct'         => $source->h_pct,
+            'x_pct'         => min(1, $source->x_pct + $offset),
+            'y_pct'         => min(1, $source->y_pct + $offset),
+        ]);
+
+        unset($this->tables);
+        $this->dispatch('floor-plan-saved');
+    }
+
+    /**
+     * Nächstes freies Label: "Stehtisch 14" -> "Stehtisch 15". Ohne Zahl im
+     * Label wird " 2" angehängt bzw. weitergezählt, bis nichts kollidiert.
+     */
+    protected function nextLabel(Table $source): string
+    {
+        $existing = Table::where('floor_plan_id', $source->floor_plan_id)
+            ->pluck('label')
+            ->all();
+
+        if (preg_match('/^(.*?)(\d+)(\D*)$/', $source->label, $m)) {
+            [$prefix, $number, $suffix] = [$m[1], (int) $m[2], $m[3]];
+        } else {
+            [$prefix, $number, $suffix] = [rtrim($source->label) . ' ', 1, ''];
+        }
+
+        do {
+            $number++;
+            $candidate = $prefix . $number . $suffix;
+        } while (in_array($candidate, $existing, true));
+
+        return mb_substr($candidate, 0, 50);
     }
 
     /** Position (Mittelpunkt) als Anteil 0…1 speichern. */
@@ -286,13 +386,21 @@ class FloorPlanEditor extends Component
         unset($this->tables);
     }
 
-    /** Größe als Anteil 0…1 speichern (Breite anteilig zur Fläche). */
-    public function updateTableSize(int $tableId, float $wPct, float $hPct): void
+    /**
+     * Größe speichern – nur die Breite kommt vom Client, die Höhe folgt aus Form
+     * und Seitenverhältnis. Damit ist das Verhältnis auch per Ziehen nicht mehr
+     * verzerrbar (vorher kamen w und h unabhängig aus der Maus-Diagonale).
+     */
+    public function updateTableSize(int $tableId, float $wPct): void
     {
-        Table::findOrFail($tableId)->update([
-            'w_pct' => min(1, max(0.02, $wPct)),
-            'h_pct' => min(1, max(0.02, $hPct)),
+        $table = Table::findOrFail($tableId);
+        $w     = min(0.4, max(0.02, $wPct));
+
+        $table->update([
+            'w_pct' => $w,
+            'h_pct' => $this->heightFor($w, $table->shape),
         ]);
+
         unset($this->tables);
     }
 
@@ -307,7 +415,7 @@ class FloorPlanEditor extends Component
         $this->tableLabel    = '';
         $this->tableCapacity = 2;
         $this->tableShape    = 'square';
-        $this->tableColor    = '';
+        $this->tableSizePct  = 10;
     }
 
     public function render()
