@@ -15,9 +15,12 @@
     <div class="pt-4 space-y-4">
 
     {{-- Tischplan Name --}}
+    {{-- Timer im x-data, nicht in $refs: $refs kennt nur Elemente mit x-ref,
+         ein x-ref="t" gibt es hier nicht. Die Zuweisung warf deshalb
+         "Cannot convert undefined or null to object" in der Konsole. --}}
     <div class="flex items-center gap-2"
-        x-data="{ saved: false }"
-        x-on:floor-plan-saved.window="saved = true; clearTimeout($refs.t); $refs.t = setTimeout(() => saved = false, 2500)">
+        x-data="{ saved: false, timer: null }"
+        x-on:floor-plan-saved.window="saved = true; clearTimeout(timer); timer = setTimeout(() => saved = false, 2500)">
         <input
             type="text"
             wire:model="floorPlanName"
@@ -330,6 +333,12 @@ Alpine.data('rotatableBg', (rotation) => ({
     },
 }));
 
+// Zahlen kurz halten: (0.6 - 0.5) * 1000 ergibt sonst 99.99999999999997.
+// pct() spiegelt das %.4f-Format von Table::surfaceStyle(), damit der vom
+// Client geschriebene Wert identisch zu dem des Servers ist.
+const round2 = (v) => Math.round(v * 100) / 100;
+const pct    = (v) => (Math.round(v * 1000000) / 10000) + '%';
+
 // Tisch verschieben/skalieren in NORMALISIERTEN Koordinaten (0…1).
 // x/y = Mittelpunkt (Anteil der Flächenbreite/-höhe), w/h = Größe (Anteil).
 // Deltas werden über die aktuelle Canvas-Pixelgröße in Anteile umgerechnet –
@@ -400,6 +409,11 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
 
         try { this.root.setPointerCapture(e.pointerId); } catch (_) {}
 
+        // Die Tailwind-Klasse "transition" animiert u.a. transform über 150ms –
+        // beim Ziehen würde der Tisch dem Zeiger sichtbar nachlaufen.
+        this.root.style.transition = 'none';
+        this.root.style.willChange = 'transform';
+
         // Kein preventDefault(): das würde laut Pointer-Events-Spec die
         // Kompatibilitäts-Mausevents unterdrücken und damit den Doppelklick
         // zum Bearbeiten kaputtmachen. Scrollen verhindert touch-none,
@@ -449,21 +463,51 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
     },
 
     /**
-     * Schreibt den Zustand auf den Tisch – bewusst this.root, nicht $el.
-     * Breite/Höhe nur beim Skalieren: so kann eine Verschiebung die Größe
-     * konstruktiv nicht anfassen. left/top hängen an der halben Größe
-     * (x/y sind der Mittelpunkt) und müssen daher immer mitlaufen.
+     * Laufende Vorschau während der Geste – bewusst this.root, nicht $el.
+     *
+     * Beim Verschieben NUR transform: das läuft im Compositor, ohne Layout.
+     * left/top in Prozent zu schreiben würde pro Frame ein Layout des Canvas
+     * samt aller Tische erzwingen – das war das restliche Ruckeln.
+     * Der Versatz kommt aus dem geclampten x/y, nicht aus der rohen
+     * Zeigerbewegung, damit der Tisch am Rand wirklich stehenbleibt.
      */
     paint(mode) {
         const s = this.root.style;
 
-        if (mode === 'resize') {
-            s.width  = (this.w * 100) + '%';
-            s.height = (this.h * 100) + '%';
+        if (mode === 'move') {
+            const dx = round2((this.x - this.ox) * this.rect.width);
+            const dy = round2((this.y - this.oy) * this.rect.height);
+            s.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+            return;
         }
 
-        s.left = ((this.x - this.w / 2) * 100) + '%';
-        s.top  = ((this.y - this.h / 2) * 100) + '%';
+        // Skalieren ändert die Größe – dabei ist Layout unvermeidbar.
+        s.width  = pct(this.w);
+        s.height = pct(this.h);
+        s.left   = pct(this.x - this.w / 2);
+        s.top    = pct(this.y - this.h / 2);
+    },
+
+    /**
+     * Endzustand festschreiben: transform auflösen und die Position wieder als
+     * Prozent setzen – dasselbe Format, das der Server rendert. Sonst würde ein
+     * späteres Re-Render die Prozentwerte setzen und der stehengebliebene
+     * transform-Versatz käme obendrauf.
+     */
+    commit(mode) {
+        const s = this.root.style;
+
+        s.transform  = '';
+        s.transition = '';
+        s.willChange = '';
+
+        if (mode === 'resize') {
+            s.width  = pct(this.w);
+            s.height = pct(this.h);
+        }
+
+        s.left = pct(this.x - this.w / 2);
+        s.top  = pct(this.y - this.h / 2);
     },
 
     cancelFrame() {
@@ -485,6 +529,10 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         // explizit mitgeben, da this.mode hier schon zurückgesetzt ist.
         if (this.pending) this.compute(this.pending.cx, this.pending.cy, m);
         this.cancelFrame();
+
+        // transform -> Prozent, damit der DOM-Zustand dem entspricht, was der
+        // Server beim nächsten Rendern ausgibt.
+        this.commit(m);
 
         // Nichts bewegt? Dann auch nicht speichern. Ein Klick (und damit jeder
         // Doppelklick zum Bearbeiten) durchläuft diesen Pfad ebenfalls und
