@@ -410,38 +410,57 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         this.pending = { cx: e.clientX, cy: e.clientY };
 
         if (this.frame !== null) return;
+        const mode = this.mode;
         this.frame = requestAnimationFrame(() => {
             this.frame = null;
-            if (this.mode && this.pending) this.compute(this.pending.cx, this.pending.cy);
+            if (this.mode && this.pending) this.compute(this.pending.cx, this.pending.cy, mode);
         });
     },
 
-    compute(cx, cy) {
+    /**
+     * Der Modus wird ÜBERGEBEN, nicht aus this.mode gelesen. Sonst hängt das
+     * Ergebnis davon ab, wann mode zurückgesetzt wurde – genau daran ist der
+     * letzte Stand gescheitert: end() nullte mode vor dem Abschluss-compute,
+     * wodurch beim Loslassen einer Verschiebung die Resize-Logik lief und der
+     * Tisch seine Größe änderte.
+     */
+    compute(cx, cy, mode) {
         const dxp = (cx - this.sx) / this.rect.width;
         const dyp = (cy - this.sy) / this.rect.height;
 
-        if (this.mode === 'move') {
+        if (mode === 'move') {
             this.x = Math.min(1, Math.max(0, this.ox + dxp));
             this.y = Math.min(1, Math.max(0, this.oy + dyp));
-        } else {
+        } else if (mode === 'resize') {
             // Nur die Breite kommt aus der Zeigerbewegung; die Höhe folgt
             // daraus. Egal wie schief man zieht, die Proportion bleibt.
             // Grenzen identisch zu FloorPlanEditor::updateTableSize(), damit
             // Anzeige und gespeicherter Wert nie auseinanderlaufen.
             this.w = Math.min(0.4, Math.max(0.02, this.ow + dxp));
             this.h = Math.min(0.9, Math.max(0.02, this.w * this.hFactor));
+        } else {
+            return;
         }
 
-        this.paint();
+        this.paint(mode);
     },
 
-    /** Schreibt den Zustand auf den Tisch – bewusst this.root, nicht $el. */
-    paint() {
+    /**
+     * Schreibt den Zustand auf den Tisch – bewusst this.root, nicht $el.
+     * Breite/Höhe nur beim Skalieren: so kann eine Verschiebung die Größe
+     * konstruktiv nicht anfassen. left/top hängen an der halben Größe
+     * (x/y sind der Mittelpunkt) und müssen daher immer mitlaufen.
+     */
+    paint(mode) {
         const s = this.root.style;
-        s.left   = ((this.x - this.w / 2) * 100) + '%';
-        s.top    = ((this.y - this.h / 2) * 100) + '%';
-        s.width  = (this.w * 100) + '%';
-        s.height = (this.h * 100) + '%';
+
+        if (mode === 'resize') {
+            s.width  = (this.w * 100) + '%';
+            s.height = (this.h * 100) + '%';
+        }
+
+        s.left = ((this.x - this.w / 2) * 100) + '%';
+        s.top  = ((this.y - this.h / 2) * 100) + '%';
     },
 
     cancelFrame() {
@@ -459,8 +478,9 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         this.mode = null;
 
         // Letzte Zeigerposition noch anwenden, falls der Frame noch aussteht –
-        // sonst geht die letzte Bewegung vor dem Loslassen verloren.
-        if (this.pending) this.compute(this.pending.cx, this.pending.cy);
+        // sonst geht die letzte Bewegung vor dem Loslassen verloren. Modus
+        // explizit mitgeben, da this.mode hier schon zurückgesetzt ist.
+        if (this.pending) this.compute(this.pending.cx, this.pending.cy, m);
         this.cancelFrame();
 
         // Nichts bewegt? Dann auch nicht speichern. Ein Klick (und damit jeder
