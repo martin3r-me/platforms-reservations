@@ -124,7 +124,16 @@ class FloorPlanEditor extends Component
 
         $this->validate(['floorPlanName' => 'required|string|max:255']);
 
-        FloorPlan::findOrFail($this->floorPlanId)->update(['name' => $this->floorPlanName]);
+        $plan = FloorPlan::findOrFail($this->floorPlanId);
+
+        // Ohne echte Änderung nicht schreiben: Tippen und wieder rückgängig
+        // machen (oder Fokuswechsel) löste sonst einen UPDATE mit identischem
+        // Wert aus – gleiche Regel wie beim Ziehen in updateTablePosition().
+        if ($plan->name === $this->floorPlanName) {
+            return;
+        }
+
+        $plan->update(['name' => $this->floorPlanName]);
 
         unset($this->floorPlan);
         $this->dispatch('floor-plan-saved');
