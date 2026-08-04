@@ -226,6 +226,14 @@
                      damit sie darüber sichtbar sind; gesteuert von draggable(). --}}
                 <div id="fp-guide-v" class="pointer-events-none absolute top-0 h-full w-px bg-fuchsia-500" style="display: none;"></div>
                 <div id="fp-guide-h" class="pointer-events-none absolute left-0 h-px w-full bg-fuchsia-500" style="display: none;"></div>
+
+                {{-- Gleiche Abstände: die beiden Lücken als Balken auf Höhe des
+                     gezogenen Tischs. Bernstein, damit sie nicht mit den
+                     Ausrichtungslinien (magenta) verwechselt werden. --}}
+                <div id="fp-gap-x1" class="pointer-events-none absolute h-0.5 -translate-y-1/2 bg-amber-500" style="display: none;"></div>
+                <div id="fp-gap-x2" class="pointer-events-none absolute h-0.5 -translate-y-1/2 bg-amber-500" style="display: none;"></div>
+                <div id="fp-gap-y1" class="pointer-events-none absolute w-0.5 -translate-x-1/2 bg-amber-500" style="display: none;"></div>
+                <div id="fp-gap-y2" class="pointer-events-none absolute w-0.5 -translate-x-1/2 bg-amber-500" style="display: none;"></div>
             </div>{{-- /Canvas --}}
             </div>{{-- /Scroll-Container --}}
 
@@ -594,17 +602,11 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         const halfW = this.w / 2;
         const halfH = this.h / 2;
 
-        // Kandidat = { value, guide }. Bei Mitten sind beide gleich; bei Kanten
-        // liegt die Linie AN der Kante, der Mittelpunkt aber eine halbe
-        // Tischbreite daneben – value und guide fallen dort auseinander.
+        // Kandidat = { value, guide, gaps? }. value = Mittelpunkt, auf den
+        // eingerastet wird; guide = wo die Linie liegt (bei Mitten identisch,
+        // bei Abständen null, dort werden die Lücken angezeigt).
         const centersX = [{ value: 0.5, guide: 0.5 }];
         const centersY = [{ value: 0.5, guide: 0.5 }];
-        const edgesX = [];
-        const edgesY = [];
-
-        // Kanten des Plans selbst, damit man bündig anlegen kann.
-        const canvasEdgesX = [0, 1];
-        const canvasEdgesY = [0, 1];
 
         const others = [];
         canvas.querySelectorAll('[data-table]').forEach((el) => {
@@ -619,8 +621,6 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
             });
         });
 
-        // Erst alle Mitten sammeln, dann alle Kanten: nearest() nimmt bei
-        // gleichem Abstand den zuerst gefundenen, damit hat die Mitte Vorrang.
         for (const o of others) {
             const cx = (o.left + o.right) / 2;
             const cy = (o.top + o.bottom) / 2;
@@ -628,18 +628,63 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
             centersY.push({ value: cy, guide: cy });
         }
 
-        for (const edge of [...canvasEdgesX, ...others.flatMap((o) => [o.left, o.right])]) {
-            edgesX.push({ value: edge + halfW, guide: edge });   // eigene linke Kante
-            edgesX.push({ value: edge - halfW, guide: edge });   // eigene rechte Kante
+        // Abstände: gleiche Lücke wie zwischen zwei anderen Tischen. Diese
+        // Kandidaten tragen KEINE Linie (guide: null), sondern die beiden
+        // gleichen Lücken als gaps – eine Linie würde nichts über Abstand sagen.
+        const spacingX = this.spacingTargets(others, 'left', 'right', halfW, this.w);
+        const spacingY = this.spacingTargets(others, 'top', 'bottom', halfH, this.h);
+
+        // Reihenfolge = Rangfolge bei gleichem Abstand: Mitte vor Abstand.
+        this.snapXs = [...centersX, ...spacingX];
+        this.snapYs = [...centersY, ...spacingY];
+    },
+
+    /**
+     * Kandidaten für gleiche Abstände auf einer Achse.
+     *
+     * Zwei Fälle, beide aus PowerPoint bekannt:
+     * - die Lücke zwischen A und B rechts von B (bzw. links von A) fortsetzen
+     * - mittig zwischen A und B einsetzen, links und rechts gleiche Lücke
+     */
+    spacingTargets(others, nearSide, farSide, half, size) {
+        const out = [];
+        const sorted = [...others].sort((a, b) => a[nearSide] - b[nearSide]);
+
+        for (const A of sorted) {
+            for (const B of sorted) {
+                if (A === B) continue;
+
+                const gap = B[nearSide] - A[farSide];
+                if (gap <= 0.002) continue;   // überlappend oder bündig
+
+                // Muster nach "hinten" fortsetzen: |A| gap |B| gap |D|
+                out.push({
+                    value: B[farSide] + gap + half,
+                    guide: null,
+                    gaps: [[A[farSide], B[nearSide]], [B[farSide], B[farSide] + gap]],
+                });
+
+                // Muster nach "vorne" fortsetzen: |D| gap |A| gap |B|
+                out.push({
+                    value: A[nearSide] - gap - half,
+                    guide: null,
+                    gaps: [[A[nearSide] - gap, A[nearSide]], [A[farSide], B[nearSide]]],
+                });
+
+                // Mittig hineinsetzen, sofern der Tisch überhaupt passt.
+                const free = gap - size;
+                if (free > 0.002) {
+                    const g = free / 2;
+                    out.push({
+                        value: A[farSide] + g + half,
+                        guide: null,
+                        gaps: [[A[farSide], A[farSide] + g], [B[nearSide] - g, B[nearSide]]],
+                    });
+                }
+            }
         }
 
-        for (const edge of [...canvasEdgesY, ...others.flatMap((o) => [o.top, o.bottom])]) {
-            edgesY.push({ value: edge + halfH, guide: edge });
-            edgesY.push({ value: edge - halfH, guide: edge });
-        }
-
-        this.snapXs = [...centersX, ...edgesX];
-        this.snapYs = [...centersY, ...edgesY];
+        return out;
     },
 
     /**
@@ -665,13 +710,50 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         const h = document.getElementById('fp-guide-h');
 
         if (v) {
-            v.style.display = sx === null ? 'none' : 'block';
-            if (sx !== null) v.style.left = pct(sx);
+            v.style.display = sx === null || sx === undefined ? 'none' : 'block';
+            if (sx !== null && sx !== undefined) v.style.left = pct(sx);
         }
         if (h) {
-            h.style.display = sy === null ? 'none' : 'block';
-            if (sy !== null) h.style.top = pct(sy);
+            h.style.display = sy === null || sy === undefined ? 'none' : 'block';
+            if (sy !== null && sy !== undefined) h.style.top = pct(sy);
         }
+    },
+
+    /**
+     * Die beiden gleich großen Lücken anzeigen – bei Abstands-Treffern sagt eine
+     * Linie nichts aus, sichtbar sein müssen die Abstände selbst.
+     * crossCenter = Position auf der ANDEREN Achse, damit die Balken auf Höhe
+     * des gezogenen Tischs liegen.
+     */
+    gapBars(axis, candidate, crossCenter) {
+        const ids = axis === 'x' ? ['fp-gap-x1', 'fp-gap-x2'] : ['fp-gap-y1', 'fp-gap-y2'];
+        const gaps = candidate && candidate.gaps ? candidate.gaps : null;
+
+        ids.forEach((id, i) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            const g = gaps ? gaps[i] : null;
+            if (!g) { el.style.display = 'none'; return; }
+
+            el.style.display = 'block';
+            if (axis === 'x') {
+                el.style.left  = pct(g[0]);
+                el.style.width = pct(g[1] - g[0]);
+                el.style.top   = pct(crossCenter);
+            } else {
+                el.style.top    = pct(g[0]);
+                el.style.height = pct(g[1] - g[0]);
+                el.style.left   = pct(crossCenter);
+            }
+        });
+    },
+
+    /** Alle Anzeigen aus. */
+    clearGuides() {
+        this.guides(null, null);
+        this.gapBars('x', null, 0);
+        this.gapBars('y', null, 0);
     },
 
     onMove(e) {
@@ -712,8 +794,10 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
                 if (sy) this.y = sy.value;
 
                 this.guides(sx ? sx.guide : null, sy ? sy.guide : null);
+                this.gapBars('x', sx, this.y);
+                this.gapBars('y', sy, this.x);
             } else {
-                this.guides(null, null);   // frei platzieren
+                this.clearGuides();   // frei platzieren
             }
         } else if (mode === 'resize') {
             // Nur die Breite kommt aus der Zeigerbewegung; die Höhe folgt
@@ -804,7 +888,7 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         // explizit mitgeben, da this.mode hier schon zurückgesetzt ist.
         if (this.pending) this.compute(this.pending.cx, this.pending.cy, m);
         this.cancelFrame();
-        this.guides(null, null);   // Hilfslinien immer ausblenden
+        this.clearGuides();   // Linien und Abstandsbalken immer ausblenden
 
         // transform -> Prozent, damit der DOM-Zustand dem entspricht, was der
         // Server beim nächsten Rendern ausgibt.
