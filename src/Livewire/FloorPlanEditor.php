@@ -109,6 +109,27 @@ class FloorPlanEditor extends Component
         return Table::where('floor_plan_id', $this->floorPlanId)->active()->get();
     }
 
+    /**
+     * Name automatisch speichern, wie alles andere auf der Seite auch.
+     *
+     * Nur wenn der Plan schon existiert: bei einem NEUEN Plan würde sonst beim
+     * ersten Tippen ein Tischplan mit halbem Namen entstehen. Dafür bleibt der
+     * Knopf, der dann "Tischplan anlegen" heißt.
+     */
+    public function updatedFloorPlanName(): void
+    {
+        if (! $this->floorPlanId) {
+            return;
+        }
+
+        $this->validate(['floorPlanName' => 'required|string|max:255']);
+
+        FloorPlan::findOrFail($this->floorPlanId)->update(['name' => $this->floorPlanName]);
+
+        unset($this->floorPlan);
+        $this->dispatch('floor-plan-saved');
+    }
+
     public function saveFloorPlan(): void
     {
         $this->validate(['floorPlanName' => 'required|string|max:255']);

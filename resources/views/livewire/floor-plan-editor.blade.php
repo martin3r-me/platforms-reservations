@@ -21,19 +21,27 @@
     <div class="flex items-center gap-2"
         x-data="{ saved: false, timer: null }"
         x-on:floor-plan-saved.window="saved = true; clearTimeout(timer); timer = setTimeout(() => saved = false, 2500)">
+        {{-- Speichert automatisch wie der Rest der Seite; nur ein noch nicht
+             angelegter Plan braucht den Knopf (siehe updatedFloorPlanName()). --}}
         <input
             type="text"
-            wire:model="floorPlanName"
+            wire:model.live.debounce.600ms="floorPlanName"
             placeholder="Name des Tischplans"
             class="flex-1 rounded-md border border-[var(--ui-border)] px-3 py-2 text-sm text-[var(--ui-secondary)]"
         />
-        <x-ui-button variant="primary" size="sm" wire:click="saveFloorPlan" wire:loading.attr="disabled" wire:target="saveFloorPlan">
-            <span wire:loading.remove wire:target="saveFloorPlan" class="flex items-center gap-1">
-                @svg('heroicon-o-check', 'w-4 h-4')
-                <span>Speichern</span>
-            </span>
-            <span wire:loading wire:target="saveFloorPlan">Speichert…</span>
-        </x-ui-button>
+
+        @if (! $floorPlanId)
+            <x-ui-button variant="primary" size="sm" wire:click="saveFloorPlan" wire:loading.attr="disabled" wire:target="saveFloorPlan">
+                <span wire:loading.remove wire:target="saveFloorPlan" class="flex items-center gap-1">
+                    @svg('heroicon-o-check', 'w-4 h-4')
+                    <span>Tischplan anlegen</span>
+                </span>
+                <span wire:loading wire:target="saveFloorPlan">Legt an…</span>
+            </x-ui-button>
+        @endif
+
+        <span wire:loading wire:target="floorPlanName" class="text-xs text-[var(--ui-muted)]">Speichert…</span>
+
         <span x-show="saved" x-cloak x-transition
             class="flex items-center gap-1 rounded-md bg-[var(--ui-success-10)] px-2.5 py-1.5 text-sm font-medium text-[var(--ui-success)]">
             @svg('heroicon-o-check-circle', 'w-4 h-4')
