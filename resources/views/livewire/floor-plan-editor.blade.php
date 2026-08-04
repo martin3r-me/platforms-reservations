@@ -62,7 +62,10 @@
                             @svg('heroicon-o-arrow-uturn-right', 'w-4 h-4')
                         </button>
                         <button wire:click="removeBackground" wire:confirm="Grundriss entfernen?" type="button"
-                            class="text-xs text-[var(--ui-danger)] hover:underline">Grundriss entfernen</button>
+                            class="inline-flex items-center gap-1.5 rounded-md border border-[var(--ui-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--ui-danger)] transition-colors hover:border-[var(--ui-danger)] hover:bg-red-50 dark:bg-gray-900 dark:hover:bg-red-950/30">
+                            @svg('heroicon-o-trash', 'w-4 h-4')
+                            Grundriss entfernen
+                        </button>
                     </div>
                 @endif
             </div>
@@ -141,6 +144,9 @@
                 @foreach ($this->tables as $table)
                     <div
                         wire:key="table-{{ $table->id }}"
+                        {{-- data-table: Marker, über den ein gezogener Tisch die
+                             Mitten der anderen als Einrast-Ziele findet. --}}
+                        data-table
                         {{-- touch-none: sonst scrollt die Seite beim Ziehen auf dem Tablet.
                              Kein "transition" hier: die Klasse animiert transform, und
                              transform gehört beim Ziehen der Geste (siehe paint()). --}}
@@ -216,6 +222,10 @@
                     </div>
                 @endforeach
 
+                {{-- Hilfslinien beim Ausrichten. Liegen nach den Tischen im DOM,
+                     damit sie darüber sichtbar sind; gesteuert von draggable(). --}}
+                <div id="fp-guide-v" class="pointer-events-none absolute top-0 h-full w-px bg-fuchsia-500" style="display: none;"></div>
+                <div id="fp-guide-h" class="pointer-events-none absolute left-0 h-px w-full bg-fuchsia-500" style="display: none;"></div>
             </div>{{-- /Canvas --}}
             </div>{{-- /Scroll-Container --}}
 
@@ -454,6 +464,10 @@ Alpine.data('rotatableBg', (rotation) => ({
 const round2 = (v) => Math.round(v * 100) / 100;
 const pct    = (v) => (Math.round(v * 1000000) / 10000) + '%';
 
+// Fangbereich beim Ausrichten, in Bildschirm-Pixeln – fühlt sich damit bei
+// jeder Zoomstufe gleich an.
+const SNAP_PX = 6;
+
 // Tisch verschieben/skalieren in NORMALISIERTEN Koordinaten (0…1).
 // x/y = Mittelpunkt (Anteil der Flächenbreite/-höhe), w/h = Größe (Anteil).
 // Deltas werden über die aktuelle Canvas-Pixelgröße in Anteile umgerechnet –
@@ -485,6 +499,9 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
      *  gezeichnet, egal wie viele pointermove-Events hereinkommen. */
     pending: null,
     frame: null,
+
+    /** Einrast-Kandidaten (Anteile 0…1), beim Gestenstart eingesammelt. */
+    snapXs: [], snapYs: [],
 
     init() {
         this.root = this.$el;
@@ -524,6 +541,8 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         this.sx = e.clientX; this.sy = e.clientY;
         this.ox = this.x; this.oy = this.y; this.ow = this.w;
 
+        if (mode === 'move') this.collectSnapTargets(canvas);
+
         try { this.root.setPointerCapture(e.pointerId); } catch (_) {}
 
         // Die Tailwind-Klasse "transition" animiert u.a. transform über 150ms –
@@ -536,6 +555,58 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         // zum Bearbeiten kaputtmachen. Scrollen verhindert touch-none,
         // Textauswahl select-none – beides per CSS am Tisch.
         e.stopPropagation();
+    },
+
+    /**
+     * Mitten der anderen Tische als Einrast-Ziele sammeln, plus die Canvas-Mitte.
+     *
+     * Bewusst über getBoundingClientRect() der Elemente statt über gerenderte
+     * data-Attribute: updateTablePosition() läuft mit skipRender(), die Attribute
+     * wären nach dem ersten Verschieben veraltet. Die Rects sind immer aktuell,
+     * weil Alpine die Position als inline-style schreibt.
+     */
+    collectSnapTargets(canvas) {
+        const cr = canvas.getBoundingClientRect();
+        const xs = [0.5];   // Canvas-Mitte
+        const ys = [0.5];
+
+        canvas.querySelectorAll('[data-table]').forEach((el) => {
+            if (el === this.root) return;
+            const r = el.getBoundingClientRect();
+            xs.push((r.left + r.width / 2 - cr.left) / cr.width);
+            ys.push((r.top + r.height / 2 - cr.top) / cr.height);
+        });
+
+        this.snapXs = xs;
+        this.snapYs = ys;
+    },
+
+    /** Nächstes Ziel innerhalb der Toleranz, sonst null. */
+    nearest(value, candidates, tolerance) {
+        let best = null;
+        let bestDistance = tolerance;
+
+        for (const c of candidates) {
+            const d = Math.abs(value - c);
+            if (d <= bestDistance) { bestDistance = d; best = c; }
+        }
+
+        return best;
+    },
+
+    /** Hilfslinien ein-/ausblenden (null = aus). */
+    guides(sx, sy) {
+        const v = document.getElementById('fp-guide-v');
+        const h = document.getElementById('fp-guide-h');
+
+        if (v) {
+            v.style.display = sx === null ? 'none' : 'block';
+            if (sx !== null) v.style.left = pct(sx);
+        }
+        if (h) {
+            h.style.display = sy === null ? 'none' : 'block';
+            if (sy !== null) h.style.top = pct(sy);
+        }
     },
 
     onMove(e) {
@@ -565,6 +636,16 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         if (mode === 'move') {
             this.x = Math.min(1, Math.max(0, this.ox + dxp));
             this.y = Math.min(1, Math.max(0, this.oy + dyp));
+
+            // Einrasten auf die Mitte eines anderen Tischs (oder die Canvas-Mitte).
+            // Toleranz in Pixeln gedacht, damit sie sich bei Zoom gleich anfühlt.
+            const sx = this.nearest(this.x, this.snapXs, SNAP_PX / this.rect.width);
+            const sy = this.nearest(this.y, this.snapYs, SNAP_PX / this.rect.height);
+
+            if (sx !== null) this.x = sx;
+            if (sy !== null) this.y = sy;
+
+            this.guides(sx, sy);
         } else if (mode === 'resize') {
             // Nur die Breite kommt aus der Zeigerbewegung; die Höhe folgt
             // daraus. Egal wie schief man zieht, die Proportion bleibt.
@@ -654,6 +735,7 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         // explizit mitgeben, da this.mode hier schon zurückgesetzt ist.
         if (this.pending) this.compute(this.pending.cx, this.pending.cy, m);
         this.cancelFrame();
+        this.guides(null, null);   // Hilfslinien immer ausblenden
 
         // transform -> Prozent, damit der DOM-Zustand dem entspricht, was der
         // Server beim nächsten Rendern ausgibt.
