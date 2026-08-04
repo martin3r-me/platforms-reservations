@@ -133,16 +133,27 @@
                 @foreach ($this->tables as $table)
                     <div
                         wire:key="table-{{ $table->id }}"
-                        {{-- touch-none: sonst scrollt die Seite beim Ziehen auf dem Tablet --}}
-                        class="group absolute flex touch-none cursor-move select-none items-center justify-center bg-indigo-600 text-xs font-bold text-white shadow-md ring-2 ring-white/70 transition hover:bg-indigo-500 dark:ring-gray-900/70"
-                        style="
-                            {{ $table->surfaceStyle() }}
-                            border-radius: {{ $table->shape === 'round' ? '50%' : '8px' }};
-                        "
+                        {{-- touch-none: sonst scrollt die Seite beim Ziehen auf dem Tablet.
+                             Kein "transition" hier: die Klasse animiert transform, und
+                             transform gehört beim Ziehen der Geste (siehe paint()). --}}
+                        class="group absolute flex touch-none cursor-move select-none items-center justify-center text-xs font-bold text-white"
+                        style="{{ $table->surfaceStyle() }}"
                         x-on:dblclick="$wire.openTableForm({{ $table->id }})"
                         x-data="draggable({{ $table->id }}, {{ $table->x_pct }}, {{ $table->y_pct }}, {{ $table->w_pct }}, {{ $table->h_pct }}, {{ $aspect * ($shapeRatios[$table->shape] ?? 1.0) }})"
                     >
-                        <div class="pointer-events-none text-center leading-tight">
+                        {{-- Die Fläche liegt in einer eigenen Ebene und trägt die
+                             Drehung. Zwei Gründe: der transform des äußeren
+                             Elements ist fürs Ziehen reserviert, und das Label
+                             bleibt aufrecht statt mitzukippen. --}}
+                        <div
+                            class="pointer-events-none absolute inset-0 bg-indigo-600 shadow-md ring-2 ring-white/70 transition-colors group-hover:bg-indigo-500 dark:ring-gray-900/70"
+                            style="
+                                border-radius: {{ $table->shape === 'round' ? '50%' : '8px' }};
+                                @if ((int) $table->rotation !== 0) transform: rotate({{ (int) $table->rotation }}deg); @endif
+                            "
+                        ></div>
+
+                        <div class="pointer-events-none relative text-center leading-tight">
                             <div>{{ $table->label }}</div>
                             <div class="opacity-75">{{ $table->capacity }}P</div>
                         </div>
@@ -246,6 +257,30 @@
                             >Auf alle Tische</x-ui-button>
                         </div>
                     </div>
+
+                    {{-- Ausrichtung: runde Tische sehen gedreht gleich aus. --}}
+                    @if ($tableShape !== 'round')
+                        <div class="mt-3 flex items-center justify-between gap-3 border-t border-[var(--ui-border)]/40 pt-3">
+                            <div class="min-w-0">
+                                <h4 class="m-0 text-[10px] font-semibold uppercase tracking-wider text-[var(--ui-muted)]">Ausrichtung</h4>
+                                <p class="m-0 mt-0.5 text-[12px] text-[var(--ui-muted)]">90° stellt quer, 45° diagonal.</p>
+                            </div>
+
+                            <div class="flex shrink-0 items-center gap-1">
+                                <button wire:click="rotateTableBy(-45)" type="button" title="45° nach links"
+                                    class="inline-flex items-center justify-center rounded-md border border-[var(--ui-border)] p-1.5 text-[var(--ui-secondary)] hover:bg-gray-50">
+                                    @svg('heroicon-o-arrow-uturn-left', 'w-4 h-4')
+                                </button>
+
+                                <span class="w-12 text-center text-sm tabular-nums text-[var(--ui-secondary)]">{{ $tableRotation }}°</span>
+
+                                <button wire:click="rotateTableBy(45)" type="button" title="45° nach rechts"
+                                    class="inline-flex items-center justify-center rounded-md border border-[var(--ui-border)] p-1.5 text-[var(--ui-secondary)] hover:bg-gray-50">
+                                    @svg('heroicon-o-arrow-uturn-right', 'w-4 h-4')
+                                </button>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
 

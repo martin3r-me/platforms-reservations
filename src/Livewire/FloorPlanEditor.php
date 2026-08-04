@@ -51,6 +51,10 @@ class FloorPlanEditor extends Component
     // per Hand lässt sich das Verhältnis nicht mehr verstellen.
     public int $tableSizePct = 10;
 
+    // Ausrichtung in Grad, 45°-Schritte. Dreht nur die Darstellung der Fläche –
+    // x_pct/y_pct bleiben der Mittelpunkt, w_pct/h_pct die unrotierten Maße.
+    public int $tableRotation = 0;
+
     /** Höhe/Breite-Verhältnis je Form (1 = optisch quadratisch/rund). */
     protected const SHAPE_RATIO = [
         'round'     => 1.0,
@@ -64,6 +68,7 @@ class FloorPlanEditor extends Component
         'tableCapacity'  => 'required|integer|min:1|max:50',
         'tableShape'     => 'required|in:round,square,rectangle',
         'tableSizePct'   => 'required|integer|min:2|max:40',
+        'tableRotation'  => 'required|integer|min:0|max:315',
     ];
 
     public function mount(int $venueId, ?int $floorPlanId = null): void
@@ -261,9 +266,24 @@ class FloorPlanEditor extends Component
             $this->tableCapacity = $table->capacity;
             $this->tableShape    = $table->shape;
             $this->tableSizePct  = (int) round(min(40, max(2, $table->w_pct * 100)));
+            $this->tableRotation = $this->normalizeRotation((int) $table->rotation);
         } else {
             $this->resetTableForm();
         }
+    }
+
+    /** Auf 0…315 in 45°-Schritten bringen (auch für negative Werte). */
+    protected function normalizeRotation(int $degrees): int
+    {
+        $step = (int) round($degrees / 45) * 45;
+
+        return (($step % 360) + 360) % 360;
+    }
+
+    /** Ausrichtung im Formular schrittweise drehen (Delta z.B. +45 / -45). */
+    public function rotateTableBy(int $delta): void
+    {
+        $this->tableRotation = $this->normalizeRotation($this->tableRotation + $delta);
     }
 
     public function saveTable(): void
@@ -273,6 +293,7 @@ class FloorPlanEditor extends Component
             'tableCapacity' => 'required|integer|min:1|max:50',
             'tableShape'    => 'required|in:round,square,rectangle',
             'tableSizePct'  => 'required|integer|min:2|max:40',
+            'tableRotation' => 'required|integer|min:0|max:315',
         ]);
 
         $wPct = $this->tableSizePct / 100;
@@ -283,6 +304,8 @@ class FloorPlanEditor extends Component
             'shape'    => $this->tableShape,
             'w_pct'    => $wPct,
             'h_pct'    => $this->heightFor($wPct, $this->tableShape),
+            // Runde Tische sehen gedreht identisch aus – gar nicht erst speichern.
+            'rotation' => $this->tableShape === 'round' ? 0 : $this->normalizeRotation($this->tableRotation),
         ];
 
         if ($this->editingTableId) {
@@ -362,6 +385,7 @@ class FloorPlanEditor extends Component
             'label'         => $this->nextLabel($source),
             'capacity'      => $source->capacity,
             'shape'         => $source->shape,
+            'rotation'      => $source->rotation,
             'w_pct'         => $source->w_pct,
             'h_pct'         => $source->h_pct,
             'x_pct'         => min(1, $source->x_pct + $offset),
@@ -456,6 +480,7 @@ class FloorPlanEditor extends Component
         $this->tableCapacity = 2;
         $this->tableShape    = 'square';
         $this->tableSizePct  = 10;
+        $this->tableRotation = 0;
     }
 
     public function render()

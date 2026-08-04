@@ -27,12 +27,14 @@ class Table extends Model
         'w_pct',
         'h_pct',
         'shape',
+        'rotation',
         'color',
         'is_active',
     ];
 
     protected $casts = [
         'capacity'  => 'integer',
+        'rotation'  => 'integer',
         'x'         => 'float',
         'y'         => 'float',
         'width'     => 'float',
