@@ -224,16 +224,29 @@
 
                 {{-- Hilfslinien beim Ausrichten. Liegen nach den Tischen im DOM,
                      damit sie darüber sichtbar sind; gesteuert von draggable(). --}}
-                <div id="fp-guide-v" class="pointer-events-none absolute top-0 h-full w-px bg-fuchsia-500" style="display: none;"></div>
-                <div id="fp-guide-h" class="pointer-events-none absolute left-0 h-px w-full bg-fuchsia-500" style="display: none;"></div>
+                {{-- Ausrichtungslinien: rot gestrichelt wie in PowerPoint --}}
+                <div id="fp-guide-v" class="pointer-events-none absolute top-0 h-full border-l border-dashed border-red-500" style="display: none;"></div>
+                <div id="fp-guide-h" class="pointer-events-none absolute left-0 w-full border-t border-dashed border-red-500" style="display: none;"></div>
 
-                {{-- Gleiche Abstände: die beiden Lücken als Balken auf Höhe des
-                     gezogenen Tischs. Bernstein, damit sie nicht mit den
-                     Ausrichtungslinien (magenta) verwechselt werden. --}}
-                <div id="fp-gap-x1" class="pointer-events-none absolute h-0.5 -translate-y-1/2 bg-amber-500" style="display: none;"></div>
-                <div id="fp-gap-x2" class="pointer-events-none absolute h-0.5 -translate-y-1/2 bg-amber-500" style="display: none;"></div>
-                <div id="fp-gap-y1" class="pointer-events-none absolute w-0.5 -translate-x-1/2 bg-amber-500" style="display: none;"></div>
-                <div id="fp-gap-y2" class="pointer-events-none absolute w-0.5 -translate-x-1/2 bg-amber-500" style="display: none;"></div>
+                {{-- Gleiche Abstände: gestrichelte Strecke mit Doppelpfeil in
+                     jeder der beiden Lücken, auf Höhe des gezogenen Tischs.
+                     Pfeilspitzen sind CSS-Dreiecke (Rahmen-Trick); JS setzt nur
+                     Position und Länge des Containers, das Innere macht Flex. --}}
+                @foreach (['fp-gap-x1', 'fp-gap-x2'] as $gapId)
+                    <div id="{{ $gapId }}" class="pointer-events-none absolute flex -translate-y-1/2 items-center" style="display: none;">
+                        <span class="h-0 w-0 border-y-[3px] border-r-[5px] border-y-transparent border-r-red-500"></span>
+                        <span class="h-0 flex-1 border-t border-dashed border-red-500"></span>
+                        <span class="h-0 w-0 border-y-[3px] border-l-[5px] border-y-transparent border-l-red-500"></span>
+                    </div>
+                @endforeach
+
+                @foreach (['fp-gap-y1', 'fp-gap-y2'] as $gapId)
+                    <div id="{{ $gapId }}" class="pointer-events-none absolute flex -translate-x-1/2 flex-col items-center" style="display: none;">
+                        <span class="h-0 w-0 border-x-[3px] border-b-[5px] border-x-transparent border-b-red-500"></span>
+                        <span class="w-0 flex-1 border-l border-dashed border-red-500"></span>
+                        <span class="h-0 w-0 border-x-[3px] border-t-[5px] border-x-transparent border-t-red-500"></span>
+                    </div>
+                @endforeach
             </div>{{-- /Canvas --}}
             </div>{{-- /Scroll-Container --}}
 
