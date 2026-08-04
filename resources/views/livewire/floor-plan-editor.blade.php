@@ -232,8 +232,9 @@
             {{-- Bedienelemente liegen AUSSERHALB des Scroll-Containers, damit sie
                  beim Hineinzoomen nicht mit dem Inhalt wegscrollen. --}}
             <div class="pointer-events-none absolute inset-0">
-                {{-- Zoom: unten links. Mitte zeigt den Wert und setzt zurück. --}}
-                <div class="pointer-events-auto absolute bottom-3 left-3 flex items-center gap-0.5 rounded-lg border border-[var(--ui-border)] bg-white px-1 py-0.5 shadow-sm dark:bg-gray-900">
+                <div class="pointer-events-auto absolute bottom-3 left-3 flex items-center gap-2">
+                {{-- Zoom. Mitte zeigt den Wert und setzt zurück. --}}
+                <div class="flex items-center gap-0.5 rounded-lg border border-[var(--ui-border)] bg-white px-1 py-0.5 shadow-sm dark:bg-gray-900">
                     <button
                         type="button"
                         title="Verkleinern"
@@ -261,6 +262,21 @@
                     >
                         @svg('heroicon-o-plus', 'w-4 h-4')
                     </button>
+                </div>
+
+                {{-- Einrasten an/aus: gefüllt = an, blass = frei platzieren --}}
+                <button
+                    type="button"
+                    x-on:click="$store.fpSnap.toggle()"
+                    :title="$store.fpSnap.on ? 'Einrasten ausschalten – frei platzieren' : 'Einrasten einschalten'"
+                    :class="$store.fpSnap.on
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
+                        : 'border-[var(--ui-border)] bg-white text-[var(--ui-muted)] dark:bg-gray-900'"
+                    class="inline-flex h-7 items-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium shadow-sm transition-colors"
+                >
+                    @svg('heroicon-o-squares-2x2', 'w-3.5 h-3.5')
+                    <span x-text="$store.fpSnap.on ? 'Einrasten' : 'Frei'"></span>
+                </button>
                 </div>
 
                 {{-- Neuen Tisch hinzufügen: unten rechts, bleibt beim Zoomen sichtbar --}}
@@ -468,6 +484,14 @@ const pct    = (v) => (Math.round(v * 1000000) / 10000) + '%';
 // jeder Zoomstufe gleich an.
 const SNAP_PX = 6;
 
+// Einrasten an/aus. Als Store, weil Umschalter und die draggable-Komponenten
+// verschiedene Alpine-Scopes sind: eine einfache Variable wäre nicht reaktiv,
+// der Knopf könnte seinen Zustand also nicht anzeigen.
+Alpine.store('fpSnap', {
+    on: true,
+    toggle() { this.on = !this.on; },
+});
+
 // Tisch verschieben/skalieren in NORMALISIERTEN Koordinaten (0…1).
 // x/y = Mittelpunkt (Anteil der Flächenbreite/-höhe), w/h = Größe (Anteil).
 // Deltas werden über die aktuelle Canvas-Pixelgröße in Anteile umgerechnet –
@@ -541,7 +565,7 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         this.sx = e.clientX; this.sy = e.clientY;
         this.ox = this.x; this.oy = this.y; this.ow = this.w;
 
-        if (mode === 'move') this.collectSnapTargets(canvas);
+        if (mode === 'move' && Alpine.store('fpSnap').on) this.collectSnapTargets(canvas);
 
         try { this.root.setPointerCapture(e.pointerId); } catch (_) {}
 
@@ -567,28 +591,69 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
      */
     collectSnapTargets(canvas) {
         const cr = canvas.getBoundingClientRect();
-        const xs = [0.5];   // Canvas-Mitte
-        const ys = [0.5];
+        const halfW = this.w / 2;
+        const halfH = this.h / 2;
 
+        // Kandidat = { value, guide }. Bei Mitten sind beide gleich; bei Kanten
+        // liegt die Linie AN der Kante, der Mittelpunkt aber eine halbe
+        // Tischbreite daneben – value und guide fallen dort auseinander.
+        const centersX = [{ value: 0.5, guide: 0.5 }];
+        const centersY = [{ value: 0.5, guide: 0.5 }];
+        const edgesX = [];
+        const edgesY = [];
+
+        // Kanten des Plans selbst, damit man bündig anlegen kann.
+        const canvasEdgesX = [0, 1];
+        const canvasEdgesY = [0, 1];
+
+        const others = [];
         canvas.querySelectorAll('[data-table]').forEach((el) => {
             if (el === this.root) return;
+
             const r = el.getBoundingClientRect();
-            xs.push((r.left + r.width / 2 - cr.left) / cr.width);
-            ys.push((r.top + r.height / 2 - cr.top) / cr.height);
+            others.push({
+                left:   (r.left - cr.left) / cr.width,
+                right:  (r.left + r.width - cr.left) / cr.width,
+                top:    (r.top - cr.top) / cr.height,
+                bottom: (r.top + r.height - cr.top) / cr.height,
+            });
         });
 
-        this.snapXs = xs;
-        this.snapYs = ys;
+        // Erst alle Mitten sammeln, dann alle Kanten: nearest() nimmt bei
+        // gleichem Abstand den zuerst gefundenen, damit hat die Mitte Vorrang.
+        for (const o of others) {
+            const cx = (o.left + o.right) / 2;
+            const cy = (o.top + o.bottom) / 2;
+            centersX.push({ value: cx, guide: cx });
+            centersY.push({ value: cy, guide: cy });
+        }
+
+        for (const edge of [...canvasEdgesX, ...others.flatMap((o) => [o.left, o.right])]) {
+            edgesX.push({ value: edge + halfW, guide: edge });   // eigene linke Kante
+            edgesX.push({ value: edge - halfW, guide: edge });   // eigene rechte Kante
+        }
+
+        for (const edge of [...canvasEdgesY, ...others.flatMap((o) => [o.top, o.bottom])]) {
+            edgesY.push({ value: edge + halfH, guide: edge });
+            edgesY.push({ value: edge - halfH, guide: edge });
+        }
+
+        this.snapXs = [...centersX, ...edgesX];
+        this.snapYs = [...centersY, ...edgesY];
     },
 
-    /** Nächstes Ziel innerhalb der Toleranz, sonst null. */
+    /**
+     * Nächster Kandidat innerhalb der Toleranz, sonst null.
+     * Bei genau gleichem Abstand gewinnt der zuerst einsortierte – die Liste
+     * beginnt mit den Mitten, die haben damit Vorrang vor Kanten.
+     */
     nearest(value, candidates, tolerance) {
         let best = null;
-        let bestDistance = tolerance;
+        let bestDistance = Infinity;
 
         for (const c of candidates) {
-            const d = Math.abs(value - c);
-            if (d <= bestDistance) { bestDistance = d; best = c; }
+            const d = Math.abs(value - c.value);
+            if (d <= tolerance && d < bestDistance) { bestDistance = d; best = c; }
         }
 
         return best;
@@ -637,15 +702,19 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
             this.x = Math.min(1, Math.max(0, this.ox + dxp));
             this.y = Math.min(1, Math.max(0, this.oy + dyp));
 
-            // Einrasten auf die Mitte eines anderen Tischs (oder die Canvas-Mitte).
-            // Toleranz in Pixeln gedacht, damit sie sich bei Zoom gleich anfühlt.
-            const sx = this.nearest(this.x, this.snapXs, SNAP_PX / this.rect.width);
-            const sy = this.nearest(this.y, this.snapYs, SNAP_PX / this.rect.height);
+            if (Alpine.store('fpSnap').on) {
+                // Einrasten auf Mitte oder Kante eines anderen Tischs bzw. des
+                // Plans. Toleranz in Pixeln, damit sie bei jedem Zoom gleich wirkt.
+                const sx = this.nearest(this.x, this.snapXs, SNAP_PX / this.rect.width);
+                const sy = this.nearest(this.y, this.snapYs, SNAP_PX / this.rect.height);
 
-            if (sx !== null) this.x = sx;
-            if (sy !== null) this.y = sy;
+                if (sx) this.x = sx.value;
+                if (sy) this.y = sy.value;
 
-            this.guides(sx, sy);
+                this.guides(sx ? sx.guide : null, sy ? sy.guide : null);
+            } else {
+                this.guides(null, null);   // frei platzieren
+            }
         } else if (mode === 'resize') {
             // Nur die Breite kommt aus der Zeigerbewegung; die Höhe folgt
             // daraus. Egal wie schief man zieht, die Proportion bleibt.
