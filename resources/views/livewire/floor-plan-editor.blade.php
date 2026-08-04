@@ -143,10 +143,9 @@
                 @endif
 
                 @php
-                    // Höhe folgt der Breite: Seitenverhältnis des Plans mal Form-Faktor.
-                    // Muss zu FloorPlanEditor::heightFor() passen.
-                    $aspect      = $this->floorPlan?->displayAspect() ?? (4 / 3);
-                    $shapeRatios = ['round' => 1.0, 'square' => 1.0, 'rectangle' => 0.6];
+                    // Höhe folgt der Breite; die Regel liegt am FloorPlan, damit
+                    // Editor, Ansicht und MCP-Tools dieselbe benutzen.
+                    $plan = $this->floorPlan;
                 @endphp
 
                 @foreach ($this->tables as $table)
@@ -161,7 +160,7 @@
                         class="group absolute flex touch-none cursor-move select-none items-center justify-center text-xs font-bold text-white"
                         style="{{ $table->surfaceStyle() }}"
                         x-on:dblclick="$wire.openTableForm({{ $table->id }})"
-                        x-data="draggable({{ $table->id }}, {{ $table->x_pct }}, {{ $table->y_pct }}, {{ $table->w_pct }}, {{ $table->h_pct }}, {{ $aspect * ($shapeRatios[$table->shape] ?? 1.0) }})"
+                        x-data="draggable({{ $table->id }}, {{ $table->x_pct }}, {{ $table->y_pct }}, {{ $table->w_pct }}, {{ $table->h_pct }}, {{ $plan ? $plan->heightFactor($table->shape) : (4 / 3) }})"
                     >
                         {{-- Die Fläche liegt in einer eigenen Ebene und trägt die
                              Drehung. Zwei Gründe: der transform des äußeren

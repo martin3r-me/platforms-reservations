@@ -55,13 +55,6 @@ class FloorPlanEditor extends Component
     // x_pct/y_pct bleiben der Mittelpunkt, w_pct/h_pct die unrotierten Maße.
     public int $tableRotation = 0;
 
-    /** Höhe/Breite-Verhältnis je Form (1 = optisch quadratisch/rund). */
-    protected const SHAPE_RATIO = [
-        'round'     => 1.0,
-        'square'    => 1.0,
-        'rectangle' => 0.6,
-    ];
-
     protected $rules = [
         'floorPlanName'  => 'required|string|max:255',
         'tableLabel'     => 'required|string|max:50',
@@ -272,17 +265,12 @@ class FloorPlanEditor extends Component
         unset($this->floorPlan);
     }
 
-    /**
-     * Höhe (Anteil 0…1) aus Breite und Form. w_pct und h_pct beziehen sich auf
-     * unterschiedliche Achsen – ohne die Korrektur um displayAspect() wäre ein
-     * "quadratischer" Tisch auf einem 4:3-Plan sichtbar flachgedrückt.
-     */
+    /** Höhe aus Breite und Form – Regel liegt am FloorPlan (einzige Quelle). */
     protected function heightFor(float $wPct, string $shape): float
     {
-        $aspect = $this->floorPlan?->displayAspect() ?? (4 / 3);
-        $ratio  = self::SHAPE_RATIO[$shape] ?? 1.0;
-
-        return min(0.9, max(0.02, $wPct * $aspect * $ratio));
+        return $this->floorPlan
+            ? $this->floorPlan->heightForWidth($wPct, $shape)
+            : min(0.9, max(0.02, $wPct * (4 / 3)));
     }
 
     public function openTableForm(?int $tableId = null): void
@@ -296,24 +284,16 @@ class FloorPlanEditor extends Component
             $this->tableCapacity = $table->capacity;
             $this->tableShape    = $table->shape;
             $this->tableSizePct  = (int) round(min(40, max(2, $table->w_pct * 100)));
-            $this->tableRotation = $this->normalizeRotation((int) $table->rotation);
+            $this->tableRotation = Table::normalizeRotation((int) $table->rotation);
         } else {
             $this->resetTableForm();
         }
     }
 
-    /** Auf 0…315 in 45°-Schritten bringen (auch für negative Werte). */
-    protected function normalizeRotation(int $degrees): int
-    {
-        $step = (int) round($degrees / 45) * 45;
-
-        return (($step % 360) + 360) % 360;
-    }
-
     /** Ausrichtung im Formular schrittweise drehen (Delta z.B. +45 / -45). */
     public function rotateTableBy(int $delta): void
     {
-        $this->tableRotation = $this->normalizeRotation($this->tableRotation + $delta);
+        $this->tableRotation = Table::normalizeRotation($this->tableRotation + $delta);
     }
 
     /**
@@ -334,7 +314,7 @@ class FloorPlanEditor extends Component
         }
 
         $table->update([
-            'rotation' => $this->normalizeRotation((int) $table->rotation + $delta),
+            'rotation' => Table::normalizeRotation((int) $table->rotation + $delta),
         ]);
 
         // Steht das Formular für genau diesen Tisch offen, Anzeige mitziehen.
@@ -364,7 +344,7 @@ class FloorPlanEditor extends Component
             'w_pct'    => $wPct,
             'h_pct'    => $this->heightFor($wPct, $this->tableShape),
             // Runde Tische sehen gedreht identisch aus – gar nicht erst speichern.
-            'rotation' => $this->tableShape === 'round' ? 0 : $this->normalizeRotation($this->tableRotation),
+            'rotation' => $this->tableShape === 'round' ? 0 : Table::normalizeRotation($this->tableRotation),
         ];
 
         if ($this->editingTableId) {

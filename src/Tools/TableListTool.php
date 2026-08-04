@@ -58,6 +58,11 @@ class TableListTool implements ToolContract, ToolMetadataContract
                 'label'     => $t->label,
                 'capacity'  => $t->capacity,
                 'shape'     => $t->shape,
+                'rotation'  => (int) $t->rotation,
+                'x_pct'     => (float) $t->x_pct,
+                'y_pct'     => (float) $t->y_pct,
+                'w_pct'     => (float) $t->w_pct,
+                'h_pct'     => (float) $t->h_pct,
                 'is_active' => $t->is_active,
             ]);
 

@@ -128,6 +128,36 @@ class FloorPlan extends Model
      * aus den Bildmaßen, rotationsbewusst (90°/270° tauschen). Ohne Bild 4:3.
      * Editor und Gast-Viewer richten ihren Container danach aus (kein Letterbox).
      */
+    /**
+     * Höhe/Breite-Verhältnis je Tischform (1 = optisch quadratisch bzw. rund).
+     */
+    public const SHAPE_RATIO = [
+        'round'     => 1.0,
+        'square'    => 1.0,
+        'rectangle' => 0.6,
+    ];
+
+    /**
+     * Faktor, mit dem sich h_pct aus w_pct ergibt.
+     *
+     * w_pct und h_pct beziehen sich auf UNTERSCHIEDLICHE Achsen – ohne die
+     * Korrektur um displayAspect() wäre ein "quadratischer" Tisch auf einem
+     * 4:3-Plan sichtbar flachgedrückt.
+     */
+    public function heightFactor(string $shape): float
+    {
+        return $this->displayAspect() * (self::SHAPE_RATIO[$shape] ?? 1.0);
+    }
+
+    /**
+     * Passende Höhe (Anteil 0…1) zu einer Breite. Einzige Quelle dieser Regel –
+     * genutzt vom Editor, von der Blade-Ansicht und von den MCP-Tools.
+     */
+    public function heightForWidth(float $wPct, string $shape): float
+    {
+        return min(0.9, max(0.02, $wPct * $this->heightFactor($shape)));
+    }
+
     public function displayAspect(): float
     {
         $file = $this->imageFile;

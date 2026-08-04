@@ -51,6 +51,17 @@ class Table extends Model
      * Editor UND Gast-Viewer, damit die Tische überall gleich liegen.
      * x_pct/y_pct = Mittelpunkt; daher links/oben um die halbe Größe versetzt.
      */
+    /**
+     * Ausrichtung auf 0…315 in 45°-Schritten bringen – auch für negative Werte.
+     * Die Spalte ist unsigned, -45 muss also als 315 landen.
+     */
+    public static function normalizeRotation(int $degrees): int
+    {
+        $step = (int) round($degrees / 45) * 45;
+
+        return (($step % 360) + 360) % 360;
+    }
+
     public function surfaceStyle(): string
     {
         $left = ($this->x_pct - $this->w_pct / 2) * 100;
