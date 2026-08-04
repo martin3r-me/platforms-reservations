@@ -105,10 +105,18 @@
         {{-- Canvas: Tischplan – Seitenverhältnis folgt dem Grundriss (kein Letterbox);
              Tische in normalisierten Koordinaten -> identisch zur Gast-Ansicht. --}}
         <div class="mx-auto w-full max-w-3xl">
+            {{-- Zoom über die BREITE des Canvas in einem Scroll-Container, nicht
+                 per transform: scale(). Dadurch liefert getBoundingClientRect()
+                 weiter echte Pixel und Ziehen/Skalieren rechnen unverändert
+                 richtig – mit scale() müsste jede Pixelrechnung den Faktor
+                 herausteilen. --}}
+            <div class="relative" x-data="{ zoom: 100 }">
+            <div class="overflow-auto rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900">
             <div
                 id="floor-plan-canvas"
-                class="relative w-full overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
+                class="relative"
                 style="aspect-ratio: {{ $this->floorPlan?->displayAspect() ?? (4 / 3) }};"
+                :style="{ width: zoom + '%' }"
                 x-data="floorPlanEditor()"
             >
                 @if ($this->floorPlan?->backgroundUrl())
@@ -208,14 +216,52 @@
                     </div>
                 @endforeach
 
-                {{-- Neuen Tisch hinzufügen --}}
+            </div>{{-- /Canvas --}}
+            </div>{{-- /Scroll-Container --}}
+
+            {{-- Bedienelemente liegen AUSSERHALB des Scroll-Containers, damit sie
+                 beim Hineinzoomen nicht mit dem Inhalt wegscrollen. --}}
+            <div class="pointer-events-none absolute inset-0">
+                {{-- Zoom: unten links. Mitte zeigt den Wert und setzt zurück. --}}
+                <div class="pointer-events-auto absolute bottom-3 left-3 flex items-center gap-0.5 rounded-lg border border-[var(--ui-border)] bg-white px-1 py-0.5 shadow-sm dark:bg-gray-900">
+                    <button
+                        type="button"
+                        title="Verkleinern"
+                        x-on:click="zoom = Math.max(50, zoom - 25)"
+                        :disabled="zoom <= 50"
+                        class="inline-flex h-6 w-6 items-center justify-center rounded text-[var(--ui-secondary)] hover:bg-gray-100 disabled:opacity-40 dark:hover:bg-gray-800"
+                    >
+                        @svg('heroicon-o-minus', 'w-4 h-4')
+                    </button>
+
+                    <button
+                        type="button"
+                        title="Auf 100 % zurücksetzen"
+                        x-on:click="zoom = 100"
+                        class="min-w-[3rem] rounded px-1 text-center text-[11px] font-medium tabular-nums text-[var(--ui-secondary)] hover:bg-gray-100 dark:hover:bg-gray-800"
+                        x-text="zoom + '%'"
+                    ></button>
+
+                    <button
+                        type="button"
+                        title="Vergrößern"
+                        x-on:click="zoom = Math.min(300, zoom + 25)"
+                        :disabled="zoom >= 300"
+                        class="inline-flex h-6 w-6 items-center justify-center rounded text-[var(--ui-secondary)] hover:bg-gray-100 disabled:opacity-40 dark:hover:bg-gray-800"
+                    >
+                        @svg('heroicon-o-plus', 'w-4 h-4')
+                    </button>
+                </div>
+
+                {{-- Neuen Tisch hinzufügen: unten rechts, bleibt beim Zoomen sichtbar --}}
                 <button
                     wire:click="openTableForm()"
-                    class="absolute bottom-4 right-4 flex items-center gap-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700"
+                    class="pointer-events-auto absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700"
                 >
                     + Tisch
                 </button>
             </div>
+            </div>{{-- /Rahmen --}}
             <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
                 Tische ziehen zum Positionieren · Ecke ziehen oder Größe im Formular eintragen ·
                 Doppelklick zum Bearbeiten, Duplizieren und Übertragen auf alle
