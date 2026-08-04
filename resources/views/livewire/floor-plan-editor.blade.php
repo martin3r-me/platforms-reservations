@@ -163,6 +163,40 @@
                             {{ $table->capacity }}
                         </span>
 
+                        {{-- Dreh-Leiste über dem Tisch: je ein Pfeil pro Richtung mit
+                             dem aktuellen Winkel dazwischen, direkt im Plan klickbar.
+                             dblclick.stop ist wesentlich – zweimal schnell klicken
+                             ergibt 90°, und ohne das würde der Doppelklick am Tisch
+                             landen und das Formular öffnen. --}}
+                        @if ($table->shape !== 'round')
+                            <div
+                                data-rotate-handle
+                                x-on:pointerdown.stop
+                                x-on:dblclick.stop
+                                class="absolute -top-9 left-1/2 flex -translate-x-1/2 touch-none items-center gap-0.5 rounded-lg border border-[var(--ui-border)] bg-white px-1 py-0.5 opacity-90 shadow-sm transition hover:opacity-100 dark:bg-gray-900"
+                            >
+                                <button
+                                    type="button"
+                                    title="45° nach links"
+                                    wire:click="rotateTable({{ $table->id }}, -45)"
+                                    class="inline-flex h-5 w-5 items-center justify-center rounded text-[var(--ui-secondary)] hover:bg-gray-100 dark:hover:bg-gray-800"
+                                >
+                                    @svg('heroicon-o-arrow-uturn-left', 'w-3.5 h-3.5')
+                                </button>
+
+                                <span class="min-w-[2rem] text-center text-[10px] font-medium tabular-nums text-[var(--ui-secondary)]">{{ (int) $table->rotation }}°</span>
+
+                                <button
+                                    type="button"
+                                    title="45° nach rechts"
+                                    wire:click="rotateTable({{ $table->id }}, 45)"
+                                    class="inline-flex h-5 w-5 items-center justify-center rounded text-[var(--ui-secondary)] hover:bg-gray-100 dark:hover:bg-gray-800"
+                                >
+                                    @svg('heroicon-o-arrow-uturn-right', 'w-3.5 h-3.5')
+                                </button>
+                            </div>
+                        @endif
+
                         {{-- Resize-Griff: dauerhaft sichtbar und deutlich größer als
                              vorher (14px, nur bei Hover) – sonst kaum zu treffen. --}}
                         <div
@@ -413,7 +447,9 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         // verschwinden sie automatisch mit dem Element – vorher blieben sie
         // bei jedem Re-Render liegen und summierten sich (Ursache des Ruckelns).
         this.root.addEventListener('pointerdown', (e) => {
-            if (e.target.dataset.resizeHandle !== undefined) return;
+            // closest() statt e.target.dataset: der Zeiger trifft bei der
+            // Dreh-Leiste das SVG IM Button, dort sitzt das data-Attribut nicht.
+            if (e.target.closest && e.target.closest('[data-resize-handle],[data-rotate-handle]')) return;
             this.begin('move', e);
         });
 

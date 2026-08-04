@@ -286,6 +286,35 @@ class FloorPlanEditor extends Component
         $this->tableRotation = $this->normalizeRotation($this->tableRotation + $delta);
     }
 
+    /**
+     * Tisch direkt im Plan weiterdrehen – Griff über dem Tisch, 45° je Klick.
+     *
+     * Bewusst OHNE skipRender(): anders als Position und Größe steckt die
+     * Drehung im gerenderten style der Flächen-Ebene, es muss also neues HTML
+     * kommen. Der äußere transform (Ziehen) ist davon nicht betroffen, weil
+     * während eines Klicks keine Geste läuft.
+     */
+    public function rotateTable(int $tableId, int $delta = 45): void
+    {
+        $table = Table::findOrFail($tableId);
+
+        // Runde Tische sehen gedreht identisch aus.
+        if ($table->shape === 'round') {
+            return;
+        }
+
+        $table->update([
+            'rotation' => $this->normalizeRotation((int) $table->rotation + $delta),
+        ]);
+
+        // Steht das Formular für genau diesen Tisch offen, Anzeige mitziehen.
+        if ($this->editingTableId === $tableId) {
+            $this->tableRotation = (int) $table->rotation;
+        }
+
+        unset($this->tables);
+    }
+
     public function saveTable(): void
     {
         $this->validate([
