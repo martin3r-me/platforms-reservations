@@ -37,6 +37,26 @@ class MenuManager extends Component
     public bool $itemAvailable = true;
     public bool $itemVegetarian = false;
     public bool $itemVegan = false;
+
+    /**
+     * Vegan schließt vegetarisch ein – die Liste zeigt deshalb nur EIN Badge.
+     * Ohne diese Kopplung ließe sich "vegan, aber nicht vegetarisch" speichern,
+     * und der Haken bei "Vegetarisch" hätte im Artikel keine sichtbare Wirkung.
+     */
+    public function updatedItemVegan(bool $value): void
+    {
+        if ($value) {
+            $this->itemVegetarian = true;
+        }
+    }
+
+    /** Vegetarisch abwählen hebt vegan mit auf – sonst bliebe ein Widerspruch. */
+    public function updatedItemVegetarian(bool $value): void
+    {
+        if (! $value) {
+            $this->itemVegan = false;
+        }
+    }
     public bool $itemAlcoholic = false;
     public ?int $itemMinAge = null;
     public bool $itemCaffeinated = false;
@@ -270,7 +290,10 @@ class MenuManager extends Component
             'price'         => $this->itemPrice,
             'tax_rate'      => $this->itemTaxRate,
             'available'     => $this->itemAvailable,
-            'is_vegetarian' => $this->itemVegetarian,
+            // Beim Speichern erzwingen, nicht nur beim Anklicken: Artikel aus der
+            // Zeit vor der Kopplung können vegan=1 / vegetarisch=0 stehen haben,
+            // und beim Öffnen des Formulars greift updatedItemVegan() nicht.
+            'is_vegetarian' => $this->itemVegetarian || $this->itemVegan,
             'is_vegan'      => $this->itemVegan,
             'is_alcoholic'  => $this->itemAlcoholic,
             'min_age'       => $this->itemMinAge ?: null,

@@ -100,24 +100,34 @@
                                     <span class="text-xs text-[color:var(--nx-muted)]">{{ $item->portion_size }}</span>
                                 @endif
 
+                                {{-- Freigabe nur zeigen, wenn der Artikel NICHT freigegeben ist.
+                                     "Freigegeben" stand auf fast jeder Zeile, war grün wie die
+                                     Ernährungs-Badges (zwei verschiedene Informationsarten, gleiche
+                                     Optik) und doppelt zum Knopf "Zurückziehen" daneben.
+                                     Ohne Badge = für Gäste sichtbar. --}}
                                 @php
                                     [$approvalLabel, $approvalVariant] = [
-                                        'draft'    => ['Entwurf', 'neutral'],
-                                        'review'   => ['In Prüfung', 'warning'],
-                                        'approved' => ['Freigegeben', 'success'],
-                                    ][$item->approval_status] ?? ['Entwurf', 'neutral'];
+                                        'draft'  => ['Entwurf', 'neutral'],
+                                        'review' => ['In Prüfung', 'warning'],
+                                    ][$item->approval_status] ?? [null, null];
                                 @endphp
-                                <x-nx-badge :variant="$approvalVariant">{{ $approvalLabel }}</x-nx-badge>
+                                @if ($approvalLabel)
+                                    <x-nx-badge :variant="$approvalVariant">{{ $approvalLabel }}</x-nx-badge>
+                                @endif
 
+                                {{-- Grün steht jetzt eindeutig für Ernährung. Vegan schließt
+                                     vegetarisch ein, deshalb nur ein Badge. --}}
                                 @if ($item->is_vegan)
                                     <x-nx-badge variant="success">Vegan</x-nx-badge>
                                 @elseif ($item->is_vegetarian)
                                     <x-nx-badge variant="success">Vegetarisch</x-nx-badge>
                                 @endif
+
+                                {{-- Einschränkung, kein Merkmal: warnend statt informativ. --}}
                                 @if ($item->min_age)
-                                    <x-nx-badge variant="info">{{ $item->min_age->label() }}</x-nx-badge>
+                                    <x-nx-badge variant="warning">{{ $item->min_age->label() }}</x-nx-badge>
                                 @elseif ($item->is_alcoholic)
-                                    <x-nx-badge variant="info">18+</x-nx-badge>
+                                    <x-nx-badge variant="warning">18+</x-nx-badge>
                                 @endif
                                 @if (!$item->available)
                                     <x-nx-badge>Nicht verfügbar</x-nx-badge>
