@@ -17,7 +17,7 @@
     </x-slot>
 
     <x-ui-page-container width="contained">
-    <div class="space-y-6">
+    <div class="space-y-8">
 
     @if (session('decl_message'))
         <x-nx-callout variant="success">{{ session('decl_message') }}</x-nx-callout>
