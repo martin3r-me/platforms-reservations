@@ -16,7 +16,7 @@
         {{-- Zeitfilter (rahmenlos) --}}
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
             <div class="flex items-center gap-1">
-                <span class="text-[color:var(--nx-faint)]">Zeit</span>
+                <span class="mr-1 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--nx-faint)]">Zeit</span>
                 @foreach (['upcoming' => 'Kommend', 'past' => 'Vergangen', 'all' => 'Alle'] as $val => $label)
                     <button type="button" wire:click="$set('timeFilter', '{{ $val }}')"
                         class="rounded-full px-2.5 py-1 transition-colors {{ $timeFilter === $val ? 'bg-[color:var(--nx-active)] font-medium text-[color:var(--nx-text)]' : 'text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]' }}">{{ $label }}</button>

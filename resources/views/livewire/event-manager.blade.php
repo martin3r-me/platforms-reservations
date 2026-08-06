@@ -42,14 +42,14 @@
         {{-- Filter: Status + Zeit, rahmenlos --}}
         <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
             <div class="flex flex-wrap items-center gap-1">
-                <span class="text-[color:var(--nx-faint)]">Status</span>
+                <span class="mr-1 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--nx-faint)]">Status</span>
                 @foreach (['published' => 'Veröffentlicht', 'draft' => 'Entwurf', 'closed' => 'Bestellschluss', 'cancelled' => 'Abgesagt', 'all' => 'Alle'] as $val => $label)
                     <button type="button" wire:click="$set('statusFilter', '{{ $val }}')"
                         class="rounded-full px-2.5 py-1 transition-colors {{ $statusFilter === $val ? 'bg-[color:var(--nx-active)] font-medium text-[color:var(--nx-text)]' : 'text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]' }}">{{ $label }}</button>
                 @endforeach
             </div>
-            <div class="flex flex-wrap items-center gap-1">
-                <span class="text-[color:var(--nx-faint)]">Zeit</span>
+            <div class="flex flex-wrap items-center gap-1 border-l border-[color:var(--nx-line)] pl-5">
+                <span class="mr-1 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--nx-faint)]">Zeit</span>
                 @foreach (['upcoming' => 'Kommend', 'past' => 'Vergangen', 'all' => 'Alle'] as $val => $label)
                     <button type="button" wire:click="$set('timeFilter', '{{ $val }}')"
                         class="rounded-full px-2.5 py-1 transition-colors {{ $timeFilter === $val ? 'bg-[color:var(--nx-active)] font-medium text-[color:var(--nx-text)]' : 'text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]' }}">{{ $label }}</button>
