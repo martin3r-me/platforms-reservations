@@ -23,19 +23,18 @@
         <x-nx-callout variant="success">{{ session('decl_message') }}</x-nx-callout>
     @endif
 
-    <p class="mb-8 max-w-3xl text-sm leading-relaxed text-[color:var(--nx-muted)]">
-        Diese Listen werden in den Artikeln zur Auswahl angeboten und beim Gast angezeigt. Änderungen wirken sofort.
-    </p>
-
     @php $declField = 'rounded-[6px] border border-[color:var(--nx-line-strong)] bg-[color:var(--nx-surface)] px-2 py-1 text-sm text-[color:var(--nx-text)] focus:border-[color:var(--nx-accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--nx-accent)]'; @endphp
 
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {{-- Allergene --}}
         <x-nx-card flush>
-            <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-                @svg('heroicon-o-exclamation-triangle', 'w-4 h-4', ['style' => 'color:var(--nx-warning)'])
-                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Allergene</h2>
-                <span class="ml-auto text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $this->allergens->count() }}</span>
+            <div class="flex items-start gap-2.5 border-b border-[color:var(--nx-line)] px-4 py-3">
+                @svg('heroicon-o-exclamation-triangle', 'mt-0.5 w-4 h-4 shrink-0', ['style' => 'color:var(--nx-warning)'])
+                <div class="min-w-0">
+                    <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Allergene</h2>
+                    <p class="mt-1 text-xs leading-relaxed text-[color:var(--nx-muted)]">Im Artikel auswählbar, beim Gast angezeigt. Änderungen wirken sofort.</p>
+                </div>
+                <span class="ml-auto shrink-0 text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $this->allergens->count() }}</span>
             </div>
 
             {{-- Neu anlegen --}}
@@ -77,10 +76,13 @@
 
         {{-- Zusatzstoffe --}}
         <x-nx-card flush>
-            <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-                @svg('heroicon-o-beaker', 'w-4 h-4', ['style' => 'color:var(--nx-info)'])
-                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Zusatzstoffe</h2>
-                <span class="ml-auto text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $this->additives->count() }}</span>
+            <div class="flex items-start gap-2.5 border-b border-[color:var(--nx-line)] px-4 py-3">
+                @svg('heroicon-o-beaker', 'mt-0.5 w-4 h-4 shrink-0', ['style' => 'color:var(--nx-info)'])
+                <div class="min-w-0">
+                    <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Zusatzstoffe</h2>
+                    <p class="mt-1 text-xs leading-relaxed text-[color:var(--nx-muted)]">Im Artikel auswählbar, beim Gast angezeigt. Änderungen wirken sofort.</p>
+                </div>
+                <span class="ml-auto shrink-0 text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $this->additives->count() }}</span>
             </div>
 
             <div class="flex items-end gap-2 border-b border-[color:var(--nx-line)] p-3">

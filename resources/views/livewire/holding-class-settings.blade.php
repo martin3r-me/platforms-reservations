@@ -23,15 +23,21 @@
         <x-nx-callout variant="success">{{ session('hc_message') }}</x-nx-callout>
     @endif
 
-    <p class="mb-8 max-w-3xl text-sm leading-relaxed text-[color:var(--nx-muted)]">
-        Standzeit-/Zeitkritikalitäts-Stufen (z. B. „Unbedenklich", „Sollte kalt sein", „Sollte heiß sein"). Sie werden im Artikel zugewiesen; die <strong class="text-[color:var(--nx-text)]">Vorlaufzeit</strong> (Minuten vor Pausenbeginn) bestimmt Ziel-Uhrzeit und Reihenfolge der Laufrunde. <strong class="text-[color:var(--nx-text)]">Leer = egal</strong> (zeitunkritisch, vorab platzierbar).
-    </p>
-
     <x-nx-card flush>
-        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-            @svg('heroicon-o-fire', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Stufen</h2>
-            <span class="ml-auto text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $this->classes->count() }}</span>
+        {{-- Erklärung steht im Kopf des Panels, nicht als freier Absatz darüber:
+             so gehört sie sichtbar zu dem, was sie beschreibt. Die Aufzählung der
+             drei Stufen ist entfallen – die stehen direkt darunter in der Liste. --}}
+        <div class="flex items-start gap-2.5 border-b border-[color:var(--nx-line)] px-4 py-3">
+            @svg('heroicon-o-fire', 'mt-0.5 w-4 h-4 shrink-0 text-[color:var(--nx-muted)]')
+            <div class="min-w-0">
+                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Stufen</h2>
+                <p class="mt-1 max-w-2xl text-xs leading-relaxed text-[color:var(--nx-muted)]">
+                    Wird je Artikel zugewiesen. Die <strong class="font-medium text-[color:var(--nx-text)]">Vorlaufzeit</strong>
+                    in Minuten vor Pausenbeginn bestimmt Ziel-Uhrzeit und Reihenfolge der Laufrunde;
+                    <strong class="font-medium text-[color:var(--nx-text)]">leer</strong> heißt zeitunkritisch und vorab platzierbar.
+                </p>
+            </div>
+            <span class="ml-auto shrink-0 text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $this->classes->count() }}</span>
         </div>
 
         {{-- Neu anlegen --}}
