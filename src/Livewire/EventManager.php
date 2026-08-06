@@ -66,6 +66,20 @@ class EventManager extends Component
             ->get();
     }
 
+    /**
+     * Gibt es überhaupt Termine – unabhängig vom Filter?
+     *
+     * Der Leer-Zustand hing vorher an der GEFILTERTEN Liste. Ein neu angelegter
+     * Termin ist Entwurf, der Standardfilter steht auf "Veröffentlicht": die
+     * Liste war leer, damit verschwand die Filterleiste, und der Termin war
+     * nicht mehr erreichbar.
+     */
+    #[Computed]
+    public function hasAnyEvents(): bool
+    {
+        return Event::forTeam($this->getTeamId())->exists();
+    }
+
     #[Computed]
     public function venues(): \Illuminate\Database\Eloquent\Collection
     {
@@ -314,9 +328,47 @@ class EventManager extends Component
             $this->eventImage = null;
         }
 
+        // Der gespeicherte Termin muss danach auch sichtbar sein. Fällt er durch
+        // den aktiven Filter – ein neuer ist Entwurf, der Filter steht auf
+        // "Veröffentlicht" –, würde er kommentarlos verschwinden. Also Filter so
+        // weit öffnen, dass er drin ist.
+        $this->revealEvent($event);
+
         $this->showForm = false;
         $this->editingEventId = null;
+
+        unset($this->events, $this->hasAnyEvents);
+    }
+
+    /** Filter auf "alles zeigen" stellen (Ausweg aus einer leeren Trefferliste). */
+    public function resetFilters(): void
+    {
+        $this->statusFilter = 'all';
+        $this->timeFilter   = 'all';
+
         unset($this->events);
+    }
+
+    /** Filter so anpassen, dass der übergebene Termin in der Liste erscheint. */
+    protected function revealEvent(Event $event): void
+    {
+        // status ist ein EventStatus-Enum – ohne ->value verglichen wäre es nie
+        // gleich, und die Zuweisung an die string-Property würfe einen TypeError.
+        $status = $event->status instanceof \BackedEnum
+            ? (string) $event->status->value
+            : (string) $event->status;
+
+        if ($this->statusFilter !== 'all' && $this->statusFilter !== $status) {
+            $this->statusFilter = $status;
+        }
+
+        $isPast = $event->date && $event->date->lt(now()->startOfDay());
+
+        if ($this->timeFilter === 'upcoming' && $isPast) {
+            $this->timeFilter = 'all';
+        } elseif ($this->timeFilter === 'past' && ! $isPast) {
+            $this->timeFilter = 'all';
+        }
     }
 
     protected function resolveEventsEventUuid(): ?string

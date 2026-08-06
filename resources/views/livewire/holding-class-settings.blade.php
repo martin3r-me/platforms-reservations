@@ -17,13 +17,13 @@
     </x-slot>
 
     <x-ui-page-container width="contained">
-    <div class="space-y-8">
+    <div class="space-y-5">
 
     @if (session('hc_message'))
         <x-nx-callout variant="success">{{ session('hc_message') }}</x-nx-callout>
     @endif
 
-    <p class="m-0 max-w-3xl text-sm leading-relaxed text-[color:var(--nx-muted)]">
+    <p class="mb-8 max-w-3xl text-sm leading-relaxed text-[color:var(--nx-muted)]">
         Standzeit-/Zeitkritikalitäts-Stufen (z. B. „Unbedenklich", „Sollte kalt sein", „Sollte heiß sein"). Sie werden im Artikel zugewiesen; die <strong class="text-[color:var(--nx-text)]">Vorlaufzeit</strong> (Minuten vor Pausenbeginn) bestimmt Ziel-Uhrzeit und Reihenfolge der Laufrunde. <strong class="text-[color:var(--nx-text)]">Leer = egal</strong> (zeitunkritisch, vorab platzierbar).
     </p>
 

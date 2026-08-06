@@ -18,7 +18,7 @@
             <x-nx-callout variant="success">{{ session('cancel_message') }}</x-nx-callout>
         @endif
 
-        <p class="m-0 max-w-3xl text-sm leading-relaxed text-[color:var(--nx-muted)]">
+        <p class="mb-8 max-w-3xl text-sm leading-relaxed text-[color:var(--nx-muted)]">
             Vom Kunden angefragte Stornierungen (nur im Freigabe-Modus). <strong class="text-[color:var(--nx-text)]">Freigeben</strong> storniert die Bestellung und löst die Mollie-Rückerstattung aus; <strong class="text-[color:var(--nx-text)]">Ablehnen</strong> lässt die Bestellung bestätigt.
         </p>
 

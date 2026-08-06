@@ -17,13 +17,13 @@
     </x-slot>
 
     <x-ui-page-container width="contained">
-    <div class="space-y-8">
+    <div class="space-y-5">
 
     @if (session('decl_message'))
         <x-nx-callout variant="success">{{ session('decl_message') }}</x-nx-callout>
     @endif
 
-    <p class="m-0 max-w-3xl text-sm leading-relaxed text-[color:var(--nx-muted)]">
+    <p class="mb-8 max-w-3xl text-sm leading-relaxed text-[color:var(--nx-muted)]">
         Diese Listen werden in den Artikeln zur Auswahl angeboten und beim Gast angezeigt. Änderungen wirken sofort.
     </p>
 

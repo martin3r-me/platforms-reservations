@@ -25,7 +25,11 @@
         <x-nx-callout variant="success">{{ session('event_message') }}</x-nx-callout>
     @endif
 
-    @if ($this->events->isEmpty())
+    {{-- Bewusst an hasAnyEvents statt an der gefilterten Liste: sonst verschwindet
+         mit dem letzten Treffer auch die Filterleiste, und man kommt an die
+         übrigen Termine nicht mehr heran (neuer Termin = Entwurf, Filter steht
+         aber auf "Veröffentlicht"). --}}
+    @if (! $this->hasAnyEvents)
         <x-nx-card>
             <x-nx-empty icon="heroicon-o-ticket">
                 <span class="text-sm font-medium text-[color:var(--nx-text)]">Noch kein Termin angelegt</span>
@@ -58,6 +62,20 @@
             <span class="ml-auto tabular-nums text-[color:var(--nx-faint)]">{{ $this->events->count() }} Termine</span>
         </div>
 
+        @if ($this->events->isEmpty())
+            <x-nx-card>
+                <x-nx-empty icon="heroicon-o-funnel">
+                    <span class="text-sm font-medium text-[color:var(--nx-text)]">Kein Termin passt zu diesem Filter</span>
+                    <span class="mt-1 block">Es gibt Termine, sie sind nur gerade ausgeblendet.</span>
+                    <x-slot name="action">
+                        <x-nx-button wire:click="resetFilters">
+                            @svg('heroicon-o-arrow-path', 'w-4 h-4')
+                            <span>Filter zurücksetzen</span>
+                        </x-nx-button>
+                    </x-slot>
+                </x-nx-empty>
+            </x-nx-card>
+        @else
         <x-nx-card flush>
             <div>
                 @php $eventStatusVariant = ['published' => 'success', 'draft' => 'neutral', 'closed' => 'warning', 'cancelled' => 'danger']; @endphp
@@ -122,6 +140,7 @@
                 @endforeach
             </div>
         </x-nx-card>
+        @endif
     @endif
 
     {{-- Modal: Termin anlegen/bearbeiten --}}
