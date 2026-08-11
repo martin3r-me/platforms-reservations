@@ -33,6 +33,9 @@
         .grid td.left { padding-right: 8px; }
         .grid td.right { padding-left: 8px; }
         .items th { text-align: left; font-size: 10px; color: #6b7280; border-bottom: 1px solid #e5e7eb; padding: 7px 5px; }
+        /* .items th (0,1,1) schlaegt .num (0,1,0) – ohne diese Regel bleiben die
+           Zahlen-Ueberschriften linksbuendig, waehrend die Werte rechts stehen. */
+        .items th.num { text-align: right; }
         .items td { padding: 7px 5px; border-bottom: 1px solid #f3f4f6; }
         .num { text-align: right; white-space: nowrap; }
         .sum { width: 100%; }
