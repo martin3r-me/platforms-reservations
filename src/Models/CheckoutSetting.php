@@ -5,7 +5,9 @@ namespace Platform\Reservation\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
+use Platform\Reservation\Models\Concerns\HasContextImage;
 use Platform\Reservation\Models\Concerns\HasTranslations;
+use Platform\Reservation\Support\PdfImage;
 
 /**
  * Pro-Team konfigurierbare Checkout-Texte (18+-Hinweis, Rechtstext,
@@ -14,6 +16,7 @@ use Platform\Reservation\Models\Concerns\HasTranslations;
 class CheckoutSetting extends Model
 {
     use BelongsToTeam;
+    use HasContextImage;
     use HasTranslations;
 
     /** Übersetzbare Texte (#522). */
@@ -55,6 +58,9 @@ class CheckoutSetting extends Model
         'guest_frontend_url',
         'confirmation_channel_id',
         'issuer',
+        'receipt_logo_context_file_id',
+        'receipt_accent_color',
+        'receipt_footer_text',
         'cancellation_enabled',
         'cancellation_deadline_hours',
         'cancellation_requires_approval',
@@ -209,6 +215,38 @@ class CheckoutSetting extends Model
     public function cancellationRequiresApproval(): bool
     {
         return (bool) $this->cancellation_requires_approval;
+    }
+
+    /** Farbe, die bisher in den Vorlagen fest verdrahtet war. */
+    public const DEFAULT_ACCENT = '#285567';
+
+    /** Das Logo hängt an einer eigenen Spalte, nicht an image_context_file_id. */
+    protected function contextImageColumn(): string
+    {
+        return 'receipt_logo_context_file_id';
+    }
+
+    /** Akzentfarbe mit Rückfall auf den bisherigen Ton. */
+    public function accentColor(): string
+    {
+        $color = trim((string) $this->receipt_accent_color);
+
+        return preg_match('/^#[0-9a-fA-F]{6}$/', $color) ? $color : self::DEFAULT_ACCENT;
+    }
+
+    /**
+     * Branding-Bündel für die Beleg-Vorlagen. An einer Stelle zusammengestellt,
+     * damit Controller und Vorschau dieselben Werte nutzen.
+     *
+     * @return array{logo: ?string, accent: string, footer: ?string}
+     */
+    public function receiptBranding(): array
+    {
+        return [
+            'logo'   => PdfImage::dataUri($this->imageFile),
+            'accent' => $this->accentColor(),
+            'footer' => trim((string) $this->receipt_footer_text) ?: null,
+        ];
     }
 
     /**

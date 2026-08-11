@@ -127,9 +127,13 @@ class OrderReceiptController
             $totalGross = round($totalGross + $b['gross'], 2);
         }
 
+        // Einstellungen einmal laden – Aussteller UND Branding kommen daher.
+        $settings = \Platform\Reservation\Models\CheckoutSetting::forTeam((int) $order->team_id);
+
         return [
             'order'       => $order,
-            'issuer'      => \Platform\Reservation\Models\CheckoutSetting::forTeam((int) $order->team_id)->issuer(),
+            'issuer'      => $settings->issuer(),
+            'branding'    => $settings->receiptBranding(),
             'lines'       => $lines,
             'groups'      => $groups,
             'vat'         => $vat,

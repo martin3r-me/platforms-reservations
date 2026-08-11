@@ -4,6 +4,7 @@ namespace Platform\Reservation\Livewire;
 
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\PaymentSetting;
 use Platform\Reservation\Services\MolliePaymentService;
@@ -14,6 +15,8 @@ use Platform\Reservation\Services\MolliePaymentService;
  */
 class CheckoutSettings extends Component
 {
+    use WithFileUploads;
+
     public string $ageCheckText = '';
     public string $legalText = '';
     public string $privacyUrl = '';
@@ -74,6 +77,8 @@ class CheckoutSettings extends Component
         $this->cancellationEnabled           = $setting->cancellationEnabled();
         $this->cancellationDeadlineHours     = $setting->cancellationDeadlineHours();
         $this->cancellationRequiresApproval  = $setting->cancellationRequiresApproval();
+        $this->receiptAccentColor     = $setting->accentColor();
+        $this->receiptFooterText      = (string) ($setting->receipt_footer_text ?? '');
         $this->fieldEmail             = $setting->fieldMode('email');
         $this->fieldPhone             = $setting->fieldMode('phone');
         $this->fieldNotes             = $setting->fieldMode('notes');
@@ -106,11 +111,14 @@ class CheckoutSettings extends Component
             'fieldEmail'             => 'required|in:required,optional,hidden',
             'fieldPhone'             => 'required|in:required,optional,hidden',
             'fieldNotes'             => 'required|in:required,optional,hidden',
+            'receiptAccentColor'     => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'receiptFooterText'      => 'nullable|string|max:500',
             'payMode'                => 'required|in:test,live',
             'testApiKey'             => 'nullable|string|max:255',
             'liveApiKey'             => 'nullable|string|max:255',
         ], [
             'privacyUrl.url' => 'Bitte eine gültige URL angeben (inkl. https://).',
+            'receiptAccentColor.regex' => 'Bitte eine Farbe als Hex-Wert angeben, z. B. #285567.',
         ]);
 
         $setting = CheckoutSetting::forTeam($this->getTeamId());
@@ -137,6 +145,8 @@ class CheckoutSettings extends Component
                 ->mapWithKeys(fn ($f) => [$f => (trim((string) ($this->issuer[$f] ?? '')) ?: null)])
                 ->filter()
                 ->all(),
+            'receipt_accent_color'      => trim($this->receiptAccentColor) ?: null,
+            'receipt_footer_text'       => trim($this->receiptFooterText) ?: null,
             'cancellation_enabled'           => $this->cancellationEnabled,
             'cancellation_deadline_hours'    => $this->cancellationEnabled ? $this->cancellationDeadlineHours : null,
             'cancellation_requires_approval' => $this->cancellationEnabled ? $this->cancellationRequiresApproval : false,
@@ -189,6 +199,46 @@ class CheckoutSettings extends Component
                 'label' => trim(($c->name ?: 'Absender') . ' · ' . $c->sender_identifier),
             ])
             ->all();
+    }
+
+    /** Aktuelle Einstellungen – für Logo-Vorschau und Zustand im Formular. */
+    #[\Livewire\Attributes\Computed]
+    public function setting(): CheckoutSetting
+    {
+        return CheckoutSetting::forTeam($this->getTeamId());
+    }
+
+    /**
+     * Logo hochladen. Läuft über HasContextImage, also denselben Weg wie
+     * Grundriss und Artikelbilder – inklusive Ersetzen des vorherigen Bildes.
+     */
+    public function updatedReceiptLogo(): void
+    {
+        $this->validate(['receiptLogo' => 'image|max:4096'], [
+            'receiptLogo.image' => 'Bitte ein Bild hochladen (JPG, PNG oder WebP).',
+            'receiptLogo.max'   => 'Das Logo ist zu groß (max. 4 MB).',
+        ]);
+
+        try {
+            $this->setting->setContextImage(
+                $this->receiptLogo,
+                'reservation.receipt.logo',
+                $this->getTeamId(),
+                Auth::id(),
+            );
+        } catch (\Throwable $e) {
+            report($e);
+            $this->addError('receiptLogo', 'Logo konnte nicht gespeichert werden: ' . $e->getMessage());
+        } finally {
+            $this->receiptLogo = null;
+            unset($this->setting);
+        }
+    }
+
+    public function removeReceiptLogo(): void
+    {
+        $this->setting->clearContextImage($this->getTeamId());
+        unset($this->setting);
     }
 
     public function render()

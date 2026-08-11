@@ -1,4 +1,8 @@
 @php
+    $branding = $branding ?? [];
+    $accent   = $branding['accent'] ?? \Platform\Reservation\Models\CheckoutSetting::DEFAULT_ACCENT;
+    $logo     = $branding['logo']   ?? null;
+    $footerText = $branding['footer'] ?? null;
     $currency = strtoupper((string) config('reservation.currency', 'EUR'));
     $sym = $currency === 'EUR' ? '€' : $currency;
     $fmt = fn ($v) => number_format((float) $v, 2, ',', '.') . ' ' . $sym;
@@ -18,7 +22,7 @@
         body { font-family: DejaVu Sans, Arial, sans-serif; color: #1f2937; font-size: 12px; line-height: 1.5; margin: 0; }
         h1 { font-size: 19px; margin: 0; line-height: 1.25; }
         .muted { color: #6b7280; }
-        .eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: 10px; color: #285567; font-weight: bold; }
+        .eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: 10px; color: {{ $accent }}; font-weight: bold; }
         table { width: 100%; border-collapse: collapse; }
         .meta td { padding: 5px 0; font-size: 12px; }
         .meta td.k { color: #6b7280; width: 130px; }
@@ -27,7 +31,7 @@
         .num { text-align: right; white-space: nowrap; }
         .sum { width: 100%; }
         .sum td { padding: 6px 5px; font-size: 12px; }
-        .sum tr.total td { border-top: 2px solid #285567; font-weight: bold; font-size: 14px; padding-top: 10px; }
+        .sum tr.total td { border-top: 2px solid {{ $accent }}; font-weight: bold; font-size: 14px; padding-top: 10px; }
         .foot { color: #9ca3af; font-size: 10px; border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 28px; }
         .addr { margin-top: 20px; font-size: 11px; color: #374151; }
     </style>
@@ -35,7 +39,7 @@
 <body>
     @include('reservation::pdf.partials.issuer', ['issuer' => $issuer])
 
-    <table style="border-bottom: 3px solid #285567; margin-bottom: 22px;">
+    <table style="border-bottom: 3px solid {{ $accent }}; margin-bottom: 22px;">
         <tr>
             <td style="vertical-align: top; padding-bottom: 14px;">
                 <div class="eyebrow">Bestellbestätigung / Beleg</div>
@@ -43,6 +47,11 @@
                 <div class="muted" style="margin-top: 4px;">{{ optional($date)->format('d.m.Y') }}@if ($order->event?->venue) · {{ $order->event->venue->name }} @endif</div>
             </td>
             <td style="vertical-align: top; text-align: right; padding-bottom: 14px; font-size: 11px; color: #6b7280;">
+                {{-- Logo als Data-URI: dompdf lädt keine externen Bilder. --}}
+                @if ($logo)
+                    <img src="{{ $logo }}" alt="" style="max-height: 46px; margin-bottom: 8px;" />
+                    <br>
+                @endif
                 Bestellnr.<br><strong style="color: #1f2937;">{{ $order->uuid }}</strong>
             </td>
         </tr>
@@ -61,7 +70,7 @@
         <tbody>
             @foreach ($groups as $g)
                 <tr>
-                    <td colspan="5" style="background: #f3f4f6; color: #285567; font-weight: bold; padding: 9px 5px;">
+                    <td colspan="5" style="background: #f3f4f6; color: {{ $accent }}; font-weight: bold; padding: 9px 5px;">
                         {{ $g['slot'] }}@if ($g['table']) · Tisch {{ $g['table'] }}@endif@if ($g['room']) · {{ $g['room'] }}@endif
                     </td>
                 </tr>
@@ -104,6 +113,10 @@
     @endif
 
     <div class="foot">
+        @if ($footerText)
+            {{-- Mandanten-Fußzeile zuerst: Bankverbindung, Hinweise o.ä. --}}
+            <div style="margin-bottom: 6px; white-space: pre-line; color: #6b7280;">{{ $footerText }}</div>
+        @endif
         Vielen Dank für Ihre Bestellung. Alle Preise inkl. gesetzlicher MwSt. Beleg erstellt am {{ now()->format('d.m.Y H:i') }} Uhr.
     </div>
 </body>

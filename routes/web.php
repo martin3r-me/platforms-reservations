@@ -73,5 +73,9 @@ Route::get('/settings/payment', fn () => redirect()->route('reservation.settings
 
 // Checkout-Texte (18+, Rechtstext, Datenschutz-Link)
 Route::get('/settings/checkout', \Platform\Reservation\Livewire\CheckoutSettings::class)->name('reservation.settings.checkout');
+// Testbeleg mit den aktuellen Branding-Einstellungen (keine echte Bestellung).
+Route::get('/settings/receipt-preview', \Platform\Reservation\Http\Controllers\ReceiptPreviewController::class)
+    ->name('reservation.settings.receipt-preview');
+
 Route::get('/settings/declarations', \Platform\Reservation\Livewire\DeclarationSettings::class)->name('reservation.settings.declarations');
 Route::get('/settings/holding-classes', \Platform\Reservation\Livewire\HoldingClassSettings::class)->name('reservation.settings.holding-classes');
