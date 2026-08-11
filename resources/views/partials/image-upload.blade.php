@@ -44,6 +44,14 @@
 
     <span class="text-[11px] text-[color:var(--nx-muted)]">{{ $hint }}</span>
 
+    {{-- Direkt unter dem Hinweis und über die volle Breite zentriert: als
+         inline-flex richtete es sich nicht zuverlässig mittig aus. --}}
+    <span wire:loading wire:target="{{ $model }}"
+        class="mt-1 flex w-full items-center justify-center gap-1 text-[11px] text-[color:var(--nx-muted)]">
+        @svg('heroicon-o-arrow-path', 'w-3.5 h-3.5 animate-spin')
+        Wird hochgeladen…
+    </span>
+
     <input
         x-ref="file"
         type="file"
@@ -52,11 +60,6 @@
         @if ($multiple) multiple @endif
         class="hidden"
     />
-
-    <span wire:loading wire:target="{{ $model }}" class="mt-1 inline-flex items-center gap-1 text-[11px] text-[color:var(--nx-muted)]">
-        @svg('heroicon-o-arrow-path', 'w-3.5 h-3.5 animate-spin')
-        Wird hochgeladen…
-    </span>
 </div>
 @error($model) <p class="mt-1 text-xs text-[color:var(--nx-danger)]">{{ $message }}</p> @enderror
 @if ($multiple)
