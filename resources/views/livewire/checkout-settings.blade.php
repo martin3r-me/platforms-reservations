@@ -179,9 +179,11 @@
                     <p class="mt-1 text-xs text-[color:var(--nx-muted)]">Linien und Hervorhebungen im Beleg.</p>
                     <div class="mt-2 flex items-center gap-2">
                         <input type="color" wire:model.live="receiptAccentColor"
+                            value="{{ $receiptAccentColor ?: '#285567' }}"
                             class="h-9 w-14 cursor-pointer rounded border border-[color:var(--nx-line)] bg-transparent p-0.5" />
                         <div class="w-28">
                             <x-nx-input-text name="receiptAccentColor" label="" size="sm"
+                                :value="$receiptAccentColor"
                                 wire:model.live="receiptAccentColor" placeholder="#285567" errorKey="receiptAccentColor" />
                         </div>
                     </div>
@@ -189,6 +191,7 @@
             </div>
 
             <x-nx-input-textarea name="receiptFooterText" label="Fußzeile (optional)" rows="3"
+                :value="$receiptFooterText"
                 wire:model="receiptFooterText" errorKey="receiptFooterText"
                 placeholder="z. B. Bankverbindung, Hinweise – erscheint unten auf dem Beleg." />
         </div>

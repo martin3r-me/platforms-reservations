@@ -17,6 +17,11 @@ class CheckoutSettings extends Component
 {
     use WithFileUploads;
 
+    // Beleg-Branding (Logo, Akzentfarbe, Fußzeile)
+    public string $receiptAccentColor = '';
+    public string $receiptFooterText = '';
+    public $receiptLogo = null;
+
     public string $ageCheckText = '';
     public string $legalText = '';
     public string $privacyUrl = '';
