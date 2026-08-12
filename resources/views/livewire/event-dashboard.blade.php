@@ -11,10 +11,6 @@
         ]" />
     </x-slot>
 
-    <x-slot name="sidebar">
-        @include('reservation::partials.event-sidebar', ['event' => $this->event, 'active' => 'dashboard'])
-    </x-slot>
-
     <x-ui-page-container width="contained">
 
     {{-- Ultrawide-Ambient: generatives Bauhaus-Panel im Passepartout.
@@ -97,6 +93,8 @@
                 @if ($this->event->slots->isNotEmpty()) · {{ $this->event->slots->map(fn ($sl) => $sl->displayLabel())->implode(', ') }} @endif
             </p>
         </div>
+
+        @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'dashboard'])
 
         {{-- Kennzahlen --}}
         <div class="grid grid-cols-2 gap-x-4 gap-y-4 border-y border-[color:var(--nx-line)] py-4 sm:grid-cols-4">

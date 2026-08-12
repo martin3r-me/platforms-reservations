@@ -17,12 +17,10 @@
         </x-ui-page-actionbar>
     </x-slot>
 
-    <x-slot name="sidebar">
-        @include('reservation::partials.event-sidebar', ['event' => $this->event, 'active' => 'function'])
-    </x-slot>
-
     <x-ui-page-container width="contained">
     <div class="space-y-5">
+        @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'function'])
+
         @php $sheet = $this->sheet; @endphp
 
         <p class="m-0 text-xs text-[color:var(--nx-muted)]">
