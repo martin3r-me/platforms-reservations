@@ -66,6 +66,10 @@ class ReservationOverviewTool implements ToolContract, ToolMetadataContract
                     'event'      => 'Termin/Veranstaltung mit Datum, Status (draft|published|closed) und Pausen-Slots.',
                     'slot'       => 'Pause innerhalb eines Termins; je Slot bestellt der Gast eigene Artikel.',
                     'sales_list' => 'Verkaufsliste – welche Artikel für einen Termin gast-sichtbar sind.',
+                    'bundle'     => 'Artikel mit is_bundle=true und Bestandteilen ("Brezel + Bier" zu einem Preis). '
+                        . 'Verkaufsobjekt, aber KEINE Bestellposition: beim Bestellen zerfällt es in seine Bestandteile, '
+                        . 'der Bundle-Preis wird proportional verteilt. Allergene, Alkohol und Mindestalter werden aus den '
+                        . 'Bestandteilen abgeleitet, nicht am Bundle gepflegt.',
                     'booking'    => 'Eine Slot-Buchung (Gast, Tisch, Positionen mit eingefrorenem Preis/MwSt).',
                     'order'      => 'Klammer über mehrere Slot-Buchungen mit genau einer Zahlung.',
                 ],

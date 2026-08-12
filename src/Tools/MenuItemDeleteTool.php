@@ -22,7 +22,9 @@ class MenuItemDeleteTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'DELETE /reservation/menu-items - Löscht einen Artikel. REST-Parameter: id (Pflicht). '
-            . 'Bereits bestellte Artikel können nicht gelöscht werden – dann besser available=false setzen.';
+            . 'Bereits bestellte Artikel können nicht gelöscht werden – dann besser available=false setzen. '
+            . 'Ebenso blockiert, solange der Artikel Bestandteil eines Bundles ist (Fehlercode IN_BUNDLE, '
+            . 'die betroffenen Bundles stehen in der Meldung).';
     }
 
     public function getSchema(): array
@@ -51,6 +53,19 @@ class MenuItemDeleteTool implements ToolContract, ToolMetadataContract
 
             if (!$item) {
                 return ToolResult::error('Artikel nicht gefunden.', 'NOT_FOUND');
+            }
+
+            // Steckt der Artikel in einem Bundle? Die Fremdschlüssel-Regel würde
+            // das Löschen ohnehin verhindern, aber die QueryException unten
+            // meldet dann "bereits bestellt" – und schickt in die falsche Richtung.
+            $bundles = $item->partOfBundles()->pluck('name');
+
+            if ($bundles->isNotEmpty()) {
+                return ToolResult::error(
+                    'Der Artikel ist Bestandteil von: ' . $bundles->implode(', ')
+                        . '. Bitte zuerst dort entfernen oder das Bundle löschen.',
+                    'IN_BUNDLE',
+                );
             }
 
             try {

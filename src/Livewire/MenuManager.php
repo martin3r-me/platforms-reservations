@@ -576,6 +576,17 @@ class MenuManager extends Component
     {
         $item = MenuItem::findOrFail($id);
 
+        // Bestandteil eines Bundles? Sonst meldet der Fang unten "bereits
+        // bestellt" und schickt in die falsche Richtung.
+        $bundles = $item->partOfBundles()->pluck('name');
+
+        if ($bundles->isNotEmpty()) {
+            session()->flash('menu_error', 'Der Artikel ist Bestandteil von: ' . $bundles->implode(', ')
+                . '. Bitte zuerst dort entfernen oder das Bundle löschen.');
+
+            return;
+        }
+
         try {
             $item->delete();
         } catch (QueryException $e) {

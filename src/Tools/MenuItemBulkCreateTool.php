@@ -28,7 +28,9 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
         return 'POST /reservation/menu-items/bulk - Legt mehrere Artikel an (Freigabestatus draft). '
             . 'REST-Parameter: items (Array). Je Item: category_id (Pflicht), name (Pflicht), price (Pflicht, brutto), '
             . 'tax_rate (7|19, Default 7), holding_class_id (optional, Standzeit-Klasse), description, portion_size, '
-            . 'available, is_vegetarian, is_vegan, is_alcoholic, allergen_codes (Array von Codes), additive_codes (Array von Codes).';
+            . 'available, is_vegetarian, is_vegan, is_alcoholic, allergen_codes (Array von Codes), additive_codes (Array von Codes). '
+            . 'BUNDLES werden hier NICHT unterstützt: ihre Bestandteile müssen bereits existieren, weshalb sie einzeln '
+            . 'über menu-items.POST mit is_bundle und components angelegt werden. Ein hier übergebenes is_bundle wird ignoriert.';
     }
 
     public function getSchema(): array
