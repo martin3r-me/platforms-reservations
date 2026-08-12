@@ -6,6 +6,7 @@ use Illuminate\Support\Collection;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\SalesList;
+use Platform\Reservation\Support\BundlePriceAllocator;
 use Platform\Reservation\Support\Vat;
 
 /**
@@ -90,14 +91,115 @@ class CartCalculator
             ->withoutGlobalScope('team')
             ->where('approval_status', MenuItem::APPROVAL_APPROVED)
             ->where('available', true)
+            // Bestandteile mitladen: Preis, Steuersatz und Altersgrenze eines
+            // Bundles ergeben sich aus ihnen (kein N+1 in der Kalkulation).
+            ->with(['components' => fn ($q) => $q->withoutGlobalScope('team')])
             ->get()
+            // Ein Bundle fällt weg, sobald ein Bestandteil nicht verfügbar oder
+            // nicht freigegeben ist – sonst verkauft man etwas Unlieferbares.
+            ->filter(fn (MenuItem $item) => $item->effectivelyAvailable())
             ->keyBy('id');
     }
 
-    /** Bruttosumme aller Positionen. */
+    /**
+     * Warenkorb-Positionen in ABRECHNUNGS-Positionen auflösen.
+     *
+     * Ein Bundle ist ein Verkaufsobjekt, aber keine Abrechnungsposition: es
+     * zerfällt hier in seine Bestandteile, jeder mit eigenem Steuersatz. Diese
+     * Stufe ist die einzige Quelle sowohl für die MwSt-Rechnung als auch für die
+     * eingefrorenen Positionen – sonst würden Anzeige und Beleg auseinanderlaufen.
+     *
+     * Preise in CENT, damit die Summe der Bestandteile exakt dem Bundle-Preis
+     * entspricht (siehe BundlePriceAllocator).
+     *
+     * @param  Collection<int, array{item: MenuItem, quantity: int, total: float}>  $lines
+     * @return Collection<int, array{item: MenuItem, quantity: int, unit_price_cents: int, tax_rate: float, bundle_ref: ?string, bundle_item: ?MenuItem}>
+     */
+    public function explodedLines(Collection $lines): Collection
+    {
+        $out = collect();
+
+        foreach ($lines as $line) {
+            /** @var MenuItem $item */
+            $item     = $line['item'];
+            $quantity = (int) $line['quantity'];
+
+            if (! $item->isBundle()) {
+                $out->push([
+                    'item'             => $item,
+                    'quantity'         => $quantity,
+                    'unit_price_cents' => self::toCents($item->price),
+                    'tax_rate'         => (float) $item->tax_rate,
+                    'bundle_ref'       => null,
+                    'bundle_item'      => null,
+                ]);
+
+                continue;
+            }
+
+            $components = $item->components;
+
+            if ($components->isEmpty()) {
+                continue; // Bundle ohne Inhalt ist nicht verkaufbar
+            }
+
+            // Eine Referenz je Bundle-ZEILE: gruppiert die Bestandteile im Beleg
+            // und macht das Storno ganzer Bundles möglich.
+            $ref = (string) \Symfony\Component\Uid\UuidV7::generate();
+
+            $allocation = BundlePriceAllocator::allocate(
+                self::toCents($item->price),
+                $components->map(fn (MenuItem $c) => [
+                    'key'              => $c->id,
+                    'list_price_cents' => self::toCents($c->price),
+                    'quantity'         => (int) ($c->pivot->quantity ?? 1),
+                ])->all(),
+                $quantity,
+            );
+
+            $byId = $components->keyBy('id');
+
+            foreach ($allocation as $row) {
+                $component = $byId->get($row['key']);
+
+                if (! $component) {
+                    continue;
+                }
+
+                $out->push([
+                    'item'             => $component,
+                    'quantity'         => $row['quantity'],
+                    'unit_price_cents' => $row['unit_price_cents'],
+                    'tax_rate'         => (float) $component->tax_rate,
+                    'bundle_ref'       => $ref,
+                    'bundle_item'      => $item,
+                ]);
+            }
+        }
+
+        return $out;
+    }
+
+    /** Dezimalpreis in ganze Cent (kaufmännisch gerundet). */
+    protected static function toCents($price): int
+    {
+        return (int) round((float) $price * 100);
+    }
+
+    /**
+     * Bruttosumme aller Positionen.
+     *
+     * Bewusst aus den AUFGELÖSTEN Positionen: das ist der Betrag, der später als
+     * Summe der booking_items in der Datenbank steht und bei Mollie belastet
+     * wird. Aus den Anzeigezeilen gerechnet könnten Anzeige und Belastung um
+     * Bruchteile auseinanderliegen.
+     */
     public function total(Collection $lines): float
     {
-        return (float) $lines->sum('total');
+        $cents = $this->explodedLines($lines)
+            ->sum(fn (array $l) => $l['quantity'] * $l['unit_price_cents']);
+
+        return round($cents / 100, 2);
     }
 
     /**
@@ -107,9 +209,11 @@ class CartCalculator
      */
     public function totalsByTaxRate(Collection $lines): Collection
     {
-        return $lines
-            ->groupBy(fn ($line) => $line['item']->tax_rate)
-            ->map(fn ($group) => $group->sum('total'))
+        // Über die aufgelösten Positionen: der Steuersatz des Bundles selbst ist
+        // bedeutungslos, maßgeblich sind die Sätze seiner Bestandteile.
+        return $this->explodedLines($lines)
+            ->groupBy(fn (array $line) => (string) $line['tax_rate'])
+            ->map(fn ($group) => round($group->sum(fn (array $l) => $l['quantity'] * $l['unit_price_cents']) / 100, 2))
             ->sortKeysDesc();
     }
 
@@ -130,8 +234,10 @@ class CartCalculator
      */
     public function requiredMinAge(Collection $lines): ?int
     {
+        // effectiveMinAge(): bei einem Bundle zählt die höchste Grenze seiner
+        // Bestandteile – ein Bier im Bundle macht es zum 18+-Bundle.
         $ages = $lines
-            ->map(fn ($line) => $line['item']->min_age?->value)
+            ->map(fn ($line) => $line['item']->effectiveMinAge()?->value)
             ->filter()
             ->values();
 
@@ -151,11 +257,16 @@ class CartCalculator
      */
     public function frozenItemAttributes(Collection $lines): array
     {
-        return $lines->map(fn ($line) => [
-            'menu_item_id' => $line['item']->id,
-            'quantity'     => $line['quantity'],
-            'unit_price'   => $line['item']->price,   // Preis einfrieren
-            'tax_rate'     => $line['item']->tax_rate, // Steuersatz einfrieren
+        // Bundles sind hier bereits in ihre Bestandteile aufgelöst: jede Position
+        // trägt ihren eigenen Steuersatz und den anteiligen Preis. bundle_ref hält
+        // zusammen, was zu einem Bundle gehört (Beleg-Gruppierung, Storno).
+        return $this->explodedLines($lines)->map(fn (array $line) => [
+            'menu_item_id'        => $line['item']->id,
+            'quantity'            => $line['quantity'],
+            'unit_price'          => round($line['unit_price_cents'] / 100, 2), // Preis einfrieren
+            'tax_rate'            => $line['tax_rate'],                          // Steuersatz einfrieren
+            'bundle_ref'          => $line['bundle_ref'],
+            'bundle_menu_item_id' => $line['bundle_item']?->id,
         ])->all();
     }
 }
