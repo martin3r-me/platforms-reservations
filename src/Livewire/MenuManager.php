@@ -64,6 +64,10 @@ class MenuManager extends Component
     public array $itemAllergenIds = [];
     public array $itemAdditiveIds = [];
 
+    // Bundle: Schalter und Bestandteile als [component_id => quantity]
+    public bool $itemIsBundle = false;
+    public array $itemComponents = [];
+
     // Bild-Uploads (via HasContextImage-Trait → platform-core ContextFileService)
     public $itemImage = null;       // 1:1 Produktbild
     public $categoryImage = null;   // 16:9 Kategoriebild
@@ -107,6 +111,103 @@ class MenuManager extends Component
     public function additives(): \Illuminate\Database\Eloquent\Collection
     {
         return Additive::forTeam($this->getTeamId())->orderByRaw('CAST(code AS UNSIGNED), code')->get();
+    }
+
+    /** Gewählte Bestandteil-IDs (Schlüssel der Mengen-Zuordnung). */
+    protected function componentIds(): array
+    {
+        return array_values(array_map('intval', array_keys($this->itemComponents)));
+    }
+
+    /**
+     * Artikel, die als Bestandteil in Frage kommen: team-eigen, kein Bundle und
+     * nicht der gerade bearbeitete Artikel selbst.
+     */
+    #[Computed]
+    public function componentCandidates(): \Illuminate\Support\Collection
+    {
+        return MenuItem::forTeam($this->getTeamId())
+            ->where('is_bundle', false)
+            ->when($this->editingItemId, fn ($q) => $q->whereKeyNot($this->editingItemId))
+            ->orderBy('name')
+            ->get();
+    }
+
+    /** Bereits gewählte Bestandteile, in der Reihenfolge der Auswahl. */
+    #[Computed]
+    public function chosenComponents(): \Illuminate\Support\Collection
+    {
+        $ids = $this->componentIds();
+
+        if ($ids === []) {
+            return collect();
+        }
+
+        return MenuItem::forTeam($this->getTeamId())
+            ->with(['allergens', 'additives'])
+            ->whereIn('id', $ids)
+            ->get()
+            ->sortBy(fn (MenuItem $i) => array_search($i->id, $ids, true))
+            ->values();
+    }
+
+    /**
+     * Vorschau dessen, was der Gast sehen wird: Vergleichspreis, abgeleitete
+     * Allergene und Altersgrenze. Der Betreiber soll die Ableitung sehen, statt
+     * sie raten zu müssen.
+     *
+     * @return array{reference_price: float, saving: float, allergens: string, alcoholic: bool, min_age: ?int}
+     */
+    #[Computed]
+    public function bundlePreview(): array
+    {
+        $components = $this->chosenComponents;
+
+        $reference = 0.0;
+        foreach ($components as $c) {
+            $reference += (float) $c->price * max(1, (int) ($this->itemComponents[$c->id] ?? 1));
+        }
+
+        $price = (float) ($this->itemPrice !== '' ? $this->itemPrice : 0);
+
+        $allergens = $components
+            ->flatMap(fn (MenuItem $c) => $c->allergens)
+            ->unique('id')
+            ->sortBy('code')
+            ->pluck('code')
+            ->implode(', ');
+
+        $ages = $components->map(fn (MenuItem $c) => $c->min_age?->value)->filter();
+
+        return [
+            'reference_price' => round($reference, 2),
+            'saving'          => round($reference - $price, 2),
+            'allergens'       => $allergens,
+            'alcoholic'       => $components->contains(fn (MenuItem $c) => (bool) $c->is_alcoholic),
+            'min_age'         => $ages->isEmpty() ? null : (int) $ages->max(),
+        ];
+    }
+
+    public function addComponent(int $id): void
+    {
+        if (! isset($this->itemComponents[$id])) {
+            $this->itemComponents[$id] = 1;
+            unset($this->chosenComponents, $this->bundlePreview);
+        }
+    }
+
+    public function removeComponent(int $id): void
+    {
+        unset($this->itemComponents[$id]);
+        unset($this->chosenComponents, $this->bundlePreview);
+    }
+
+    public function setComponentQuantity(int $id, int $quantity): void
+    {
+        if (isset($this->itemComponents[$id])) {
+            $this->itemComponents[$id] = max(1, min(99, $quantity));
+            unset($this->bundlePreview);
+        }
     }
 
     public function toggleAllergen(int $id): void
@@ -220,7 +321,7 @@ class MenuManager extends Component
         $this->resetErrorBag();
 
         if ($id) {
-            $item = MenuItem::with(['allergens', 'additives'])->findOrFail($id);
+            $item = MenuItem::with(['allergens', 'additives', 'components'])->findOrFail($id);
             $this->itemCategoryId     = $item->category_id;
             $this->itemHoldingClassId = $item->holding_class_id;
             $this->itemName          = $item->name;
@@ -237,6 +338,10 @@ class MenuManager extends Component
             $this->itemCaffeineMg    = $item->caffeine_mg !== null ? (string) $item->caffeine_mg : null;
             $this->itemAllergenIds   = $item->allergens->pluck('id')->toArray();
             $this->itemAdditiveIds   = $item->additives->pluck('id')->toArray();
+            $this->itemIsBundle      = $item->isBundle();
+            $this->itemComponents    = $item->components
+                ->mapWithKeys(fn (MenuItem $c) => [$c->id => (int) ($c->pivot->quantity ?? 1)])
+                ->all();
         } else {
             $this->resetItemForm($categoryId);
         }
@@ -260,6 +365,8 @@ class MenuManager extends Component
         $this->itemCaffeineMg  = null;
         $this->itemAllergenIds = [];
         $this->itemAdditiveIds = [];
+        $this->itemIsBundle    = false;
+        $this->itemComponents  = [];
     }
 
     public function saveItem(bool $createAnother = false): void
@@ -280,6 +387,32 @@ class MenuManager extends Component
             'itemCaffeineMg'  => 'nullable|numeric|min:0|max:10000',
         ]);
 
+        // Bundle-Prüfungen. Ein Bundle im Bundle würde die Preisverteilung in
+        // eine Endlosschleife schicken; ein Selbstbezug ebenso.
+        if ($this->itemIsBundle) {
+            $componentIds = $this->componentIds();
+
+            if ($componentIds === []) {
+                $this->addError('itemComponents', 'Ein Bundle braucht mindestens einen Bestandteil.');
+
+                return;
+            }
+
+            if ($this->editingItemId && in_array($this->editingItemId, $componentIds, true)) {
+                $this->addError('itemComponents', 'Ein Bundle kann sich nicht selbst enthalten.');
+
+                return;
+            }
+
+            $nested = MenuItem::whereIn('id', $componentIds)->where('is_bundle', true)->pluck('name');
+
+            if ($nested->isNotEmpty()) {
+                $this->addError('itemComponents', 'Bundles können keine Bundles enthalten: ' . $nested->implode(', '));
+
+                return;
+            }
+        }
+
         $data = [
             'team_id'          => $this->getTeamId(),
             'category_id'      => $this->itemCategoryId,
@@ -297,6 +430,7 @@ class MenuManager extends Component
             'is_vegan'      => $this->itemVegan,
             'is_alcoholic'  => $this->itemAlcoholic,
             'min_age'       => $this->itemMinAge ?: null,
+            'is_bundle'     => $this->itemIsBundle,
             'is_caffeinated' => $this->itemCaffeinated,
             'caffeine_mg'   => $this->itemCaffeinated && $this->itemCaffeineMg !== null && $this->itemCaffeineMg !== ''
                 ? $this->itemCaffeineMg
@@ -309,6 +443,9 @@ class MenuManager extends Component
             $contentChanged = $item->wasChanged([
                 'name', 'description', 'portion_size', 'price', 'tax_rate',
                 'is_vegetarian', 'is_vegan', 'is_alcoholic', 'min_age', 'is_caffeinated', 'caffeine_mg',
+                // Aus einem Artikel ein Bundle zu machen (oder umgekehrt) ändert
+                // das Produkt grundlegend – Freigabe muss neu erteilt werden.
+                'is_bundle',
             ]);
         } else {
             $item = MenuItem::create($data);
@@ -332,8 +469,46 @@ class MenuManager extends Component
         $additiveChanges = $item->additives()->sync(
             array_intersect(array_map('intval', $this->itemAdditiveIds), $allowedAdditiveIds)
         );
+        // Bestandteile setzen. Nur team-eigene, keine Bundles, nicht der Artikel
+        // selbst – dieselben Schranken wie in der Validierung, damit ein
+        // manipulierter Request nichts einschleusen kann.
+        $componentChanges = ['attached' => [], 'detached' => []];
+
+        if ($this->itemIsBundle) {
+            $allowed = MenuItem::forTeam($teamId)
+                ->whereIn('id', $this->componentIds())
+                ->where('is_bundle', false)
+                ->whereKeyNot($item->getKey())
+                ->pluck('id')
+                ->all();
+
+            $sync = [];
+            $sort = 0;
+
+            foreach ($this->itemComponents as $componentId => $quantity) {
+                $componentId = (int) $componentId;
+
+                if (! in_array($componentId, $allowed, true)) {
+                    continue;
+                }
+
+                $sync[$componentId] = [
+                    'quantity'   => max(1, min(99, (int) $quantity)),
+                    'sort_order' => $sort++,
+                ];
+            }
+
+            $componentChanges = $item->components()->sync($sync);
+        } elseif ($item->components()->exists()) {
+            // Bundle-Schalter abgewählt: Bestandteile lösen, sonst bliebe ein
+            // unsichtbarer Inhalt am Artikel hängen.
+            $componentChanges = $item->components()->sync([]);
+        }
+
         $pivotChanged = count($allergenChanges['attached']) || count($allergenChanges['detached'])
-            || count($additiveChanges['attached']) || count($additiveChanges['detached']);
+            || count($additiveChanges['attached']) || count($additiveChanges['detached'])
+            || count($componentChanges['attached']) || count($componentChanges['detached'])
+            || count($componentChanges['updated'] ?? []);
 
         // Inhaltliche Änderung nach Freigabe → zurück auf Entwurf (Vier-Augen)
         if (($contentChanged || $pivotChanged) && $item->approval_status !== MenuItem::APPROVAL_DRAFT) {

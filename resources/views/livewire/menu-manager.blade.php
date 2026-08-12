@@ -115,6 +115,10 @@
                                     <x-nx-badge :variant="$approvalVariant">{{ $approvalLabel }}</x-nx-badge>
                                 @endif
 
+                                @if ($item->is_bundle)
+                                    <x-nx-badge variant="info">Bundle</x-nx-badge>
+                                @endif
+
                                 {{-- Grün steht jetzt eindeutig für Ernährung. Vegan schließt
                                      vegetarisch ein, deshalb nur ein Badge. --}}
                                 @if ($item->is_vegan)
@@ -296,6 +300,76 @@
                         ])
                     </div>
                 </div>
+            </div>
+
+            {{-- Bundle --}}
+            <div class="rounded-[8px] border border-[color:var(--nx-line)] p-3">
+                <x-nx-input-checkbox wire:model.live="itemIsBundle" label="Ist ein Bundle (mehrere Artikel zu einem Preis)" />
+
+                @if ($itemIsBundle)
+                    @php $preview = $this->bundlePreview; @endphp
+
+                    <p class="mt-2 text-[11px] text-[color:var(--nx-muted)]">
+                        Der Preis oben ist der <strong>Bundle-Preis</strong>. Beim Bestellen wird er proportional
+                        auf die Bestandteile verteilt, damit die Mehrwertsteuer je Satz korrekt ausgewiesen wird.
+                        Allergene, Alkohol und Altersgrenze ergeben sich aus den Bestandteilen.
+                    </p>
+
+                    {{-- Gewählte Bestandteile --}}
+                    <div class="mt-3 space-y-1">
+                        @forelse ($this->chosenComponents as $component)
+                            <div wire:key="comp-{{ $component->id }}"
+                                class="flex items-center gap-2 rounded-[6px] border border-[color:var(--nx-line)] px-2 py-1.5">
+                                <span class="min-w-0 flex-1 truncate text-sm text-[color:var(--nx-text)]">{{ $component->name }}</span>
+                                <span class="whitespace-nowrap text-[11px] tabular-nums text-[color:var(--nx-muted)]">
+                                    {{ number_format($component->price, 2, ',', '.') }} € · {{ rtrim(rtrim(number_format($component->tax_rate, 2, ',', '.'), '0'), ',') }} %
+                                </span>
+                                <div class="w-16 shrink-0">
+                                    <x-nx-input-number name="qty-{{ $component->id }}" label="" size="sm" min="1" max="99"
+                                        :value="$itemComponents[$component->id] ?? 1"
+                                        wire:change="setComponentQuantity({{ $component->id }}, $event.target.value)" />
+                                </div>
+                                <x-nx-button icon variant="ghost" wire:click="removeComponent({{ $component->id }})" title="Entfernen">
+                                    @svg('heroicon-o-x-mark', 'w-4 h-4')
+                                </x-nx-button>
+                            </div>
+                        @empty
+                            <p class="m-0 text-[11px] text-[color:var(--nx-muted)]">Noch kein Bestandteil gewählt.</p>
+                        @endforelse
+                        @error('itemComponents') <p class="m-0 text-xs text-[color:var(--nx-danger)]">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Bestandteil hinzufügen --}}
+                    <div class="mt-2">
+                        <x-nx-input-select
+                            name="addComponent"
+                            label="Bestandteil hinzufügen"
+                            size="sm"
+                            :options="$this->componentCandidates
+                                ->reject(fn ($c) => array_key_exists($c->id, $itemComponents))
+                                ->map(fn ($c) => ['value' => $c->id, 'label' => $c->name . ' · ' . number_format($c->price, 2, ',', '.') . ' €'])
+                                ->values()
+                                ->all()"
+                            :nullable="true"
+                            nullLabel="– wählen –"
+                            wire:change="addComponent($event.target.value)"
+                        />
+                    </div>
+
+                    {{-- Vorschau: was der Gast sehen wird --}}
+                    @if ($this->chosenComponents->isNotEmpty())
+                        <div class="mt-3 rounded-[6px] bg-[color:var(--nx-faint)] p-2 text-[11px] text-[color:var(--nx-muted)]">
+                            Einzeln <span class="tabular-nums">{{ number_format($preview['reference_price'], 2, ',', '.') }} €</span>
+                            @if ($preview['saving'] > 0)
+                                · Ersparnis <span class="tabular-nums text-[color:var(--nx-text)]">{{ number_format($preview['saving'], 2, ',', '.') }} €</span>
+                            @elseif ($preview['saving'] < 0)
+                                · <span class="text-[color:var(--nx-danger)]">teurer als einzeln</span>
+                            @endif
+                            @if ($preview['allergens']) <br>Allergene: {{ $preview['allergens'] }} @endif
+                            @if ($preview['min_age']) <br>Altersgrenze: {{ $preview['min_age'] }}+ @elseif ($preview['alcoholic']) <br>enthält Alkohol @endif
+                        </div>
+                    @endif
+                @endif
             </div>
 
             {{-- Eigenschaften --}}
