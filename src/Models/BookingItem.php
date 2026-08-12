@@ -5,6 +5,17 @@ namespace Platform\Reservation\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Eine Bestellposition.
+ *
+ * ZUSICHERUNG für Bundles: Positionen mit derselben bundle_ref gehören zu EINER
+ * Bundle-Instanz und dürfen nur gemeinsam storniert werden (Entscheidung aus der
+ * Abstimmung). Aktuell ist das konstruktionsbedingt erfüllt – storniert wird
+ * ausschließlich die ganze Order (OrderCancellationService). Wer je ein Storno
+ * einzelner Positionen einführt, muss über bundle_ref gruppieren: einzelne
+ * Bestandteile herauszunehmen würde den Bundle-Rabatt neu aufteilen und den
+ * bereits ausgestellten Beleg nachträglich falsch machen.
+ */
 class BookingItem extends Model
 {
     protected $table = 'reservation_booking_items';
