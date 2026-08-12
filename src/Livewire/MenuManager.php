@@ -68,6 +68,12 @@ class MenuManager extends Component
     public bool $itemIsBundle = false;
     public array $itemComponents = [];
 
+    /** Suchbegriff für die Artikelauswahl im Bundle (serverseitig gefiltert). */
+    public string $componentSearch = '';
+
+    /** Wie viele Treffer die Auswahl höchstens zeigt. */
+    public const COMPONENT_LIMIT = 20;
+
     // Bild-Uploads (via HasContextImage-Trait → platform-core ContextFileService)
     public $itemImage = null;       // 1:1 Produktbild
     public $categoryImage = null;   // 16:9 Kategoriebild
@@ -120,19 +126,42 @@ class MenuManager extends Component
     }
 
     /**
-     * Artikel, die als Bestandteil in Frage kommen: team-eigen, kein Bundle und
-     * nicht der gerade bearbeitete Artikel selbst.
+     * Artikel, die als Bestandteil in Frage kommen: team-eigen, kein Bundle,
+     * nicht der bearbeitete Artikel selbst und noch nicht gewählt.
+     *
+     * Serverseitig gefiltert und auf COMPONENT_LIMIT begrenzt. Vorher wurden
+     * ALLE Artikel des Teams samt Bildern geladen und ins DOM gerendert, nur
+     * clientseitig versteckt – bei einem großen Sortiment sind das hunderte
+     * Zeilen und Bildanfragen pro Dialog-Öffnung.
+     *
+     * Ein Treffer mehr als nötig wird geholt, um ohne zweite Zählabfrage zu
+     * wissen, ob es weitere gibt.
      */
     #[Computed]
     public function componentCandidates(): \Illuminate\Support\Collection
     {
+        $search = trim($this->componentSearch);
+
         return MenuItem::forTeam($this->getTeamId())
             ->where('is_bundle', false)
             ->when($this->editingItemId, fn ($q) => $q->whereKeyNot($this->editingItemId))
+            ->when($this->componentIds(), fn ($q, $ids) => $q->whereNotIn('id', $ids))
+            ->when($search !== '', fn ($q) => $q->where(function ($sub) use ($search) {
+                $sub->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('portion_size', 'like', '%' . $search . '%');
+            }))
             // Bilder mitladen: die Auswahl zeigt Vorschaubilder (kein N+1).
             ->with('imageFile.variants')
             ->orderBy('name')
+            ->limit(self::COMPONENT_LIMIT + 1)
             ->get();
+    }
+
+    /** Gibt es mehr Treffer, als die Auswahl zeigt? */
+    #[Computed]
+    public function moreComponentsAvailable(): bool
+    {
+        return $this->componentCandidates->count() > self::COMPONENT_LIMIT;
     }
 
     /** Bereits gewählte Bestandteile, in der Reihenfolge der Auswahl. */
@@ -194,14 +223,15 @@ class MenuManager extends Component
     {
         if (! isset($this->itemComponents[$id])) {
             $this->itemComponents[$id] = 1;
-            unset($this->chosenComponents, $this->bundlePreview);
+            // Auswahlliste neu rechnen: der Artikel fällt jetzt heraus.
+            unset($this->chosenComponents, $this->bundlePreview, $this->componentCandidates, $this->moreComponentsAvailable);
         }
     }
 
     public function removeComponent(int $id): void
     {
         unset($this->itemComponents[$id]);
-        unset($this->chosenComponents, $this->bundlePreview);
+        unset($this->chosenComponents, $this->bundlePreview, $this->componentCandidates, $this->moreComponentsAvailable);
     }
 
     public function setComponentQuantity(int $id, int $quantity): void
@@ -380,6 +410,7 @@ class MenuManager extends Component
         $this->itemAdditiveIds = [];
         $this->itemIsBundle    = false;
         $this->itemComponents  = [];
+        $this->componentSearch = '';
     }
 
     public function saveItem(bool $createAnother = false): void

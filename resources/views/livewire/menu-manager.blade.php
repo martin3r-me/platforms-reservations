@@ -376,26 +376,30 @@
                     </div>
 
                     {{-- Artikel hinzufügen: Suchfeld und Liste stehen fest im Fluss,
-                         nicht als aufklappendes Dropdown. Ein absolut positioniertes
-                         Panel wurde vom unteren Modal-Rand abgeschnitten – man musste
-                         erst scrollen, um die Treffer zu sehen. So kann nichts
-                         beschnitten werden, und die Suche ist sofort sichtbar. --}}
-                    @php $available = $this->componentCandidates->reject(fn ($c) => array_key_exists($c->id, $itemComponents)); @endphp
-                    <div class="mt-3" x-data="{ q: '' }">
+                         nicht als aufklappendes Dropdown – ein absolut positioniertes
+                         Panel wurde vom unteren Modal-Rand abgeschnitten.
+
+                         Gefiltert wird SERVERSEITIG und begrenzt: alle Artikel zu
+                         laden und clientseitig zu verstecken hieße bei großem
+                         Sortiment hunderte Zeilen und Bildanfragen je Öffnung. --}}
+                    <div class="mt-3">
                         <label class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Artikel hinzufügen</label>
 
                         <div class="relative">
                             <span class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[color:var(--nx-muted)]">
                                 @svg('heroicon-o-magnifying-glass', 'w-4 h-4')
                             </span>
-                            <input x-model="q" type="text" placeholder="Artikel suchen…"
-                                class="w-full rounded-[6px] border border-[color:var(--nx-line-strong)] bg-[color:var(--nx-surface)] py-1.5 pl-8 pr-2 text-sm text-[color:var(--nx-text)] focus:border-[color:var(--nx-accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--nx-accent)]" />
+                            <input wire:model.live.debounce.300ms="componentSearch" type="text" placeholder="Artikel suchen…"
+                                class="w-full rounded-[6px] border border-[color:var(--nx-line-strong)] bg-[color:var(--nx-surface)] py-1.5 pl-8 pr-8 text-sm text-[color:var(--nx-text)] focus:border-[color:var(--nx-accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--nx-accent)]" />
+                            <span wire:loading wire:target="componentSearch"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-[color:var(--nx-muted)]">
+                                @svg('heroicon-o-arrow-path', 'w-4 h-4 animate-spin')
+                            </span>
                         </div>
 
                         <div class="mt-1 max-h-52 overflow-auto rounded-[6px] border border-[color:var(--nx-line)]">
-                            @forelse ($available as $cand)
-                                <button type="button" wire:click="addComponent({{ $cand->id }})"
-                                    x-show="q === '' || {{ \Illuminate\Support\Js::from(mb_strtolower($cand->name . ' ' . (string) $cand->portion_size)) }}.includes(q.toLowerCase())"
+                            @forelse ($this->componentCandidates->take(\Platform\Reservation\Livewire\MenuManager::COMPONENT_LIMIT) as $cand)
+                                <button type="button" wire:click="addComponent({{ $cand->id }})" wire:key="cand-{{ $cand->id }}"
                                     class="flex w-full items-center gap-2 border-b border-[color:var(--nx-line)] px-2 py-1.5 text-left last:border-0 hover:bg-[color:var(--nx-hover)]">
                                     @if ($cand->image_context_file_id && $cand->imageFile)
                                         <img src="{{ $cand->imageUrl('thumbnail_1_1') }}" alt=""
@@ -417,10 +421,20 @@
                                 </button>
                             @empty
                                 <p class="m-0 px-3 py-2 text-xs text-[color:var(--nx-muted)]">
-                                    Keine weiteren Artikel verfügbar. Ein Bundle kann keine Bundles enthalten.
+                                    @if (trim($componentSearch) !== '')
+                                        Kein Artikel gefunden.
+                                    @else
+                                        Keine weiteren Artikel verfügbar. Ein Bundle kann keine Bundles enthalten.
+                                    @endif
                                 </p>
                             @endforelse
                         </div>
+
+                        @if ($this->moreComponentsAvailable)
+                            <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">
+                                Es gibt weitere Treffer – bitte die Suche eingrenzen.
+                            </p>
+                        @endif
                     </div>
 
                     {{-- Vorschau: was der Gast sehen wird --}}
