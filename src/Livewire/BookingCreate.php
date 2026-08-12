@@ -10,6 +10,7 @@ use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Table;
+use Platform\Reservation\Services\CartCalculator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
@@ -76,11 +77,33 @@ class BookingCreate extends Component
     #[Computed]
     public function availableMenuItems(): \Illuminate\Database\Eloquent\Collection
     {
-        return MenuItem::with('category', 'allergens')
+        return MenuItem::with('category', 'allergens', 'components')
             ->forTeam($this->teamId)
             ->available()
             ->orderBy('sort_order')
-            ->get();
+            ->get()
+            // Ein Bundle ohne Bestandteile zerfällt in null Positionen – die
+            // Buchung hätte dann eine Zeile weniger, ohne dass es auffällt.
+            // Normale Artikel bleiben unangetastet.
+            ->filter(fn (MenuItem $item) => ! $item->isBundle() || $item->components->isNotEmpty())
+            ->values();
+    }
+
+    /**
+     * Die Auswahl als Warenkorb-Positionen.
+     *
+     * Geht bewusst ueber den CartCalculator: dort liegt die Mengenbegrenzung
+     * und – wichtiger – die Auflösung von Bundles in ihre Bestandteile.
+     *
+     * @return \Illuminate\Support\Collection<int, array{item: MenuItem, quantity: int, total: float}>
+     */
+    #[Computed]
+    public function bookingLines(): \Illuminate\Support\Collection
+    {
+        return app(CartCalculator::class)->linesFrom(
+            $this->selectedItems,
+            $this->availableMenuItems->keyBy('id'),
+        );
     }
 
     #[Computed]
@@ -92,14 +115,7 @@ class BookingCreate extends Component
     #[Computed]
     public function orderTotal(): float
     {
-        $total = 0;
-        foreach ($this->selectedItems as $itemId => $qty) {
-            $item = MenuItem::find($itemId);
-            if ($item) {
-                $total += (float) $item->price * (int) $qty;
-            }
-        }
-        return $total;
+        return app(CartCalculator::class)->total($this->bookingLines);
     }
 
     public function nextStep(): void
@@ -154,17 +170,13 @@ class BookingCreate extends Component
             'status'      => Booking::STATUS_PENDING,
         ]);
 
-        foreach ($this->selectedItems as $itemId => $qty) {
-            if ($qty > 0) {
-                $item = MenuItem::findOrFail($itemId);
-                BookingItem::create([
-                    'booking_id'   => $booking->id,
-                    'menu_item_id' => $itemId,
-                    'quantity'     => $qty,
-                    'unit_price'   => $item->price,
-                    'tax_rate'     => $item->tax_rate,
-                ]);
-            }
+        // Wie im Gast-Checkout: ein Bundle ist ein Verkaufsobjekt, aber keine
+        // Abrechnungsposition. frozenItemAttributes() löst es in die
+        // Bestandteile auf – jeder mit eigenem Steuersatz und eigener
+        // Standzeit, zusammengehalten ueber bundle_ref. Ohne das stünde auf
+        // dem Küchenzettel ein Posten statt zwei und die MwSt wäre falsch.
+        foreach (app(CartCalculator::class)->frozenItemAttributes($this->bookingLines) as $attributes) {
+            BookingItem::create($attributes + ['booking_id' => $booking->id]);
         }
 
         $this->step = 4;

@@ -143,6 +143,16 @@
                                     @if ($item->description)
                                         <p class="text-xs text-gray-500">{{ $item->description }}</p>
                                     @endif
+                                    {{-- Sichtbar machen, dass hier mehrere Artikel drinstecken: sie
+                                         landen als getrennte Positionen auf dem Küchenzettel. --}}
+                                    @if ($item->isBundle())
+                                        <p class="text-xs text-gray-500">
+                                            Bundle:
+                                            {{ $item->components
+                                                ->map(fn ($c) => ((int) ($c->pivot->quantity ?? 1) > 1 ? $c->pivot->quantity . '× ' : '') . $c->name)
+                                                ->implode(' + ') }}
+                                        </p>
+                                    @endif
                                     <p class="text-sm font-semibold text-indigo-600">
                                         {{ number_format($item->price, 2, ',', '.') }} €
                                     </p>

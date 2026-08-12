@@ -462,7 +462,7 @@ class MenuManager extends Component
         $data = [
             'team_id'          => $this->getTeamId(),
             'category_id'      => $this->itemCategoryId,
-            // Beim Bundle raeumt MenuItem::booted() das ohnehin ab.
+            // Beim Bundle räumt MenuItem::booted() das ohnehin ab.
             'holding_class_id' => $this->itemHoldingClassId ?: null,
             'name'          => $this->itemName,
             'description'   => $this->itemDescription,

@@ -41,13 +41,29 @@ class CartCalculator
             return collect();
         }
 
-        $allowed = $this->allowedItems($event);
-        $lines   = collect();
+        return $this->linesFrom($selection, $this->allowedItems($event));
+    }
+
+    /**
+     * Positionen aus einer bereits ermittelten Artikelmenge bauen.
+     *
+     * Für Wege ohne Event-Verkaufsliste – die Backoffice-Buchung bucht gegen
+     * das Team-Menü, nicht gegen eine Verkaufsliste. Der Aufrufer verantwortet,
+     * WELCHE Artikel erlaubt sind; Mengenbegrenzung und Preisherkunft (immer
+     * aus der DB) bleiben hier, damit beide Wege nicht auseinanderlaufen.
+     *
+     * @param  array<int, int>  $selection  [menu_item_id => Menge]
+     * @param  Collection<int, MenuItem>  $allowed  nach ID indiziert
+     * @return Collection<int, array{item: MenuItem, quantity: int, total: float}>
+     */
+    public function linesFrom(array $selection, Collection $allowed): Collection
+    {
+        $lines = collect();
 
         foreach ($selection as $id => $quantity) {
             $item = $allowed->get((int) $id);
             if (!$item) {
-                continue; // nicht in der freigegebenen Verkaufsliste → verworfen
+                continue; // unbekannte/fremde ID → verworfen
             }
 
             $quantity = (int) $quantity;
