@@ -313,6 +313,17 @@ class MenuManager extends Component
     }
 
     // Menüpunkt-Aktionen
+    /**
+     * Eigener Einstieg für Bundles: ein Bundle ist gedanklich kein Artikel, bei
+     * dem man nachträglich einen Haken setzt. Öffnet dasselbe Formular, aber
+     * bereits im Bundle-Modus.
+     */
+    public function openBundleForm(?int $categoryId = null): void
+    {
+        $this->openItemForm(null, $categoryId);
+        $this->itemIsBundle = true;
+    }
+
     public function openItemForm(?int $id = null, ?int $categoryId = null): void
     {
         $this->showItemForm = true;

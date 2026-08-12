@@ -72,6 +72,10 @@
                         @svg('heroicon-o-plus', 'w-4 h-4')
                         <span>Artikel</span>
                     </x-nx-button>
+                    <x-nx-button wire:click="openBundleForm({{ $category->id }})" title="Mehrere Artikel zu einem Preis">
+                        @svg('heroicon-o-plus', 'w-4 h-4')
+                        <span>Bundle</span>
+                    </x-nx-button>
                     <x-nx-button icon variant="ghost" wire:click="openCategoryForm({{ $category->id }})" title="Kategorie bearbeiten">
                         @svg('heroicon-o-pencil', 'w-4 h-4')
                     </x-nx-button>
@@ -223,9 +227,19 @@
     <x-nx-modal size="md" wire:model="showItemForm">
         <x-slot name="header">
             <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">
-                {{ $editingItemId ? 'Artikel bearbeiten' : 'Neuer Artikel' }}
+                @if ($itemIsBundle)
+                    {{ $editingItemId ? 'Bundle bearbeiten' : 'Neues Bundle' }}
+                @else
+                    {{ $editingItemId ? 'Artikel bearbeiten' : 'Neuer Artikel' }}
+                @endif
             </h3>
-            <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">Keine Pflichtfelder bei Allergenen/MwSt – Verantwortung beim Bearbeiter</p>
+            <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">
+                @if ($itemIsBundle)
+                    Preis = Bundle-Preis. Allergene, Alkohol und Altersgrenze ergeben sich aus den Bestandteilen.
+                @else
+                    Keine Pflichtfelder bei Allergenen/MwSt – Verantwortung beim Bearbeiter
+                @endif
+            </p>
         </x-slot>
 
         <div class="space-y-4" x-data x-on:menu-item-form-reset.window="$nextTick(() => $refs.itemName?.querySelector('input')?.focus())">
@@ -372,64 +386,75 @@
                 @endif
             </div>
 
-            {{-- Eigenschaften --}}
+            {{-- Eigenschaften. Beim Bundle nur "Verfügbar": Ernährung, Alkohol,
+                 Koffein und Altersgrenze werden aus den Bestandteilen abgeleitet.
+                 Leere Felder anzubieten lädt nur zu falschen Eingaben ein. --}}
             <div class="flex flex-wrap gap-x-5 gap-y-2">
-                @foreach ([
-                    'itemAvailable'  => 'Verfügbar',
-                    'itemVegetarian' => 'Vegetarisch',
-                    'itemVegan'      => 'Vegan',
-                    'itemAlcoholic'  => 'Alkoholisch',
-                    'itemCaffeinated' => 'Koffeinhaltig',
-                ] as $prop => $label)
+                @foreach ($itemIsBundle
+                    ? ['itemAvailable' => 'Verfügbar']
+                    : [
+                        'itemAvailable'  => 'Verfügbar',
+                        'itemVegetarian' => 'Vegetarisch',
+                        'itemVegan'      => 'Vegan',
+                        'itemAlcoholic'  => 'Alkoholisch',
+                        'itemCaffeinated' => 'Koffeinhaltig',
+                    ] as $prop => $label)
                     <x-nx-input-checkbox wire:model.live="{{ $prop }}" :label="$label" wire:key="prop-{{ $prop }}" />
                 @endforeach
             </div>
 
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {{-- Altersgrenze --}}
-                <x-nx-input-select
-                    name="itemMinAge"
-                    label="Altersgrenze (Jugendschutz)"
-                    :options="[
-                        ['value' => '', 'label' => 'Keine'],
-                        ['value' => '16', 'label' => '16+ (Bier, Wein, Sekt)'],
-                        ['value' => '18', 'label' => '18+ (Spirituosen)'],
-                    ]"
-                    wire:model="itemMinAge"
-                    errorKey="itemMinAge"
-                />
+            @unless ($itemIsBundle)
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {{-- Altersgrenze --}}
+                    <x-nx-input-select
+                        name="itemMinAge"
+                        label="Altersgrenze (Jugendschutz)"
+                        :options="[
+                            ['value' => '', 'label' => 'Keine'],
+                            ['value' => '16', 'label' => '16+ (Bier, Wein, Sekt)'],
+                            ['value' => '18', 'label' => '18+ (Spirituosen)'],
+                        ]"
+                        wire:model="itemMinAge"
+                        errorKey="itemMinAge"
+                    />
 
-                {{-- Koffeingehalt (nur wenn koffeinhaltig) --}}
-                @if ($itemCaffeinated)
-                    <x-nx-input-number name="itemCaffeineMg" label="Koffeingehalt (mg/100 ml)" step="0.1" min="0" wire:model="itemCaffeineMg" placeholder="z. B. 32,0" errorKey="itemCaffeineMg" />
-                @endif
-            </div>
+                    {{-- Koffeingehalt (nur wenn koffeinhaltig) --}}
+                    @if ($itemCaffeinated)
+                        <x-nx-input-number name="itemCaffeineMg" label="Koffeingehalt (mg/100 ml)" step="0.1" min="0" wire:model="itemCaffeineMg" placeholder="z. B. 32,0" errorKey="itemCaffeineMg" />
+                    @endif
+                </div>
+            @endunless
 
-            {{-- Allergene --}}
-            <div>
-                <label class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Allergene</label>
-                @include('reservation::partials.tag-select', [
-                    'options'     => $this->allergens,
-                    'selected'    => $itemAllergenIds,
-                    'toggle'      => 'toggleAllergen',
-                    'accent'      => 'warning',
-                    'placeholder' => 'Allergene auswählen…',
-                    'key'         => 'allergens',
-                ])
-            </div>
+            {{-- Allergene und Zusatzstoffe werden beim Bundle NICHT gepflegt,
+                 sondern aus den Bestandteilen abgeleitet. Eine leere Auswahl
+                 anzubieten lädt dazu ein, sie doppelt und abweichend zu pflegen. --}}
+            @unless ($itemIsBundle)
+                {{-- Allergene --}}
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Allergene</label>
+                    @include('reservation::partials.tag-select', [
+                        'options'     => $this->allergens,
+                        'selected'    => $itemAllergenIds,
+                        'toggle'      => 'toggleAllergen',
+                        'accent'      => 'warning',
+                        'placeholder' => 'Allergene auswählen…',
+                        'key'         => 'allergens',
+                    ])
+                </div>
 
-            {{-- Zusatzstoffe --}}
-            <div>
-                <label class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Zusatzstoffe</label>
-                @include('reservation::partials.tag-select', [
-                    'options'     => $this->additives,
-                    'selected'    => $itemAdditiveIds,
-                    'toggle'      => 'toggleAdditive',
-                    'accent'      => 'info',
-                    'placeholder' => 'Zusatzstoffe auswählen…',
-                    'key'         => 'additives',
-                ])
-            </div>
+                {{-- Zusatzstoffe --}}
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Zusatzstoffe</label>
+                    @include('reservation::partials.tag-select', [
+                        'options'     => $this->additives,
+                        'selected'    => $itemAdditiveIds,
+                        'toggle'      => 'toggleAdditive',
+                        'accent'      => 'info',
+                        'placeholder' => 'Zusatzstoffe auswählen…',
+                        'key'         => 'additives',
+                    ])
+                </div>
+            @endunless
         </div>
 
         <x-slot name="footer">
