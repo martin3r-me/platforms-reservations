@@ -332,17 +332,18 @@
                 </div>
             </div>
 
-            {{-- Bundle --}}
-            <div class="rounded-[8px] border border-[color:var(--nx-line)] p-3">
-                <x-nx-input-checkbox wire:model.live="itemIsBundle" label="Ist ein Bundle (mehrere Artikel zu einem Preis)" />
+            {{-- Bundle. Kein Umschalter mehr: wer "+ Bundle" wählt, hat sich
+                 entschieden – ein Haken, der ohnehin gesetzt ist, ist nur eine
+                 Frage ohne Antwortmöglichkeit. --}}
+            @if ($itemIsBundle)
+                @php $preview = $this->bundlePreview; @endphp
+                <div class="rounded-[8px] border border-[color:var(--nx-line)] p-3">
+                    <h4 class="m-0 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--nx-muted)]">Artikel im Bundle</h4>
 
-                @if ($itemIsBundle)
-                    @php $preview = $this->bundlePreview; @endphp
-
-                    <p class="mt-2 text-[11px] text-[color:var(--nx-muted)]">
+                    <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">
                         Der Preis oben ist der <strong>Bundle-Preis</strong>. Beim Bestellen wird er proportional
-                        auf die Bestandteile verteilt, damit die Mehrwertsteuer je Satz korrekt ausgewiesen wird.
-                        Allergene, Alkohol und Altersgrenze ergeben sich aus den Bestandteilen.
+                        auf die enthaltenen Artikel verteilt, damit die Mehrwertsteuer je Satz korrekt ausgewiesen wird.
+                        Allergene, Alkohol und Altersgrenze ergeben sich aus ihnen.
                     </p>
 
                     {{-- Gewählte Bestandteile --}}
@@ -438,8 +439,8 @@
                             @if ($preview['min_age']) <br>Altersgrenze: {{ $preview['min_age'] }}+ @elseif ($preview['alcoholic']) <br>enthält Alkohol @endif
                         </div>
                     @endif
-                @endif
-            </div>
+                </div>
+            @endif
 
             {{-- Eigenschaften. Beim Bundle nur "Verfügbar": Ernährung, Alkohol,
                  Koffein und Altersgrenze werden aus den Bestandteilen abgeleitet.
