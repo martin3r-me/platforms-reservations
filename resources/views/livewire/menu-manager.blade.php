@@ -280,17 +280,33 @@
                 <div class="sm:col-span-2">
                     <x-nx-input-text name="itemPortionSize" label="Portionsgröße" wire:model="itemPortionSize" placeholder="z.B. 0,2 l · 0,5 l · 250 g" errorKey="itemPortionSize" />
                 </div>
-                <x-nx-input-number name="itemPrice" label="Preis (€)" step="0.01" min="0" wire:model="itemPrice" required errorKey="itemPrice" />
-                <x-nx-input-select
-                    name="itemTaxRate"
-                    label="MwSt. (%)"
-                    :options="[
-                        ['value' => '7.00', 'label' => '7 %'],
-                        ['value' => '19.00', 'label' => '19 %'],
-                        ['value' => '0.00', 'label' => '0 %'],
-                    ]"
-                    wire:model="itemTaxRate"
-                />
+                <x-nx-input-number name="itemPrice"
+                    :label="$itemIsBundle ? 'Bundle-Preis (€)' : 'Preis (€)'"
+                    step="0.01" min="0" wire:model="itemPrice" required errorKey="itemPrice" />
+
+                {{-- Beim Bundle gibt es keinen eigenen Steuersatz: abgerechnet wird
+                     mit den Sätzen der Bestandteile, auf die der Bundle-Preis beim
+                     Bestellen proportional verteilt wird. Ein Feld anzubieten würde
+                     eine Wahl vortäuschen, die keine Wirkung hat. --}}
+                @if ($itemIsBundle)
+                    <div class="flex items-end">
+                        <p class="m-0 pb-2 text-[11px] text-[color:var(--nx-muted)]">
+                            <strong class="text-[color:var(--nx-text)]">MwSt.</strong> wird je Bestandteil herangezogen –
+                            der Bundle-Preis wird beim Bestellen proportional aufgeteilt.
+                        </p>
+                    </div>
+                @else
+                    <x-nx-input-select
+                        name="itemTaxRate"
+                        label="MwSt. (%)"
+                        :options="[
+                            ['value' => '7.00', 'label' => '7 %'],
+                            ['value' => '19.00', 'label' => '19 %'],
+                            ['value' => '0.00', 'label' => '0 %'],
+                        ]"
+                        wire:model="itemTaxRate"
+                    />
+                @endif
             </div>
 
             {{-- Produktbild (1:1) --}}
@@ -331,19 +347,22 @@
 
                     {{-- Gewählte Bestandteile --}}
                     <div class="mt-3 space-y-1">
-                        @forelse ($this->chosenComponents as $component)
-                            <div wire:key="comp-{{ $component->id }}"
+                        {{-- $part statt $component: "component" ist in Blade belegt –
+                             innerhalb einer Komponente steht dort die Instanz selbst,
+                             die Schleifenvariable wurde überschrieben. --}}
+                        @forelse ($this->chosenComponents as $part)
+                            <div wire:key="comp-{{ $part->id }}"
                                 class="flex items-center gap-2 rounded-[6px] border border-[color:var(--nx-line)] px-2 py-1.5">
-                                <span class="min-w-0 flex-1 truncate text-sm text-[color:var(--nx-text)]">{{ $component->name }}</span>
+                                <span class="min-w-0 flex-1 truncate text-sm text-[color:var(--nx-text)]">{{ $part->name }}</span>
                                 <span class="whitespace-nowrap text-[11px] tabular-nums text-[color:var(--nx-muted)]">
-                                    {{ number_format($component->price, 2, ',', '.') }} € · {{ rtrim(rtrim(number_format($component->tax_rate, 2, ',', '.'), '0'), ',') }} %
+                                    {{ number_format($part->price, 2, ',', '.') }} € · {{ rtrim(rtrim(number_format($part->tax_rate, 2, ',', '.'), '0'), ',') }} %
                                 </span>
                                 <div class="w-16 shrink-0">
-                                    <x-nx-input-number name="qty-{{ $component->id }}" label="" size="sm" min="1" max="99"
-                                        :value="$itemComponents[$component->id] ?? 1"
-                                        wire:change="setComponentQuantity({{ $component->id }}, $event.target.value)" />
+                                    <x-nx-input-number name="qty-{{ $part->id }}" label="" size="sm" min="1" max="99"
+                                        :value="$itemComponents[$part->id] ?? 1"
+                                        wire:change="setComponentQuantity({{ $part->id }}, $event.target.value)" />
                                 </div>
-                                <x-nx-button icon variant="ghost" wire:click="removeComponent({{ $component->id }})" title="Entfernen">
+                                <x-nx-button icon variant="ghost" wire:click="removeComponent({{ $part->id }})" title="Entfernen">
                                     @svg('heroicon-o-x-mark', 'w-4 h-4')
                                 </x-nx-button>
                             </div>
