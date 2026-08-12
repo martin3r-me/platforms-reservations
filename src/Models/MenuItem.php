@@ -141,6 +141,21 @@ class MenuItem extends Model
             ->values();
     }
 
+    /**
+     * Was die Bestandteile einzeln kosten würden – Grundlage für „statt 8,40 €".
+     * null bei Einzelartikeln.
+     */
+    public function bundleReferencePrice(): ?float
+    {
+        if (! $this->isBundle()) {
+            return null;
+        }
+
+        return round($this->components->sum(
+            fn (self $c) => (float) $c->price * max(1, (int) ($c->pivot->quantity ?? 1))
+        ), 2);
+    }
+
     /** Enthält das Bundle Alkohol? Ein Bier im Bundle macht es zum 18+-Bundle. */
     public function effectiveIsAlcoholic(): bool
     {

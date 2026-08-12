@@ -105,13 +105,27 @@ class GuestEventController extends GuestApiController
             'tax_rate'      => (float) $item->tax_rate,
             'is_vegetarian' => $item->is_vegetarian,
             'is_vegan'      => $item->is_vegan,
-            'is_alcoholic'  => $item->is_alcoholic,
+            // Abgeleitet: beim Bundle aus den Bestandteilen, sonst der Artikel selbst.
+            'is_alcoholic'  => $item->effectiveIsAlcoholic(),
             'category'      => $item->category?->translate('name', $locale),
+            // Bundle: Inhalt und Vergleichspreis, damit der Shop "statt 8,40 €"
+            // zeigen kann. Bei Einzelartikeln leer bzw. null.
+            'is_bundle'     => $item->isBundle(),
+            'components'    => $item->isBundle()
+                ? $item->components->map(fn (MenuItem $c) => [
+                    'id'       => $c->id,
+                    'name'     => $c->translate('name', $locale),
+                    'quantity' => (int) ($c->pivot->quantity ?? 1),
+                ])->values()
+                : [],
+            'reference_price' => $item->bundleReferencePrice(),
             // Je Artikel Code UND (übersetzten) Klartext – das Frontend braucht
-            // die Legende nicht zwingend zum Auflösen.
-            'allergens'     => $item->allergens
+            // die Legende nicht zwingend zum Auflösen. Beim Bundle die
+            // Vereinigung der Bestandteile; von Hand gepflegt liefe das
+            // auseinander, bei Allergenen mit rechtlicher Folge.
+            'allergens'     => $item->effectiveAllergens()
                 ->map(fn (Allergen $a) => $this->term($a, $locale))->values(),
-            'additives'     => $item->additives
+            'additives'     => $item->effectiveAdditives()
                 ->map(fn (Additive $z) => $this->term($z, $locale))->values(),
             'image_url'     => $item->image_context_file_id ? $item->imageUrl('medium_1_1') : null,
         ]);
@@ -234,8 +248,17 @@ class GuestEventController extends GuestApiController
             ->withoutGlobalScope('team')
             ->where('approval_status', MenuItem::APPROVAL_APPROVED)
             ->where('available', true)
-            ->with(['allergens', 'additives', 'category', 'imageFile.variants'])
+            ->with([
+                'allergens', 'additives', 'category', 'imageFile.variants',
+                // Bestandteile samt ihrer Allergene: die Angaben eines Bundles
+                // werden daraus abgeleitet, nicht am Bundle gepflegt.
+                'components' => fn ($q) => $q->withoutGlobalScope('team')->with(['allergens', 'additives']),
+            ])
             ->orderBy('sort_order')
-            ->get();
+            ->get()
+            // Ein Bundle verschwindet, sobald ein Bestandteil nicht verfügbar
+            // ist – sonst ließe sich Unlieferbares bestellen.
+            ->filter(fn (MenuItem $item) => $item->effectivelyAvailable())
+            ->values();
     }
 }

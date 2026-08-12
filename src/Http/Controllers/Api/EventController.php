@@ -122,10 +122,14 @@ class EventController extends ApiController
         $additives = collect();
 
         foreach ($items as $item) {
-            foreach ($item->allergens as $a) {
+            // effective*: bei einem Bundle die Vereinigung der Bestandteile.
+            // Über $item->allergens gesammelt fehlten Codes, die nur über einen
+            // Bestandteil vorkommen – der Gast sähe dann einen Code am Artikel,
+            // den die Legende nicht erklärt.
+            foreach ($item->effectiveAllergens() as $a) {
                 $allergens[$a->code] = ['code' => $a->code, 'name' => $a->translate('name', $locale)];
             }
-            foreach ($item->additives as $z) {
+            foreach ($item->effectiveAdditives() as $z) {
                 $additives[$z->code] = ['code' => $z->code, 'name' => $z->translate('name', $locale)];
             }
         }
@@ -606,9 +610,16 @@ class EventController extends ApiController
                 'additives.translations',
                 'holdingClass',
                 'imageFile.variants',
+                // Bestandteile samt Allergenen: die Angaben eines Bundles werden
+                // daraus abgeleitet, nicht am Bundle gepflegt.
+                'components' => fn ($q) => $q->withoutGlobalScope('team')
+                    ->with(['translations', 'allergens.translations', 'additives.translations']),
             ])
             ->orderBy('sort_order')
-            ->get();
+            ->get()
+            // Bundle verschwindet, sobald ein Bestandteil nicht verfügbar ist.
+            ->filter(fn (MenuItem $item) => $item->effectivelyAvailable())
+            ->values();
     }
 
     /**
@@ -629,16 +640,26 @@ class EventController extends ApiController
             'holding_class_id' => $item->holding_class_id,
             'is_vegetarian'    => $item->is_vegetarian,
             'is_vegan'         => $item->is_vegan,
-            'is_alcoholic'     => $item->is_alcoholic,
-            'min_age'          => $item->min_age?->value, // 16 | 18 | null
+            // Abgeleitet: beim Bundle aus den Bestandteilen, sonst der Artikel selbst.
+            'is_alcoholic'     => $item->effectiveIsAlcoholic(),
+            'min_age'          => $item->effectiveMinAge()?->value, // 16 | 18 | null
             'is_caffeinated'   => $item->is_caffeinated,
             'caffeine_mg'      => $item->caffeine_mg !== null ? (float) $item->caffeine_mg : null, // mg/100 ml
             'caffeine_notice'  => $item->is_caffeinated
                 ? 'Erhöhter Koffeingehalt. Für Kinder und schwangere oder stillende Frauen nicht empfohlen.'
                     . ($item->caffeine_mg !== null ? ' (' . rtrim(rtrim(number_format((float) $item->caffeine_mg, 1, ',', '.'), '0'), ',') . ' mg/100 ml)' : '')
                 : null,
-            'allergens'        => $item->allergens->pluck('code')->values(),
-            'additives'        => $item->additives->pluck('code')->values(),
+            'is_bundle'        => $item->isBundle(),
+            'components'       => $item->isBundle()
+                ? $item->components->map(fn (MenuItem $c) => [
+                    'id'       => $c->id,
+                    'name'     => $c->translate('name', $locale),
+                    'quantity' => (int) ($c->pivot->quantity ?? 1),
+                ])->values()
+                : [],
+            'reference_price'  => $item->bundleReferencePrice(),
+            'allergens'        => $item->effectiveAllergens()->pluck('code')->values(),
+            'additives'        => $item->effectiveAdditives()->pluck('code')->values(),
             'image_url'        => $item->image_context_file_id ? $item->imageUrl('medium_1_1') : null,
             'sort_order'       => $item->sort_order,
         ];
