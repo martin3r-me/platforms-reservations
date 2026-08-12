@@ -462,8 +462,8 @@ class MenuManager extends Component
         $data = [
             'team_id'          => $this->getTeamId(),
             'category_id'      => $this->itemCategoryId,
-            // Bundles tragen keine Standzeit – die liegt am Bestandteil.
-            'holding_class_id' => $this->itemIsBundle ? null : ($this->itemHoldingClassId ?: null),
+            // Beim Bundle raeumt MenuItem::booted() das ohnehin ab.
+            'holding_class_id' => $this->itemHoldingClassId ?: null,
             'name'          => $this->itemName,
             'description'   => $this->itemDescription,
             'portion_size'  => $this->itemPortionSize ?: null,

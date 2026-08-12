@@ -26,7 +26,8 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
     {
         return 'POST /reservation/menu-items - Legt einen Artikel an (Freigabestatus: Entwurf). REST-Parameter: '
             . 'category_id (Pflicht), name (Pflicht), price (Pflicht, brutto), tax_rate (7 oder 19, Default 7), '
-            . 'holding_class_id (optional, Standzeit-Klasse), description, portion_size, available (bool), '
+            . 'holding_class_id (optional, Standzeit-Klasse; bei is_bundle ignoriert – die Standzeit '
+            . 'liegt am Bestandteil), description, portion_size, available (bool), '
             . 'is_vegetarian, is_vegan, is_alcoholic (bool), is_bundle (bool) mit components. '
             . 'Bei Bundles kann price_notice zurueckkommen: ein Hinweis, dass der Bundle-Preis '
             . 'keinen Vorteil gegenueber den Einzelpreisen bringt. Das ist kein Fehler – der '

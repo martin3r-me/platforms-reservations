@@ -201,6 +201,28 @@ class MenuItem extends Model
     }
 
     /** Standzeit-/Zeitkritikalitäts-Klasse (#523), optional. */
+    /**
+     * Ein Bundle trägt keine Standzeit.
+     *
+     * Die Standzeit hängt am einzelnen Artikel: Brezel und Bier gehen zu
+     * verschiedenen Zeiten raus und stehen auf dem Küchenzettel getrennt.
+     * Der Küchenzettel gruppiert über die Buchungsposition, und die zeigt
+     * bei Bundles auf den Bestandteil – eine Standzeit am Bundle würde
+     * nirgends gelesen.
+     *
+     * Zentral hier, weil Maske, Create-Tool und Update-Tool sonst jedes für
+     * sich daran denken müssten. Betrifft auch den Umbau eines bestehenden
+     * Artikels zum Bundle: der alte Wert darf nicht hängen bleiben.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $item): void {
+            if ($item->is_bundle) {
+                $item->holding_class_id = null;
+            }
+        });
+    }
+
     public function holdingClass(): BelongsTo
     {
         return $this->belongsTo(HoldingClass::class, 'holding_class_id');

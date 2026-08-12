@@ -25,7 +25,8 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'PATCH /reservation/menu-items - Aktualisiert einen Artikel. REST-Parameter: id (Pflicht); '
-            . 'category_id, holding_class_id (null zum Entfernen), name, price, tax_rate (7|19), description, '
+            . 'category_id, holding_class_id (null zum Entfernen; bei Bundles ignoriert – die Standzeit '
+            . 'liegt am Bestandteil), name, price, tax_rate (7|19), description, '
             . 'portion_size, available, is_vegetarian, is_vegan, is_alcoholic, is_bundle mit components '
             . '(jeweils optional). Bei Bundles kann price_notice zurueckkommen: ein Hinweis, dass der '
             . 'Bundle-Preis keinen Vorteil gegenueber den Einzelpreisen bringt. Kein Fehler – '
