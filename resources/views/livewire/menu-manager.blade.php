@@ -280,22 +280,24 @@
                 <div class="sm:col-span-2">
                     <x-nx-input-text name="itemPortionSize" label="Portionsgröße" wire:model="itemPortionSize" placeholder="z.B. 0,2 l · 0,5 l · 250 g" errorKey="itemPortionSize" />
                 </div>
-                <x-nx-input-number name="itemPrice"
-                    :label="$itemIsBundle ? 'Bundle-Preis (€)' : 'Preis (€)'"
-                    step="0.01" min="0" wire:model="itemPrice" required errorKey="itemPrice" />
-
                 {{-- Beim Bundle gibt es keinen eigenen Steuersatz: abgerechnet wird
-                     mit den Sätzen der Bestandteile, auf die der Bundle-Preis beim
-                     Bestellen proportional verteilt wird. Ein Feld anzubieten würde
-                     eine Wahl vortäuschen, die keine Wirkung hat. --}}
-                @if ($itemIsBundle)
-                    <div class="flex items-end">
-                        <p class="m-0 pb-2 text-[11px] text-[color:var(--nx-muted)]">
-                            <strong class="text-[color:var(--nx-text)]">MwSt.</strong> wird je Bestandteil herangezogen –
-                            der Bundle-Preis wird beim Bestellen proportional aufgeteilt.
+                     mit den Sätzen der enthaltenen Artikel, auf die der Bundle-Preis
+                     beim Bestellen verteilt wird. Statt eines Feldes, das eine Wahl
+                     ohne Wirkung vortäuscht, steht der Hinweis klein unter dem Preis –
+                     wie die übrigen Hinweise in diesem Formular. --}}
+                <div>
+                    <x-nx-input-number name="itemPrice"
+                        :label="$itemIsBundle ? 'Bundle-Preis (€)' : 'Preis (€)'"
+                        step="0.01" min="0" wire:model="itemPrice" required errorKey="itemPrice" />
+                    @if ($itemIsBundle)
+                        <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">
+                            Die MwSt. wird je enthaltenem Artikel herangezogen – der Bundle-Preis
+                            wird beim Bestellen proportional aufgeteilt.
                         </p>
-                    </div>
-                @else
+                    @endif
+                </div>
+
+                @unless ($itemIsBundle)
                     <x-nx-input-select
                         name="itemTaxRate"
                         label="MwSt. (%)"
@@ -306,7 +308,7 @@
                         ]"
                         wire:model="itemTaxRate"
                     />
-                @endif
+                @endunless
             </div>
 
             {{-- Produktbild (1:1) --}}
