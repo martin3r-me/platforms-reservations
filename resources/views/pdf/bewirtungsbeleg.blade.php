@@ -103,7 +103,12 @@
         <tbody>
             @foreach ($lines as $line)
                 <tr>
-                    <td>{{ $line['name'] }}</td>
+                    {{-- Flache Aufstellung: Bundle-Bestandteile bleiben einzelne
+                         Positionen (jede mit eigenem Steuersatz), der Bundle-Name
+                         steht als Herkunft dahinter. --}}
+                    <td>{{ $line['name'] }}@if (! empty($line['bundle_name']))
+                            <span class="hint">aus {{ $line['bundle_name'] }}</span>
+                        @endif</td>
                     <td class="num">{{ $line['quantity'] }}</td>
                     <td class="num">{{ $pct($line['tax_rate']) }}</td>
                     <td class="num">{{ $fmt($line['total']) }}</td>

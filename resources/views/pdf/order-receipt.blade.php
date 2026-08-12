@@ -77,14 +77,36 @@
                         {{ $g['slot'] }}@if ($g['table']) · Tisch {{ $g['table'] }}@endif@if ($g['room']) · {{ $g['room'] }}@endif
                     </td>
                 </tr>
-                @foreach ($g['items'] as $line)
-                    <tr>
-                        <td>{{ $line['name'] }}</td>
-                        <td class="num">{{ $line['quantity'] }}</td>
-                        <td class="num">{{ $fmt($line['unit_price']) }}</td>
-                        <td class="num">{{ $pct($line['tax_rate']) }}</td>
-                        <td class="num">{{ $fmt($line['total']) }}</td>
-                    </tr>
+                @foreach ($g['blocks'] as $block)
+                    @if (($block['type'] ?? 'item') === 'bundle')
+                        {{-- Bundle: Überschrift mit Gesamtpreis, Bestandteile eingerückt.
+                             Die MwSt steht bei den Bestandteilen, weil ein Bundle
+                             mehrere Steuersätze umfassen kann. --}}
+                        <tr>
+                            <td style="padding-top: 10px; font-weight: bold;">{{ $block['name'] }}</td>
+                            <td class="num"></td>
+                            <td class="num"></td>
+                            <td class="num"></td>
+                            <td class="num" style="padding-top: 10px; font-weight: bold;">{{ $fmt($block['total']) }}</td>
+                        </tr>
+                        @foreach ($block['items'] as $line)
+                            <tr>
+                                <td style="padding-left: 18px; color: #6b7280;">{{ $line['name'] }}</td>
+                                <td class="num" style="color: #6b7280;">{{ $line['quantity'] }}</td>
+                                <td class="num" style="color: #6b7280;">{{ $fmt($line['unit_price']) }}</td>
+                                <td class="num" style="color: #6b7280;">{{ $pct($line['tax_rate']) }}</td>
+                                <td class="num" style="color: #6b7280;">{{ $fmt($line['total']) }}</td>
+                            </tr>
+                        @endforeach
+                    @else
+                        <tr>
+                            <td>{{ $block['name'] }}</td>
+                            <td class="num">{{ $block['quantity'] }}</td>
+                            <td class="num">{{ $fmt($block['unit_price']) }}</td>
+                            <td class="num">{{ $pct($block['tax_rate']) }}</td>
+                            <td class="num">{{ $fmt($block['total']) }}</td>
+                        </tr>
+                    @endif
                 @endforeach
             @endforeach
         </tbody>

@@ -62,17 +62,33 @@ class ReceiptPreviewController
         $order->setRelation('event', $event);
         $order->setRelation('bookings', collect());
 
+        // Bewusst gemischt: Einzelartikel mit zwei Steuersätzen UND ein Bundle,
+        // damit die Vorschau beide Darstellungen zeigt.
         $items = [
-            ['name' => 'Brezel',      'quantity' => 2, 'unit_price' => 2.50, 'tax_rate' => 7.0],
-            ['name' => 'Bier 0,3 l',  'quantity' => 2, 'unit_price' => 4.20, 'tax_rate' => 19.0],
-            ['name' => 'Apfelschorle','quantity' => 1, 'unit_price' => 3.10, 'tax_rate' => 19.0],
+            ['name' => 'Apfelschorle', 'quantity' => 1, 'unit_price' => 3.10, 'tax_rate' => 19.0],
+        ];
+
+        // Bundle "Brezel + Bier" für 5,90 €, proportional aufgeteilt
+        // (2,50 + 4,20 = 6,70 einzeln → 2,20 und 3,70).
+        $bundleItems = [
+            ['name' => 'Brezel',     'quantity' => 1, 'unit_price' => 2.20, 'tax_rate' => 7.0],
+            ['name' => 'Bier 0,3 l', 'quantity' => 1, 'unit_price' => 3.70, 'tax_rate' => 19.0],
         ];
 
         $byRate = [];
-        foreach ($items as $i => $line) {
-            $items[$i]['total'] = round($line['quantity'] * $line['unit_price'], 2);
-            $byRate[(string) $line['tax_rate']] = round(($byRate[(string) $line['tax_rate']] ?? 0) + $items[$i]['total'], 2);
-        }
+
+        $addTotals = function (array &$rows) use (&$byRate) {
+            foreach ($rows as $i => $line) {
+                $rows[$i]['total'] = round($line['quantity'] * $line['unit_price'], 2);
+                $key = (string) $line['tax_rate'];
+                $byRate[$key] = round(($byRate[$key] ?? 0) + $rows[$i]['total'], 2);
+            }
+        };
+
+        $addTotals($items);
+        $addTotals($bundleItems);
+
+        $bundleTotal = round(array_sum(array_column($bundleItems, 'total')), 2);
 
         $vat = [];
         $totalNet = $totalVat = $totalGross = 0.0;
@@ -90,12 +106,25 @@ class ReceiptPreviewController
             'order'       => $order,
             'issuer'      => $settings->issuer(),
             'branding'    => $settings->receiptBranding(),
-            'lines'       => $items,
+            // Flache Liste (Bewirtungsbeleg) inkl. Bundle-Herkunft
+            'lines'       => array_merge(
+                $items,
+                array_map(fn ($l) => $l + ['bundle_name' => 'Brezel + Bier'], $bundleItems),
+            ),
+            // Blöcke (Bestellbestätigung): Einzelartikel und ein Bundle
             'groups'      => [[
-                'slot'  => 'Pause',
-                'table' => 'Stehtisch 1',
-                'room'  => 'Saal',
-                'items' => $items,
+                'slot'   => 'Pause',
+                'table'  => 'Stehtisch 1',
+                'room'   => 'Saal',
+                'blocks' => array_merge(
+                    array_map(fn ($l) => ['type' => 'item'] + $l, $items),
+                    [[
+                        'type'  => 'bundle',
+                        'name'  => 'Brezel + Bier',
+                        'total' => $bundleTotal,
+                        'items' => $bundleItems,
+                    ]],
+                ),
             ]],
             'vat'         => $vat,
             'total_net'   => $totalNet,

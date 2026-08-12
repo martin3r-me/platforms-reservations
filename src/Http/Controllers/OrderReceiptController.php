@@ -23,7 +23,7 @@ class OrderReceiptController
             ->where('uuid', $uuid)
             ->with([
                 'event',
-                'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table.floorPlan', 'items.menuItem']),
+                'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table.floorPlan', 'items.menuItem', 'items.bundleMenuItem']),
                 'payment',
             ])
             ->first();
@@ -84,7 +84,12 @@ class OrderReceiptController
         $byRate  = []; // rate => brutto-Summe
 
         foreach ($order->bookings as $booking) {
-            $groupItems = [];
+            // Blöcke statt einer flachen Liste: ein Bundle wird zu EINEM Block
+            // mit Überschrift und seinen Bestandteilen darunter (Lösung A aus
+            // der Abstimmung). Nur so lässt sich die MwSt je Bestandteil
+            // ausweisen und der Gast sieht trotzdem, was er als Bundle gekauft hat.
+            $blocks     = [];
+            $bundleSeen = [];   // bundle_ref => Index in $blocks
 
             foreach ($booking->items as $item) {
                 $rate  = (float) $item->tax_rate;
@@ -98,18 +103,44 @@ class OrderReceiptController
                     'total'      => $gross,
                 ];
 
-                $groupItems[] = $entry;
-                $lines[]      = $entry + ['slot' => $booking->slot?->name];
+                // Für den Bewirtungsbeleg (flache Aufstellung) mitführen, aus
+                // welchem Bundle eine Position stammt.
+                $lines[] = $entry + [
+                    'slot'        => $booking->slot?->name,
+                    'bundle_name' => $item->bundleMenuItem?->name,
+                ];
 
-                $key         = number_format($rate, 2, '.', '');
+                $key          = number_format($rate, 2, '.', '');
                 $byRate[$key] = round(($byRate[$key] ?? 0) + $gross, 2);
+
+                $ref = $item->bundle_ref;
+
+                if ($ref === null) {
+                    $blocks[] = ['type' => 'item'] + $entry;
+
+                    continue;
+                }
+
+                if (! isset($bundleSeen[$ref])) {
+                    $bundleSeen[$ref] = count($blocks);
+                    $blocks[] = [
+                        'type'  => 'bundle',
+                        'name'  => $item->bundleMenuItem?->name ?? 'Bundle',
+                        'total' => 0.0,
+                        'items' => [],
+                    ];
+                }
+
+                $index = $bundleSeen[$ref];
+                $blocks[$index]['items'][] = $entry;
+                $blocks[$index]['total']   = round($blocks[$index]['total'] + $gross, 2);
             }
 
             $groups[] = [
-                'slot'  => $booking->slot?->displayLabel() ?? ($booking->slot?->name ?? 'Pause'),
-                'table' => $booking->table?->label,
-                'room'  => $booking->table?->floorPlan?->name,
-                'items' => $groupItems,
+                'slot'   => $booking->slot?->displayLabel() ?? ($booking->slot?->name ?? 'Pause'),
+                'table'  => $booking->table?->label,
+                'room'   => $booking->table?->floorPlan?->name,
+                'blocks' => $blocks,
             ];
         }
 
