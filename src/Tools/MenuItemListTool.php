@@ -21,7 +21,9 @@ class MenuItemListTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'GET /reservation/menu-items - Listet Artikel/Speisen des aktiven Teams. REST-Parameter (optional): '
-            . 'category_id (nur einer Kategorie), limit (1-500, Default 100).';
+            . 'category_id (nur einer Kategorie), limit (1-500, Default 100). '
+            . 'Bundles (is_bundle) führen ihre components und reference_price mit – letzterer ist die Summe der '
+            . 'Einzelpreise, price dagegen der Bundle-Preis. is_alcoholic ist bei Bundles abgeleitet.';
     }
 
     public function getSchema(): array
@@ -49,7 +51,7 @@ class MenuItemListTool implements ToolContract, ToolMetadataContract
 
             $query = MenuItem::withoutGlobalScope('team')
                 ->where('team_id', $teamId)
-                ->with(['category', 'holdingClass']);
+                ->with(['category', 'holdingClass', 'components']);
 
             if (!empty($arguments['category_id'])) {
                 $query->where('category_id', (int) $arguments['category_id']);
@@ -68,7 +70,17 @@ class MenuItemListTool implements ToolContract, ToolMetadataContract
                 'available'       => $item->available,
                 'is_vegetarian'   => $item->is_vegetarian,
                 'is_vegan'        => $item->is_vegan,
-                'is_alcoholic'    => $item->is_alcoholic,
+                // Abgeleitet: beim Bundle aus den Bestandteilen.
+                'is_alcoholic'    => $item->effectiveIsAlcoholic(),
+                'is_bundle'       => $item->is_bundle,
+                'components'      => $item->isBundle()
+                    ? $item->components->map(fn (MenuItem $c) => [
+                        'component_id' => $c->id,
+                        'name'         => $c->name,
+                        'quantity'     => (int) ($c->pivot->quantity ?? 1),
+                    ])->values()->all()
+                    : [],
+                'reference_price' => $item->bundleReferencePrice(),
                 'min_age'         => $item->min_age?->value,
                 'is_caffeinated'  => $item->is_caffeinated,
                 'caffeine_mg'     => $item->caffeine_mg !== null ? (float) $item->caffeine_mg : null,

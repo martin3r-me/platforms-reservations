@@ -10,6 +10,7 @@ use Platform\Core\Contracts\ToolResult;
 use Platform\Reservation\Models\HoldingClass;
 use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
+use Platform\Reservation\Support\BundleComponents;
 
 /**
  * Legt einen Artikel/eine Speise für das aktive Team an (Status: Entwurf).
@@ -26,7 +27,9 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
         return 'POST /reservation/menu-items - Legt einen Artikel an (Freigabestatus: Entwurf). REST-Parameter: '
             . 'category_id (Pflicht), name (Pflicht), price (Pflicht, brutto), tax_rate (7 oder 19, Default 7), '
             . 'holding_class_id (optional, Standzeit-Klasse), description, portion_size, available (bool), '
-            . 'is_vegetarian, is_vegan, is_alcoholic (bool).';
+            . 'is_vegetarian, is_vegan, is_alcoholic (bool), is_bundle (bool) mit components. '
+            . 'Bei einem Bundle ist price der Bundle-Preis; er wird beim Bestellen proportional auf die '
+            . 'Bestandteile verteilt. Allergene, Alkohol und Mindestalter ergeben sich aus den Bestandteilen.';
     }
 
     public function getSchema(): array
@@ -45,6 +48,18 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
                 'is_vegetarian' => ['type' => 'boolean'],
                 'is_vegan'      => ['type' => 'boolean'],
                 'is_alcoholic'  => ['type' => 'boolean', 'description' => 'Enthält Alkohol (Label).'],
+                'is_bundle'     => ['type' => 'boolean', 'description' => 'Bundle: mehrere Artikel zu einem Preis. Preis = Bundle-Preis.'],
+                'components'    => [
+                    'type'        => 'array',
+                    'description' => 'Nur bei is_bundle: Bestandteile [{component_id, quantity}]. Keine Bundles, nicht der Artikel selbst.',
+                    'items'       => [
+                        'type'       => 'object',
+                        'properties' => [
+                            'component_id' => ['type' => 'integer'],
+                            'quantity'     => ['type' => 'integer', 'minimum' => 1],
+                        ],
+                    ],
+                ],
                 'min_age'       => ['type' => ['integer', 'null'], 'enum' => [16, 18, null], 'description' => 'Altersgrenze: 16 (Bier/Wein/Sekt), 18 (Spirituosen), null = keine.'],
                 'is_caffeinated' => ['type' => 'boolean', 'description' => 'Koffeinhaltig (Kennzeichnung).'],
                 'caffeine_mg'   => ['type' => ['number', 'null'], 'description' => 'Koffeingehalt in mg/100 ml (optional).'],
@@ -66,6 +81,8 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
                 'category_id'      => 'required|integer',
                 'holding_class_id' => 'nullable|integer',
                 'name'          => 'required|string|max:255',
+                'is_bundle'     => 'nullable|boolean',
+                'components'    => 'nullable|array',
                 'price'         => 'required|numeric|min:0',
                 'tax_rate'      => ['nullable', fn ($a, $v, $fail) => in_array((float) $v, MenuItem::TAX_RATES, true) ?: $fail('tax_rate muss 7 oder 19 sein.')],
                 'description'   => 'nullable|string',
@@ -100,13 +117,30 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
             $data['team_id']   = $teamId;
             $data['tax_rate']  = number_format((float) ($arguments['tax_rate'] ?? 7.0), 2, '.', '');
 
+            $isBundle   = (bool) ($arguments['is_bundle'] ?? false);
+            $components = BundleComponents::normalize((array) ($arguments['components'] ?? []));
+
+            // Vor dem Anlegen prüfen, damit kein halbes Bundle entsteht.
+            if ($isBundle && ($error = BundleComponents::validate($components, $teamId))) {
+                return ToolResult::error($error, 'INVALID_BUNDLE');
+            }
+
+            unset($data['components']);
+            $data['is_bundle'] = $isBundle;
+
             $item = MenuItem::create($data);
+
+            if ($isBundle) {
+                BundleComponents::apply($item, $components);
+            }
 
             return ToolResult::success([
                 'id'              => $item->id,
                 'name'            => $item->name,
                 'price'           => (float) $item->price,
                 'tax_rate'        => (float) $item->tax_rate,
+                'is_bundle'       => $item->is_bundle,
+                'components'      => count($components),
                 'approval_status' => $item->approval_status,
             ], ['created' => true]);
         } catch (\Throwable $e) {

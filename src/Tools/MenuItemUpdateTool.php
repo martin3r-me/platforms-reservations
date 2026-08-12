@@ -10,6 +10,7 @@ use Platform\Core\Contracts\ToolResult;
 use Platform\Reservation\Models\HoldingClass;
 use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
+use Platform\Reservation\Support\BundleComponents;
 
 /**
  * Aktualisiert einen Artikel/eine Speise des aktiven Teams.
@@ -45,6 +46,15 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
                 'is_vegetarian' => ['type' => 'boolean'],
                 'is_vegan'      => ['type' => 'boolean'],
                 'is_alcoholic'  => ['type' => 'boolean'],
+                'is_bundle'     => ['type' => 'boolean', 'description' => 'Bundle: mehrere Artikel zu einem Preis.'],
+                'components'    => [
+                    'type'        => 'array',
+                    'description' => 'Bestandteile [{component_id, quantity}]; ersetzt die bisherige Zuordnung. Keine Bundles, nicht der Artikel selbst.',
+                    'items'       => ['type' => 'object', 'properties' => [
+                        'component_id' => ['type' => 'integer'],
+                        'quantity'     => ['type' => 'integer', 'minimum' => 1],
+                    ]],
+                ],
                 'min_age'       => ['type' => ['integer', 'null'], 'enum' => [16, 18, null], 'description' => 'Altersgrenze 16|18|null.'],
                 'is_caffeinated' => ['type' => 'boolean'],
                 'caffeine_mg'   => ['type' => ['number', 'null'], 'description' => 'mg/100 ml.'],
@@ -75,6 +85,8 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
                 'is_vegetarian' => 'sometimes|boolean',
                 'is_vegan'      => 'sometimes|boolean',
                 'is_alcoholic'  => 'sometimes|boolean',
+                'is_bundle'     => 'sometimes|boolean',
+                'components'    => 'sometimes|array',
                 'min_age'       => 'sometimes|nullable|integer|in:16,18',
                 'is_caffeinated' => 'sometimes|boolean',
                 'caffeine_mg'   => 'sometimes|nullable|numeric|min:0|max:10000',
@@ -111,20 +123,49 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
             $data = collect($validator->validated())->only([
                 'category_id', 'holding_class_id', 'name', 'price', 'tax_rate', 'description',
                 'portion_size', 'available', 'is_vegetarian', 'is_vegan', 'is_alcoholic',
-                'min_age', 'is_caffeinated', 'caffeine_mg',
+                'min_age', 'is_caffeinated', 'caffeine_mg', 'is_bundle',
             ])->all();
 
             if (isset($data['tax_rate'])) {
                 $data['tax_rate'] = number_format((float) $data['tax_rate'], 2, '.', '');
             }
 
+            // Bundle-Zustand nach der Änderung: entweder ausdrücklich gesetzt
+            // oder der bisherige.
+            $isBundle = array_key_exists('is_bundle', $data)
+                ? (bool) $data['is_bundle']
+                : $item->isBundle();
+
+            $componentsGiven = array_key_exists('components', $arguments);
+            $components      = BundleComponents::normalize((array) ($arguments['components'] ?? []));
+
+            if ($isBundle) {
+                // Bestandteile nur prüfen, wenn welche mitkommen oder der Artikel
+                // gerade erst zum Bundle wird – sonst bleiben die bisherigen.
+                if ($componentsGiven || ! $item->isBundle()) {
+                    if ($error = BundleComponents::validate($components, $teamId, $item->id)) {
+                        return ToolResult::error($error, 'INVALID_BUNDLE');
+                    }
+                }
+            }
+
             $item->update($data);
 
+            if ($isBundle && ($componentsGiven || $components !== [])) {
+                BundleComponents::apply($item, $components);
+            } elseif (! $isBundle) {
+                // Kein Bundle mehr: Bestandteile lösen, sonst bliebe ein
+                // unsichtbarer Inhalt am Artikel hängen.
+                $item->components()->sync([]);
+            }
+
             return ToolResult::success([
-                'id'       => $item->id,
-                'name'     => $item->name,
-                'price'    => (float) $item->price,
-                'tax_rate' => (float) $item->tax_rate,
+                'id'         => $item->id,
+                'name'       => $item->name,
+                'price'      => (float) $item->price,
+                'tax_rate'   => (float) $item->tax_rate,
+                'is_bundle'  => $item->is_bundle,
+                'components' => $item->components()->count(),
             ], ['updated' => true]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Aktualisieren des Artikels: ' . $e->getMessage(), 'EXECUTION_ERROR');
