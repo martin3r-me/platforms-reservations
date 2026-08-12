@@ -74,6 +74,35 @@ class BundleComponents
     }
 
     /**
+     * Hinweis, wenn das Bundle keinen Preisvorteil bringt – sonst null.
+     *
+     * Bewusst KEINE Validierung: ein Bundle ohne Ersparnis ist meist ein
+     * Zahlendreher, kann aber gewollt sein (etwa ein Bundle, das nur die
+     * Bestellung vereinfacht). Deshalb wird gemeldet, nicht geblockt.
+     *
+     * Erwartet ein Item mit geladenen components (samt Pivot-Menge).
+     */
+    public static function priceNotice(MenuItem $item): ?string
+    {
+        $reference = round($item->bundleReferencePrice() ?? 0.0, 2);
+        $price     = round((float) $item->price, 2);
+
+        if ($reference <= 0 || $price < $reference) {
+            return null;
+        }
+
+        $money = fn (float $v) => number_format($v, 2, ',', '.') . ' €';
+
+        if ($price > $reference) {
+            return 'Das Bundle ist teurer als die enthaltenen Artikel einzeln ('
+                . $money($price) . ' statt ' . $money($reference) . ').';
+        }
+
+        return 'Das Bundle kostet genauso viel wie die enthaltenen Artikel einzeln ('
+            . $money($reference) . ') – es entsteht kein Preisvorteil.';
+    }
+
+    /**
      * Bestandteile setzen (ersetzt die bisherige Zuordnung).
      *
      * @param  array<int, int>  $components  [component_id => quantity]

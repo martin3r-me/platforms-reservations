@@ -48,6 +48,9 @@
     @if (session('menu_message'))
         <x-nx-callout variant="success">{{ session('menu_message') }}</x-nx-callout>
     @endif
+    @if (session('menu_warning'))
+        <x-nx-callout variant="warning">{{ session('menu_warning') }}</x-nx-callout>
+    @endif
     @if (session('menu_error'))
         <x-nx-callout variant="danger">{{ session('menu_error') }}</x-nx-callout>
     @endif
@@ -443,12 +446,30 @@
                             Einzeln <span class="tabular-nums">{{ number_format($preview['reference_price'], 2, ',', '.') }} €</span>
                             @if ($preview['saving'] > 0)
                                 · Ersparnis <span class="tabular-nums text-[color:var(--nx-text)]">{{ number_format($preview['saving'], 2, ',', '.') }} €</span>
-                            @elseif ($preview['saving'] < 0)
-                                · <span class="text-[color:var(--nx-danger)]">teurer als einzeln</span>
                             @endif
                             @if ($preview['allergens']) <br>Allergene: {{ $preview['allergens'] }} @endif
                             @if ($preview['min_age']) <br>Altersgrenze: {{ $preview['min_age'] }}+ @elseif ($preview['alcoholic']) <br>enthält Alkohol @endif
                         </div>
+
+                        {{-- Ein Bundle ohne Preisvorteil ist fachlich meist ein
+                             Versehen. Es wird aber nur gewarnt, nicht blockiert –
+                             es kann gewollt sein, etwa bei einem Bundle, das vor
+                             allem die Bestellung vereinfacht. --}}
+                        @if ($preview['reference_price'] > 0 && $preview['saving'] <= 0)
+                            <div class="mt-2">
+                                <x-nx-callout variant="warning">
+                                    @if ($preview['saving'] < 0)
+                                        Das Bundle ist <strong>teurer</strong> als die Artikel einzeln
+                                        ({{ number_format($preview['reference_price'], 2, ',', '.') }} € einzeln gegenüber
+                                        {{ number_format($preview['price'], 2, ',', '.') }} € als Bundle).
+                                    @else
+                                        Das Bundle kostet genauso viel wie die Artikel einzeln – es entsteht
+                                        <strong>kein Preisvorteil</strong>.
+                                    @endif
+                                    Speichern ist trotzdem möglich.
+                                </x-nx-callout>
+                            </div>
+                        @endif
                     @endif
                 </div>
             @endif

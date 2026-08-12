@@ -13,6 +13,7 @@ use Platform\Reservation\Models\Additive;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Platform\Reservation\Support\BundleComponents;
 
 class MenuManager extends Component
 {
@@ -211,6 +212,7 @@ class MenuManager extends Component
         $ages = $components->map(fn (MenuItem $c) => $c->min_age?->value)->filter();
 
         return [
+            'price'           => round($price, 2),
             'reference_price' => round($reference, 2),
             'saving'          => round($reference - $price, 2),
             'allergens'       => $allergens,
@@ -553,6 +555,12 @@ class MenuManager extends Component
             || count($additiveChanges['attached']) || count($additiveChanges['detached'])
             || count($componentChanges['attached']) || count($componentChanges['detached'])
             || count($componentChanges['updated'] ?? []);
+
+        // Fehlender Preisvorteil wird gemeldet, nicht verhindert – gespeichert
+        // ist an dieser Stelle bereits.
+        if ($this->itemIsBundle && ($notice = BundleComponents::priceNotice($item->load('components')))) {
+            session()->flash('menu_warning', '„' . $item->name . '“: ' . $notice . ' Gespeichert wurde trotzdem.');
+        }
 
         // Inhaltliche Änderung nach Freigabe → zurück auf Entwurf (Vier-Augen)
         if (($contentChanged || $pivotChanged) && $item->approval_status !== MenuItem::APPROVAL_DRAFT) {

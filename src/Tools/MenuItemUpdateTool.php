@@ -26,7 +26,10 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
     {
         return 'PATCH /reservation/menu-items - Aktualisiert einen Artikel. REST-Parameter: id (Pflicht); '
             . 'category_id, holding_class_id (null zum Entfernen), name, price, tax_rate (7|19), description, '
-            . 'portion_size, available, is_vegetarian, is_vegan, is_alcoholic (jeweils optional).';
+            . 'portion_size, available, is_vegetarian, is_vegan, is_alcoholic, is_bundle mit components '
+            . '(jeweils optional). Bei Bundles kann price_notice zurueckkommen: ein Hinweis, dass der '
+            . 'Bundle-Preis keinen Vorteil gegenueber den Einzelpreisen bringt. Kein Fehler – '
+            . 'gespeichert wurde trotzdem –, sollte dem Nutzer aber gemeldet werden.';
     }
 
     public function getSchema(): array
@@ -159,13 +162,20 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
                 $item->components()->sync([]);
             }
 
+            $priceNotice = $item->is_bundle
+                ? BundleComponents::priceNotice($item->load('components'))
+                : null;
+
             return ToolResult::success([
-                'id'         => $item->id,
-                'name'       => $item->name,
-                'price'      => (float) $item->price,
-                'tax_rate'   => (float) $item->tax_rate,
-                'is_bundle'  => $item->is_bundle,
-                'components' => $item->components()->count(),
+                'id'           => $item->id,
+                'name'         => $item->name,
+                'price'        => (float) $item->price,
+                'tax_rate'     => (float) $item->tax_rate,
+                'is_bundle'    => $item->is_bundle,
+                'components'   => $item->components()->count(),
+                // Kein Fehler: gespeichert ist gespeichert. Nur ein Hinweis, damit
+                // ein Bundle ohne Preisvorteil nicht unbemerkt bleibt.
+                'price_notice' => $priceNotice,
             ], ['updated' => true]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Aktualisieren des Artikels: ' . $e->getMessage(), 'EXECUTION_ERROR');

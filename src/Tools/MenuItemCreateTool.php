@@ -28,6 +28,9 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
             . 'category_id (Pflicht), name (Pflicht), price (Pflicht, brutto), tax_rate (7 oder 19, Default 7), '
             . 'holding_class_id (optional, Standzeit-Klasse), description, portion_size, available (bool), '
             . 'is_vegetarian, is_vegan, is_alcoholic (bool), is_bundle (bool) mit components. '
+            . 'Bei Bundles kann price_notice zurueckkommen: ein Hinweis, dass der Bundle-Preis '
+            . 'keinen Vorteil gegenueber den Einzelpreisen bringt. Das ist kein Fehler – der '
+            . 'Artikel wurde angelegt – sollte dem Nutzer aber gemeldet werden. '
             . 'Bei einem Bundle ist price der Bundle-Preis; er wird beim Bestellen proportional auf die '
             . 'Bestandteile verteilt. Allergene, Alkohol und Mindestalter ergeben sich aus den Bestandteilen.';
     }
@@ -134,6 +137,10 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
                 BundleComponents::apply($item, $components);
             }
 
+            $priceNotice = $isBundle
+                ? BundleComponents::priceNotice($item->load('components'))
+                : null;
+
             return ToolResult::success([
                 'id'              => $item->id,
                 'name'            => $item->name,
@@ -141,6 +148,9 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
                 'tax_rate'        => (float) $item->tax_rate,
                 'is_bundle'       => $item->is_bundle,
                 'components'      => count($components),
+                // Kein Fehler: der Artikel ist angelegt. Nur ein Hinweis, damit
+                // ein Bundle ohne Preisvorteil nicht unbemerkt bleibt.
+                'price_notice'    => $priceNotice,
                 'approval_status' => $item->approval_status,
             ], ['created' => true]);
         } catch (\Throwable $e) {
