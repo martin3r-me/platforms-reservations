@@ -367,26 +367,62 @@
                                 </x-nx-button>
                             </div>
                         @empty
-                            <p class="m-0 text-[11px] text-[color:var(--nx-muted)]">Noch kein Bestandteil gewählt.</p>
+                            <p class="m-0 text-[11px] text-[color:var(--nx-muted)]">Noch kein Artikel gewählt.</p>
                         @endforelse
                         @error('itemComponents') <p class="m-0 text-xs text-[color:var(--nx-danger)]">{{ $message }}</p> @enderror
                     </div>
 
-                    {{-- Bestandteil hinzufügen --}}
-                    <div class="mt-2">
-                        <x-nx-input-select
-                            name="addComponent"
-                            label="Bestandteil hinzufügen"
-                            size="sm"
-                            :options="$this->componentCandidates
-                                ->reject(fn ($c) => array_key_exists($c->id, $itemComponents))
-                                ->map(fn ($c) => ['value' => $c->id, 'label' => $c->name . ' · ' . number_format($c->price, 2, ',', '.') . ' €'])
-                                ->values()
-                                ->all()"
-                            :nullable="true"
-                            nullLabel="– wählen –"
-                            wire:change="addComponent($event.target.value)"
-                        />
+                    {{-- Artikel hinzufügen: Auswahl mit Suche und Vorschaubild.
+                         Ein einfaches select war nicht als Auswahl erkennbar und
+                         bei vielen Artikeln unbrauchbar. Optik und Verhalten wie
+                         beim Allergen-Picker (tag-select). --}}
+                    @php $available = $this->componentCandidates->reject(fn ($c) => array_key_exists($c->id, $itemComponents)); @endphp
+                    <div class="relative mt-2" x-data="{ open: false, q: '' }"
+                        x-on:keydown.escape="open = false" @click.outside="open = false">
+
+                        <button type="button"
+                            @click="open = !open; $nextTick(() => $refs.q?.focus())"
+                            class="flex w-full items-center gap-2 rounded-[6px] border border-dashed border-[color:var(--nx-line-strong)] px-3 py-2 text-sm text-[color:var(--nx-text)] transition-colors hover:border-[color:var(--nx-accent)] hover:bg-[color:var(--nx-hover)]">
+                            @svg('heroicon-o-plus', 'w-4 h-4 text-[color:var(--nx-muted)]')
+                            <span>Artikel hinzufügen</span>
+                            <span class="ml-auto text-[color:var(--nx-muted)]">@svg('heroicon-o-chevron-down', 'w-4 h-4')</span>
+                        </button>
+
+                        <div x-show="open" x-transition x-cloak
+                            class="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-surface)] shadow-[var(--nx-shadow-pop)]">
+                            <div class="sticky top-0 border-b border-[color:var(--nx-line)] bg-[color:var(--nx-surface)] p-2">
+                                <input x-ref="q" x-model="q" type="text" placeholder="Artikel suchen…"
+                                    class="w-full rounded-[6px] border border-[color:var(--nx-line-strong)] bg-[color:var(--nx-surface)] px-2 py-1 text-sm text-[color:var(--nx-text)] focus:border-[color:var(--nx-accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--nx-accent)]" />
+                            </div>
+
+                            @forelse ($available as $cand)
+                                <button type="button" wire:click="addComponent({{ $cand->id }})"
+                                    x-show="q === '' || {{ \Illuminate\Support\Js::from(mb_strtolower($cand->name . ' ' . (string) $cand->portion_size)) }}.includes(q.toLowerCase())"
+                                    class="flex w-full items-center gap-2 px-2 py-1.5 text-left hover:bg-[color:var(--nx-hover)]">
+                                    @if ($cand->image_context_file_id && $cand->imageFile)
+                                        <img src="{{ $cand->imageUrl('thumbnail_1_1') }}" alt=""
+                                            class="h-8 w-8 shrink-0 rounded-[6px] object-cover" />
+                                    @else
+                                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-[color:var(--nx-bg)] text-[color:var(--nx-faint)]">
+                                            @svg('heroicon-o-photo', 'w-4 h-4 opacity-40')
+                                        </div>
+                                    @endif
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block truncate text-sm text-[color:var(--nx-text)]">{{ $cand->name }}</span>
+                                        @if ($cand->portion_size)
+                                            <span class="block text-[11px] text-[color:var(--nx-muted)]">{{ $cand->portion_size }}</span>
+                                        @endif
+                                    </span>
+                                    <span class="whitespace-nowrap text-[11px] tabular-nums text-[color:var(--nx-muted)]">
+                                        {{ number_format($cand->price, 2, ',', '.') }} € · {{ rtrim(rtrim(number_format($cand->tax_rate, 2, ',', '.'), '0'), ',') }} %
+                                    </span>
+                                </button>
+                            @empty
+                                <p class="px-3 py-2 text-xs text-[color:var(--nx-muted)]">
+                                    Keine weiteren Artikel verfügbar. Bundles können keine Bundles enthalten.
+                                </p>
+                            @endforelse
+                        </div>
                     </div>
 
                     {{-- Vorschau: was der Gast sehen wird --}}

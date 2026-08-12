@@ -129,6 +129,8 @@ class MenuManager extends Component
         return MenuItem::forTeam($this->getTeamId())
             ->where('is_bundle', false)
             ->when($this->editingItemId, fn ($q) => $q->whereKeyNot($this->editingItemId))
+            // Bilder mitladen: die Auswahl zeigt Vorschaubilder (kein N+1).
+            ->with('imageFile.variants')
             ->orderBy('name')
             ->get();
     }
