@@ -258,22 +258,28 @@
                         errorKey="itemCategoryId"
                     />
                 </div>
-                <div class="sm:col-span-2">
-                    <x-nx-input-select
-                        name="itemHoldingClassId"
-                        label="Standzeit / Zeitkritikalität"
-                        :options="$this->holdingClasses"
-                        optionValue="id"
-                        optionLabel="name"
-                        :nullable="true"
-                        nullLabel="— keine —"
-                        wire:model="itemHoldingClassId"
-                        errorKey="itemHoldingClassId"
-                    />
-                    @if ($this->holdingClasses->isEmpty())
-                        <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Noch keine Stufen angelegt – unter <a href="{{ route('reservation.settings.holding-classes') }}" class="underline" wire:navigate>Einstellungen → Standzeit-Klassen</a>.</p>
-                    @endif
-                </div>
+                {{-- Nicht beim Bundle: die Standzeit bleibt am einzelnen Artikel.
+                     Brezel und Bier haben verschiedene Standzeiten und stehen
+                     auf dem Küchenzettel getrennt – eine Standzeit am Bundle
+                     hätte keinen Ort, an dem sie gelesen würde. --}}
+                @unless ($itemIsBundle)
+                    <div class="sm:col-span-2">
+                        <x-nx-input-select
+                            name="itemHoldingClassId"
+                            label="Standzeit / Zeitkritikalität"
+                            :options="$this->holdingClasses"
+                            optionValue="id"
+                            optionLabel="name"
+                            :nullable="true"
+                            nullLabel="— keine —"
+                            wire:model="itemHoldingClassId"
+                            errorKey="itemHoldingClassId"
+                        />
+                        @if ($this->holdingClasses->isEmpty())
+                            <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Noch keine Stufen angelegt – unter <a href="{{ route('reservation.settings.holding-classes') }}" class="underline" wire:navigate>Einstellungen → Standzeit-Klassen</a>.</p>
+                        @endif
+                    </div>
+                @endunless
                 <div class="sm:col-span-2" x-ref="itemName">
                     <x-nx-input-text name="itemName" label="Name" wire:model="itemName" required errorKey="itemName" />
                 </div>
@@ -442,7 +448,7 @@
 
                     {{-- Vorschau: was der Gast sehen wird --}}
                     @if ($this->chosenComponents->isNotEmpty())
-                        <div class="mt-3 rounded-[6px] bg-[color:var(--nx-faint)] p-2 text-[11px] text-[color:var(--nx-muted)]">
+                        <div class="mt-3 rounded-[6px] bg-[color:var(--nx-hover)] px-2.5 py-2 text-[11px] leading-relaxed text-[color:var(--nx-muted)]">
                             Einzeln <span class="tabular-nums">{{ number_format($preview['reference_price'], 2, ',', '.') }} €</span>
                             @if ($preview['saving'] > 0)
                                 · Ersparnis <span class="tabular-nums text-[color:var(--nx-text)]">{{ number_format($preview['saving'], 2, ',', '.') }} €</span>
