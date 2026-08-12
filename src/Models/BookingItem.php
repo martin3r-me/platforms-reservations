@@ -12,6 +12,9 @@ class BookingItem extends Model
     protected $fillable = [
         'booking_id',
         'menu_item_id',
+        // Gruppiert die Positionen EINER Bundle-Instanz; leer bei Einzelartikeln.
+        'bundle_ref',
+        'bundle_menu_item_id',
         'quantity',
         'unit_price',
         'tax_rate',
@@ -27,6 +30,18 @@ class BookingItem extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class, 'booking_id');
+    }
+
+    /** Das Bundle, aus dem diese Position stammt (null bei Einzelartikeln). */
+    public function bundleMenuItem(): BelongsTo
+    {
+        return $this->belongsTo(MenuItem::class, 'bundle_menu_item_id');
+    }
+
+    /** Gehört die Position zu einem Bundle? */
+    public function isFromBundle(): bool
+    {
+        return $this->bundle_ref !== null;
     }
 
     public function menuItem(): BelongsTo

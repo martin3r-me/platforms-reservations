@@ -34,6 +34,7 @@ class MenuItem extends Model
     protected $fillable = [
         'team_id',
         'category_id',
+        'is_bundle',
         'holding_class_id',
         'name',
         'description',
@@ -59,6 +60,7 @@ class MenuItem extends Model
         'price'         => 'decimal:2',
         'tax_rate'      => 'decimal:2',
         'available'     => 'boolean',
+        'is_bundle'     => 'boolean',
         'sort_order'    => 'integer',
         'is_vegetarian' => 'boolean',
         'is_vegan'      => 'boolean',
@@ -72,6 +74,110 @@ class MenuItem extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(\Platform\Core\Models\Team::class, 'team_id');
+    }
+
+    /**
+     * Bestandteile eines Bundles (mit Menge). Flach – ein Bundle darf kein
+     * Bundle enthalten, das wird beim Speichern geprüft.
+     */
+    public function components(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            self::class,
+            'reservation_menu_item_components',
+            'bundle_id',
+            'component_id',
+        )->withPivot(['quantity', 'sort_order'])
+         ->withTimestamps()
+         ->orderByPivot('sort_order');
+    }
+
+    /** Bundles, in denen dieser Artikel enthalten ist (Löschschutz, Hinweise). */
+    public function partOfBundles(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            self::class,
+            'reservation_menu_item_components',
+            'component_id',
+            'bundle_id',
+        );
+    }
+
+    public function isBundle(): bool
+    {
+        return (bool) $this->is_bundle;
+    }
+
+    /**
+     * Artikel, aus denen sich die Eigenschaften ergeben: beim Bundle die
+     * Bestandteile, sonst der Artikel selbst.
+     *
+     * Allergene, Alkohol und Mindestalter werden BEWUSST abgeleitet und nicht
+     * am Bundle gepflegt – von Hand gepflegt liefe das früher oder später
+     * auseinander, und bei Allergenen ist das ein rechtliches Problem.
+     *
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public function effectiveItems(): \Illuminate\Support\Collection
+    {
+        return $this->isBundle() ? $this->components : collect([$this]);
+    }
+
+    /** Allergene inkl. der Bestandteile, ohne Dubletten. */
+    public function effectiveAllergens(): \Illuminate\Support\Collection
+    {
+        return $this->effectiveItems()
+            ->flatMap(fn (self $i) => $i->allergens)
+            ->unique('id')
+            ->values();
+    }
+
+    /** Zusatzstoffe inkl. der Bestandteile, ohne Dubletten. */
+    public function effectiveAdditives(): \Illuminate\Support\Collection
+    {
+        return $this->effectiveItems()
+            ->flatMap(fn (self $i) => $i->additives)
+            ->unique('id')
+            ->values();
+    }
+
+    /** Enthält das Bundle Alkohol? Ein Bier im Bundle macht es zum 18+-Bundle. */
+    public function effectiveIsAlcoholic(): bool
+    {
+        return $this->effectiveItems()->contains(fn (self $i) => (bool) $i->is_alcoholic);
+    }
+
+    /** Höchste Altersgrenze der Bestandteile. */
+    public function effectiveMinAge(): ?\Platform\Reservation\Enums\AgeRestriction
+    {
+        return $this->effectiveItems()
+            ->map(fn (self $i) => $i->min_age)
+            ->filter()
+            ->sortByDesc(fn ($age) => $age->value)
+            ->first();
+    }
+
+    /**
+     * Verkaufbar? Ein Bundle fällt weg, sobald ein Bestandteil nicht verfügbar
+     * oder nicht freigegeben ist – sonst verkauft man etwas, das nicht
+     * ausgeliefert werden kann.
+     */
+    public function effectivelyAvailable(): bool
+    {
+        if (! $this->available || $this->approval_status !== self::APPROVAL_APPROVED) {
+            return false;
+        }
+
+        if (! $this->isBundle()) {
+            return true;
+        }
+
+        $components = $this->components;
+
+        return $components->isNotEmpty()
+            && $components->every(
+                fn (self $c) => $c->available && $c->approval_status === self::APPROVAL_APPROVED
+            );
     }
 
     public function category(): BelongsTo
