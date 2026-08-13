@@ -84,10 +84,12 @@ class OrderReceiptController
         $byRate  = []; // rate => brutto-Summe
 
         foreach ($order->bookings as $booking) {
-            // Blöcke statt einer flachen Liste: ein Bundle wird zu EINEM Block
-            // mit Überschrift und seinen Bestandteilen darunter (Lösung A aus
-            // der Abstimmung). Nur so lässt sich die MwSt je Bestandteil
-            // ausweisen und der Gast sieht trotzdem, was er als Bundle gekauft hat.
+            // Ein Bundle ist EINE Position: Bundle-Preis und was drin ist.
+            // Bewusst OHNE Einzelbeträge je Bestandteil – die entstehen erst
+            // durch die interne Aufteilung, der Gast hat sie nie gesehen, und
+            // sie ergeben je nach Menge krumme oder ungleiche Werte. Die
+            // MwSt-Aufschlüsselung unten bleibt davon unberührt: Sie wird aus
+            // den echten Positionen gerechnet, nicht aus dieser Darstellung.
             $blocks     = [];
             $bundleSeen = [];   // bundle_ref => Index in $blocks
 
@@ -103,19 +105,35 @@ class OrderReceiptController
                     'total'      => $gross,
                 ];
 
-                // Für den Bewirtungsbeleg (flache Aufstellung) mitführen, aus
-                // welchem Bundle eine Position stammt. Gesplittete Zeilen
-                // desselben Artikels werden auch hier zusammengefasst.
-                $flachKey = ($item->bundle_ref ?? 'x') . '|' . (int) $item->menu_item_id . '|' . $rate;
-
-                if (isset($lines[$flachKey])) {
-                    $lines[$flachKey]['quantity'] += (int) $item->quantity;
-                    $lines[$flachKey]['total']     = round($lines[$flachKey]['total'] + $gross, 2);
-                } else {
-                    $lines[$flachKey] = $entry + [
-                        'slot'        => $booking->slot?->name,
-                        'bundle_name' => $item->bundleMenuItem?->name,
+                // Bewirtungsbeleg (flache Aufstellung): Einzelartikel wie bisher,
+                // ein Bundle dagegen als EINE Zeile mit dem Bundle-Preis. Der
+                // Inhalt steht als Text darunter, ohne Beträge.
+                if ($item->bundle_ref === null) {
+                    $lines[] = $entry + [
+                        'slot'     => $booking->slot?->name,
+                        'contents' => null,
                     ];
+                } else {
+                    $flachKey = 'b' . $item->bundle_ref;
+
+                    if (! isset($lines[$flachKey])) {
+                        $lines[$flachKey] = [
+                            'name'     => $item->bundleMenuItem?->name ?? 'Bundle',
+                            'quantity' => max(1, (int) ($item->bundle_quantity ?? 1)),
+                            // Ein Bundle hat keinen einzelnen Steuersatz – die
+                            // Aufschlüsselung steht unten.
+                            'tax_rate' => null,
+                            'total'    => 0.0,
+                            'slot'     => $booking->slot?->name,
+                            'contents' => [],
+                        ];
+                    }
+
+                    $lines[$flachKey]['total'] = round($lines[$flachKey]['total'] + $gross, 2);
+
+                    $teil = $item->menuItem?->name ?? 'Produkt';
+                    $lines[$flachKey]['contents'][$teil] =
+                        ($lines[$flachKey]['contents'][$teil] ?? 0) + (int) $item->quantity;
                 }
 
                 $key          = number_format($rate, 2, '.', '');
@@ -132,49 +150,22 @@ class OrderReceiptController
                 if (! isset($bundleSeen[$ref])) {
                     $bundleSeen[$ref] = count($blocks);
                     $blocks[] = [
-                        'type'  => 'bundle',
-                        'name'  => $item->bundleMenuItem?->name ?? 'Bundle',
-                        'total' => 0.0,
-                        'items' => [],
+                        'type'     => 'bundle',
+                        'name'     => $item->bundleMenuItem?->name ?? 'Bundle',
+                        'quantity' => max(1, (int) ($item->bundle_quantity ?? 1)),
+                        'total'    => 0.0,
+                        // Nur Name und Menge – keine Beträge, keine Steuersätze.
+                        'contents' => [],
                     ];
                 }
 
                 $index = $bundleSeen[$ref];
                 $blocks[$index]['total'] = round($blocks[$index]['total'] + $gross, 2);
 
-                // Bestandteile je Artikel addieren. Der Preis-Verteiler splittet
-                // eine Position in mehrere Zeilen, damit Menge × Einzelpreis
-                // exakt aufgeht – bei 3 Bier zu 16,61 € etwa 2 × 5,54 € plus
-                // 1 × 5,53 €. Auf einem Beleg liest sich das, als koste
-                // dasselbe Bier unterschiedlich viel.
-                $teilKey = (int) $item->menu_item_id;
-
-                if (! isset($blocks[$index]['items'][$teilKey])) {
-                    $blocks[$index]['items'][$teilKey] = [
-                        'name'     => $entry['name'],
-                        'quantity' => 0,
-                        // Bewusst KEIN Einzelpreis: Er ist ein interner
-                        // Aufteilungswert, den der Gast nie gesehen hat, und
-                        // Menge × Einzelpreis ginge nach dem Zusammenfassen
-                        // nicht mehr auf. Gekauft wurde das Bundle.
-                        'tax_rate' => $rate,
-                        'total'    => 0.0,
-                    ];
-                }
-
-                $blocks[$index]['items'][$teilKey]['quantity'] += (int) $item->quantity;
-                $blocks[$index]['items'][$teilKey]['total'] = round(
-                    $blocks[$index]['items'][$teilKey]['total'] + $gross,
-                    2
-                );
+                $teil = $entry['name'];
+                $blocks[$index]['contents'][$teil] =
+                    ($blocks[$index]['contents'][$teil] ?? 0) + (int) $item->quantity;
             }
-
-            foreach ($blocks as &$block) {
-                if (($block['type'] ?? 'item') === 'bundle') {
-                    $block['items'] = array_values($block['items']);
-                }
-            }
-            unset($block);
 
             $groups[] = [
                 'slot'   => $booking->slot?->displayLabel() ?? ($booking->slot?->name ?? 'Pause'),

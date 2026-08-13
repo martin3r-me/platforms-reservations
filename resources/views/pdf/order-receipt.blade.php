@@ -79,28 +79,27 @@
                 </tr>
                 @foreach ($g['blocks'] as $block)
                     @if (($block['type'] ?? 'item') === 'bundle')
-                        {{-- Bundle: Überschrift mit Gesamtpreis, Bestandteile eingerückt.
-                             Die MwSt steht bei den Bestandteilen, weil ein Bundle
-                             mehrere Steuersätze umfassen kann. --}}
+                        {{-- Ein Bundle ist EINE Position: Bundle-Preis und was drin ist.
+                             Keine Einzelbeträge je Bestandteil – die entstehen erst durch
+                             die interne Aufteilung und ergeben krumme oder ungleiche Werte
+                             (drei Bier zu 16,61 € lassen sich nicht gleich teilen). Der
+                             Gast hat das Bundle zum Bundle-Preis gekauft. --}}
                         <tr>
-                            <td style="padding-top: 10px; font-weight: bold;">{{ $block['name'] }}</td>
-                            <td class="num"></td>
-                            <td class="num"></td>
-                            <td class="num"></td>
-                            <td class="num" style="padding-top: 10px; font-weight: bold;">{{ $fmt($block['total']) }}</td>
+                            <td>
+                                {{ $block['name'] }}
+                                @if (! empty($block['contents']))
+                                    <div style="color: #6b7280; font-size: 11px; padding-top: 2px;">
+                                        @foreach ($block['contents'] as $teil => $menge){{ $menge }}× {{ $teil }}@if (! $loop->last) · @endif @endforeach
+                                    </div>
+                                @endif
+                            </td>
+                            <td class="num">{{ $block['quantity'] }}</td>
+                            <td class="num">&nbsp;</td>
+                            {{-- Kein einzelner Steuersatz: Ein Bundle kann mehrere
+                                 umfassen. Die Aufschlüsselung steht in der Summe. --}}
+                            <td class="num">&nbsp;</td>
+                            <td class="num">{{ $fmt($block['total']) }}</td>
                         </tr>
-                        @foreach ($block['items'] as $line)
-                            <tr>
-                                <td style="padding-left: 18px; color: #6b7280;">{{ $line['name'] }}</td>
-                                <td class="num" style="color: #6b7280;">{{ $line['quantity'] }}</td>
-                                {{-- Kein Einzelpreis bei Bundle-Bestandteilen: Der Betrag
-                                     ist ein interner Aufteilungswert, den der Gast nie
-                                     gesehen hat. Gekauft wurde das Bundle zum Bundle-Preis. --}}
-                                <td class="num" style="color: #6b7280;">&nbsp;</td>
-                                <td class="num" style="color: #6b7280;">{{ $pct($line['tax_rate']) }}</td>
-                                <td class="num" style="color: #6b7280;">{{ $fmt($line['total']) }}</td>
-                            </tr>
-                        @endforeach
                     @else
                         <tr>
                             <td>{{ $block['name'] }}</td>

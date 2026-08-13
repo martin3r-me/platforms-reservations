@@ -106,11 +106,16 @@
                     {{-- Flache Aufstellung: Bundle-Bestandteile bleiben einzelne
                          Positionen (jede mit eigenem Steuersatz), der Bundle-Name
                          steht als Herkunft dahinter. --}}
-                    <td>{{ $line['name'] }}@if (! empty($line['bundle_name']))
-                            <span class="hint">aus {{ $line['bundle_name'] }}</span>
+                    {{-- Ein Bundle steht als EINE Position mit dem Bundle-Preis;
+                         der Inhalt darunter ohne Beträge. Die interne Aufteilung
+                         auf die Bestandteile gehört nicht auf den Beleg. --}}
+                    <td>{{ $line['name'] }}@if (! empty($line['contents']))
+                            <div class="hint">
+                                @foreach ($line['contents'] as $teil => $menge){{ $menge }}× {{ $teil }}@if (! $loop->last) · @endif @endforeach
+                            </div>
                         @endif</td>
                     <td class="num">{{ $line['quantity'] }}</td>
-                    <td class="num">{{ $pct($line['tax_rate']) }}</td>
+                    <td class="num">{{ $line['tax_rate'] === null ? '' : $pct($line['tax_rate']) }}</td>
                     <td class="num">{{ $fmt($line['total']) }}</td>
                 </tr>
             @endforeach

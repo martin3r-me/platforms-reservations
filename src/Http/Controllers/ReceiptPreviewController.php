@@ -106,10 +106,17 @@ class ReceiptPreviewController
             'order'       => $order,
             'issuer'      => $settings->issuer(),
             'branding'    => $settings->receiptBranding(),
-            // Flache Liste (Bewirtungsbeleg) inkl. Bundle-Herkunft
+            // Flache Liste (Bewirtungsbeleg): Einzelartikel, dann das Bundle als
+            // EINE Position mit Inhalt statt Einzelbeträgen – wie im echten Beleg.
             'lines'       => array_merge(
-                $items,
-                array_map(fn ($l) => $l + ['bundle_name' => 'Brezel + Bier'], $bundleItems),
+                array_map(fn ($l) => $l + ['contents' => null], $items),
+                [[
+                    'name'     => 'Brezel + Bier',
+                    'quantity' => 1,
+                    'tax_rate' => null,   // Bundle umfasst mehrere Sätze
+                    'total'    => $bundleTotal,
+                    'contents' => ['Brezel' => 1, 'Bier 0,3 l' => 1],
+                ]],
             ),
             // Blöcke (Bestellbestätigung): Einzelartikel und ein Bundle
             'groups'      => [[
@@ -119,10 +126,11 @@ class ReceiptPreviewController
                 'blocks' => array_merge(
                     array_map(fn ($l) => ['type' => 'item'] + $l, $items),
                     [[
-                        'type'  => 'bundle',
-                        'name'  => 'Brezel + Bier',
-                        'total' => $bundleTotal,
-                        'items' => $bundleItems,
+                        'type'     => 'bundle',
+                        'name'     => 'Brezel + Bier',
+                        'quantity' => 1,
+                        'total'    => $bundleTotal,
+                        'contents' => ['Brezel' => 1, 'Bier 0,3 l' => 1],
                     ]],
                 ),
             ]],
