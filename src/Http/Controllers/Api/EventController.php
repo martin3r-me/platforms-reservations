@@ -14,6 +14,7 @@ use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Order;
 use Platform\Reservation\Models\SalesList;
 use Platform\Reservation\Models\Translation;
+use Platform\Reservation\Services\CartCalculator;
 use Platform\Reservation\Services\GuestOrderService;
 use Platform\Reservation\Support\Vat;
 use Platform\Reservation\Services\SeatAvailabilityService;
@@ -389,6 +390,68 @@ class EventController extends ApiController
         }
 
         return $this->success($this->formatOrderStatus($orderModel), 'Bestellstatus geladen');
+    }
+
+    /**
+     * POST /events/{event}/cart-preview – maßgebliche Summen für eine Auswahl.
+     *
+     * Warum es das gibt: Vor der Bestellung existiert keine Order, also musste
+     * das Gast-Frontend die Vorschau selbst rechnen. Bei Bundles ging das schief –
+     * deren eigener Steuersatz ist bedeutungslos, die Sätze hängen an den
+     * Bestandteilen. Mit vat_shares stimmte es dann bis auf einen Cent: Der
+     * Verteiler rechnet über die GESAMTE Menge und splittet Positionen, ein
+     * Anteil-je-Einheit mal Menge trifft das nicht immer.
+     *
+     * Dieser Endpunkt beendet die Doppelrechnung: Er nutzt exakt denselben
+     * CartCalculator wie das Anlegen der Bestellung. Damit können Vorschau und
+     * Beleg nicht mehr auseinanderlaufen – nicht weil beide Seiten dasselbe
+     * Ergebnis errechnen, sondern weil es nur noch eine Rechnung gibt.
+     *
+     * Rein lesend, legt nichts an.
+     */
+    public function cartPreview(Request $request, string $event, CartCalculator $calculator)
+    {
+        $model = $this->resolveEvent($event);
+
+        if (! $model) {
+            return $this->notFound('Termin nicht gefunden.');
+        }
+
+        $data = $request->validate([
+            'items'   => 'required|array',
+            'items.*' => 'integer|min:0',
+        ]);
+
+        // lines() verwirft, was nicht in der freigegebenen Verkaufsliste steht,
+        // und begrenzt die Mengen – dieselben Schranken wie beim Bestellen.
+        $lines = $calculator->lines($data['items'], $model);
+
+        $rates = $calculator->taxBreakdown($lines)
+            ->map(fn (array $b, $rate) => ['tax_rate' => (float) $rate] + $b)
+            ->values()
+            ->sortByDesc('tax_rate')   // 19 % vor 7 %
+            ->values()
+            ->all();
+
+        return $this->success([
+            'total'     => $calculator->total($lines),
+            'net'       => round(array_sum(array_column($rates, 'net')), 2),
+            'vat'       => round(array_sum(array_column($rates, 'vat')), 2),
+            'rates'     => $rates,
+            // Höchste Altersgrenze im Warenkorb (beim Bundle aus den
+            // Bestandteilen abgeleitet); null, wenn keine gilt.
+            'min_age'   => $calculator->requiredMinAge($lines),
+            // Positionen, wie der Gast sie gewählt hat – NICHT die aufgelösten
+            // Bestandteile. Das Bundle bleibt hier ein Posten.
+            'lines'     => $lines->map(fn (array $l) => [
+                'menu_item_id' => $l['item']->id,
+                'name'         => $l['item']->name,
+                'quantity'     => $l['quantity'],
+                'unit_price'   => round((float) $l['item']->price, 2),
+                'total'        => round((float) $l['item']->price * $l['quantity'], 2),
+                'is_bundle'    => $l['item']->isBundle(),
+            ])->values()->all(),
+        ], 'Warenkorb berechnet');
     }
 
     /**

@@ -24,6 +24,12 @@ Route::get('/events/{event}/checkout-fields', [EventController::class, 'checkout
 Route::get('/events/{event}/floor-plan', [EventController::class, 'floorPlan'])
     ->name('reservation.api.events.floor-plan');
 
+// Massgebliche Summen fuer eine Auswahl, BEVOR bestellt wird. Nutzt denselben
+// CartCalculator wie das Anlegen – damit Warenkorb-Vorschau und Beleg nicht
+// auseinanderlaufen koennen. Rein lesend, POST nur wegen der Nutzlast.
+Route::post('/events/{event}/cart-preview', [EventController::class, 'cartPreview'])
+    ->name('reservation.api.events.cart-preview');
+
 // Bestellung anlegen (Order + N Slot-Buchungen) und Status abfragen.
 Route::post('/events/{event}/orders', [EventController::class, 'createOrder'])
     ->name('reservation.api.events.orders.store');
