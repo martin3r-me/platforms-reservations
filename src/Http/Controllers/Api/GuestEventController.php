@@ -119,10 +119,6 @@ class GuestEventController extends GuestApiController
                 ])->values()
                 : [],
             'reference_price' => $item->bundleReferencePrice(),
-            // Brutto je Steuersatz für EINE Einheit. Ohne das könnte das
-            // Frontend die MwSt eines Bundles nicht ausweisen – dessen eigene
-            // tax_rate ist bedeutungslos, die Sätze haengen an den Bestandteilen.
-            'vat_shares'      => $item->bundleTaxShares(),
             // Je Artikel Code UND (übersetzten) Klartext – das Frontend braucht
             // die Legende nicht zwingend zum Auflösen. Beim Bundle die
             // Vereinigung der Bestandteile; von Hand gepflegt liefe das

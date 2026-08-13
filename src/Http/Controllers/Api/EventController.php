@@ -398,9 +398,10 @@ class EventController extends ApiController
      * Warum es das gibt: Vor der Bestellung existiert keine Order, also musste
      * das Gast-Frontend die Vorschau selbst rechnen. Bei Bundles ging das schief –
      * deren eigener Steuersatz ist bedeutungslos, die Sätze hängen an den
-     * Bestandteilen. Mit vat_shares stimmte es dann bis auf einen Cent: Der
-     * Verteiler rechnet über die GESAMTE Menge und splittet Positionen, ein
-     * Anteil-je-Einheit mal Menge trifft das nicht immer.
+     * Bestandteilen. Die Aufteilung je Bundle mitzuliefern half nur fast: Der
+     * Verteiler rechnet über die GESAMTE Menge und splittet Positionen, damit
+     * Menge × Einzelpreis exakt aufgeht – ein Anteil je Einheit mal Menge trifft
+     * das nicht immer, in 19 von 48 geprüften Fällen fehlte ein Cent.
      *
      * Dieser Endpunkt beendet die Doppelrechnung: Er nutzt exakt denselben
      * CartCalculator wie das Anlegen der Bestellung. Damit können Vorschau und
@@ -721,10 +722,6 @@ class EventController extends ApiController
                 ])->values()
                 : [],
             'reference_price'  => $item->bundleReferencePrice(),
-            // Brutto je Steuersatz für EINE Einheit. Ohne das könnte das
-            // Frontend die MwSt eines Bundles nicht ausweisen – dessen eigene
-            // tax_rate ist bedeutungslos, die Sätze haengen an den Bestandteilen.
-            'vat_shares'       => $item->bundleTaxShares(),
             'allergens'        => $item->effectiveAllergens()->pluck('code')->values(),
             'additives'        => $item->effectiveAdditives()->pluck('code')->values(),
             'image_url'        => $item->image_context_file_id ? $item->imageUrl('medium_1_1') : null,
