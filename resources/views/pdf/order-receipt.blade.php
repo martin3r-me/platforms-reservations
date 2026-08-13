@@ -93,7 +93,10 @@
                             <tr>
                                 <td style="padding-left: 18px; color: #6b7280;">{{ $line['name'] }}</td>
                                 <td class="num" style="color: #6b7280;">{{ $line['quantity'] }}</td>
-                                <td class="num" style="color: #6b7280;">{{ $fmt($line['unit_price']) }}</td>
+                                {{-- Kein Einzelpreis bei Bundle-Bestandteilen: Der Betrag
+                                     ist ein interner Aufteilungswert, den der Gast nie
+                                     gesehen hat. Gekauft wurde das Bundle zum Bundle-Preis. --}}
+                                <td class="num" style="color: #6b7280;">&nbsp;</td>
                                 <td class="num" style="color: #6b7280;">{{ $pct($line['tax_rate']) }}</td>
                                 <td class="num" style="color: #6b7280;">{{ $fmt($line['total']) }}</td>
                             </tr>

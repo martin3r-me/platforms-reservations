@@ -104,11 +104,19 @@ class OrderReceiptController
                 ];
 
                 // Für den Bewirtungsbeleg (flache Aufstellung) mitführen, aus
-                // welchem Bundle eine Position stammt.
-                $lines[] = $entry + [
-                    'slot'        => $booking->slot?->name,
-                    'bundle_name' => $item->bundleMenuItem?->name,
-                ];
+                // welchem Bundle eine Position stammt. Gesplittete Zeilen
+                // desselben Artikels werden auch hier zusammengefasst.
+                $flachKey = ($item->bundle_ref ?? 'x') . '|' . (int) $item->menu_item_id . '|' . $rate;
+
+                if (isset($lines[$flachKey])) {
+                    $lines[$flachKey]['quantity'] += (int) $item->quantity;
+                    $lines[$flachKey]['total']     = round($lines[$flachKey]['total'] + $gross, 2);
+                } else {
+                    $lines[$flachKey] = $entry + [
+                        'slot'        => $booking->slot?->name,
+                        'bundle_name' => $item->bundleMenuItem?->name,
+                    ];
+                }
 
                 $key          = number_format($rate, 2, '.', '');
                 $byRate[$key] = round(($byRate[$key] ?? 0) + $gross, 2);
@@ -132,9 +140,41 @@ class OrderReceiptController
                 }
 
                 $index = $bundleSeen[$ref];
-                $blocks[$index]['items'][] = $entry;
-                $blocks[$index]['total']   = round($blocks[$index]['total'] + $gross, 2);
+                $blocks[$index]['total'] = round($blocks[$index]['total'] + $gross, 2);
+
+                // Bestandteile je Artikel addieren. Der Preis-Verteiler splittet
+                // eine Position in mehrere Zeilen, damit Menge × Einzelpreis
+                // exakt aufgeht – bei 3 Bier zu 16,61 € etwa 2 × 5,54 € plus
+                // 1 × 5,53 €. Auf einem Beleg liest sich das, als koste
+                // dasselbe Bier unterschiedlich viel.
+                $teilKey = (int) $item->menu_item_id;
+
+                if (! isset($blocks[$index]['items'][$teilKey])) {
+                    $blocks[$index]['items'][$teilKey] = [
+                        'name'     => $entry['name'],
+                        'quantity' => 0,
+                        // Bewusst KEIN Einzelpreis: Er ist ein interner
+                        // Aufteilungswert, den der Gast nie gesehen hat, und
+                        // Menge × Einzelpreis ginge nach dem Zusammenfassen
+                        // nicht mehr auf. Gekauft wurde das Bundle.
+                        'tax_rate' => $rate,
+                        'total'    => 0.0,
+                    ];
+                }
+
+                $blocks[$index]['items'][$teilKey]['quantity'] += (int) $item->quantity;
+                $blocks[$index]['items'][$teilKey]['total'] = round(
+                    $blocks[$index]['items'][$teilKey]['total'] + $gross,
+                    2
+                );
             }
+
+            foreach ($blocks as &$block) {
+                if (($block['type'] ?? 'item') === 'bundle') {
+                    $block['items'] = array_values($block['items']);
+                }
+            }
+            unset($block);
 
             $groups[] = [
                 'slot'   => $booking->slot?->displayLabel() ?? ($booking->slot?->name ?? 'Pause'),
@@ -165,7 +205,7 @@ class OrderReceiptController
             'order'       => $order,
             'issuer'      => $settings->issuer(),
             'branding'    => $settings->receiptBranding(),
-            'lines'       => $lines,
+            'lines'       => array_values($lines),
             'groups'      => $groups,
             'vat'         => $vat,
             'total_net'   => $totalNet,
