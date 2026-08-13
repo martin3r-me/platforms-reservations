@@ -31,7 +31,8 @@ class BookingItemsPresenter
      * @param  iterable<\Platform\Reservation\Models\BookingItem>  $items
      * @return array<int, array{
      *     name: string, quantity: int, unit_price: ?float, tax_rate: ?float,
-     *     total: float, is_bundle: bool, contents: array<string, int>
+     *     total: float, is_bundle: bool, contents: array<string, int>,
+     *     notes: array<int, string>
      * }>
      */
     public static function blocks(iterable $items): array
@@ -53,6 +54,9 @@ class BookingItemsPresenter
                     'total'      => $gross,
                     'is_bundle'  => false,
                     'contents'   => [],
+                    // Gast-Hinweise zur Position ("ohne Zwiebeln") – die
+                    // brauchen Küche und Service.
+                    'notes'      => array_filter([$item->notes]),
                 ];
 
                 continue;
@@ -72,12 +76,18 @@ class BookingItemsPresenter
                     'total'      => 0.0,
                     'is_bundle'  => true,
                     'contents'   => [],
+                    // Hinweise an Bestandteilen laufen im Bundle zusammen.
+                    'notes'      => [],
                 ];
             }
 
             $index = $gesehen[$ref];
             $out[$index]['total'] = round($out[$index]['total'] + $gross, 2);
             $out[$index]['contents'][$name] = ($out[$index]['contents'][$name] ?? 0) + (int) $item->quantity;
+
+            if (filled($item->notes) && ! in_array($item->notes, $out[$index]['notes'], true)) {
+                $out[$index]['notes'][] = $item->notes;
+            }
         }
 
         return $out;

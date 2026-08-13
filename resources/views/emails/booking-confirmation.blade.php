@@ -60,13 +60,18 @@
                             {{-- Positionen --}}
                             @if ($booking->items->isNotEmpty())
                                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px; border-top:1px solid #e5e7eb;">
-                                    @foreach ($booking->items as $item)
+                                    {{-- Ein Bundle ist EINE Position mit Bundle-Preis; darunter
+                                         sein Inhalt, ohne Einzelbetraege. --}}
+                                    @foreach (\Platform\Reservation\Support\BookingItemsPresenter::blocks($booking->items) as $block)
                                         <tr>
                                             <td style="padding:8px 0; border-bottom:1px solid #f3f4f6;">
-                                                {{ $item->quantity }}× {{ $item->menuItem?->name ?? 'Produkt' }}
+                                                {{ $block['quantity'] }}× {{ $block['name'] }}
+                                                @if ($block['is_bundle'] && $block['contents'])
+                                                    <div style="color:#6b7280; font-size:12px;">{{ \Platform\Reservation\Support\BookingItemsPresenter::contentsLabel($block['contents']) }}</div>
+                                                @endif
                                             </td>
                                             <td style="padding:8px 0; border-bottom:1px solid #f3f4f6; text-align:right; white-space:nowrap;">
-                                                {{ $fmt($item->quantity * $item->unit_price) }}
+                                                {{ $fmt($block['total']) }}
                                             </td>
                                         </tr>
                                     @endforeach

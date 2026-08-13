@@ -62,10 +62,18 @@
                                 </div>
                                 @if ($booking->items->isNotEmpty())
                                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
-                                        @foreach ($booking->items as $item)
+                                        {{-- Ein Bundle ist EINE Position mit Bundle-Preis; darunter
+                                             sein Inhalt. Ohne das staenden hier die internen
+                                             Aufteilungsbetraege, die der Gast nie gesehen hat. --}}
+                                        @foreach (\Platform\Reservation\Support\BookingItemsPresenter::blocks($booking->items) as $block)
                                             <tr>
-                                                <td style="padding:6px 0; border-bottom:1px solid #f3f4f6;">{{ $item->quantity }}× {{ $item->menuItem?->name ?? 'Produkt' }}</td>
-                                                <td style="padding:6px 0; border-bottom:1px solid #f3f4f6; text-align:right; white-space:nowrap;">{{ $fmt($item->quantity * $item->unit_price) }}</td>
+                                                <td style="padding:6px 0; border-bottom:1px solid #f3f4f6;">
+                                                    {{ $block['quantity'] }}× {{ $block['name'] }}
+                                                    @if ($block['is_bundle'] && $block['contents'])
+                                                        <div style="color:#6b7280; font-size:12px;">{{ \Platform\Reservation\Support\BookingItemsPresenter::contentsLabel($block['contents']) }}</div>
+                                                    @endif
+                                                </td>
+                                                <td style="padding:6px 0; border-bottom:1px solid #f3f4f6; text-align:right; white-space:nowrap;">{{ $fmt($block['total']) }}</td>
                                             </tr>
                                         @endforeach
                                     </table>

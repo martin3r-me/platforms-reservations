@@ -48,7 +48,7 @@ class BookingConfirmationMailer
             return ['status' => 'no_channel', 'message' => 'Kein aktiver Email-Channel im CRM gefunden.'];
         }
 
-        $booking->loadMissing(['event', 'slot', 'table', 'items.menuItem']);
+        $booking->loadMissing(['event', 'slot', 'table', 'items.menuItem', 'items.bundleMenuItem']);
 
         $subject  = 'Ihre Bestellung – ' . ($booking->event?->name ?? 'PausePlus');
         $htmlBody = view('reservation::emails.booking-confirmation', [

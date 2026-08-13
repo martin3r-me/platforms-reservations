@@ -206,6 +206,9 @@
                                                 {{ \Platform\Reservation\Support\BookingItemsPresenter::contentsLabel($block['contents']) }}
                                             </p>
                                         @endif
+                                        @foreach ($block['notes'] as $note)
+                                            <p class="m-0 text-xs text-[color:var(--nx-muted)]">{{ $note }}</p>
+                                        @endforeach
                                     </div>
                                     <div class="shrink-0 text-right">
                                         <span class="whitespace-nowrap tabular-nums text-[color:var(--nx-text)]">{{ number_format($block['total'], 2, ',', '.') }} €</span>

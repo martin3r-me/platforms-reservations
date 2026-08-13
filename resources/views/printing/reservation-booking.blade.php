@@ -114,12 +114,21 @@
 {{ $line }}
 {{ str_pad('ARTIKEL', 12) }}
 {{ $line }}
-@forelse($printable->items as $item)
-@php $right = $money($item->unit_price * $item->quantity) . ' ' . $sym . ' ' . $letterFor($item->tax_rate); @endphp
-{{ $row($item->quantity . 'x ' . ($item->menuItem?->name ?? 'Artikel'), $right) }}
-@if($item->notes)
-   > {{ Str::limit($item->notes, $width - 5) }}
+@php
+    // Ein Bundle als EINE Zeile mit Bundle-Preis; der Inhalt darunter ohne
+    // Betraege. Die Rohpositionen wuerden die interne Aufteilung zeigen –
+    // bei drei Bier etwa "2x BIER 11,08" und "1x BIER 5,53".
+    $blocks = \Platform\Reservation\Support\BookingItemsPresenter::blocks($printable->items);
+@endphp
+@forelse($blocks as $block)
+@php $right = $money($block['total']) . ' ' . $sym . ($block['is_bundle'] ? '' : ' ' . $letterFor($block['tax_rate'])); @endphp
+{{ $row($block['quantity'] . 'x ' . $block['name'], $right) }}
+@if($block['is_bundle'] && $block['contents'])
+   {{ Str::limit(\Platform\Reservation\Support\BookingItemsPresenter::contentsLabel($block['contents']), $width - 4) }}
 @endif
+@foreach($block['notes'] as $note)
+   > {{ Str::limit($note, $width - 5) }}
+@endforeach
 @empty
 {{ 'Keine Vorbestellung - nur Tischreservierung' }}
 @endforelse
