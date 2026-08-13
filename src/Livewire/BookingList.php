@@ -7,6 +7,7 @@ use Livewire\Attributes\Computed;
 use Livewire\WithPagination;
 use Platform\Reservation\Models\Booking;
 use Illuminate\Support\Facades\Auth;
+use Platform\Reservation\Support\BookingItemsPresenter;
 
 class BookingList extends Component
 {
@@ -101,7 +102,7 @@ class BookingList extends Component
             return;
         }
 
-        $booking = Booking::with(['items.menuItem', 'table.floorPlan', 'event', 'slot'])
+        $booking = Booking::with(['items.menuItem', 'items.bundleMenuItem', 'table.floorPlan', 'event', 'slot'])
             ->where('team_id', Auth::user()?->current_team_id)
             ->find($this->printBookingId);
 
@@ -158,7 +159,7 @@ class BookingList extends Component
             return null;
         }
 
-        return Booking::with(['items.menuItem', 'table.floorPlan.venue', 'event', 'slot', 'order.payment'])
+        return Booking::with(['items.menuItem', 'items.bundleMenuItem', 'table.floorPlan.venue', 'event', 'slot', 'order.payment'])
             ->where('team_id', Auth::user()?->current_team_id)
             ->find($this->detailBookingId);
     }
@@ -191,6 +192,23 @@ class BookingList extends Component
     {
         Booking::findOrFail($bookingId)->update(['status' => Booking::STATUS_COMPLETED]);
         unset($this->bookings);
+    }
+
+    /**
+     * Positionen der geöffneten Buchung für die Anzeige.
+     *
+     * Über denselben Presenter wie Beleg und Gast-API: Ein Bundle ist EIN
+     * Posten mit Bundle-Preis, darunter sein Inhalt. Ohne das stünden hier die
+     * internen Aufteilungsbeträge – bei drei Bier etwa "2× BIER à 5,54 €" und
+     * "1× BIER à 5,53 €", was aussieht, als koste dasselbe Bier verschieden viel.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function detailBlocks(): array
+    {
+        $booking = $this->detailBooking;
+
+        return $booking ? BookingItemsPresenter::blocks($booking->items) : [];
     }
 
     public function render()

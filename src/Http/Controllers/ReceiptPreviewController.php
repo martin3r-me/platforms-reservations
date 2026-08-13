@@ -109,7 +109,7 @@ class ReceiptPreviewController
             // Flache Liste (Bewirtungsbeleg): Einzelartikel, dann das Bundle als
             // EINE Position mit Inhalt statt Einzelbeträgen – wie im echten Beleg.
             'lines'       => array_merge(
-                array_map(fn ($l) => $l + ['contents' => null], $items),
+                array_map(fn ($l) => $l + ['contents' => [], 'is_bundle' => false], $items),
                 [[
                     'name'     => 'Brezel + Bier',
                     'quantity' => 1,
@@ -124,9 +124,9 @@ class ReceiptPreviewController
                 'table'  => 'Stehtisch 1',
                 'room'   => 'Saal',
                 'blocks' => array_merge(
-                    array_map(fn ($l) => ['type' => 'item'] + $l, $items),
+                    array_map(fn ($l) => $l + ['is_bundle' => false, 'contents' => []], $items),
                     [[
-                        'type'     => 'bundle',
+                        'is_bundle' => true,
                         'name'     => 'Brezel + Bier',
                         'quantity' => 1,
                         'total'    => $bundleTotal,

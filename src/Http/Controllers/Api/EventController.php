@@ -15,6 +15,7 @@ use Platform\Reservation\Models\Order;
 use Platform\Reservation\Models\SalesList;
 use Platform\Reservation\Models\Translation;
 use Platform\Reservation\Services\CartCalculator;
+use Platform\Reservation\Support\BookingItemsPresenter;
 use Platform\Reservation\Services\GuestOrderService;
 use Platform\Reservation\Support\Vat;
 use Platform\Reservation\Services\SeatAvailabilityService;
@@ -518,106 +519,15 @@ class EventController extends ApiController
     /**
      * Positionen einer Buchung für die Anzeige – Bundles als EIN Posten.
      *
-     * Beim Bestellen zerfällt ein Bundle in seine Bestandteile, damit MwSt,
-     * Allergene und Standzeiten stimmen. Für den Gast ist das aber die falsche
-     * Sicht: Er hat "Brezel + Bier" für 5,90 € gekauft, nicht eine Brezel für
-     * 2,20 € und ein Bier für 3,70 € – diese Beträge sind interne Aufteilungs-
-     * werte, die er nie gesehen hat.
-     *
-     * Positionen mit gleicher bundle_ref werden deshalb zu einer Zeile
-     * zusammengefasst; die Bestandteile hängen als components darunter, falls
-     * das Frontend sie zeigen möchte.
-     *
-     * Einzelartikel bleiben unverändert – Reihenfolge und Felder wie bisher,
-     * nur is_bundle und components kommen hinzu (additiv).
+     * Delegiert an BookingItemsPresenter, damit Beleg, Gast-API und die
+     * Buchungsansicht im Backoffice dieselbe Darstellung zeigen.
      *
      * @param  \Illuminate\Support\Collection<int, \Platform\Reservation\Models\BookingItem>  $items
      * @return array<int, array<string, mixed>>
      */
     protected function formatBookingItems($items): array
     {
-        $out    = [];
-        $gesehen = [];   // bundle_ref => Index in $out
-
-        foreach ($items as $i) {
-            $gross = round((float) $i->unit_price * $i->quantity, 2);
-
-            $eintrag = [
-                'name'       => $i->menuItem?->name,
-                'quantity'   => $i->quantity,
-                'unit_price' => round((float) $i->unit_price, 2),
-                'tax_rate'   => round((float) $i->tax_rate, 2),
-                'total'      => $gross,
-            ];
-
-            $ref = $i->bundle_ref;
-
-            if ($ref === null) {
-                $out[] = $eintrag + ['is_bundle' => false, 'components' => []];
-
-                continue;
-            }
-
-            if (! isset($gesehen[$ref])) {
-                $gesehen[$ref] = count($out);
-                $out[] = [
-                    'name' => $i->bundleMenuItem?->name ?? 'Bundle',
-                    // Aus Bestellungen vor Einführung der Spalte kann die Menge
-                    // fehlen (die Migration trägt nach, wo es aufgeht); dann 1.
-                    'quantity'   => max(1, (int) ($i->bundle_quantity ?? 1)),
-                    'unit_price' => 0.0,
-                    // Ein Bundle hat keinen einzelnen Steuersatz – seine
-                    // Bestandteile haben verschiedene. null statt einer Zahl,
-                    // die es nicht gibt.
-                    'tax_rate'   => null,
-                    'total'      => 0.0,
-                    'is_bundle'  => true,
-                    'components' => [],
-                ];
-            }
-
-            $index = $gesehen[$ref];
-            $out[$index]['total'] = round($out[$index]['total'] + $gross, 2);
-
-            // Bestandteile je Artikel zusammenfassen. Der Preis-Verteiler splittet
-            // eine Position in mehrere Zeilen, damit Menge × Einzelpreis exakt
-            // aufgeht (etwa 5 × 3,20 € plus 1 × 3,19 €). Fuer den Gast sieht
-            // derselbe Artikel zweimal untereinander nach einem Fehler aus.
-            $key = (int) $i->menu_item_id;
-
-            if (! isset($out[$index]['components'][$key])) {
-                $out[$index]['components'][$key] = array_merge($eintrag, ['quantity' => 0, 'total' => 0.0]);
-            }
-
-            $out[$index]['components'][$key]['quantity'] += $i->quantity;
-            $out[$index]['components'][$key]['total']     = round(
-                $out[$index]['components'][$key]['total'] + $gross,
-                2
-            );
-        }
-
-        foreach ($out as &$zeile) {
-            if (! $zeile['is_bundle']) {
-                continue;
-            }
-
-            if ($zeile['quantity'] > 0) {
-                $zeile['unit_price'] = round($zeile['total'] / $zeile['quantity'], 2);
-            }
-
-            foreach ($zeile['components'] as &$teil) {
-                // Nach dem Zusammenfassen ist der Einzelpreis ein Mittelwert der
-                // gesplitteten Zeilen. Massgeblich ist die Summe.
-                $teil['unit_price'] = $teil['quantity'] > 0
-                    ? round($teil['total'] / $teil['quantity'], 2)
-                    : 0.0;
-            }
-            unset($teil);
-
-            $zeile['components'] = array_values($zeile['components']);
-        }
-
-        return $out;
+        return BookingItemsPresenter::blocks($items);
     }
 
     /**

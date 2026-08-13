@@ -190,22 +190,32 @@
                 @else
                     <section class="overflow-hidden rounded-[8px] border border-[color:var(--nx-line)]">
                         <div class="divide-y divide-[color:var(--nx-line)]">
-                            @foreach ($detail->items as $item)
-                                <div wire:key="detail-item-{{ $item->id }}" class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                            {{-- Ein Bundle ist EINE Position mit seinem Preis, darunter der
+                                 Inhalt. Ohne die Aufbereitung stuenden hier die internen
+                                 Aufteilungsbetraege: "2× BIER à 5,54 €" und "1× BIER à 5,53 €"
+                                 fuer dieselben drei Biere. --}}
+                            @foreach ($this->detailBlocks() as $block)
+                                <div wire:key="detail-block-{{ $loop->index }}" class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                                     <div class="min-w-0">
                                         <span class="text-[color:var(--nx-text)]">
-                                            <span class="font-semibold tabular-nums">{{ $item->quantity }}×</span>
-                                            {{ $item->menuItem?->name ?? 'Gelöschter Artikel' }}
+                                            <span class="font-semibold tabular-nums">{{ $block['quantity'] }}×</span>
+                                            {{ $block['name'] }}
                                         </span>
-                                        @if ($item->notes)
-                                            <p class="m-0 text-xs text-[color:var(--nx-muted)]">{{ $item->notes }}</p>
+                                        @if ($block['is_bundle'] && $block['contents'])
+                                            <p class="m-0 text-xs text-[color:var(--nx-muted)]">
+                                                {{ \Platform\Reservation\Support\BookingItemsPresenter::contentsLabel($block['contents']) }}
+                                            </p>
                                         @endif
                                     </div>
                                     <div class="shrink-0 text-right">
-                                        <span class="whitespace-nowrap tabular-nums text-[color:var(--nx-text)]">{{ number_format($item->quantity * $item->unit_price, 2, ',', '.') }} €</span>
-                                        <span class="block text-[11px] tabular-nums text-[color:var(--nx-muted)]">
-                                            à {{ number_format($item->unit_price, 2, ',', '.') }} € · {{ rtrim(rtrim($item->tax_rate, '0'), '.') }} %
-                                        </span>
+                                        <span class="whitespace-nowrap tabular-nums text-[color:var(--nx-text)]">{{ number_format($block['total'], 2, ',', '.') }} €</span>
+                                        {{-- Beim Bundle kein Einzelpreis und kein Steuersatz:
+                                             Es hat weder einen sinnvollen Einzelpreis noch EINEN Satz. --}}
+                                        @unless ($block['is_bundle'])
+                                            <span class="block text-[11px] tabular-nums text-[color:var(--nx-muted)]">
+                                                à {{ number_format($block['unit_price'], 2, ',', '.') }} € · {{ rtrim(rtrim(number_format($block['tax_rate'], 2, '.', ''), '0'), '.') }} %
+                                            </span>
+                                        @endunless
                                     </div>
                                 </div>
                             @endforeach

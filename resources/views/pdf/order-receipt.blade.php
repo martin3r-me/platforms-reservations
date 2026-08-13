@@ -78,7 +78,7 @@
                     </td>
                 </tr>
                 @foreach ($g['blocks'] as $block)
-                    @if (($block['type'] ?? 'item') === 'bundle')
+                    @if (! empty($block['is_bundle']))
                         {{-- Ein Bundle ist EINE Position: Bundle-Preis und was drin ist.
                              Keine Einzelbeträge je Bestandteil – die entstehen erst durch
                              die interne Aufteilung und ergeben krumme oder ungleiche Werte
