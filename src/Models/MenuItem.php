@@ -10,6 +10,7 @@ use Platform\Core\Models\User;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Platform\Reservation\Models\Concerns\HasContextImage;
 use Platform\Reservation\Models\Concerns\HasTranslations;
+use Platform\Reservation\Support\BundlePriceAllocator;
 
 class MenuItem extends Model
 {
@@ -145,6 +146,74 @@ class MenuItem extends Model
      * Was die Bestandteile einzeln kosten würden – Grundlage für „statt 8,40 €".
      * null bei Einzelartikeln.
      */
+    /**
+     * Brutto-Anteile EINER Bundle-Einheit je Steuersatz.
+     *
+     * Ein Bundle hat keinen eigenen Steuersatz – seine Bestandteile haben
+     * verschiedene. Wer das Bundle nur mit dessen tax_rate-Spalte verrechnet,
+     * weist die MwSt falsch aus (die Spalte ist beim Bundle bedeutungslos).
+     *
+     * Damit das Gast-Frontend die Vorschau vor der Bestellung korrekt zeigen
+     * kann, ohne die cent-genaue Verteilung nachzubauen, liefern wir die
+     * fertige Aufteilung mit. Der Aufrufer multipliziert nur noch mit der Menge.
+     *
+     * ACHTUNG: Das ist eine VORSCHAU für eine Einheit. Die endgültige Aufteilung
+     * einer Bestellung macht CartCalculator::explodedLines() über die tatsächliche
+     * Menge; bei Mengen > 1 kann sie um einen Cent abweichen, weil dort Positionen
+     * gesplittet werden. Für die Anzeige im Warenkorb ist das gewollt – für den
+     * Beleg zählt allein die Rechnung im Checkout.
+     *
+     * @return array<int, array{tax_rate: float, gross: float}>  absteigend nach Satz
+     */
+    public function bundleTaxShares(): array
+    {
+        if (! $this->isBundle()) {
+            return [];
+        }
+
+        $components = $this->components;
+
+        if ($components->isEmpty()) {
+            return [];
+        }
+
+        $toCents = fn ($v) => (int) round((float) $v * 100);
+
+        $allocation = BundlePriceAllocator::allocate(
+            $toCents($this->price),
+            $components->map(fn (self $c) => [
+                'key'              => $c->id,
+                'list_price_cents' => $toCents($c->price),
+                'quantity'         => max(1, (int) ($c->pivot->quantity ?? 1)),
+            ])->all(),
+            1,
+        );
+
+        $byId        = $components->keyBy('id');
+        $grossByRate = [];
+
+        foreach ($allocation as $row) {
+            $component = $byId->get($row['key']);
+
+            if (! $component) {
+                continue;
+            }
+
+            $rate = (string) (float) $component->tax_rate;
+            $grossByRate[$rate] = ($grossByRate[$rate] ?? 0) + $row['quantity'] * $row['unit_price_cents'];
+        }
+
+        krsort($grossByRate, SORT_NUMERIC); // 19 % vor 7 %, wie in der MwSt-Aufstellung
+
+        $shares = [];
+
+        foreach ($grossByRate as $rate => $cents) {
+            $shares[] = ['tax_rate' => (float) $rate, 'gross' => round($cents / 100, 2)];
+        }
+
+        return $shares;
+    }
+
     public function bundleReferencePrice(): ?float
     {
         if (! $this->isBundle()) {

@@ -658,6 +658,10 @@ class EventController extends ApiController
                 ])->values()
                 : [],
             'reference_price'  => $item->bundleReferencePrice(),
+            // Brutto je Steuersatz für EINE Einheit. Ohne das könnte das
+            // Frontend die MwSt eines Bundles nicht ausweisen – dessen eigene
+            // tax_rate ist bedeutungslos, die Sätze haengen an den Bestandteilen.
+            'vat_shares'       => $item->bundleTaxShares(),
             'allergens'        => $item->effectiveAllergens()->pluck('code')->values(),
             'additives'        => $item->effectiveAdditives()->pluck('code')->values(),
             'image_url'        => $item->image_context_file_id ? $item->imageUrl('medium_1_1') : null,
