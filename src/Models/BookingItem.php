@@ -26,6 +26,10 @@ class BookingItem extends Model
         // Gruppiert die Positionen EINER Bundle-Instanz; leer bei Einzelartikeln.
         'bundle_ref',
         'bundle_menu_item_id',
+        // Anzahl der bestellten Bundles. Eingefroren wie Preis und Steuersatz –
+        // aus den Bestandteilen abgeleitet waere sie falsch, sobald jemand das
+        // Bundle spaeter aendert.
+        'bundle_quantity',
         'quantity',
         'unit_price',
         'tax_rate',
@@ -33,7 +37,8 @@ class BookingItem extends Model
     ];
 
     protected $casts = [
-        'quantity'   => 'integer',
+        'quantity'        => 'integer',
+        'bundle_quantity' => 'integer',
         'unit_price' => 'decimal:2',
         'tax_rate'   => 'decimal:2',
     ];

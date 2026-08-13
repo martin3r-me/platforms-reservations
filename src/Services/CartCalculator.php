@@ -129,7 +129,7 @@ class CartCalculator
      * entspricht (siehe BundlePriceAllocator).
      *
      * @param  Collection<int, array{item: MenuItem, quantity: int, total: float}>  $lines
-     * @return Collection<int, array{item: MenuItem, quantity: int, unit_price_cents: int, tax_rate: float, bundle_ref: ?string, bundle_item: ?MenuItem}>
+     * @return Collection<int, array{item: MenuItem, quantity: int, unit_price_cents: int, tax_rate: float, bundle_ref: ?string, bundle_item: ?MenuItem, bundle_quantity: ?int}>
      */
     public function explodedLines(Collection $lines): Collection
     {
@@ -148,6 +148,7 @@ class CartCalculator
                     'tax_rate'         => (float) $item->tax_rate,
                     'bundle_ref'       => null,
                     'bundle_item'      => null,
+                    'bundle_quantity'  => null,
                 ]);
 
                 continue;
@@ -189,6 +190,9 @@ class CartCalculator
                     'tax_rate'         => (float) $component->tax_rate,
                     'bundle_ref'       => $ref,
                     'bundle_item'      => $item,
+                    // Wie viele Bundles – steht sonst nirgends. bundle_ref
+                    // gruppiert die Zeilen, zaehlt sie aber nicht.
+                    'bundle_quantity'  => $quantity,
                 ]);
             }
         }
@@ -269,7 +273,7 @@ class CartCalculator
     /**
      * Einfrier-Attribute für reservation_booking_items (Preis/Steuer aus der DB).
      *
-     * @return array<int, array{menu_item_id: int, quantity: int, unit_price: mixed, tax_rate: mixed}>
+     * @return array<int, array{menu_item_id: int, quantity: int, unit_price: mixed, tax_rate: mixed, bundle_ref: ?string, bundle_menu_item_id: ?int, bundle_quantity: ?int}>
      */
     public function frozenItemAttributes(Collection $lines): array
     {
@@ -283,6 +287,7 @@ class CartCalculator
             'tax_rate'            => $line['tax_rate'],                          // Steuersatz einfrieren
             'bundle_ref'          => $line['bundle_ref'],
             'bundle_menu_item_id' => $line['bundle_item']?->id,
+            'bundle_quantity'     => $line['bundle_quantity'],   // Menge einfrieren
         ])->all();
     }
 }
