@@ -9,9 +9,21 @@
             ['label' => 'Veranstaltungen', 'href' => route('reservation.operations.index')],
             ['label' => $this->event->name],
         ]">
+            {{-- Am Knopf ablesbar, ob schon ein Zugang besteht – sonst muesste man
+                 den Dialog oeffnen, um es herauszufinden. Punktfarbe per style
+                 statt Utility-Klasse: haengt so nicht am CSS-Build. --}}
+            @php $zugang = $this->event; @endphp
             <x-nx-button wire:click="openShareModal()">
-                @svg('heroicon-o-link', 'w-4 h-4')
-                <span>Zugang für Veranstaltungsleitung</span>
+                @if ($zugang->shareIsActive())
+                    <span class="h-2 w-2 rounded-full" style="background: var(--nx-success)"></span>
+                    <span>Zugang aktiv · bis {{ $zugang->shareExpiresAt()?->format('d.m.') }}</span>
+                @elseif ($zugang->share_token)
+                    <span class="h-2 w-2 rounded-full" style="background: var(--nx-faint)"></span>
+                    <span>Zugang abgelaufen</span>
+                @else
+                    @svg('heroicon-o-link', 'w-4 h-4')
+                    <span>Zugang für Veranstaltungsleitung</span>
+                @endif
             </x-nx-button>
         </x-ui-page-actionbar>
     </x-slot>
