@@ -29,8 +29,10 @@
                     Sie haben die PIN zusammen mit diesem Link erhalten.
                 </p>
 
-                <form wire:submit="submitPin" class="mt-5 flex flex-wrap items-start gap-3">
-                    <div>
+                {{-- Fehlermeldung UNTER der Zeile, nicht darin: Sonst wuerde sie die
+                     senkrechte Ausrichtung von Feld und Knopf verschieben. --}}
+                <form wire:submit="submitPin" class="mt-5">
+                    <div class="flex flex-wrap items-center gap-3">
                         <input
                             type="text"
                             wire:model="pin"
@@ -40,16 +42,16 @@
                             placeholder="000000"
                             class="w-40 rounded-lg border border-gray-300 px-4 py-2.5 text-center text-lg tracking-[0.3em] tabular-nums dark:border-gray-700 dark:bg-gray-950 dark:text-white"
                         >
-                        @if ($pinError)
-                            <p class="m-0 mt-2 text-sm text-red-600">{{ $pinError }}</p>
-                        @endif
+                        <button
+                            type="submit"
+                            class="rounded-lg bg-gray-900 px-5 py-3 text-base font-medium text-white hover:bg-gray-700 dark:bg-white dark:text-gray-900"
+                        >
+                            Öffnen
+                        </button>
                     </div>
-                    <button
-                        type="submit"
-                        class="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-700 dark:bg-white dark:text-gray-900"
-                    >
-                        Öffnen
-                    </button>
+                    @if ($pinError)
+                        <p class="m-0 mt-2 text-sm text-red-600">{{ $pinError }}</p>
+                    @endif
                 </form>
             </div>
         @else

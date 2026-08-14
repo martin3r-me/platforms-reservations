@@ -182,25 +182,42 @@
 
         @php $event = $this->event; @endphp
 
-        <div class="space-y-4 text-sm">
+        {{-- Kein space-y: ui.css markiert alle Margin-Klassen !important und
+             haengt damit Tailwinds space-y aus. Abstaende einzeln setzen. --}}
+        <div class="text-sm">
             <p class="m-0 text-[color:var(--nx-muted)]">
                 Ein Link ohne Konto, der nur <strong>Küche</strong> und <strong>Laufzettel</strong>
                 dieser Veranstaltung zeigt – rein lesend. Zusätzlich gesichert durch eine PIN.
             </p>
 
             @if ($freshPin)
+                <div class="mt-4">
                 <x-nx-callout variant="warning">
                     <div class="font-semibold">PIN: <span class="tabular-nums tracking-[0.2em]">{{ $freshPin }}</span></div>
                     Bitte jetzt notieren – sie wird nur gehasht gespeichert und lässt sich später
                     nicht mehr anzeigen. Schicken Sie die PIN getrennt vom Link, etwa per Telefon.
                 </x-nx-callout>
+                </div>
             @endif
 
             @if ($event->shareIsActive())
-                <div>
+                <div class="mt-4">
                     <div class="mb-1 text-xs uppercase tracking-wide text-[color:var(--nx-muted)]">Link</div>
-                    <div class="break-all rounded-[6px] bg-[color:var(--nx-hover)] px-3 py-2 text-[12px] text-[color:var(--nx-text)]">
-                        {{ $event->shareUrl() }}
+                    {{-- Ganze Flaeche klickbar: Den Link von Hand zu markieren ist
+                         fehleranfaellig, er ist lang und bricht ueber zwei Zeilen. --}}
+                    <div
+                        x-data="{ copied: false }"
+                        x-on:click="navigator.clipboard.writeText('{{ $event->shareUrl() }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                        title="Link kopieren"
+                        class="flex cursor-pointer items-start gap-2 rounded-[6px] bg-[color:var(--nx-hover)] px-3 py-2 transition-colors hover:bg-[color:var(--nx-active)]"
+                    >
+                        <span class="min-w-0 flex-1 break-all text-[12px] text-[color:var(--nx-text)]">{{ $event->shareUrl() }}</span>
+                        <template x-if="!copied">
+                            <span class="shrink-0 text-[color:var(--nx-muted)]">@svg('heroicon-o-clipboard-document', 'w-4 h-4')</span>
+                        </template>
+                        <template x-if="copied">
+                            <span class="shrink-0 text-[color:var(--nx-success)]">@svg('heroicon-o-check', 'w-4 h-4')</span>
+                        </template>
                     </div>
                     <p class="m-0 mt-2 text-xs text-[color:var(--nx-muted)]">
                         Gültig bis {{ $event->shareExpiresAt()?->format('d.m.Y') }} ·
@@ -209,7 +226,7 @@
                 </div>
 
                 @if ($this->shareAccesses->isNotEmpty())
-                    <div>
+                    <div class="mt-4">
                         <div class="mb-1 text-xs uppercase tracking-wide text-[color:var(--nx-muted)]">Letzte PIN-Eingaben</div>
                         <div class="divide-y divide-[color:var(--nx-line)] rounded-[6px] border border-[color:var(--nx-line)]">
                             @foreach ($this->shareAccesses as $zugriff)
@@ -224,12 +241,14 @@
                     </div>
                 @endif
             @elseif ($event->share_token)
+                <div class="mt-4">
                 <x-nx-callout variant="neutral">
                     Der Link ist abgelaufen (die Veranstaltung liegt zurück). Ein neuer lässt sich
                     jederzeit erzeugen.
                 </x-nx-callout>
+                </div>
             @else
-                <p class="m-0 text-[color:var(--nx-muted)]">Bisher ist kein Zugang eingerichtet.</p>
+                <p class="m-0 mt-4 text-[color:var(--nx-muted)]">Bisher ist kein Zugang eingerichtet.</p>
             @endif
         </div>
 
