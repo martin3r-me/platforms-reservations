@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Platform\Reservation\Livewire\Guest\EventPlan;
 use Platform\Reservation\Livewire\Guest\OrderCancel;
 use Platform\Reservation\Livewire\Guest\PaymentReturn;
 
@@ -24,6 +25,15 @@ Route::get('/brand/hero', [\Platform\Reservation\Http\Controllers\BrandAssetCont
 // Fallback-Landing, falls beim Anlegen keine redirect_url (Gast-Frontend) übergeben
 // wurde; normal übernimmt die Payment-Return-Seite die Gast-Subdomain.
 Route::get('/payment/return/{uuid}', PaymentReturn::class)->name('reservation.guest.payment.return');
+
+// Kueche + Laufzettel einer Veranstaltung fuer Veranstaltungsleiter, ohne Konto.
+// Der Token im Pfad ist der Schluessel, eine PIN die zweite Huerde; gueltig bis
+// zum Tag nach der Veranstaltung. Bewusst OHNE Buchungsliste – die enthaelt
+// Namen und E-Mail-Adressen, und ein Link wandert per Weiterleitung weiter.
+// Gedrosselt, weil eine sechsstellige PIN sonst durchprobierbar waere.
+Route::get('/veranstaltung/{uuid}/plan/{token}', EventPlan::class)
+    ->middleware('throttle:60,1')
+    ->name('reservation.guest.event.plan');
 
 // Selbst-Storno per signiertem Link aus der Bestätigungs-Mail
 Route::get('/order/{uuid}/cancel', OrderCancel::class)

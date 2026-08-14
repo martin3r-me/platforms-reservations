@@ -6,10 +6,8 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
-use Platform\Reservation\Models\Booking;
-use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\Event;
-use Platform\Reservation\Models\MenuItem;
+use Platform\Reservation\Services\KitchenPrepService;
 
 /**
  * Küchen-Übersicht: Gesamtbestellungen eines Termins, aufgeschlüsselt
@@ -37,90 +35,24 @@ class EventOrders extends Component
     }
 
     /**
-     * Vorbereitungsplan je Pause, gruppiert nach Standzeit-Klasse (Timing):
-     * pro Gruppe die aggregierten Mengen je Artikel + „Zubereiten ab"-Zeit
-     * (Pausenbeginn − Vorlaufzeit). Zeitlich egal/vorab zuerst, dann nach Zeit.
+     * Vorbereitungsplan je Pause – aus KitchenPrepService.
+     *
+     * Die Rechnung liegt im Service, weil der Freigabe-Link für
+     * Veranstaltungsleiter dieselbe Ansicht ohne Anmeldung braucht.
      *
      * @return \Illuminate\Support\Collection<int, array{slot: mixed, total: int, groups: \Illuminate\Support\Collection}>
      */
     #[Computed]
     public function prepBySlot(): \Illuminate\Support\Collection
     {
-        $rows = BookingItem::query()
-            ->join('reservation_bookings as b', 'b.id', '=', 'reservation_booking_items.booking_id')
-            ->where('b.event_id', $this->eventId)
-            ->whereNotIn('b.status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
-            ->groupBy('reservation_booking_items.menu_item_id', 'b.event_slot_id')
-            ->selectRaw('reservation_booking_items.menu_item_id as item_id, b.event_slot_id as slot_id, SUM(reservation_booking_items.quantity) as qty')
-            ->get();
-
-        if ($rows->isEmpty()) {
-            return collect();
-        }
-
-        $items = MenuItem::with('holdingClass')
-            ->whereIn('id', $rows->pluck('item_id')->unique())
-            ->get()
-            ->keyBy('id');
-
-        return $this->event->slots
-            ->sortBy(fn ($s) => (string) $s->time_start)
-            ->map(function ($slot) use ($rows, $items) {
-                $slotRows = $rows->where('slot_id', $slot->id);
-
-                $groups = $slotRows
-                    ->groupBy(fn ($r) => $items[$r->item_id]?->holding_class_id ?? 0)
-                    ->map(function ($grp) use ($items, $slot) {
-                        $hc   = $items[$grp->first()->item_id]?->holdingClass;
-                        $lead = $hc?->lead_time_minutes;
-                        $target = ($lead !== null && $slot->time_start)
-                            ? \Carbon\Carbon::createFromFormat('H:i', substr((string) $slot->time_start, 0, 5))->subMinutes((int) $lead)->format('H:i')
-                            : null;
-
-                        return [
-                            'name'        => $hc?->name ?? 'Zeitlich egal / vorab',
-                            'color'       => $hc?->color,
-                            'lead'        => $lead,
-                            'target_time' => $target,
-                            'sort_order'  => $hc?->sort_order ?? 9999,
-                            'total'       => (int) $grp->sum('qty'),
-                            'items'       => $grp->map(fn ($r) => [
-                                'name' => $items[$r->item_id]?->name ?? 'Artikel',
-                                'qty'  => (int) $r->qty,
-                            ])->sortByDesc('qty')->values(),
-                        ];
-                    })
-                    ->sortBy(fn ($g) => ($g['target_time'] === null ? '0' : '1') . ($g['target_time'] ?? str_pad((string) $g['sort_order'], 5, '0', STR_PAD_LEFT)))
-                    ->values();
-
-                return [
-                    'slot'   => $slot,
-                    'total'  => (int) $slotRows->sum('qty'),
-                    'groups' => $groups,
-                ];
-            })
-            ->filter(fn ($s) => $s['groups']->isNotEmpty())
-            ->values();
+        return app(KitchenPrepService::class)->prepBySlot($this->event);
     }
 
-    /** Buchungs-/Gäste-Statistik je Slot (+ Gesamt unter Key 0). */
+    /** Buchungen und Gäste je Pause; Schlüssel 0 trägt die Gesamtzahlen. */
     #[Computed]
     public function slotStats(): \Illuminate\Support\Collection
     {
-        $stats = Booking::query()
-            ->where('event_id', $this->eventId)
-            ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
-            ->groupBy('event_slot_id')
-            ->selectRaw('event_slot_id, COUNT(*) as bookings, SUM(guest_count) as guests')
-            ->get()
-            ->keyBy('event_slot_id');
-
-        $stats->put(0, (object) [
-            'bookings' => (int) $stats->sum('bookings'),
-            'guests'   => (int) $stats->sum('guests'),
-        ]);
-
-        return $stats;
+        return app(KitchenPrepService::class)->slotStats($this->event);
     }
 
     public function render()

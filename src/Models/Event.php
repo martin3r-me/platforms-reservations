@@ -9,6 +9,9 @@ use Platform\Reservation\Enums\EventStatus;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Platform\Reservation\Models\Concerns\HasContextImage;
 use Symfony\Component\Uid\UuidV7;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * Termin/Veranstaltung in PausePlus (z.B. "Bodo Wartke, 29.08.").
@@ -46,6 +49,10 @@ class Event extends Model
         'image_context_file_id',
         'events_event_id',
         'events_event_uuid',
+        // Freigabe-Link fuer Veranstaltungsleiter (Kueche + Laufzettel)
+        'share_token',
+        'share_pin_hash',
+        'share_created_at',
     ];
 
     protected $casts = [
@@ -53,6 +60,7 @@ class Event extends Model
         'order_deadline_at'  => 'datetime',
         'disabled_table_ids' => 'array',
         'status'             => EventStatus::class,
+        'share_created_at'   => 'datetime',
     ];
 
     protected static function booted(): void
@@ -146,5 +154,93 @@ class Event extends Model
         }
 
         return \Platform\Events\Models\Event::find($this->events_event_id);
+    }
+
+    /* ---------------------------------------------------------------------
+     | Freigabe-Link: Lesezugriff auf Küche und Laufzettel, ohne Konto
+     |
+     | Bewusst NUR diese beiden Ansichten. Die Buchungsliste enthält Namen und
+     | E-Mail-Adressen; ein Link ist ein Schlüssel, und weitergeleitete Mails
+     | verteilen ihn weiter, als man denkt.
+     --------------------------------------------------------------------- */
+
+    /**
+     * Neuen Link samt PIN erzeugen. Gibt die PIN im Klartext zurück – sie wird
+     * nur gehasht gespeichert und ist danach nicht mehr auslesbar.
+     *
+     * Ein vorhandener Link wird dabei ungültig: neuer Token, neue PIN. Das ist
+     * zugleich der Weg, einen Link zurückzuziehen.
+     */
+    public function issueShareAccess(): string
+    {
+        // Sechs Ziffern sind für Menschen am Telefon zumutbar. Gegen
+        // Durchprobieren schützt nicht die Länge, sondern die Drosselung der
+        // Versuche (siehe EventPlanController).
+        $pin = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        $this->forceFill([
+            'share_token'      => Str::random(48),
+            'share_pin_hash'   => Hash::make($pin),
+            'share_created_at' => now(),
+        ])->save();
+
+        return $pin;
+    }
+
+    /** Link zurückziehen – sofort ungültig. */
+    public function revokeShareAccess(): void
+    {
+        $this->forceFill([
+            'share_token'      => null,
+            'share_pin_hash'   => null,
+            'share_created_at' => null,
+        ])->save();
+    }
+
+    /**
+     * Bis wann der Link gilt: Tag nach der Veranstaltung, 23:59 Uhr.
+     *
+     * Abgeleitet statt gespeichert – ein Feld würde veralten, sobald jemand
+     * den Termin verschiebt.
+     */
+    public function shareExpiresAt(): ?Carbon
+    {
+        return $this->date?->copy()->addDay()->endOfDay();
+    }
+
+    public function shareIsActive(): bool
+    {
+        if (! $this->share_token) {
+            return false;
+        }
+
+        $bis = $this->shareExpiresAt();
+
+        return $bis === null || $bis->isFuture();
+    }
+
+    /** Vollständiger Link zum Weitergeben; null, wenn keiner ausgestellt ist. */
+    public function shareUrl(): ?string
+    {
+        if (! $this->share_token) {
+            return null;
+        }
+
+        return route('reservation.guest.event.plan', [
+            'uuid'  => $this->uuid,
+            'token' => $this->share_token,
+        ]);
+    }
+
+    /** PIN prüfen. Zeitkonstanter Vergleich über Hash::check. */
+    public function sharePinMatches(string $pin): bool
+    {
+        return $this->share_pin_hash !== null && Hash::check($pin, $this->share_pin_hash);
+    }
+
+    /** Zugriffe auf den Freigabe-Link, neueste zuerst. */
+    public function shareAccesses(): HasMany
+    {
+        return $this->hasMany(EventShareAccess::class, 'event_id')->latest();
     }
 }

@@ -8,7 +8,12 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Veranstaltungen', 'href' => route('reservation.operations.index')],
             ['label' => $this->event->name],
-        ]" />
+        ]">
+            <x-nx-button wire:click="openShareModal()">
+                @svg('heroicon-o-link', 'w-4 h-4')
+                <span>Zugang für Veranstaltungsleitung</span>
+            </x-nx-button>
+        </x-ui-page-actionbar>
     </x-slot>
 
     <x-ui-page-container width="contained">
@@ -167,4 +172,82 @@
 
     </div>
     </x-ui-page-container>
+
+    {{-- Zugang für Veranstaltungsleitung: Link + PIN, nur lesend, nur Küche und
+         Laufzettel. Die Buchungsliste bleibt bewusst außen vor – sie enthält
+         Namen und E-Mail-Adressen, und ein Link wandert per Weiterleitung
+         weiter, als gedacht. --}}
+    <x-nx-modal size="md" wire:model="showShareModal">
+        <x-slot name="header">Zugang für Veranstaltungsleitung</x-slot>
+
+        @php $event = $this->event; @endphp
+
+        <div class="space-y-4 text-sm">
+            <p class="m-0 text-[color:var(--nx-muted)]">
+                Ein Link ohne Konto, der nur <strong>Küche</strong> und <strong>Laufzettel</strong>
+                dieser Veranstaltung zeigt – rein lesend. Zusätzlich gesichert durch eine PIN.
+            </p>
+
+            @if ($freshPin)
+                <x-nx-callout variant="warning">
+                    <div class="font-semibold">PIN: <span class="tabular-nums tracking-[0.2em]">{{ $freshPin }}</span></div>
+                    Bitte jetzt notieren – sie wird nur gehasht gespeichert und lässt sich später
+                    nicht mehr anzeigen. Schicken Sie die PIN getrennt vom Link, etwa per Telefon.
+                </x-nx-callout>
+            @endif
+
+            @if ($event->shareIsActive())
+                <div>
+                    <div class="mb-1 text-xs uppercase tracking-wide text-[color:var(--nx-muted)]">Link</div>
+                    <div class="break-all rounded-[6px] bg-[color:var(--nx-hover)] px-3 py-2 text-[12px] text-[color:var(--nx-text)]">
+                        {{ $event->shareUrl() }}
+                    </div>
+                    <p class="m-0 mt-2 text-xs text-[color:var(--nx-muted)]">
+                        Gültig bis {{ $event->shareExpiresAt()?->format('d.m.Y') }} ·
+                        erstellt {{ $event->share_created_at?->format('d.m.Y H:i') }} Uhr
+                    </p>
+                </div>
+
+                @if ($this->shareAccesses->isNotEmpty())
+                    <div>
+                        <div class="mb-1 text-xs uppercase tracking-wide text-[color:var(--nx-muted)]">Letzte PIN-Eingaben</div>
+                        <div class="divide-y divide-[color:var(--nx-line)] rounded-[6px] border border-[color:var(--nx-line)]">
+                            @foreach ($this->shareAccesses as $zugriff)
+                                <div class="flex items-center justify-between gap-3 px-3 py-1.5 text-xs" wire:key="acc-{{ $zugriff->id }}">
+                                    <span class="text-[color:var(--nx-muted)]">{{ $zugriff->created_at?->format('d.m.Y H:i') }} · {{ $zugriff->ip ?: 'unbekannt' }}</span>
+                                    <span class="{{ $zugriff->successful ? 'text-[color:var(--nx-success)]' : 'text-[color:var(--nx-danger)]' }}">
+                                        {{ $zugriff->successful ? 'geöffnet' : 'PIN falsch' }}
+                                    </span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+            @elseif ($event->share_token)
+                <x-nx-callout variant="neutral">
+                    Der Link ist abgelaufen (die Veranstaltung liegt zurück). Ein neuer lässt sich
+                    jederzeit erzeugen.
+                </x-nx-callout>
+            @else
+                <p class="m-0 text-[color:var(--nx-muted)]">Bisher ist kein Zugang eingerichtet.</p>
+            @endif
+        </div>
+
+        <x-slot name="footer">
+            @if ($event->share_token)
+                <x-ui-confirm-button
+                    action="revokeShareLink"
+                    text="Zurückziehen"
+                    confirmTitle="Zugang zurückziehen?"
+                    confirmText="Der Link wird sofort ungültig. Wer ihn hat, kommt nicht mehr hinein."
+                    confirmButtonText="Zurückziehen"
+                />
+            @endif
+            <x-nx-button variant="primary" wire:click="issueShareLink()">
+                {{ $event->share_token ? 'Neu erzeugen' : 'Zugang erstellen' }}
+            </x-nx-button>
+            <x-nx-button wire:click="closeShareModal()">Schließen</x-nx-button>
+        </x-slot>
+    </x-nx-modal>
+
 </x-ui-page>

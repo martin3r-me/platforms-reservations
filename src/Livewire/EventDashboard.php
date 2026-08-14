@@ -105,6 +105,52 @@ class EventDashboard extends Component
         ];
     }
 
+    /* --- Freigabe-Link für Veranstaltungsleiter (Küche + Laufzettel) --- */
+
+    public bool $showShareModal = false;
+
+    /** Nur direkt nach dem Erzeugen gefüllt – die PIN ist danach nicht mehr lesbar. */
+    public ?string $freshPin = null;
+
+    public function openShareModal(): void
+    {
+        $this->showShareModal = true;
+        $this->freshPin       = null;
+    }
+
+    public function closeShareModal(): void
+    {
+        $this->showShareModal = false;
+        // PIN nicht im Komponentenzustand liegen lassen.
+        $this->freshPin = null;
+    }
+
+    /**
+     * Link und PIN neu erzeugen. Ein vorhandener Link wird dadurch ungültig –
+     * das ist zugleich der Weg, einen weitergegebenen Link zurückzuziehen.
+     */
+    public function issueShareLink(): void
+    {
+        $this->freshPin = $this->event->issueShareAccess();
+        unset($this->event);
+    }
+
+    public function revokeShareLink(): void
+    {
+        $this->event->revokeShareAccess();
+        $this->freshPin = null;
+        unset($this->event);
+
+        session()->flash('event_message', 'Der Freigabe-Link wurde zurückgezogen und ist sofort ungültig.');
+    }
+
+    /** Letzte Zugriffe auf den Link – vor allem gehäufte Fehlversuche. */
+    #[Computed]
+    public function shareAccesses(): \Illuminate\Support\Collection
+    {
+        return $this->event->shareAccesses()->limit(10)->get();
+    }
+
     public function render()
     {
         return view('reservation::livewire.event-dashboard')
