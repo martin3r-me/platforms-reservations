@@ -293,7 +293,7 @@
                                     optionLabel="name"
                                     :nullable="true"
                                     nullLabel="— bitte wählen —"
-                                    wire:model="autoPrintPrinterId"
+                                    wire:model.live="autoPrintPrinterId"
                                     errorKey="autoPrintPrinterId"
                                 />
                                 @if ($this->printers->isEmpty())
@@ -309,7 +309,7 @@
                                     optionLabel="name"
                                     :nullable="true"
                                     nullLabel="— bitte wählen —"
-                                    wire:model="autoPrintPrinterGroupId"
+                                    wire:model.live="autoPrintPrinterGroupId"
                                     errorKey="autoPrintPrinterGroupId"
                                 />
                                 @if ($this->printerGroups->isEmpty())
@@ -318,8 +318,11 @@
                             @endif
                         </div>
 
-                        {{-- Ohne Ziel ginge der Druck ins Leere – lieber vorher sagen. --}}
-                        @if (! $autoPrintPrinterId && ! $autoPrintPrinterGroupId)
+                        {{-- Ohne Ziel ginge der Druck ins Leere – lieber vorher sagen.
+                             Geprueft wird nur das gerade gewaehlte Ziel: Beim Umschalten
+                             wird das andere ohnehin verworfen. --}}
+                        @if (($autoPrintTarget === 'printer' && ! $autoPrintPrinterId)
+                            || ($autoPrintTarget === 'group' && ! $autoPrintPrinterGroupId))
                             <div class="mt-3">
                                 <x-nx-callout variant="warning">
                                     Ohne ausgewähltes Ziel wird nichts gedruckt.
