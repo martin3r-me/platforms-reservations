@@ -64,6 +64,10 @@ class CheckoutSetting extends Model
         'cancellation_enabled',
         'cancellation_deadline_hours',
         'cancellation_requires_approval',
+        // Neue Auftraege automatisch drucken
+        'auto_print_enabled',
+        'auto_print_printer_id',
+        'auto_print_printer_group_id',
     ];
 
     protected $casts = [
@@ -74,6 +78,9 @@ class CheckoutSetting extends Model
         'cancellation_deadline_hours'    => 'integer',
         'cancellation_requires_approval' => 'boolean',
         'issuer'                         => 'array',
+        'auto_print_enabled'             => 'boolean',
+        'auto_print_printer_id'          => 'integer',
+        'auto_print_printer_group_id'    => 'integer',
     ];
 
     /** Felder der Aussteller-/Rechnungsangaben. */
@@ -315,5 +322,16 @@ class CheckoutSetting extends Model
         return in_array($this->default_room_release_mode, ['parallel', 'sequential'], true)
             ? $this->default_room_release_mode
             : 'parallel';
+    }
+
+    /**
+     * Ist der automatische Druck einsatzbereit?
+     *
+     * Der Schalter allein genügt nicht – ohne Ziel ginge der Auftrag ins Leere.
+     */
+    public function autoPrintReady(): bool
+    {
+        return (bool) $this->auto_print_enabled
+            && ($this->auto_print_printer_id || $this->auto_print_printer_group_id);
     }
 }

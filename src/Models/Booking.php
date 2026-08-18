@@ -57,6 +57,36 @@ class Booking extends Model
                 $model->uuid = (string) UuidV7::generate();
             }
         });
+
+        // Automatischer Bon-Druck beim Wechsel auf "bestätigt".
+        //
+        // Bewusst am Statuswechsel statt an einer Stelle im Ablauf: Bestätigt
+        // wird nach der Zahlung, von Hand in der Buchungsliste und über die
+        // Freigabe im Posteingang. wasChanged() liefert nur bei einem echten
+        // Wechsel true, ein erneutes Speichern druckt also nicht noch einmal.
+        static::updated(function (self $model) {
+            if ($model->status !== self::STATUS_CONFIRMED) {
+                return;
+            }
+
+            if (! $model->wasChanged('status')) {
+                return;
+            }
+
+            app(\Platform\Reservation\Services\AutoPrintService::class)->printBooking($model);
+        });
+
+        // Falls eine Buchung je direkt als bestätigt angelegt wird. Heute tut
+        // das kein Weg – Gast-Checkout und Backoffice legen beide "pending" an –,
+        // aber die Regel soll lauten: eine bestätigte Buchung wird einmal
+        // gedruckt, nicht nur eine, die vorher pending war.
+        static::created(function (self $model) {
+            if ($model->status !== self::STATUS_CONFIRMED) {
+                return;
+            }
+
+            app(\Platform\Reservation\Services\AutoPrintService::class)->printBooking($model);
+        });
     }
 
     public function team(): BelongsTo

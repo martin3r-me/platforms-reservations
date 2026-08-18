@@ -8,6 +8,7 @@ use Livewire\WithFileUploads;
 use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\PaymentSetting;
 use Platform\Reservation\Services\MolliePaymentService;
+use Platform\Reservation\Support\PrintingBridge;
 
 /**
  * Allgemeine Modul-Einstellungen: Standard-Raumfreigabe, Zahlung (Mollie)
@@ -26,6 +27,13 @@ class CheckoutSettings extends Component
     public string $legalText = '';
     public string $privacyUrl = '';
     public string $defaultRoomReleaseMode = 'parallel';
+    // Neue Auftraege automatisch drucken
+    public bool $autoPrintEnabled = false;
+    public ?int $autoPrintPrinterId = null;
+    public ?int $autoPrintPrinterGroupId = null;
+    /** printer | group – welches Ziel gewaehlt ist. */
+    public string $autoPrintTarget = 'printer';
+
     public bool $softTableCapacity = false;
     public ?int $maxGroupEmptyTable = null;
 
@@ -88,6 +96,12 @@ class CheckoutSettings extends Component
         $this->fieldPhone             = $setting->fieldMode('phone');
         $this->fieldNotes             = $setting->fieldMode('notes');
 
+        $this->autoPrintEnabled        = (bool) $setting->auto_print_enabled;
+        $this->autoPrintPrinterId      = $setting->auto_print_printer_id;
+        $this->autoPrintPrinterGroupId = $setting->auto_print_printer_group_id;
+        // Gruppe nur vorwaehlen, wenn auch eine hinterlegt ist.
+        $this->autoPrintTarget         = $setting->auto_print_printer_group_id ? 'group' : 'printer';
+
         $payment = PaymentSetting::where('team_id', $this->getTeamId())->first();
         if ($payment) {
             $this->payEnabled = $payment->enabled;
@@ -105,6 +119,9 @@ class CheckoutSettings extends Component
             'privacyUrl'             => 'nullable|url|max:255',
             'defaultRoomReleaseMode' => 'required|in:parallel,sequential',
             'softTableCapacity'      => 'boolean',
+            'autoPrintEnabled'       => 'boolean',
+            'autoPrintPrinterId'     => 'nullable|integer',
+            'autoPrintPrinterGroupId'=> 'nullable|integer',
             'maxGroupEmptyTable'     => 'nullable|integer|min:1|max:200',
             'guestFrontendUrl'       => 'nullable|url|max:255',
             'confirmationChannelId'  => 'nullable|integer',
@@ -133,6 +150,13 @@ class CheckoutSettings extends Component
             'privacy_url'               => trim($this->privacyUrl) ?: null,
             'default_room_release_mode' => $this->defaultRoomReleaseMode,
             'soft_table_capacity'       => $this->softTableCapacity,
+            'auto_print_enabled'        => $this->autoPrintEnabled,
+            // Immer nur EIN Ziel speichern – sonst bliebe beim Umschalten der
+            // alte Wert stehen und es wuerde doppelt gedruckt.
+            'auto_print_printer_id'     => $this->autoPrintEnabled && $this->autoPrintTarget === 'printer'
+                ? $this->autoPrintPrinterId : null,
+            'auto_print_printer_group_id' => $this->autoPrintEnabled && $this->autoPrintTarget === 'group'
+                ? $this->autoPrintPrinterGroupId : null,
             'max_group_empty_table'     => $this->softTableCapacity ? $this->maxGroupEmptyTable : null,
             'languages'                 => collect(explode(',', $this->languagesCsv))
                 ->map(fn ($l) => strtolower(trim($l)))
@@ -244,6 +268,33 @@ class CheckoutSettings extends Component
     {
         $this->setting->clearContextImage($this->getTeamId());
         unset($this->setting);
+    }
+
+    /* --- Automatischer Bon-Druck --------------------------------------- */
+
+    /** Ohne Druck-Modul wird der ganze Abschnitt ausgeblendet. */
+    #[\Livewire\Attributes\Computed]
+    public function printingAvailable(): bool
+    {
+        return PrintingBridge::available();
+    }
+
+    #[\Livewire\Attributes\Computed]
+    public function printers(): \Illuminate\Support\Collection
+    {
+        return PrintingBridge::printers();
+    }
+
+    #[\Livewire\Attributes\Computed]
+    public function printerGroups(): \Illuminate\Support\Collection
+    {
+        return PrintingBridge::printerGroups();
+    }
+
+    public function updatedAutoPrintTarget(): void
+    {
+        $this->autoPrintPrinterId      = null;
+        $this->autoPrintPrinterGroupId = null;
     }
 
     public function render()

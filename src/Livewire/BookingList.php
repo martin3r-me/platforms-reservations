@@ -8,6 +8,7 @@ use Livewire\WithPagination;
 use Platform\Reservation\Models\Booking;
 use Illuminate\Support\Facades\Auth;
 use Platform\Reservation\Support\BookingItemsPresenter;
+use Platform\Reservation\Support\PrintingBridge;
 
 class BookingList extends Component
 {
@@ -28,32 +29,22 @@ class BookingList extends Component
     public ?int $selectedPrinterId = null;
     public ?int $selectedPrinterGroupId = null;
 
-    private const PRINTING_INTERFACE = 'Platform\\Printing\\Contracts\\PrintingServiceInterface';
-
-    /** Printing-Service, wenn im System verfügbar – sonst null. */
-    protected function printingService()
-    {
-        return (interface_exists(self::PRINTING_INTERFACE) && app()->bound(self::PRINTING_INTERFACE))
-            ? app(self::PRINTING_INTERFACE)
-            : null;
-    }
-
     #[Computed]
     public function printingAvailable(): bool
     {
-        return $this->printingService() !== null;
+        return PrintingBridge::available();
     }
 
     #[Computed]
     public function printers(): \Illuminate\Support\Collection
     {
-        return $this->printingService()?->listPrinters() ?? collect();
+        return PrintingBridge::printers();
     }
 
     #[Computed]
     public function printerGroups(): \Illuminate\Support\Collection
     {
-        return $this->printingService()?->listPrinterGroups() ?? collect();
+        return PrintingBridge::printerGroups();
     }
 
     public function openPrintModal(int $bookingId): void
@@ -91,7 +82,7 @@ class BookingList extends Component
 
     public function printBookingConfirm(): void
     {
-        $service = $this->printingService();
+        $service = PrintingBridge::service();
 
         if (! $service || ! $this->printBookingId) {
             return;
