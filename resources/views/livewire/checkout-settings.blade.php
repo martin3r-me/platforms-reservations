@@ -8,16 +8,35 @@
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
             ['label' => 'Einstellungen'],
         ]">
+            {{-- Rueckmeldung in der Leiste: Die liegt ausserhalb des scrollenden
+                 Bereichs und ist damit immer sichtbar. Ein Hinweis oben im Inhalt
+                 war nach dem Speichern weiter unten gar nicht zu sehen.
+
+                 Farbe per style statt Utility-Klasse und der Timer in x-data –
+                 beides schon einmal an dieser Stelle schiefgegangen. --}}
+            <span
+                x-data="{ show: false, timer: null }"
+                x-on:reservation-saved.window="
+                    show = true;
+                    clearTimeout(timer);
+                    timer = setTimeout(() => show = false, 2500);
+                "
+                x-show="show"
+                x-transition.opacity.duration.200ms
+                role="status"
+                aria-live="polite"
+                class="flex items-center gap-1 text-xs"
+                style="display: none; color: var(--nx-success);"
+            >
+                @svg('heroicon-o-check-circle', 'w-4 h-4')
+                <span>Gespeichert</span>
+            </span>
             <x-nx-button variant="primary" wire:click="save">Speichern</x-nx-button>
         </x-ui-page-actionbar>
     </x-slot>
 
     <x-ui-page-container width="contained">
     <div class="max-w-2xl space-y-5">
-
-    @if (session('checkout_message'))
-        <x-nx-callout variant="success">{{ session('checkout_message') }}</x-nx-callout>
-    @endif
 
     {{-- Termine --}}
     <x-nx-card flush>
@@ -428,10 +447,7 @@
         </div>
     </x-nx-card>
 
-    <div class="flex justify-end">
-        <x-nx-button variant="primary" size="sm" wire:click="save">Speichern</x-nx-button>
     </div>
 
-    </div>
     </x-ui-page-container>
 </x-ui-page>

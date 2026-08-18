@@ -201,7 +201,10 @@ class CheckoutSettings extends Component
         $this->testKeySet = (bool) $payment->test_api_key;
         $this->liveKeySet = (bool) $payment->live_api_key;
 
-        session()->flash('checkout_message', 'Einstellungen gespeichert.');
+        // Kein Flash mehr: Der Hinweis stand ganz oben auf einer langen Seite und
+        // war nach dem Speichern unten gar nicht zu sehen. Stattdessen eine kurz
+        // eingeblendete Meldung, unabhaengig vom Scrollstand.
+        $this->dispatch('reservation-saved', message: 'Einstellungen gespeichert.');
     }
 
     /**
