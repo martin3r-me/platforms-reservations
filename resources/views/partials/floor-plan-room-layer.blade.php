@@ -79,7 +79,10 @@
             x-on:contextmenu.prevent.stop="menuOeffnen($event, pi)"
             class="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded border-2 bg-white shadow-sm"
             style="border-color: {{ $linie }}; cursor: grab;"
-            :style="'left:' + (mitte(pfad)[0] * 100) + '%; top:' + (mitte(pfad)[1] * 100) + '%'"
+            {{-- :style als OBJEKT, nicht als Zeichenkette: Alpine mischt Objekte
+                 eigenschaftsweise ein. Eine Zeichenkette ersetzt das ganze
+                 style-Attribut und nähme Rahmenfarbe und Zeiger gleich mit. --}}
+            :style="{ left: (mitte(pfad)[0] * 100) + '%', top: (mitte(pfad)[1] * 100) + '%' }"
             title="Ziehen verschiebt den Zug · Rechtsklick für Löschen"
         >
             <span style="color: {{ $linie }}">@svg('heroicon-o-arrows-pointing-out', 'w-3 h-3')</span>
@@ -95,11 +98,13 @@
                 x-on:pointerdown.stop="istEnde(pfad, g.i) ? weiterZeichnen($event, g.pt) : griffAnfassen($event, pi, g.i)"
                 x-on:click.stop="$event.altKey && punktLoeschen(pi, g.i)"
                 class="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2"
-                :class="istEnde(pfad, g.i) ? '' : 'bg-white'"
-                :style="'left:' + (g.pt[0] * 100) + '%; top:' + (g.pt[1] * 100) + '%'
-                    + '; border-color: {{ $linie }}'
-                    + '; background:' + (istEnde(pfad, g.i) ? '{{ $linie }}' : '#fff')
-                    + '; cursor:' + (istEnde(pfad, g.i) ? 'crosshair' : 'grab')"
+                :style="{
+                    left: (g.pt[0] * 100) + '%',
+                    top: (g.pt[1] * 100) + '%',
+                    borderColor: '{{ $linie }}',
+                    background: istEnde(pfad, g.i) ? '{{ $linie }}' : '#fff',
+                    cursor: istEnde(pfad, g.i) ? 'crosshair' : 'grab'
+                }"
                 :title="istEnde(pfad, g.i)
                     ? 'Ende – von hier weiterzeichnen (Alt-Klick löscht den Punkt)'
                     : 'Punkt ' + (g.i + 1) + ' – ziehen zum Verschieben, Alt-Klick löscht'"
@@ -117,7 +122,7 @@
         x-on:click.stop
         class="absolute -translate-x-1/2 translate-y-2 rounded-lg border border-[var(--ui-border)] bg-white py-1 shadow-lg"
         style="display: none; z-index: 25;"
-        :style="menu ? 'left:' + (menu.x * 100) + '%; top:' + (menu.y * 100) + '%' : ''"
+        :style="menu ? { left: (menu.x * 100) + '%', top: (menu.y * 100) + '%' } : {}"
     >
         <button
             type="button"
