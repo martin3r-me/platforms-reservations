@@ -356,9 +356,12 @@
     @if ($roomMode)
         {{-- RAUMUMRISS (Versuchsstand) --}}
         <p class="mt-2 text-center text-xs text-indigo-700">
-            Klicken setzt Punkte entlang der Wand · Doppelklick oder Rechtsklick schließt den Zug ·
-            Punkte lassen sich ziehen, Alt-Klick löscht sie · Esc bricht ab
-            <button type="button" wire:click="clearRoomPaths()" class="ml-2 underline">alles löschen</button>
+            Klicken setzt Punkte · rastet auf Waagerechte und Senkrechte ein, <strong>Shift</strong> zeichnet frei<br>
+            <strong>Enter</strong> oder Doppelklick beendet den Zug · <strong>Rücktaste</strong> nimmt den letzten Punkt zurück ·
+            Punkte ziehen verschiebt, Alt-Klick löscht · <strong>Esc</strong> verwirft
+            <button type="button" wire:click="clearRoomPaths()"
+                wire:confirm="Alle gezeichneten Linien löschen?"
+                class="ml-2 underline">alles löschen</button>
         </p>
     @else
         <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
@@ -995,13 +998,13 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
 Alpine.data('roomDraw', (initialPaths) => ({
     paths: initialPaths || [],
     entwurf: [],
-    zug: null,          // laufendes Ziehen eines Griffs
+    cursor: null,       // Mausposition für das Gummiband
     hatGezogen: false,  // unterdrückt den Klick nach einem Ziehen
 
     /**
-     * Alle Züge als EIN d-Attribut. Ein Pfad darf über "M" mehrere Teilzüge
-     * tragen – damit entfällt die Schleife im SVG, wo Alpine-Templates nicht
-     * funktionieren (im SVG-Namensraum hat <template> kein .content).
+     * Alle fertigen Züge als EIN d-Attribut. Ein Pfad darf über "M" mehrere
+     * Teilzüge tragen – damit entfällt die Schleife im SVG, wo Alpine-Templates
+     * nicht funktionieren (im SVG-Namensraum hat <template> kein .content).
      */
     get d() {
         return this.paths
@@ -1010,20 +1013,26 @@ Alpine.data('roomDraw', (initialPaths) => ({
             .join(' ');
     },
 
+    /** Laufender Zug samt Gummiband zum Mauszeiger. */
     get dEntwurf() {
-        if (this.entwurf.length < 2) { return ''; }
-        return 'M' + this.entwurf.map(pt => pt[0] + ' ' + pt[1]).join(' L');
+        if (!this.entwurf.length) { return ''; }
+        const punkte = this.cursor ? [...this.entwurf, this.cursor] : this.entwurf;
+        if (punkte.length < 2) { return ''; }
+        return 'M' + punkte.map(pt => pt[0] + ' ' + pt[1]).join(' L');
     },
 
     init() {
-        this._esc = (e) => {
-            if (e.key === 'Escape') { this.entwurf = []; }
+        this._tasten = (e) => {
+            if (!this.$wire.roomMode) { return; }
+            if (e.key === 'Escape')    { this.entwurf = []; this.cursor = null; }
+            if (e.key === 'Enter')     { e.preventDefault(); this.zugAbschliessen(); }
+            if (e.key === 'Backspace') { e.preventDefault(); this.letztenZurueck(); }
         };
-        window.addEventListener('keydown', this._esc);
+        window.addEventListener('keydown', this._tasten);
     },
 
     destroy() {
-        window.removeEventListener('keydown', this._esc);
+        window.removeEventListener('keydown', this._tasten);
     },
 
     /** Mausposition in normalisierte Koordinaten (0…1) der Zeichenfläche. */
@@ -1035,11 +1044,43 @@ Alpine.data('roomDraw', (initialPaths) => ({
         ];
     },
 
+    /**
+     * Auf Waagerechte oder Senkrechte einrasten – Wände laufen fast immer im
+     * rechten Winkel. Shift schaltet frei.
+     *
+     * Verglichen wird in BILDSCHIRMPIXELN, nicht in den normalisierten Werten:
+     * Bei einem breiten Saal entspricht 0,1 waagerecht einer viel längeren
+     * Strecke als 0,1 senkrecht – ein direkter Vergleich würde fast immer
+     * dieselbe Achse wählen.
+     */
+    einrasten(pt, e) {
+        const letzter = this.entwurf[this.entwurf.length - 1];
+
+        if (!letzter || e.shiftKey) { return pt; }
+
+        const r  = this.$root.getBoundingClientRect();
+        const dx = Math.abs(pt[0] - letzter[0]) * r.width;
+        const dy = Math.abs(pt[1] - letzter[1]) * r.height;
+
+        return dx >= dy ? [pt[0], letzter[1]] : [letzter[0], pt[1]];
+    },
+
+    zeigerBewegt(e) {
+        if (!this.entwurf.length) { this.cursor = null; return; }
+        this.cursor = this.einrasten(this.pos(e), e);
+    },
+
     punktSetzen(e) {
         // Nach dem Verschieben eines Griffs folgt ein Klick – der darf keinen
         // neuen Punkt setzen.
         if (this.hatGezogen) { this.hatGezogen = false; return; }
-        this.entwurf.push(this.pos(e));
+
+        // Der zweite Klick eines Doppelklicks soll nur abschließen, nicht noch
+        // einen Punkt setzen. detail zählt die Klicks der Serie.
+        if (e.detail > 1) { return; }
+
+        this.entwurf.push(this.einrasten(this.pos(e), e));
+        this.cursor = null;
     },
 
     zugAbschliessen() {
@@ -1048,11 +1089,11 @@ Alpine.data('roomDraw', (initialPaths) => ({
             this.speichern();
         }
         this.entwurf = [];
+        this.cursor  = null;
     },
 
     griffAnfassen(e, pi, ii) {
         e.preventDefault();
-        this.zug = { pi, ii };
         this.hatGezogen = false;
         e.target.setPointerCapture(e.pointerId);
 
@@ -1064,7 +1105,6 @@ Alpine.data('roomDraw', (initialPaths) => ({
             e.target.removeEventListener('pointermove', bewegen);
             e.target.removeEventListener('pointerup', loslassen);
             e.target.removeEventListener('pointercancel', loslassen);
-            this.zug = null;
             if (this.hatGezogen) { this.speichern(); }
         };
 
@@ -1084,7 +1124,7 @@ Alpine.data('roomDraw', (initialPaths) => ({
 
     letztenZurueck() {
         if (this.entwurf.length) { this.entwurf.pop(); return; }
-        if (this.paths.length) { this.paths.pop(); this.speichern(); }
+        if (this.paths.length)   { this.paths.pop(); this.speichern(); }
     },
 
     speichern() {

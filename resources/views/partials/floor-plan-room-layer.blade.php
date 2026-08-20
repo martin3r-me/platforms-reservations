@@ -57,6 +57,8 @@
     x-show="$wire.roomMode"
     class="absolute inset-0"
     style="cursor: crosshair; pointer-events: auto; z-index: 20;"
+    x-on:pointermove="zeigerBewegt($event)"
+    x-on:pointerleave="cursor = null"
     x-on:click="punktSetzen($event)"
     x-on:dblclick.prevent="zugAbschliessen()"
     x-on:contextmenu.prevent="zugAbschliessen()"
