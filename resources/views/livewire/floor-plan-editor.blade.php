@@ -1167,6 +1167,65 @@ Alpine.data('roomDraw', (initialPaths) => ({
         return { pt: [x, y], gx, gy };
     },
 
+    /**
+     * Einrasten beim Verschieben einer Ecke.
+     *
+     * Zuerst auf die NACHBARN im selben Zug: Übernimmt die Ecke deren x oder y,
+     * steht die betreffende Wand senkrecht bzw. waagerecht – und die Ecke wird
+     * damit zum rechten Winkel. Genau das will man beim Begradigen.
+     *
+     * Danach, für noch freie Achsen, auf die Flucht der übrigen Wände.
+     *
+     * Es bleibt ein Einrasten, keine Zwangsführung: Wer weiter zieht, kommt
+     * ohne Weiteres wieder heraus.
+     */
+    fangEcke(pt, pi, ii) {
+        if (! this.$store.fpSnap.on) { return { pt, gx: null, gy: null }; }
+
+        const pfad = this.paths[pi];
+        const r    = this.$root.getBoundingClientRect();
+        let [x, y] = pt;
+        let gx = null, gy = null;
+
+        // Beim Ring ist der doppelte Endpunkt kein eigener Nachbar.
+        const n    = this.istGeschlossen(pfad) ? pfad.length - 1 : pfad.length;
+        const vor  = ii > 0 ? pfad[ii - 1] : (this.istGeschlossen(pfad) ? pfad[n - 1] : null);
+        const nach = ii < n - 1 ? pfad[ii + 1] : (this.istGeschlossen(pfad) ? pfad[0] : null);
+
+        for (const nachbar of [vor, nach]) {
+            if (! nachbar) { continue; }
+
+            if (gx === null && Math.abs(nachbar[0] - pt[0]) * r.width < this.FANG_PX) {
+                x = nachbar[0]; gx = nachbar[0];
+            }
+            if (gy === null && Math.abs(nachbar[1] - pt[1]) * r.height < this.FANG_PX) {
+                y = nachbar[1]; gy = nachbar[1];
+            }
+        }
+
+        // Übrige Achsen: an den anderen Wänden ausrichten.
+        let bestX = this.FANG_PX;
+        let bestY = this.FANG_PX;
+
+        for (let k = 0; k < this.paths.length; k++) {
+            for (let j = 0; j < this.paths[k].length; j++) {
+                if (k === pi && j === ii) { continue; }
+                const kandidat = this.paths[k][j];
+
+                if (gx === null) {
+                    const d = Math.abs(kandidat[0] - pt[0]) * r.width;
+                    if (d < bestX) { bestX = d; x = kandidat[0]; gx = kandidat[0]; }
+                }
+                if (gy === null) {
+                    const d = Math.abs(kandidat[1] - pt[1]) * r.height;
+                    if (d < bestY) { bestY = d; y = kandidat[1]; gy = kandidat[1]; }
+                }
+            }
+        }
+
+        return { pt: [x, y], gx, gy };
+    },
+
     /** Hilfslinien ein-/ausblenden – dieselben Elemente wie beim Tisch-Einrasten. */
     hilfslinien(gx, gy) {
         const v = document.getElementById('fp-guide-v');
@@ -1400,7 +1459,10 @@ Alpine.data('roomDraw', (initialPaths) => ({
 
         const bewegen = (ev) => {
             this.hatGezogen = true;
-            this.paths[pi][ii] = this.pos(ev);
+
+            const f = this.fangEcke(this.pos(ev), pi, ii);
+            this.paths[pi][ii] = f.pt;
+            this.hilfslinien(f.gx, f.gy);
 
             // Beim Ring ist der letzte Punkt derselbe wie der erste – er muss
             // mitwandern, sonst reißt der Zug auf.
@@ -1413,6 +1475,7 @@ Alpine.data('roomDraw', (initialPaths) => ({
             e.target.removeEventListener('pointermove', bewegen);
             e.target.removeEventListener('pointerup', loslassen);
             e.target.removeEventListener('pointercancel', loslassen);
+            this.hilfslinien(null, null);
             if (this.hatGezogen) { this.speichern(); }
         };
 
