@@ -374,7 +374,7 @@
         {{-- RAUMUMRISS (Versuchsstand) --}}
         <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
             Von Ecke zu Ecke ziehen zeichnet eine Wand · an einem <strong>gefüllten Ende</strong> geht es weiter ·
-            <strong>Shift</strong> für schräge Wände<br>
+            neue Wände richten sich an vorhandenen aus (mit „Einrasten") · <strong>Shift</strong> für schräge Wände<br>
             Hohle Punkte lassen sich verschieben, Alt-Klick löscht · Griff in der Mitte verschiebt den Zug,
             Rechtsklick darauf löscht ihn
             <button type="button" wire:click="clearRoomPaths()"
@@ -1124,6 +1124,64 @@ Alpine.data('roomDraw', (initialPaths) => ({
         return dx >= dy ? [pt[0], von[1]] : [von[0], pt[1]];
     },
 
+    /**
+     * Auf die Flucht vorhandener Wände ziehen.
+     *
+     * Ohne das steht jede kurze Wand ein paar Pixel versetzt, obwohl sie
+     * baulich auf einer Linie liegt. Verglichen wird je Achse in
+     * BILDSCHIRMPIXELN, damit die Toleranz überall gleich groß wirkt.
+     *
+     * Eine Achse wird nur eingerastet, wenn sie überhaupt frei ist: Beim
+     * geraden Ziehen hält die andere bereits den Ausgangspunkt fest, und die
+     * dürfte ein Nachbar nicht verbiegen.
+     *
+     * Liefert den eingerasteten Punkt sowie die Werte fuer die beiden
+     * Hilfslinien (oder null, wenn keine gezeigt werden soll).
+     */
+    flucht(pt, von) {
+        if (! this.$store.fpSnap.on) { return { pt, gx: null, gy: null }; }
+
+        const r = this.$root.getBoundingClientRect();
+        let [x, y] = pt;
+        let gx = null, gy = null;
+
+        const freiX = ! von || pt[0] !== von[0];
+        const freiY = ! von || pt[1] !== von[1];
+
+        let bestX = this.FANG_PX;
+        let bestY = this.FANG_PX;
+
+        for (const pfad of this.paths) {
+            for (const kandidat of pfad) {
+                if (freiX) {
+                    const d = Math.abs(kandidat[0] - pt[0]) * r.width;
+                    if (d < bestX) { bestX = d; x = kandidat[0]; gx = kandidat[0]; }
+                }
+                if (freiY) {
+                    const d = Math.abs(kandidat[1] - pt[1]) * r.height;
+                    if (d < bestY) { bestY = d; y = kandidat[1]; gy = kandidat[1]; }
+                }
+            }
+        }
+
+        return { pt: [x, y], gx, gy };
+    },
+
+    /** Hilfslinien ein-/ausblenden – dieselben Elemente wie beim Tisch-Einrasten. */
+    hilfslinien(gx, gy) {
+        const v = document.getElementById('fp-guide-v');
+        const h = document.getElementById('fp-guide-h');
+
+        if (v) {
+            v.style.display = gx === null ? 'none' : 'block';
+            if (gx !== null) { v.style.left = (gx * 100) + '%'; }
+        }
+        if (h) {
+            h.style.display = gy === null ? 'none' : 'block';
+            if (gy !== null) { h.style.top = (gy * 100) + '%'; }
+        }
+    },
+
     istGeschlossen(pfad) {
         if (pfad.length < 4) { return false; }
         const a = pfad[0], b = pfad[pfad.length - 1];
@@ -1155,7 +1213,15 @@ Alpine.data('roomDraw', (initialPaths) => ({
         if (this.menu) { this.menu = null; return; }
 
         const roh = this.pos(e);
-        const von = this.fangEnde(roh) || roh;
+        let   von = this.fangEnde(roh);
+
+        if (! von) {
+            // Kein vorhandenes Ende in der Nähe: dann wenigstens auf die
+            // Flucht der übrigen Wände ziehen.
+            const f = this.flucht(roh, null);
+            von = f.pt;
+            this.hilfslinien(f.gx, f.gy);
+        }
 
         this.zug = { von, bis: von };
 
@@ -1170,9 +1236,20 @@ Alpine.data('roomDraw', (initialPaths) => ({
     zeichnenBewegt(e) {
         if (!this.zug) { return; }
 
-        const roh = this.pos(e);
-        // Erst an ein vorhandenes Ende, sonst auf die Gerade.
-        this.zug.bis = this.fangEnde(roh) || this.gerade(roh, this.zug.von, e);
+        const roh  = this.pos(e);
+        const ende = this.fangEnde(roh);
+
+        if (ende) {
+            this.zug.bis = ende;
+            this.hilfslinien(null, null);
+            return;
+        }
+
+        const gerade = this.gerade(roh, this.zug.von, e);
+        const f      = this.flucht(gerade, this.zug.von);
+
+        this.zug.bis = f.pt;
+        this.hilfslinien(f.gx, f.gy);
     },
 
     zeichnenEnde(e) {
@@ -1183,6 +1260,8 @@ Alpine.data('roomDraw', (initialPaths) => ({
 
         try { this.flaeche?.releasePointerCapture(e.pointerId); } catch (_) {}
         this.flaeche = null;
+
+        this.hilfslinien(null, null);
 
         // Ein Klick ohne Ziehen ist keine Wand – sonst entstünden bei jedem
         // versehentlichen Klick Punkte im Raum.
@@ -1227,8 +1306,14 @@ Alpine.data('roomDraw', (initialPaths) => ({
         this.zug = { von: [...pt], bis: [...pt] };
 
         const bewegen = (ev) => {
-            const roh = this.pos(ev);
-            this.zug.bis = this.fangEnde(roh) || this.gerade(roh, this.zug.von, ev);
+            const roh  = this.pos(ev);
+            const ende = this.fangEnde(roh);
+
+            if (ende) { this.zug.bis = ende; this.hilfslinien(null, null); return; }
+
+            const f = this.flucht(this.gerade(roh, this.zug.von, ev), this.zug.von);
+            this.zug.bis = f.pt;
+            this.hilfslinien(f.gx, f.gy);
         };
         const loslassen = (ev) => {
             el.removeEventListener('pointermove', bewegen);
@@ -1237,6 +1322,7 @@ Alpine.data('roomDraw', (initialPaths) => ({
 
             const zug = this.zug;
             this.zug = null;
+            this.hilfslinien(null, null);
 
             if (zug && this.abstandPx(zug.von, zug.bis) >= 5) {
                 this.wandAblegen(zug.von, zug.bis);
