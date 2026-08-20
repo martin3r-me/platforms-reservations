@@ -281,7 +281,7 @@
 
             {{-- Bedienelemente liegen AUSSERHALB des Scroll-Containers, damit sie
                  beim Hineinzoomen nicht mit dem Inhalt wegscrollen. --}}
-            <div class="pointer-events-none absolute inset-0">
+            <div class="pointer-events-none absolute inset-0" style="z-index: 30;">
                 <div class="pointer-events-auto absolute bottom-3 left-3 flex items-center gap-2">
                 {{-- Zoom. Mitte zeigt den Wert und setzt zurück. --}}
                 <div class="flex items-center gap-0.5 rounded-lg border border-[var(--ui-border)] bg-white px-1 py-0.5 shadow-sm dark:bg-gray-900">
