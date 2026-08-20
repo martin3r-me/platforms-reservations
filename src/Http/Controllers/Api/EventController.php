@@ -626,6 +626,9 @@ class EventController extends ApiController
                 'label'       => $t->label,
                 'capacity'    => (int) $t->capacity,
                 'shape'       => $t->shape,
+                // Nur die Darstellung dreht sich; x_pct/y_pct bleiben der
+                // Mittelpunkt und w_pct/h_pct die ungedrehten Maße.
+                'rotation'    => (int) $t->rotation,
                 'x_pct'       => (float) $t->x_pct,
                 'y_pct'       => (float) $t->y_pct,
                 'w_pct'       => (float) $t->w_pct,
