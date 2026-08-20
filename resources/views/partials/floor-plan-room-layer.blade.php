@@ -64,11 +64,10 @@
     x-show="$wire.roomMode"
     class="absolute inset-0"
     style="cursor: crosshair; pointer-events: auto; z-index: 20;"
-    x-on:pointermove="zeigerBewegt($event)"
-    x-on:pointerleave="cursor = null"
-    x-on:click="punktSetzen($event)"
-    x-on:dblclick.prevent="zugAbschliessen()"
-    x-on:contextmenu.prevent="zugAbschliessen()"
+    x-on:pointerdown.prevent="zeichnenStart($event)"
+    x-on:pointermove="zeichnenBewegt($event)"
+    x-on:pointerup="zeichnenEnde($event)"
+    x-on:pointercancel="zug = null"
 >
     {{-- Griff in der Mitte jedes Zugs: verschiebt ihn als Ganzes.
          Die Linie selbst lässt sich dafür nicht anfassen – alle Züge stecken
@@ -119,12 +118,5 @@
         </button>
     </div>
 
-    {{-- Punkte des laufenden Zugs, kleiner und ohne Griff-Funktion --}}
-    <template x-for="(pt, ii) in entwurf" :key="'e' + ii">
-        <div
-            class="pointer-events-none absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style="background: {{ $linie }}"
-            :style="'left:' + (pt[0] * 100) + '%; top:' + (pt[1] * 100) + '%'"
-        ></div>
-    </template>
+    
 </div>

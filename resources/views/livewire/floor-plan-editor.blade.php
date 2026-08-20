@@ -373,9 +373,10 @@
     @if ($roomMode)
         {{-- RAUMUMRISS (Versuchsstand) --}}
         <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
-            Klicken setzt Punkte · rastet auf Waagerechte und Senkrechte ein, <strong>Shift</strong> zeichnet frei<br>
-            Klick auf den <strong>Anfangspunkt</strong> schließt einen Ring · <strong>Enter</strong> oder Doppelklick beendet den Zug · <strong>Rücktaste</strong> nimmt den letzten Punkt zurück ·
-            Punkte ziehen verschiebt, Alt-Klick löscht · Griff in der Mitte verschiebt den ganzen Zug, Rechtsklick darauf löscht ihn · <strong>Esc</strong> verwirft
+            Von Ecke zu Ecke ziehen zeichnet eine Wand · Enden verbinden sich von selbst ·
+            <strong>Shift</strong> für schräge Wände<br>
+            Punkte ziehen verschiebt sie, Alt-Klick löscht · Griff in der Mitte verschiebt den Zug,
+            Rechtsklick darauf löscht ihn
             <button type="button" wire:click="clearRoomPaths()"
                 wire:confirm="Alle gezeichneten Linien löschen?"
                 class="ml-2 underline">alles löschen</button>
@@ -1022,15 +1023,19 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
    ======================================================================= */
 Alpine.data('roomDraw', (initialPaths) => ({
     paths: initialPaths || [],
-    entwurf: [],
-    cursor: null,       // Mausposition für das Gummiband
+    zug: null,          // { von, bis } – Wand, die gerade gezogen wird
     menu: null,         // { pi, x, y } – Menü am Verschiebe-Griff
     hatGezogen: false,  // unterdrückt den Klick nach einem Ziehen
 
+    /** Wie nah (in Pixeln) ein Ende an ein vorhandenes einrastet. */
+    FANG_PX: 14,
+
+    /* --- Anzeige --------------------------------------------------------- */
+
     /**
-     * Alle fertigen Züge als EIN d-Attribut. Ein Pfad darf über "M" mehrere
-     * Teilzüge tragen – damit entfällt die Schleife im SVG, wo Alpine-Templates
-     * nicht funktionieren (im SVG-Namensraum hat <template> kein .content).
+     * Alle Wände als EIN d-Attribut. Ein Pfad darf über "M" mehrere Teilzüge
+     * tragen – damit entfällt die Schleife im SVG, wo Alpine-Templates nicht
+     * funktionieren (im SVG-Namensraum hat <template> kein .content).
      */
     get d() {
         return this.paths
@@ -1039,27 +1044,25 @@ Alpine.data('roomDraw', (initialPaths) => ({
             .join(' ');
     },
 
-    /** Laufender Zug samt Gummiband zum Mauszeiger. */
+    /** Die Wand, die gerade gezogen wird. */
     get dEntwurf() {
-        if (!this.entwurf.length) { return ''; }
-        const punkte = this.cursor ? [...this.entwurf, this.cursor] : this.entwurf;
-        if (punkte.length < 2) { return ''; }
-        return 'M' + punkte.map(pt => pt[0] + ' ' + pt[1]).join(' L');
+        if (!this.zug) { return ''; }
+        return 'M' + this.zug.von[0] + ' ' + this.zug.von[1]
+             + ' L' + this.zug.bis[0] + ' ' + this.zug.bis[1];
     },
 
     init() {
-        this._tasten = (e) => {
-            if (!this.$wire.roomMode) { return; }
-            if (e.key === 'Escape')    { this.entwurf = []; this.cursor = null; this.menu = null; }
-            if (e.key === 'Enter')     { e.preventDefault(); this.zugAbschliessen(); }
-            if (e.key === 'Backspace') { e.preventDefault(); this.letztenZurueck(); }
+        this._esc = (e) => {
+            if (e.key === 'Escape') { this.zug = null; this.menu = null; }
         };
-        window.addEventListener('keydown', this._tasten);
+        window.addEventListener('keydown', this._esc);
     },
 
     destroy() {
-        window.removeEventListener('keydown', this._tasten);
+        window.removeEventListener('keydown', this._esc);
     },
+
+    /* --- Geometrie ------------------------------------------------------- */
 
     /** Mausposition in normalisierte Koordinaten (0…1) der Zeichenfläche. */
     pos(e) {
@@ -1070,67 +1073,166 @@ Alpine.data('roomDraw', (initialPaths) => ({
         ];
     },
 
+    /** Abstand zweier Punkte in Bildschirmpixeln. */
+    abstandPx(a, b) {
+        const r  = this.$root.getBoundingClientRect();
+        const dx = (a[0] - b[0]) * r.width;
+        const dy = (a[1] - b[1]) * r.height;
+        return Math.sqrt(dx * dx + dy * dy);
+    },
+
+    /**
+     * An ein vorhandenes Wandende einrasten.
+     *
+     * Dadurch wachsen einzeln gezogene Wände von selbst zu einem Zug zusammen,
+     * ohne dass man Punkte aneinanderreihen muss.
+     */
+    fangEnde(pt) {
+        let treffer = null;
+        let best    = this.FANG_PX;
+
+        for (const pfad of this.paths) {
+            for (const kandidat of [pfad[0], pfad[pfad.length - 1]]) {
+                const dist = this.abstandPx(pt, kandidat);
+                if (dist < best) { best = dist; treffer = [...kandidat]; }
+            }
+        }
+
+        return treffer;
+    },
+
     /**
      * Auf Waagerechte oder Senkrechte einrasten – Wände laufen fast immer im
      * rechten Winkel. Shift schaltet frei.
      *
-     * Verglichen wird in BILDSCHIRMPIXELN, nicht in den normalisierten Werten:
-     * Bei einem breiten Saal entspricht 0,1 waagerecht einer viel längeren
-     * Strecke als 0,1 senkrecht – ein direkter Vergleich würde fast immer
-     * dieselbe Achse wählen.
+     * Verglichen wird in BILDSCHIRMPIXELN: Bei einem breiten Saal entspricht
+     * 0,1 waagerecht einer viel längeren Strecke als 0,1 senkrecht.
      */
-    einrasten(pt, e) {
-        const letzter = this.entwurf[this.entwurf.length - 1];
-
-        if (!letzter || e.shiftKey) { return pt; }
+    gerade(pt, von, e) {
+        if (e.shiftKey) { return pt; }
 
         const r  = this.$root.getBoundingClientRect();
-        const dx = Math.abs(pt[0] - letzter[0]) * r.width;
-        const dy = Math.abs(pt[1] - letzter[1]) * r.height;
+        const dx = Math.abs(pt[0] - von[0]) * r.width;
+        const dy = Math.abs(pt[1] - von[1]) * r.height;
 
-        return dx >= dy ? [pt[0], letzter[1]] : [letzter[0], pt[1]];
+        return dx >= dy ? [pt[0], von[1]] : [von[0], pt[1]];
     },
 
-    zeigerBewegt(e) {
-        if (!this.entwurf.length) { this.cursor = null; return; }
-
-        const roh = this.pos(e);
-
-        // In der Nähe des Anfangs dorthin einrasten – so sieht man, dass der
-        // nächste Klick den Ring schließt.
-        this.cursor = this.nahAmStart(roh) ? [...this.entwurf[0]] : this.einrasten(roh, e);
+    istGeschlossen(pfad) {
+        if (pfad.length < 4) { return false; }
+        const a = pfad[0], b = pfad[pfad.length - 1];
+        return a[0] === b[0] && a[1] === b[1];
     },
 
-    punktSetzen(e) {
-        // Offenes Menü zuerst schließen – der Klick daneben soll es wegklicken
-        // und nicht gleich einen Punkt setzen.
+    /**
+     * Griffe eines Zugs mit ihrem echten Index. Beim geschlossenen Zug entfällt
+     * der letzte Punkt – er liegt auf dem ersten, zwei Griffe übereinander
+     * ließen sich nicht auseinanderhalten.
+     */
+    griffe(pfad) {
+        const bis = this.istGeschlossen(pfad) ? pfad.length - 1 : pfad.length;
+        return pfad.slice(0, bis).map((pt, i) => ({ i, pt }));
+    },
+
+    /* --- Zeichnen: ziehen von A nach B ----------------------------------- */
+
+    zeichnenStart(e) {
         if (this.menu) { this.menu = null; return; }
 
-        // Nach dem Verschieben eines Griffs folgt ein Klick – der darf keinen
-        // neuen Punkt setzen.
-        if (this.hatGezogen) { this.hatGezogen = false; return; }
-
-        // Der zweite Klick eines Doppelklicks soll nur abschließen, nicht noch
-        // einen Punkt setzen. detail zählt die Klicks der Serie.
-        if (e.detail > 1) { return; }
-
         const roh = this.pos(e);
+        const von = this.fangEnde(roh) || roh;
 
-        // Klick auf den Anfangspunkt schließt den Ring, statt einen zweiten
-        // Punkt an dieselbe Stelle zu setzen.
-        if (this.nahAmStart(roh)) { this.zugSchliessen(); return; }
-
-        this.entwurf.push(this.einrasten(roh, e));
-        this.cursor = null;
+        this.zug = { von, bis: von };
+        this.$root.setPointerCapture(e.pointerId);
     },
 
-    zugAbschliessen() {
-        if (this.entwurf.length >= 2) {
-            this.paths.push(this.entwurf);
-            this.speichern();
+    zeichnenBewegt(e) {
+        if (!this.zug) { return; }
+
+        const roh = this.pos(e);
+        // Erst an ein vorhandenes Ende, sonst auf die Gerade.
+        this.zug.bis = this.fangEnde(roh) || this.gerade(roh, this.zug.von, e);
+    },
+
+    zeichnenEnde(e) {
+        if (!this.zug) { return; }
+
+        const { von, bis } = this.zug;
+        this.zug = null;
+
+        try { this.$root.releasePointerCapture(e.pointerId); } catch (_) {}
+
+        // Ein Klick ohne Ziehen ist keine Wand – sonst entstünden bei jedem
+        // versehentlichen Klick Punkte im Raum.
+        if (this.abstandPx(von, bis) < 5) { return; }
+
+        this.wandAblegen(von, bis);
+    },
+
+    /**
+     * Wand einsortieren: Schließt sie an ein vorhandenes Ende an, wächst der
+     * Zug einfach weiter – so entsteht aus mehreren Zügen ein Umriss, ohne
+     * dass man das erklären muss.
+     */
+    wandAblegen(von, bis) {
+        const gleich = (a, b) => a[0] === b[0] && a[1] === b[1];
+
+        for (const pfad of this.paths) {
+            if (gleich(pfad[pfad.length - 1], von)) { pfad.push(bis); this.speichern(); return; }
+            if (gleich(pfad[0], bis))               { pfad.unshift(von); this.speichern(); return; }
+            if (gleich(pfad[pfad.length - 1], bis)) { pfad.push(von); this.speichern(); return; }
+            if (gleich(pfad[0], von))               { pfad.unshift(bis); this.speichern(); return; }
         }
-        this.entwurf = [];
-        this.cursor  = null;
+
+        this.paths.push([von, bis]);
+        this.speichern();
+    },
+
+    /* --- Bearbeiten ------------------------------------------------------ */
+
+    mitte(pfad) {
+        const n = pfad.length || 1;
+        return [
+            pfad.reduce((s, pt) => s + pt[0], 0) / n,
+            pfad.reduce((s, pt) => s + pt[1], 0) / n,
+        ];
+    },
+
+    /**
+     * Ganzen Zug verschieben. Begrenzt wird die VERSCHIEBUNG, nicht jeder Punkt
+     * einzeln – sonst verzöge sich die Form, sobald ein Ende den Rand erreicht.
+     */
+    pfadAnfassen(e, pi) {
+        e.preventDefault();
+        this.hatGezogen = false;
+        e.target.setPointerCapture(e.pointerId);
+        e.target.style.cursor = 'grabbing';
+
+        const start = this.pos(e);
+        const orig  = this.paths[pi].map(pt => [...pt]);
+        const minX  = Math.min(...orig.map(pt => pt[0]));
+        const maxX  = Math.max(...orig.map(pt => pt[0]));
+        const minY  = Math.min(...orig.map(pt => pt[1]));
+        const maxY  = Math.max(...orig.map(pt => pt[1]));
+
+        const bewegen = (ev) => {
+            this.hatGezogen = true;
+            const jetzt = this.pos(ev);
+            let dx = Math.min(1 - maxX, Math.max(-minX, jetzt[0] - start[0]));
+            let dy = Math.min(1 - maxY, Math.max(-minY, jetzt[1] - start[1]));
+            this.paths[pi] = orig.map(pt => [pt[0] + dx, pt[1] + dy]);
+        };
+        const loslassen = () => {
+            e.target.style.cursor = 'grab';
+            e.target.removeEventListener('pointermove', bewegen);
+            e.target.removeEventListener('pointerup', loslassen);
+            e.target.removeEventListener('pointercancel', loslassen);
+            if (this.hatGezogen) { this.speichern(); }
+        };
+
+        e.target.addEventListener('pointermove', bewegen);
+        e.target.addEventListener('pointerup', loslassen);
+        e.target.addEventListener('pointercancel', loslassen);
     },
 
     griffAnfassen(e, pi, ii) {
@@ -1157,118 +1259,16 @@ Alpine.data('roomDraw', (initialPaths) => ({
             if (this.hatGezogen) { this.speichern(); }
         };
 
-        // Am Element statt am Fenster: mit Pointer-Capture landen alle
-        // Ereignisse hier, und es bleibt nichts hängen.
         e.target.addEventListener('pointermove', bewegen);
         e.target.addEventListener('pointerup', loslassen);
         e.target.addEventListener('pointercancel', loslassen);
     },
 
-    /**
-     * Ein Zug gilt als geschlossen, wenn sein letzter Punkt der erste ist.
-     *
-     * Bewusst über einen doppelten Punkt statt über ein zusätzliches Feld:
-     * Das Format bleibt eine schlichte Punktliste, und die Anzeige im Shop
-     * braucht später keine Sonderbehandlung – ein Ring ist einfach ein Zug,
-     * der zum Anfang zurückkehrt.
-     */
-    istGeschlossen(pfad) {
-        if (pfad.length < 4) { return false; }
-        const a = pfad[0], b = pfad[pfad.length - 1];
-        return a[0] === b[0] && a[1] === b[1];
-    },
-
-    /**
-     * Griffe eines Zugs mit ihrem echten Index. Beim geschlossenen Zug
-     * entfällt der letzte Punkt – er liegt genau auf dem ersten, und zwei
-     * Griffe übereinander lassen sich nicht auseinanderhalten.
-     */
-    griffe(pfad) {
-        const bis = this.istGeschlossen(pfad) ? pfad.length - 1 : pfad.length;
-        return pfad.slice(0, bis).map((pt, i) => ({ i, pt }));
-    },
-
-    /** Liegt der Punkt nah genug am Anfang des Entwurfs, um zu schließen? */
-    nahAmStart(pt) {
-        if (this.entwurf.length < 2) { return false; }
-
-        const r     = this.$root.getBoundingClientRect();
-        const start = this.entwurf[0];
-        const dx    = (pt[0] - start[0]) * r.width;
-        const dy    = (pt[1] - start[1]) * r.height;
-
-        return Math.sqrt(dx * dx + dy * dy) < 14;   // Pixel, nicht Anteile
-    },
-
-    /** Entwurf zum Ring schließen: zurück zum Anfangspunkt, dann ablegen. */
-    zugSchliessen() {
-        this.entwurf.push([...this.entwurf[0]]);
-        this.paths.push(this.entwurf);
-        this.entwurf = [];
-        this.cursor  = null;
-        this.speichern();
-    },
-
-    /** Mittelpunkt eines Zugs – dort sitzt der Griff zum Verschieben. */
-    mitte(pfad) {
-        const n = pfad.length || 1;
-        return [
-            pfad.reduce((s, pt) => s + pt[0], 0) / n,
-            pfad.reduce((s, pt) => s + pt[1], 0) / n,
-        ];
-    },
-
-    /**
-     * Ganzen Zug verschieben.
-     *
-     * Begrenzt wird die VERSCHIEBUNG, nicht jeder Punkt einzeln: Würde man
-     * jeden Punkt für sich auf [0,1] stutzen, verzöge sich die Form, sobald
-     * ein Ende den Rand erreicht.
-     */
-    pfadAnfassen(e, pi) {
-        e.preventDefault();
-        this.hatGezogen = false;
-        e.target.setPointerCapture(e.pointerId);
-        e.target.style.cursor = 'grabbing';
-
-        const start = this.pos(e);
-        const orig  = this.paths[pi].map(pt => [...pt]);
-        const minX  = Math.min(...orig.map(pt => pt[0]));
-        const maxX  = Math.max(...orig.map(pt => pt[0]));
-        const minY  = Math.min(...orig.map(pt => pt[1]));
-        const maxY  = Math.max(...orig.map(pt => pt[1]));
-
-        const bewegen = (ev) => {
-            this.hatGezogen = true;
-            const jetzt = this.pos(ev);
-            let dx = jetzt[0] - start[0];
-            let dy = jetzt[1] - start[1];
-
-            dx = Math.min(1 - maxX, Math.max(-minX, dx));
-            dy = Math.min(1 - maxY, Math.max(-minY, dy));
-
-            this.paths[pi] = orig.map(pt => [pt[0] + dx, pt[1] + dy]);
-        };
-        const loslassen = () => {
-            e.target.style.cursor = 'grab';
-            e.target.removeEventListener('pointermove', bewegen);
-            e.target.removeEventListener('pointerup', loslassen);
-            e.target.removeEventListener('pointercancel', loslassen);
-            if (this.hatGezogen) { this.speichern(); }
-        };
-
-        e.target.addEventListener('pointermove', bewegen);
-        e.target.addEventListener('pointerup', loslassen);
-        e.target.addEventListener('pointercancel', loslassen);
-    },
-
-    /** Rechtsklick auf den Verschiebe-Griff öffnet das Menü zu diesem Zug. */
     menuOeffnen(e, pi) {
         const m = this.mitte(this.paths[pi]);
         this.menu = { pi, x: m[0], y: m[1] };
     },
 
-    /** Ganzen Zug samt allen seinen Punkten entfernen. */
     pfadLoeschen(pi) {
         this.paths.splice(pi, 1);
         this.menu = null;
@@ -1277,14 +1277,8 @@ Alpine.data('roomDraw', (initialPaths) => ({
 
     punktLoeschen(pi, ii) {
         this.paths[pi].splice(ii, 1);
-        // Ein Zug mit weniger als zwei Punkten ist keiner mehr.
         if (this.paths[pi].length < 2) { this.paths.splice(pi, 1); }
         this.speichern();
-    },
-
-    letztenZurueck() {
-        if (this.entwurf.length) { this.entwurf.pop(); return; }
-        if (this.paths.length)   { this.paths.pop(); this.speichern(); }
     },
 
     speichern() {
