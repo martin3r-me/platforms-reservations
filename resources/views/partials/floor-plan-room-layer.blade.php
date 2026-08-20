@@ -32,7 +32,7 @@
         :d="d"
         fill="none"
         stroke="currentColor"
-        stroke-width="2"
+        stroke-width="3"
         stroke-linejoin="round"
         stroke-linecap="round"
         vector-effect="non-scaling-stroke"
@@ -44,7 +44,7 @@
         :d="dEntwurf"
         fill="none"
         stroke="currentColor"
-        stroke-width="2"
+        stroke-width="3"
         stroke-dasharray="6 4"
         stroke-linejoin="round"
         vector-effect="non-scaling-stroke"
@@ -63,6 +63,22 @@
     x-on:dblclick.prevent="zugAbschliessen()"
     x-on:contextmenu.prevent="zugAbschliessen()"
 >
+    {{-- Griff in der Mitte jedes Zugs: verschiebt ihn als Ganzes.
+         Die Linie selbst lässt sich dafür nicht anfassen – alle Züge stecken
+         in EINEM Pfad-Element und wären dort nicht auseinanderzuhalten. --}}
+    <template x-for="(pfad, pi) in paths" :key="'m' + pi">
+        <div
+            x-on:pointerdown.stop="pfadAnfassen($event, pi)"
+            x-on:click.stop
+            class="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded border-2 bg-white shadow-sm"
+            style="border-color: var(--nx-accent); cursor: move;"
+            :style="'left:' + (mitte(pfad)[0] * 100) + '%; top:' + (mitte(pfad)[1] * 100) + '%'"
+            title="Ganzen Zug verschieben"
+        >
+            @svg('heroicon-o-arrows-pointing-out', 'w-3 h-3 text-[color:var(--nx-accent)]')
+        </div>
+    </template>
+
     {{-- Griffe der fertigen Züge: ziehen verschiebt, Alt-Klick löscht --}}
     <template x-for="(pfad, pi) in paths" :key="'g' + pi">
         <template x-for="(pt, ii) in pfad" :key="'g' + pi + '-' + ii">

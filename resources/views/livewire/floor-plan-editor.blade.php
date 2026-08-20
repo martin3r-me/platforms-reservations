@@ -358,7 +358,7 @@
         <p class="mt-2 text-center text-xs text-indigo-700">
             Klicken setzt Punkte · rastet auf Waagerechte und Senkrechte ein, <strong>Shift</strong> zeichnet frei<br>
             <strong>Enter</strong> oder Doppelklick beendet den Zug · <strong>Rücktaste</strong> nimmt den letzten Punkt zurück ·
-            Punkte ziehen verschiebt, Alt-Klick löscht · <strong>Esc</strong> verwirft
+            Punkte ziehen verschiebt, Alt-Klick löscht · Griff in der Mitte verschiebt den ganzen Zug · <strong>Esc</strong> verwirft
             <button type="button" wire:click="clearRoomPaths()"
                 wire:confirm="Alle gezeichneten Linien löschen?"
                 class="ml-2 underline">alles löschen</button>
@@ -1110,6 +1110,57 @@ Alpine.data('roomDraw', (initialPaths) => ({
 
         // Am Element statt am Fenster: mit Pointer-Capture landen alle
         // Ereignisse hier, und es bleibt nichts hängen.
+        e.target.addEventListener('pointermove', bewegen);
+        e.target.addEventListener('pointerup', loslassen);
+        e.target.addEventListener('pointercancel', loslassen);
+    },
+
+    /** Mittelpunkt eines Zugs – dort sitzt der Griff zum Verschieben. */
+    mitte(pfad) {
+        const n = pfad.length || 1;
+        return [
+            pfad.reduce((s, pt) => s + pt[0], 0) / n,
+            pfad.reduce((s, pt) => s + pt[1], 0) / n,
+        ];
+    },
+
+    /**
+     * Ganzen Zug verschieben.
+     *
+     * Begrenzt wird die VERSCHIEBUNG, nicht jeder Punkt einzeln: Würde man
+     * jeden Punkt für sich auf [0,1] stutzen, verzöge sich die Form, sobald
+     * ein Ende den Rand erreicht.
+     */
+    pfadAnfassen(e, pi) {
+        e.preventDefault();
+        this.hatGezogen = false;
+        e.target.setPointerCapture(e.pointerId);
+
+        const start = this.pos(e);
+        const orig  = this.paths[pi].map(pt => [...pt]);
+        const minX  = Math.min(...orig.map(pt => pt[0]));
+        const maxX  = Math.max(...orig.map(pt => pt[0]));
+        const minY  = Math.min(...orig.map(pt => pt[1]));
+        const maxY  = Math.max(...orig.map(pt => pt[1]));
+
+        const bewegen = (ev) => {
+            this.hatGezogen = true;
+            const jetzt = this.pos(ev);
+            let dx = jetzt[0] - start[0];
+            let dy = jetzt[1] - start[1];
+
+            dx = Math.min(1 - maxX, Math.max(-minX, dx));
+            dy = Math.min(1 - maxY, Math.max(-minY, dy));
+
+            this.paths[pi] = orig.map(pt => [pt[0] + dx, pt[1] + dy]);
+        };
+        const loslassen = () => {
+            e.target.removeEventListener('pointermove', bewegen);
+            e.target.removeEventListener('pointerup', loslassen);
+            e.target.removeEventListener('pointercancel', loslassen);
+            if (this.hatGezogen) { this.speichern(); }
+        };
+
         e.target.addEventListener('pointermove', bewegen);
         e.target.addEventListener('pointerup', loslassen);
         e.target.addEventListener('pointercancel', loslassen);
