@@ -94,9 +94,20 @@
     x-show="neu"
     x-on:click.stop
     x-on:pointerdown.stop
-    class="absolute -translate-x-1/2 translate-y-2 rounded-lg border border-[var(--ui-border)] bg-white p-2 shadow-lg"
-    style="display: none; z-index: 26;"
-    :style="neu ? { left: (neu.x * 100) + '%', top: (neu.y * 100) + '%' } : {}"
+    {{-- pointer-events MUSS hier stehen: Der Wrapper der Ebene hat "none", und
+         ohne Freischaltung ist das Menü durchklickbar – der Klick landet auf der
+         Fläche darunter und schließt es, statt die Beschriftung zu setzen.
+
+         Die Verschiebung richtet sich nach der Lage: Am Rand würde ein mittig
+         ausgerichtetes Menü aus dem Plan ragen, und der Rahmen schneidet ab. --}}
+    class="absolute rounded-lg border border-[var(--ui-border)] bg-white p-2 shadow-lg"
+    style="display: none; z-index: 26; pointer-events: auto;"
+    :style="neu ? {
+        left: (neu.x * 100) + '%',
+        top: (neu.y * 100) + '%',
+        transform: (neu.x < 0.3 ? 'translateX(0)' : neu.x > 0.7 ? 'translateX(-100%)' : 'translateX(-50%)')
+            + ' ' + (neu.y > 0.7 ? 'translateY(calc(-100% - 8px))' : 'translateY(8px)')
+    } : {}"
 >
     <div class="flex flex-wrap gap-1">
         @foreach (['Eingang', 'Bühne', 'Bar', 'Buffet', 'Theke'] as $vorschlag)
@@ -175,9 +186,14 @@
              Menü – der Klick auf "Zug löschen" käme sonst nie an. --}}
         x-on:pointerdown.stop
         x-on:click.stop
-        class="absolute -translate-x-1/2 translate-y-2 rounded-lg border border-[var(--ui-border)] bg-white py-1 shadow-lg"
-        style="display: none; z-index: 25;"
-        :style="menu ? { left: (menu.x * 100) + '%', top: (menu.y * 100) + '%' } : {}"
+        class="absolute rounded-lg border border-[var(--ui-border)] bg-white py-1 shadow-lg"
+        style="display: none; z-index: 25; pointer-events: auto;"
+        :style="menu ? {
+            left: (menu.x * 100) + '%',
+            top: (menu.y * 100) + '%',
+            transform: (menu.x < 0.3 ? 'translateX(0)' : menu.x > 0.7 ? 'translateX(-100%)' : 'translateX(-50%)')
+                + ' ' + (menu.y > 0.7 ? 'translateY(calc(-100% - 8px))' : 'translateY(8px)')
+        } : {}"
     >
         <button
             type="button"
