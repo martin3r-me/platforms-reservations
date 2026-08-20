@@ -358,7 +358,7 @@
         <p class="mt-2 text-center text-xs text-indigo-700">
             Klicken setzt Punkte · rastet auf Waagerechte und Senkrechte ein, <strong>Shift</strong> zeichnet frei<br>
             <strong>Enter</strong> oder Doppelklick beendet den Zug · <strong>Rücktaste</strong> nimmt den letzten Punkt zurück ·
-            Punkte ziehen verschiebt, Alt-Klick löscht · Griff in der Mitte verschiebt den ganzen Zug · <strong>Esc</strong> verwirft
+            Punkte ziehen verschiebt, Alt-Klick löscht · Griff in der Mitte verschiebt den ganzen Zug, Rechtsklick darauf löscht ihn · <strong>Esc</strong> verwirft
             <button type="button" wire:click="clearRoomPaths()"
                 wire:confirm="Alle gezeichneten Linien löschen?"
                 class="ml-2 underline">alles löschen</button>
@@ -999,6 +999,7 @@ Alpine.data('roomDraw', (initialPaths) => ({
     paths: initialPaths || [],
     entwurf: [],
     cursor: null,       // Mausposition für das Gummiband
+    menu: null,         // { pi, x, y } – Menü am Verschiebe-Griff
     hatGezogen: false,  // unterdrückt den Klick nach einem Ziehen
 
     /**
@@ -1024,7 +1025,7 @@ Alpine.data('roomDraw', (initialPaths) => ({
     init() {
         this._tasten = (e) => {
             if (!this.$wire.roomMode) { return; }
-            if (e.key === 'Escape')    { this.entwurf = []; this.cursor = null; }
+            if (e.key === 'Escape')    { this.entwurf = []; this.cursor = null; this.menu = null; }
             if (e.key === 'Enter')     { e.preventDefault(); this.zugAbschliessen(); }
             if (e.key === 'Backspace') { e.preventDefault(); this.letztenZurueck(); }
         };
@@ -1071,6 +1072,10 @@ Alpine.data('roomDraw', (initialPaths) => ({
     },
 
     punktSetzen(e) {
+        // Offenes Menü zuerst schließen – der Klick daneben soll es wegklicken
+        // und nicht gleich einen Punkt setzen.
+        if (this.menu) { this.menu = null; return; }
+
         // Nach dem Verschieben eines Griffs folgt ein Klick – der darf keinen
         // neuen Punkt setzen.
         if (this.hatGezogen) { this.hatGezogen = false; return; }
@@ -1168,6 +1173,19 @@ Alpine.data('roomDraw', (initialPaths) => ({
         e.target.addEventListener('pointermove', bewegen);
         e.target.addEventListener('pointerup', loslassen);
         e.target.addEventListener('pointercancel', loslassen);
+    },
+
+    /** Rechtsklick auf den Verschiebe-Griff öffnet das Menü zu diesem Zug. */
+    menuOeffnen(e, pi) {
+        const m = this.mitte(this.paths[pi]);
+        this.menu = { pi, x: m[0], y: m[1] };
+    },
+
+    /** Ganzen Zug samt allen seinen Punkten entfernen. */
+    pfadLoeschen(pi) {
+        this.paths.splice(pi, 1);
+        this.menu = null;
+        this.speichern();
     },
 
     punktLoeschen(pi, ii) {

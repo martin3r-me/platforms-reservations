@@ -77,10 +77,11 @@
         <div
             x-on:pointerdown.stop="pfadAnfassen($event, pi)"
             x-on:click.stop
+            x-on:contextmenu.prevent.stop="menuOeffnen($event, pi)"
             class="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded border-2 bg-white shadow-sm"
             style="border-color: {{ $linie }}; cursor: grab;"
             :style="'left:' + (mitte(pfad)[0] * 100) + '%; top:' + (mitte(pfad)[1] * 100) + '%'"
-            title="Ganzen Zug verschieben"
+            title="Ziehen verschiebt den Zug · Rechtsklick für Löschen"
         >
             <span style="color: {{ $linie }}">@svg('heroicon-o-arrows-pointing-out', 'w-3 h-3')</span>
         </div>
@@ -99,6 +100,24 @@
             ></div>
         </template>
     </template>
+
+    {{-- Menü zum Zug: erscheint am Verschiebe-Griff, ein Klick daneben schließt es --}}
+    <div
+        x-show="menu"
+        x-on:click.stop
+        class="absolute -translate-x-1/2 translate-y-2 rounded-lg border border-[var(--ui-border)] bg-white py-1 shadow-lg"
+        style="display: none; z-index: 25;"
+        :style="menu ? 'left:' + (menu.x * 100) + '%; top:' + (menu.y * 100) + '%' : ''"
+    >
+        <button
+            type="button"
+            x-on:click="pfadLoeschen(menu.pi)"
+            class="flex w-full items-center gap-2 whitespace-nowrap px-3 py-1.5 text-left text-xs text-[var(--ui-danger)] hover:bg-red-50"
+        >
+            @svg('heroicon-o-trash', 'w-3.5 h-3.5')
+            <span>Zug löschen</span>
+        </button>
+    </div>
 
     {{-- Punkte des laufenden Zugs, kleiner und ohne Griff-Funktion --}}
     <template x-for="(pt, ii) in entwurf" :key="'e' + ii">
