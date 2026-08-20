@@ -389,7 +389,7 @@
     @if ($markerMode)
         {{-- RAUMUMRISS (Versuchsstand) --}}
         <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
-            In den Plan klicken und beschriften · vorhandene Punkte ziehen verschiebt sie, Alt-Klick löscht
+            In den Plan klicken und beschriften · nah an einer Wand rastet der Punkt darauf ein (etwa der Eingang),<br>mitten im Raum bleibt er frei · ziehen verschiebt, Alt-Klick löscht
         </p>
     @elseif ($roomMode)
         {{-- RAUMUMRISS (Versuchsstand) --}}
@@ -1527,11 +1527,59 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
 
     /* --- Beschriftungen -------------------------------------------------- */
 
+    /**
+     * Beschriftung auf die nächste Wand ziehen, wenn sie nah genug ist.
+     *
+     * Eine Regel für beide Fälle: "Eingang" setzt man an die Wand und er rastet
+     * darauf ein; "Bar" oder "Bühne" setzt man in den Raum und sie bleiben
+     * liegen. Es braucht also keine Unterscheidung nach Beschriftung.
+     *
+     * Gerechnet wird in Bildschirmpixeln – in normalisierten Werten wäre der
+     * Fußpunkt auf einer schrägen Wand bei ungleichen Seitenverhältnissen
+     * falsch.
+     */
+    fangWand(pt) {
+        if (! this.$store.fpSnap.on) { return pt; }
+
+        const r  = this.$root.getBoundingClientRect();
+        const px = [pt[0] * r.width, pt[1] * r.height];
+
+        let best = 16;   // Pixel
+        let treffer = null;
+
+        for (const pfad of this.paths) {
+            for (let i = 0; i < pfad.length - 1; i++) {
+                const a = [pfad[i][0] * r.width,     pfad[i][1] * r.height];
+                const b = [pfad[i + 1][0] * r.width, pfad[i + 1][1] * r.height];
+
+                const vx = b[0] - a[0];
+                const vy = b[1] - a[1];
+                const len2 = vx * vx + vy * vy;
+
+                if (len2 === 0) { continue; }
+
+                // Lotfußpunkt, auf das Stück begrenzt – sonst würde eine kurze
+                // Wand auch weit außerhalb ihrer Enden anziehen.
+                let t = ((px[0] - a[0]) * vx + (px[1] - a[1]) * vy) / len2;
+                t = Math.min(1, Math.max(0, t));
+
+                const fx = a[0] + t * vx;
+                const fy = a[1] + t * vy;
+                const d  = Math.hypot(px[0] - fx, px[1] - fy);
+
+                if (d < best) { best = d; treffer = [fx / r.width, fy / r.height]; }
+            }
+        }
+
+        return treffer || pt;
+    },
+
+
     /** Klick auf die Fläche merkt sich die Stelle und öffnet die Auswahl. */
     markerSetzen(e) {
         if (this.neu) { this.neu = null; this.frei = ''; return; }
 
-        const pt = this.pos(e);
+        const pt = this.fangWand(this.pos(e));
         this.neu = { x: pt[0], y: pt[1] };
         this.frei = '';
     },
@@ -1555,7 +1603,7 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
 
         const bewegen = (ev) => {
             this.hatGezogen = true;
-            const pt = this.pos(ev);
+            const pt = this.fangWand(this.pos(ev));
             this.markers[i] = { ...this.markers[i], x: pt[0], y: pt[1] };
         };
         const loslassen = () => {
