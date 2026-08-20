@@ -16,6 +16,14 @@
     Erwartet: $paths (Züge aus RoomLayout), $roomMode (bool)
 --}}
 
+@php
+    // Indigo wie im uebrigen Editor. BEWUSST nicht --nx-text oder --nx-accent:
+    // beide sind Near-Black (#37352f) und gehen auf einem schwarz-weissen
+    // Grundriss unter. Als Attribut statt als Utility-Klasse, damit es nicht
+    // vom CSS-Build abhaengt.
+    $linie = '#4f46e5';   // indigo-600
+@endphp
+
 {{-- Linien: immer sichtbar, auch außerhalb des Zeichenmodus.
 
      KEINE x-for/x-if-Templates hier drin: Innerhalb von <svg> landet ein
@@ -31,24 +39,23 @@
     <path
         :d="d"
         fill="none"
-        stroke="currentColor"
+        stroke="{{ $linie }}"
         stroke-width="3"
         stroke-linejoin="round"
         stroke-linecap="round"
         vector-effect="non-scaling-stroke"
-        class="text-[color:var(--nx-text)] opacity-70"
     />
 
     {{-- Zug, der gerade entsteht: gestrichelt bis zum Abschluss --}}
     <path
         :d="dEntwurf"
         fill="none"
-        stroke="currentColor"
+        stroke="{{ $linie }}"
         stroke-width="3"
         stroke-dasharray="6 4"
         stroke-linejoin="round"
         vector-effect="non-scaling-stroke"
-        class="text-[color:var(--nx-accent)]"
+        opacity="0.7"
     />
 </svg>
 
@@ -71,11 +78,11 @@
             x-on:pointerdown.stop="pfadAnfassen($event, pi)"
             x-on:click.stop
             class="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded border-2 bg-white shadow-sm"
-            style="border-color: var(--nx-accent); cursor: grab;"
+            style="border-color: {{ $linie }}; cursor: grab;"
             :style="'left:' + (mitte(pfad)[0] * 100) + '%; top:' + (mitte(pfad)[1] * 100) + '%'"
             title="Ganzen Zug verschieben"
         >
-            @svg('heroicon-o-arrows-pointing-out', 'w-3 h-3 text-[color:var(--nx-accent)]')
+            <span style="color: {{ $linie }}">@svg('heroicon-o-arrows-pointing-out', 'w-3 h-3')</span>
         </div>
     </template>
 
@@ -86,7 +93,7 @@
                 x-on:pointerdown.stop="griffAnfassen($event, pi, ii)"
                 x-on:click.stop="$event.altKey && punktLoeschen(pi, ii)"
                 class="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-white"
-                style="border-color: var(--nx-accent); cursor: grab;"
+                style="border-color: {{ $linie }}; cursor: grab;"
                 :style="'left:' + (pt[0] * 100) + '%; top:' + (pt[1] * 100) + '%'"
                 :title="'Punkt ' + (ii + 1) + ' – ziehen zum Verschieben, Alt-Klick löscht'"
             ></div>
@@ -97,7 +104,7 @@
     <template x-for="(pt, ii) in entwurf" :key="'e' + ii">
         <div
             class="pointer-events-none absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style="background: var(--nx-accent)"
+            style="background: {{ $linie }}"
             :style="'left:' + (pt[0] * 100) + '%; top:' + (pt[1] * 100) + '%'"
         ></div>
     </template>
