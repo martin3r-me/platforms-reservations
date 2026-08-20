@@ -89,13 +89,20 @@
     {{-- Griffe der fertigen Züge: ziehen verschiebt, Alt-Klick löscht --}}
     <template x-for="(pfad, pi) in paths" :key="'g' + pi">
         <template x-for="g in griffe(pfad)" :key="'g' + pi + '-' + g.i">
+            {{-- Offenes Ende: dort setzt man an, um weiterzuzeichnen – gefüllt
+                 dargestellt. Punkte mitten im Zug bleiben hohl und verschieben sich. --}}
             <div
-                x-on:pointerdown.stop="griffAnfassen($event, pi, g.i)"
+                x-on:pointerdown.stop="istEnde(pfad, g.i) ? weiterZeichnen($event, g.pt) : griffAnfassen($event, pi, g.i)"
                 x-on:click.stop="$event.altKey && punktLoeschen(pi, g.i)"
-                class="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-white"
-                style="border-color: {{ $linie }}; cursor: grab;"
-                :style="'left:' + (g.pt[0] * 100) + '%; top:' + (g.pt[1] * 100) + '%'"
-                :title="'Punkt ' + (g.i + 1) + ' – ziehen zum Verschieben, Alt-Klick löscht'"
+                class="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2"
+                :class="istEnde(pfad, g.i) ? '' : 'bg-white'"
+                :style="'left:' + (g.pt[0] * 100) + '%; top:' + (g.pt[1] * 100) + '%'
+                    + '; border-color: {{ $linie }}'
+                    + '; background:' + (istEnde(pfad, g.i) ? '{{ $linie }}' : '#fff')
+                    + '; cursor:' + (istEnde(pfad, g.i) ? 'crosshair' : 'grab')"
+                :title="istEnde(pfad, g.i)
+                    ? 'Ende – von hier weiterzeichnen (Alt-Klick löscht den Punkt)'
+                    : 'Punkt ' + (g.i + 1) + ' – ziehen zum Verschieben, Alt-Klick löscht'"
             ></div>
         </template>
     </template>
@@ -103,6 +110,10 @@
     {{-- Menü zum Zug: erscheint am Verschiebe-Griff, ein Klick daneben schließt es --}}
     <div
         x-show="menu"
+        {{-- pointerdown MUSS mit gestoppt werden: Die Fläche zeichnet seit der
+             Umstellung auf Ziehen beim Drücken, und zeichnenStart schließt das
+             Menü – der Klick auf "Zug löschen" käme sonst nie an. --}}
+        x-on:pointerdown.stop
         x-on:click.stop
         class="absolute -translate-x-1/2 translate-y-2 rounded-lg border border-[var(--ui-border)] bg-white py-1 shadow-lg"
         style="display: none; z-index: 25;"

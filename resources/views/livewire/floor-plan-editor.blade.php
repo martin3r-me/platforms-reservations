@@ -373,9 +373,9 @@
     @if ($roomMode)
         {{-- RAUMUMRISS (Versuchsstand) --}}
         <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
-            Von Ecke zu Ecke ziehen zeichnet eine Wand · Enden verbinden sich von selbst ·
+            Von Ecke zu Ecke ziehen zeichnet eine Wand · an einem <strong>gefüllten Ende</strong> geht es weiter ·
             <strong>Shift</strong> für schräge Wände<br>
-            Punkte ziehen verschiebt sie, Alt-Klick löscht · Griff in der Mitte verschiebt den Zug,
+            Hohle Punkte lassen sich verschieben, Alt-Klick löscht · Griff in der Mitte verschiebt den Zug,
             Rechtsklick darauf löscht ihn
             <button type="button" wire:click="clearRoomPaths()"
                 wire:confirm="Alle gezeichneten Linien löschen?"
@@ -1091,9 +1091,14 @@ Alpine.data('roomDraw', (initialPaths) => ({
     fangEnde(pt) {
         let treffer = null;
         let best    = this.FANG_PX;
+        const von   = this.zug?.von;
 
         for (const pfad of this.paths) {
             for (const kandidat of [pfad[0], pfad[pfad.length - 1]]) {
+                // Nicht auf den eigenen Ausgangspunkt zurückrasten – sonst
+                // klebt die Wand beim Weiterzeichnen an ihrem Anfang fest.
+                if (von && kandidat[0] === von[0] && kandidat[1] === von[1]) { continue; }
+
                 const dist = this.abstandPx(pt, kandidat);
                 if (dist < best) { best = dist; treffer = [...kandidat]; }
             }
@@ -1133,6 +1138,15 @@ Alpine.data('roomDraw', (initialPaths) => ({
     griffe(pfad) {
         const bis = this.istGeschlossen(pfad) ? pfad.length - 1 : pfad.length;
         return pfad.slice(0, bis).map((pt, i) => ({ i, pt }));
+    },
+
+    /**
+     * Ist dieser Punkt ein offenes Ende, an dem der Zug weitergehen kann?
+     * Bei einem geschlossenen Ring gibt es keine offenen Enden mehr.
+     */
+    istEnde(pfad, i) {
+        if (this.istGeschlossen(pfad)) { return false; }
+        return i === 0 || i === pfad.length - 1;
     },
 
     /* --- Zeichnen: ziehen von A nach B ----------------------------------- */
@@ -1194,6 +1208,44 @@ Alpine.data('roomDraw', (initialPaths) => ({
 
         this.paths.push([von, bis]);
         this.speichern();
+    },
+
+    /**
+     * Vom offenen Ende aus weiterzeichnen.
+     *
+     * Die Griffe liegen genau auf den Ecken – wer dort ansetzt, will fast immer
+     * die Wand fortsetzen und nicht den Punkt verschieben. Deshalb führt das
+     * Drücken auf ein offenes ENDE ins Zeichnen; Punkte MITTEN im Zug lassen
+     * sich weiterhin verschieben, dort ist Verschieben die sinnvolle Geste.
+     */
+    weiterZeichnen(e, pt) {
+        e.preventDefault();
+
+        const el = e.currentTarget;
+        try { el.setPointerCapture(e.pointerId); } catch (_) {}
+
+        this.zug = { von: [...pt], bis: [...pt] };
+
+        const bewegen = (ev) => {
+            const roh = this.pos(ev);
+            this.zug.bis = this.fangEnde(roh) || this.gerade(roh, this.zug.von, ev);
+        };
+        const loslassen = (ev) => {
+            el.removeEventListener('pointermove', bewegen);
+            el.removeEventListener('pointerup', loslassen);
+            el.removeEventListener('pointercancel', loslassen);
+
+            const zug = this.zug;
+            this.zug = null;
+
+            if (zug && this.abstandPx(zug.von, zug.bis) >= 5) {
+                this.wandAblegen(zug.von, zug.bis);
+            }
+        };
+
+        el.addEventListener('pointermove', bewegen);
+        el.addEventListener('pointerup', loslassen);
+        el.addEventListener('pointercancel', loslassen);
     },
 
     /* --- Bearbeiten ------------------------------------------------------ */
