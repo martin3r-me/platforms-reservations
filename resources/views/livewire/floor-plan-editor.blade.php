@@ -1063,8 +1063,17 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
      * tragen – damit entfällt die Schleife im SVG, wo Alpine-Templates nicht
      * funktionieren (im SVG-Namensraum hat <template> kein .content).
      */
-    /** Halbe Breite einer Wandöffnung ohne eigene Fläche, in Bildschirmpixeln. */
-    OEFFNUNG_PX: 16,
+    /**
+     * Halbe Breite einer Wandöffnung ohne eigene Fläche – Anteil der Planbreite.
+     *
+     * Bewusst relativ und nicht in Pixeln: Sonst wäre dieselbe Tür beim Zoomen
+     * und im Shop verschieden breit. Support\RoomOutline rechnet mit denselben
+     * Anteilen; ändert sich hier etwas, muss es dort mit.
+     */
+    OEFFNUNG_ANTEIL: 0.015,
+
+    /** Wie nah eine Beschriftung an einer Wand liegen muss, um sie zu öffnen. */
+    TOLERANZ_ANTEIL: 0.002,
 
     /** Ab wann eine gezogene Fläche eine ist – darunter bleibt es ein Punkt. */
     MIN_FLAECHE_PX: 14,
@@ -1127,7 +1136,7 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
             const fy = ay + t * (by - ay);
 
             // Nur wenn die Beschriftung wirklich auf DIESEM Stück sitzt.
-            if (Math.hypot(mx - fx, my - fy) > 2) { continue; }
+            if (Math.hypot(mx - fx, my - fy) > this.TOLERANZ_ANTEIL * r.width) { continue; }
 
             // Die Öffnung ist so breit wie der Schatten, den die Fläche auf die
             // Wand wirft – ein zwei Meter breites Tor reißt zwei Meter Wand auf.
@@ -1135,7 +1144,7 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
             const halbPx = (m.w || m.h)
                 ? Math.abs((m.w || 0) * r.width  / 2 * ex)
                 + Math.abs((m.h || 0) * r.height / 2 * ey)
-                : this.OEFFNUNG_PX;
+                : this.OEFFNUNG_ANTEIL * r.width;
 
             const halb = halbPx / laenge;
             luecken.push([Math.max(0, t - halb), Math.min(1, t + halb)]);
@@ -1682,7 +1691,9 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
                 let t = ((px[0] - a[0]) * vx + (px[1] - a[1]) * vy) / len2;
                 t = Math.min(1, Math.max(0, t));
 
-                if (Math.hypot(px[0] - (a[0] + t * vx), px[1] - (a[1] + t * vy)) < 2) {
+                // Dieselbe Toleranz wie beim Zeichnen der Öffnung: Sonst gälte ein
+                // Punkt als "auf der Wand", ohne dass sich dort etwas öffnet.
+                if (Math.hypot(px[0] - (a[0] + t * vx), px[1] - (a[1] + t * vy)) < this.TOLERANZ_ANTEIL * r.width) {
                     return true;
                 }
             }

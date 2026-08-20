@@ -16,6 +16,8 @@ use Platform\Reservation\Models\SalesList;
 use Platform\Reservation\Models\Translation;
 use Platform\Reservation\Services\CartCalculator;
 use Platform\Reservation\Support\BookingItemsPresenter;
+use Platform\Reservation\Support\RoomLayout;
+use Platform\Reservation\Support\RoomOutline;
 use Platform\Reservation\Services\GuestOrderService;
 use Platform\Reservation\Support\Vat;
 use Platform\Reservation\Services\SeatAvailabilityService;
@@ -615,6 +617,8 @@ class EventController extends ApiController
                 'background_url'      => $floorPlan->backgroundUrl(),
                 'background_rotation' => $floorPlan->background_rotation,
                 'aspect'             => $floorPlan->displayAspect(),
+                // Raumumriss (Versuchsstand). Fehlt, solange nichts gezeichnet ist.
+                'room'                => $this->formatRoom($floorPlan),
             ],
             'atmosphere_images' => $floorPlan->atmosphereImages(), // [{ id, url, thumbnail }]
             'tables' => $tables->map(fn ($t) => [
@@ -636,6 +640,39 @@ class EventController extends ApiController
         }
 
         return $result;
+    }
+
+    /**
+     * Raumumriss für die Anzeige beim Gast.
+     *
+     * VERSUCHSSTAND – gehört zu Support\RoomLayout und fällt mit ihm weg; ohne
+     * gezeichneten Umriss steht hier null, und der Shop zeigt seinen Plan wie
+     * bisher.
+     *
+     * Der Gast bekommt die fertige Wandlinie, keine Rohdaten mit dem Auftrag,
+     * daraus Türöffnungen zu rechnen. Sonst müsste jede Anzeige dieselbe
+     * Geometrie noch einmal bauen – und die erste Abweichung fiele niemandem
+     * auf.
+     */
+    protected function formatRoom($floorPlan): ?array
+    {
+        $paths   = RoomLayout::paths($floorPlan);
+        $markers = RoomLayout::markers($floorPlan);
+
+        if ($paths === [] && $markers === []) {
+            return null;
+        }
+
+        return [
+            'path'    => RoomOutline::path($paths, $markers, $floorPlan->displayAspect()),
+            'markers' => array_map(fn ($m) => [
+                'x'     => $m['x'],
+                'y'     => $m['y'],
+                'w'     => $m['w'] ?? 0,
+                'h'     => $m['h'] ?? 0,
+                'label' => $m['label'],
+            ], $markers),
+        ];
     }
 
     /**
