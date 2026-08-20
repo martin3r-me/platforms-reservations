@@ -69,6 +69,15 @@
                             class="inline-flex items-center justify-center rounded-md border border-[var(--ui-border)] p-1.5 text-[var(--ui-secondary)] hover:bg-gray-50">
                             @svg('heroicon-o-arrow-uturn-right', 'w-4 h-4')
                         </button>
+                        {{-- Herunterladen: Der Grundriss liegt sonst nur hier. Öffnet in
+                             einem neuen Tab, weil die Datei über eine signierte URL
+                             mit kurzer Gültigkeit ausgeliefert wird. --}}
+                        @if ($url = $this->floorPlan?->backgroundDownloadUrl())
+                            <a href="{{ $url }}" target="_blank" rel="noopener" title="Grundriss herunterladen"
+                                class="inline-flex items-center justify-center rounded-md border border-[var(--ui-border)] p-1.5 text-[var(--ui-secondary)] hover:bg-gray-50">
+                                @svg('heroicon-o-arrow-down-tray', 'w-4 h-4')
+                            </a>
+                        @endif
                         <button wire:click="removeBackground" wire:confirm="Grundriss entfernen?" type="button"
                             class="inline-flex items-center gap-1.5 rounded-md border border-[var(--ui-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--ui-danger)] transition-colors hover:border-[var(--ui-danger)] hover:bg-red-50 dark:bg-gray-900 dark:hover:bg-red-950/30">
                             @svg('heroicon-o-trash', 'w-4 h-4')

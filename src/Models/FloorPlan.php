@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Platform\Reservation\Models\Concerns\HasContextImage;
+use Platform\Core\Services\ContextFileService;
 
 class FloorPlan extends Model
 {
@@ -118,6 +119,35 @@ class FloorPlan extends Model
      * (kein Crop), Fallback auf das Original (Varianten entstehen asynchron).
      * Delegiert an {@see HasContextImage::imageUrl()}.
      */
+    /**
+     * Link zum Herunterladen des hinterlegten Grundrisses.
+     *
+     * Nicht die download_url der Datei: Beim Hochladen wandelt der
+     * ContextFileService jedes Bild in WebP um, der gespeicherte
+     * original_name trägt aber weiterhin die alte Endung. Der Download hieße
+     * dann "grundriss.png", wäre aber eine WebP-Datei – manche Programme
+     * öffnen das nicht. Deshalb der Name aus der Datei plus der Endung, die
+     * tatsächlich im Speicher liegt.
+     */
+    public function backgroundDownloadUrl(): ?string
+    {
+        $file = $this->imageFile;
+
+        if (! $file) {
+            return null;
+        }
+
+        $endung = pathinfo((string) $file->path, PATHINFO_EXTENSION) ?: 'webp';
+        $name   = pathinfo((string) ($file->original_name ?: $this->name), PATHINFO_FILENAME) ?: 'grundriss';
+
+        return ContextFileService::generateDownloadUrl(
+            $file->disk,
+            $file->path,
+            $file->token,
+            $name . '.' . $endung,
+        );
+    }
+
     public function backgroundUrl(string $variant = 'large_original'): ?string
     {
         return $this->imageUrl($variant);
