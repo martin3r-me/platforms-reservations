@@ -71,7 +71,7 @@
             x-on:pointerdown.stop="pfadAnfassen($event, pi)"
             x-on:click.stop
             class="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded border-2 bg-white shadow-sm"
-            style="border-color: var(--nx-accent); cursor: move;"
+            style="border-color: var(--nx-accent); cursor: grab;"
             :style="'left:' + (mitte(pfad)[0] * 100) + '%; top:' + (mitte(pfad)[1] * 100) + '%'"
             title="Ganzen Zug verschieben"
         >

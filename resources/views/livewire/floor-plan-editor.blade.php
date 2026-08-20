@@ -1096,12 +1096,14 @@ Alpine.data('roomDraw', (initialPaths) => ({
         e.preventDefault();
         this.hatGezogen = false;
         e.target.setPointerCapture(e.pointerId);
+        e.target.style.cursor = 'grabbing';
 
         const bewegen = (ev) => {
             this.hatGezogen = true;
             this.paths[pi][ii] = this.pos(ev);
         };
         const loslassen = () => {
+            e.target.style.cursor = 'grab';
             e.target.removeEventListener('pointermove', bewegen);
             e.target.removeEventListener('pointerup', loslassen);
             e.target.removeEventListener('pointercancel', loslassen);
@@ -1135,6 +1137,7 @@ Alpine.data('roomDraw', (initialPaths) => ({
         e.preventDefault();
         this.hatGezogen = false;
         e.target.setPointerCapture(e.pointerId);
+        e.target.style.cursor = 'grabbing';
 
         const start = this.pos(e);
         const orig  = this.paths[pi].map(pt => [...pt]);
@@ -1155,6 +1158,7 @@ Alpine.data('roomDraw', (initialPaths) => ({
             this.paths[pi] = orig.map(pt => [pt[0] + dx, pt[1] + dy]);
         };
         const loslassen = () => {
+            e.target.style.cursor = 'grab';
             e.target.removeEventListener('pointermove', bewegen);
             e.target.removeEventListener('pointerup', loslassen);
             e.target.removeEventListener('pointercancel', loslassen);
