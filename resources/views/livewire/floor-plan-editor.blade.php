@@ -1250,11 +1250,22 @@ Alpine.data('roomDraw', (initialPaths) => ({
 
     /* --- Bearbeiten ------------------------------------------------------ */
 
+    /**
+     * Mitte eines Zugs – dort sitzt der Griff zum Verschieben.
+     *
+     * Über den umschließenden Kasten, NICHT über den Mittelwert der Punkte:
+     * Beim geschlossenen Ring ist der Anfangspunkt doppelt enthalten und zöge
+     * den Mittelwert zu sich. Bei einem Rechteck landete der Griff dadurch
+     * sichtbar oben links statt in der Mitte. Der Kasten ist davon unabhängig
+     * und liefert auch bei ungleich verteilten Ecken die optische Mitte.
+     */
     mitte(pfad) {
-        const n = pfad.length || 1;
+        const xs = pfad.map(pt => pt[0]);
+        const ys = pfad.map(pt => pt[1]);
+
         return [
-            pfad.reduce((s, pt) => s + pt[0], 0) / n,
-            pfad.reduce((s, pt) => s + pt[1], 0) / n,
+            (Math.min(...xs) + Math.max(...xs)) / 2,
+            (Math.min(...ys) + Math.max(...ys)) / 2,
         ];
     },
 
