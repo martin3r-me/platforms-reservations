@@ -16,39 +16,40 @@
     Erwartet: $paths (Züge aus RoomLayout), $roomMode (bool)
 --}}
 
-{{-- Linien: immer sichtbar, auch außerhalb des Zeichenmodus --}}
+{{-- Linien: immer sichtbar, auch außerhalb des Zeichenmodus.
+
+     KEINE x-for/x-if-Templates hier drin: Innerhalb von <svg> landet ein
+     <template> im SVG-Namensraum, wo .content nicht existiert – Alpine kann es
+     dann nicht klonen. Deshalb werden ALLE Züge zu einem einzigen d-Attribut
+     zusammengesetzt; ein Pfad kann über "M" beliebig viele Teilzüge enthalten. --}}
 <svg
     class="pointer-events-none absolute inset-0 h-full w-full"
     viewBox="0 0 1 1"
     preserveAspectRatio="none"
     aria-hidden="true"
 >
-    <template x-for="(pfad, pi) in paths" :key="'p' + pi">
-        <polyline
-            :points="pfad.map(pt => pt[0] + ',' + pt[1]).join(' ')"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linejoin="round"
-            stroke-linecap="round"
-            vector-effect="non-scaling-stroke"
-            class="text-[color:var(--nx-text)] opacity-70"
-        />
-    </template>
+    <path
+        :d="d"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linejoin="round"
+        stroke-linecap="round"
+        vector-effect="non-scaling-stroke"
+        class="text-[color:var(--nx-text)] opacity-70"
+    />
 
     {{-- Zug, der gerade entsteht: gestrichelt bis zum Abschluss --}}
-    <template x-if="entwurf.length > 1">
-        <polyline
-            :points="entwurf.map(pt => pt[0] + ',' + pt[1]).join(' ')"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-dasharray="6 4"
-            stroke-linejoin="round"
-            vector-effect="non-scaling-stroke"
-            class="text-[color:var(--nx-accent)]"
-        />
-    </template>
+    <path
+        :d="dEntwurf"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-dasharray="6 4"
+        stroke-linejoin="round"
+        vector-effect="non-scaling-stroke"
+        class="text-[color:var(--nx-accent)]"
+    />
 </svg>
 
 {{-- Fangfläche + Griffe: nur im Zeichenmodus --}}

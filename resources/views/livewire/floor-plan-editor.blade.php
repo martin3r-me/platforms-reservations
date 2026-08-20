@@ -998,6 +998,23 @@ Alpine.data('roomDraw', (initialPaths) => ({
     zug: null,          // laufendes Ziehen eines Griffs
     hatGezogen: false,  // unterdrückt den Klick nach einem Ziehen
 
+    /**
+     * Alle Züge als EIN d-Attribut. Ein Pfad darf über "M" mehrere Teilzüge
+     * tragen – damit entfällt die Schleife im SVG, wo Alpine-Templates nicht
+     * funktionieren (im SVG-Namensraum hat <template> kein .content).
+     */
+    get d() {
+        return this.paths
+            .filter(p => p.length > 1)
+            .map(p => 'M' + p.map(pt => pt[0] + ' ' + pt[1]).join(' L'))
+            .join(' ');
+    },
+
+    get dEntwurf() {
+        if (this.entwurf.length < 2) { return ''; }
+        return 'M' + this.entwurf.map(pt => pt[0] + ' ' + pt[1]).join(' L');
+    },
+
     init() {
         this._esc = (e) => {
             if (e.key === 'Escape') { this.entwurf = []; }
