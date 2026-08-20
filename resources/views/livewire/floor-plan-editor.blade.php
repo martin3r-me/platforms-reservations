@@ -389,7 +389,7 @@
     @if ($markerMode)
         {{-- RAUMUMRISS (Versuchsstand) --}}
         <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
-            In den Plan klicken und beschriften · nah an einer Wand rastet der Punkt darauf ein (etwa der Eingang),<br>mitten im Raum bleibt er frei · ziehen verschiebt, Alt-Klick löscht
+            In den Plan klicken und beschriften · nah an einer Wand rastet der Punkt darauf ein und öffnet sie (Eingang),<br>mitten im Raum bleibt er frei · ziehen verschiebt · Rechtsklick öffnet, schließt oder löscht
         </p>
     @elseif ($roomMode)
         {{-- RAUMUMRISS (Versuchsstand) --}}
@@ -1046,6 +1046,7 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
     paths: initialPaths || [],
     markers: initialMarkers || [],
     neu: null,          // { x, y } – Stelle, an der eine Beschriftung entsteht
+    markerMenu: null,   // { mi, x, y } – Menü an einer Beschriftung
     frei: '',           // frei eingetippter Text im Auswahlfeld
     zug: null,          // { von, bis } – Wand, die gerade gezogen wird
     flaeche: null,      // Element mit der Zeiger-Erfassung während des Ziehens
@@ -1062,11 +1063,86 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
      * tragen – damit entfällt die Schleife im SVG, wo Alpine-Templates nicht
      * funktionieren (im SVG-Namensraum hat <template> kein .content).
      */
+    /** Halbe Breite einer Wandöffnung, in Bildschirmpixeln. */
+    OEFFNUNG_PX: 16,
+
+    /**
+     * Alle Wände als EIN d-Attribut, mit Lücken dort, wo eine Beschriftung die
+     * Wand öffnet.
+     *
+     * Ein Pfad darf über "M" beliebig viele Teilzüge tragen – die Lücke entsteht
+     * also einfach dadurch, dass ein Stück in zwei Teilzüge zerfällt. Das ist
+     * baulich richtig (eine Tür IST eine Lücke) und bleibt eine reine
+     * Darstellung: Die gespeicherten Punkte bleiben unangetastet.
+     */
     get d() {
-        return this.paths
-            .filter(p => p.length > 1)
-            .map(p => 'M' + p.map(pt => pt[0] + ' ' + pt[1]).join(' L'))
-            .join(' ');
+        const r = this.$root?.getBoundingClientRect();
+        const teile = [];
+
+        for (const pfad of this.paths) {
+            if (pfad.length < 2) { continue; }
+
+            for (let i = 0; i < pfad.length - 1; i++) {
+                for (const stueck of this.stueckMitLuecken(pfad[i], pfad[i + 1], r)) {
+                    teile.push('M' + stueck[0][0] + ' ' + stueck[0][1]
+                             + ' L' + stueck[1][0] + ' ' + stueck[1][1]);
+                }
+            }
+        }
+
+        return teile.join(' ');
+    },
+
+    /**
+     * Ein Wandstück in die Teile zerlegen, die nach Abzug der Öffnungen bleiben.
+     *
+     * @return Array von [von, bis]
+     */
+    stueckMitLuecken(a, b, r) {
+        if (! r || ! r.width) { return [[a, b]]; }
+
+        const ax = a[0] * r.width, ay = a[1] * r.height;
+        const bx = b[0] * r.width, by = b[1] * r.height;
+        const laenge = Math.hypot(bx - ax, by - ay);
+
+        if (laenge === 0) { return [[a, b]]; }
+
+        // Lücken als Bereiche des Parameters t (0…1) sammeln.
+        const luecken = [];
+
+        for (const m of this.markers) {
+            if (! m.gap) { continue; }
+
+            const mx = m.x * r.width, my = m.y * r.height;
+            let t = ((mx - ax) * (bx - ax) + (my - ay) * (by - ay)) / (laenge * laenge);
+            t = Math.min(1, Math.max(0, t));
+
+            const fx = ax + t * (bx - ax);
+            const fy = ay + t * (by - ay);
+
+            // Nur wenn die Beschriftung wirklich auf DIESEM Stück sitzt.
+            if (Math.hypot(mx - fx, my - fy) > 2) { continue; }
+
+            const halb = this.OEFFNUNG_PX / laenge;
+            luecken.push([Math.max(0, t - halb), Math.min(1, t + halb)]);
+        }
+
+        if (! luecken.length) { return [[a, b]]; }
+
+        luecken.sort((x, y) => x[0] - y[0]);
+
+        const punkt = (t) => [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
+        const teile = [];
+        let cursor = 0;
+
+        for (const [von, bis] of luecken) {
+            if (von > cursor) { teile.push([punkt(cursor), punkt(von)]); }
+            cursor = Math.max(cursor, bis);
+        }
+
+        if (cursor < 1) { teile.push([punkt(cursor), punkt(1)]); }
+
+        return teile;
     },
 
     /** Die Wand, die gerade gezogen wird. */
@@ -1078,7 +1154,7 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
 
     init() {
         this._esc = (e) => {
-            if (e.key === 'Escape') { this.zug = null; this.menu = null; this.neu = null; }
+            if (e.key === 'Escape') { this.zug = null; this.menu = null; this.neu = null; this.markerMenu = null; }
         };
         window.addEventListener('keydown', this._esc);
     },
@@ -1575,6 +1651,32 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
     },
 
 
+    /** Liegt der Punkt (praktisch) auf einer Wand? */
+    aufWand(pt) {
+        const r  = this.$root.getBoundingClientRect();
+        const px = [pt[0] * r.width, pt[1] * r.height];
+
+        for (const pfad of this.paths) {
+            for (let i = 0; i < pfad.length - 1; i++) {
+                const a = [pfad[i][0] * r.width,     pfad[i][1] * r.height];
+                const b = [pfad[i + 1][0] * r.width, pfad[i + 1][1] * r.height];
+                const vx = b[0] - a[0], vy = b[1] - a[1];
+                const len2 = vx * vx + vy * vy;
+
+                if (len2 === 0) { continue; }
+
+                let t = ((px[0] - a[0]) * vx + (px[1] - a[1]) * vy) / len2;
+                t = Math.min(1, Math.max(0, t));
+
+                if (Math.hypot(px[0] - (a[0] + t * vx), px[1] - (a[1] + t * vy)) < 2) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    },
+
     /** Klick auf die Fläche merkt sich die Stelle und öffnet die Auswahl. */
     markerSetzen(e) {
         if (this.neu) { this.neu = null; this.frei = ''; return; }
@@ -1589,7 +1691,11 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
 
         if (! text || ! this.neu) { this.neu = null; return; }
 
-        this.markers.push({ x: this.neu.x, y: this.neu.y, label: text });
+        // Sitzt der Punkt auf einer Wand, ist eine Öffnung der Normalfall –
+        // man setzt dort einen Eingang, keine Theke. Umschaltbar bleibt es.
+        const aufWand = this.aufWand([this.neu.x, this.neu.y]);
+
+        this.markers.push({ x: this.neu.x, y: this.neu.y, label: text, gap: aufWand });
         this.neu  = null;
         this.frei = '';
         this.speichernMarker();
@@ -1619,8 +1725,27 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
         e.target.addEventListener('pointercancel', loslassen);
     },
 
+    markerMenuOeffnen(e, i) {
+        const m = this.markers[i];
+        this.markerMenu = { mi: i, x: m.x, y: m.y };
+    },
+
+    /**
+     * Wandöffnung ein-/ausschalten.
+     *
+     * Eine Tür ist baulich eine Lücke in der Wand. Ob eine Beschriftung eine
+     * solche Lücke bedeutet, lässt sich am Text nicht ablesen – "Eingang" ja,
+     * "Theke" nein –, deshalb ist es ein Schalter und keine Wortliste.
+     */
+    oeffnungUmschalten(i) {
+        this.markers[i] = { ...this.markers[i], gap: ! this.markers[i].gap };
+        this.markerMenu = null;
+        this.speichernMarker();
+    },
+
     markerLoeschen(i) {
         this.markers.splice(i, 1);
+        this.markerMenu = null;
         this.speichernMarker();
     },
 

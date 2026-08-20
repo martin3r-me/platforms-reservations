@@ -24,7 +24,7 @@ use Platform\Reservation\Models\FloorPlan;
  * Format in layout_json:
  *   { "room": {
  *       "paths":   [ [[x,y],[x,y], …], … ],
- *       "markers": [ { "x": …, "y": …, "label": "Eingang" }, … ]
+ *       "markers": [ { "x": …, "y": …, "label": "Eingang", "gap": true }, … ]
  *   } }
  *
  * Andere Schlüssel in layout_json bleiben unangetastet.
@@ -54,7 +54,7 @@ class RoomLayout
     /**
      * Beschriftungen lesen ("Eingang", "Bühne").
      *
-     * @return array<int, array{x: float, y: float, label: string}>
+     * @return array<int, array{x: float, y: float, label: string, gap: bool}>
      */
     public static function markers(?FloorPlan $plan): array
     {
@@ -113,7 +113,7 @@ class RoomLayout
      * Leeres verworfen.
      *
      * @param  mixed  $markers
-     * @return array<int, array{x: float, y: float, label: string}>
+     * @return array<int, array{x: float, y: float, label: string, gap: bool}>
      */
     public static function sanitizeMarkers($markers): array
     {
@@ -143,6 +143,9 @@ class RoomLayout
                 'x'     => round(min(1, max(0, (float) $m['x'])), 4),
                 'y'     => round(min(1, max(0, (float) $m['y'])), 4),
                 'label' => mb_substr($label, 0, self::MAX_LABEL),
+                // Öffnet die Wand an dieser Stelle (Tür). Reine Darstellung –
+                // die Punkte des Zugs bleiben unverändert.
+                'gap'   => (bool) ($m['gap'] ?? false),
             ];
         }
 

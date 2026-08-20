@@ -65,7 +65,10 @@
 <template x-for="(m, mi) in markers" :key="'m' + mi">
     <div
         x-on:pointerdown.stop="$wire.markerMode && markerAnfassen($event, mi)"
-        x-on:click.stop="$event.altKey && $wire.markerMode && markerLoeschen(mi)"
+        {{-- Kein Alt-Klick: markerAnfassen ruft preventDefault(), und das
+             unterdrückt das nachfolgende click-Ereignis. Rechtsklick ist
+             ohnehin dasselbe Muster wie beim Zug daneben. --}}
+        x-on:contextmenu.prevent.stop="$wire.markerMode && markerMenuOeffnen($event, mi)"
         class="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border bg-white px-2 py-0.5 text-[11px] font-medium shadow-sm"
         :style="{
             left: (m.x * 100) + '%',
@@ -76,7 +79,7 @@
             pointerEvents: $wire.markerMode ? 'auto' : 'none',
             cursor: 'grab'
         }"
-        :title="$wire.markerMode ? 'Ziehen verschiebt · Alt-Klick löscht' : m.label"
+        :title="$wire.markerMode ? 'Ziehen verschiebt · Rechtsklick für mehr' : m.label"
         x-text="m.label"
     ></div>
 </template>
@@ -86,7 +89,7 @@
     x-show="$wire.markerMode"
     class="absolute inset-0"
     style="display: none; cursor: copy; pointer-events: auto; z-index: 20;"
-    x-on:click="markerSetzen($event)"
+    x-on:click="markerMenu ? markerMenu = null : markerSetzen($event)"
 ></div>
 
 {{-- Auswahl der Beschriftung an der geklickten Stelle --}}
@@ -123,6 +126,34 @@
             class="w-32 rounded border border-[var(--ui-border)] px-2 py-0.5 text-[11px]">
         <button type="submit" class="rounded border border-[var(--ui-border)] px-2 text-[11px] hover:bg-gray-50">OK</button>
     </form>
+</div>
+
+{{-- Menü an einer Beschriftung --}}
+<div
+    x-show="markerMenu"
+    x-on:click.stop
+    x-on:pointerdown.stop
+    class="absolute rounded-lg border border-[var(--ui-border)] bg-white py-1 shadow-lg"
+    style="display: none; z-index: 26; pointer-events: auto;"
+    :style="markerMenu ? {
+        left: (markerMenu.x * 100) + '%',
+        top: (markerMenu.y * 100) + '%',
+        transform: (markerMenu.x < 0.3 ? 'translateX(0)' : markerMenu.x > 0.7 ? 'translateX(-100%)' : 'translateX(-50%)')
+            + ' ' + (markerMenu.y > 0.7 ? 'translateY(calc(-100% - 8px))' : 'translateY(8px)')
+    } : {}"
+>
+    <button type="button"
+        x-on:click="oeffnungUmschalten(markerMenu.mi)"
+        class="flex w-full items-center gap-2 whitespace-nowrap px-3 py-1.5 text-left text-xs hover:bg-gray-50"
+        x-text="markers[markerMenu?.mi]?.gap ? 'Wand wieder schließen' : 'Wand hier öffnen'"
+    ></button>
+    <button type="button"
+        x-on:click="markerLoeschen(markerMenu.mi)"
+        class="flex w-full items-center gap-2 whitespace-nowrap px-3 py-1.5 text-left text-xs text-[var(--ui-danger)] hover:bg-red-50"
+    >
+        @svg('heroicon-o-trash', 'w-3.5 h-3.5')
+        <span>Löschen</span>
+    </button>
 </div>
 
 {{-- Fangfläche + Griffe: nur im Zeichenmodus --}}
