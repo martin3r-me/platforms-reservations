@@ -355,9 +355,9 @@
             </div>{{-- /Rahmen --}}
     @if ($roomMode)
         {{-- RAUMUMRISS (Versuchsstand) --}}
-        <p class="mt-2 text-center text-xs text-indigo-700">
+        <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
             Klicken setzt Punkte · rastet auf Waagerechte und Senkrechte ein, <strong>Shift</strong> zeichnet frei<br>
-            <strong>Enter</strong> oder Doppelklick beendet den Zug · <strong>Rücktaste</strong> nimmt den letzten Punkt zurück ·
+            Klick auf den <strong>Anfangspunkt</strong> schließt einen Ring · <strong>Enter</strong> oder Doppelklick beendet den Zug · <strong>Rücktaste</strong> nimmt den letzten Punkt zurück ·
             Punkte ziehen verschiebt, Alt-Klick löscht · Griff in der Mitte verschiebt den ganzen Zug, Rechtsklick darauf löscht ihn · <strong>Esc</strong> verwirft
             <button type="button" wire:click="clearRoomPaths()"
                 wire:confirm="Alle gezeichneten Linien löschen?"
@@ -1068,7 +1068,12 @@ Alpine.data('roomDraw', (initialPaths) => ({
 
     zeigerBewegt(e) {
         if (!this.entwurf.length) { this.cursor = null; return; }
-        this.cursor = this.einrasten(this.pos(e), e);
+
+        const roh = this.pos(e);
+
+        // In der Nähe des Anfangs dorthin einrasten – so sieht man, dass der
+        // nächste Klick den Ring schließt.
+        this.cursor = this.nahAmStart(roh) ? [...this.entwurf[0]] : this.einrasten(roh, e);
     },
 
     punktSetzen(e) {
@@ -1084,7 +1089,13 @@ Alpine.data('roomDraw', (initialPaths) => ({
         // einen Punkt setzen. detail zählt die Klicks der Serie.
         if (e.detail > 1) { return; }
 
-        this.entwurf.push(this.einrasten(this.pos(e), e));
+        const roh = this.pos(e);
+
+        // Klick auf den Anfangspunkt schließt den Ring, statt einen zweiten
+        // Punkt an dieselbe Stelle zu setzen.
+        if (this.nahAmStart(roh)) { this.zugSchliessen(); return; }
+
+        this.entwurf.push(this.einrasten(roh, e));
         this.cursor = null;
     },
 
@@ -1106,6 +1117,12 @@ Alpine.data('roomDraw', (initialPaths) => ({
         const bewegen = (ev) => {
             this.hatGezogen = true;
             this.paths[pi][ii] = this.pos(ev);
+
+            // Beim Ring ist der letzte Punkt derselbe wie der erste – er muss
+            // mitwandern, sonst reißt der Zug auf.
+            if (ii === 0 && this.istGeschlossen(this.paths[pi])) {
+                this.paths[pi][this.paths[pi].length - 1] = [...this.paths[pi][0]];
+            }
         };
         const loslassen = () => {
             e.target.style.cursor = 'grab';
@@ -1120,6 +1137,51 @@ Alpine.data('roomDraw', (initialPaths) => ({
         e.target.addEventListener('pointermove', bewegen);
         e.target.addEventListener('pointerup', loslassen);
         e.target.addEventListener('pointercancel', loslassen);
+    },
+
+    /**
+     * Ein Zug gilt als geschlossen, wenn sein letzter Punkt der erste ist.
+     *
+     * Bewusst über einen doppelten Punkt statt über ein zusätzliches Feld:
+     * Das Format bleibt eine schlichte Punktliste, und die Anzeige im Shop
+     * braucht später keine Sonderbehandlung – ein Ring ist einfach ein Zug,
+     * der zum Anfang zurückkehrt.
+     */
+    istGeschlossen(pfad) {
+        if (pfad.length < 4) { return false; }
+        const a = pfad[0], b = pfad[pfad.length - 1];
+        return a[0] === b[0] && a[1] === b[1];
+    },
+
+    /**
+     * Griffe eines Zugs mit ihrem echten Index. Beim geschlossenen Zug
+     * entfällt der letzte Punkt – er liegt genau auf dem ersten, und zwei
+     * Griffe übereinander lassen sich nicht auseinanderhalten.
+     */
+    griffe(pfad) {
+        const bis = this.istGeschlossen(pfad) ? pfad.length - 1 : pfad.length;
+        return pfad.slice(0, bis).map((pt, i) => ({ i, pt }));
+    },
+
+    /** Liegt der Punkt nah genug am Anfang des Entwurfs, um zu schließen? */
+    nahAmStart(pt) {
+        if (this.entwurf.length < 2) { return false; }
+
+        const r     = this.$root.getBoundingClientRect();
+        const start = this.entwurf[0];
+        const dx    = (pt[0] - start[0]) * r.width;
+        const dy    = (pt[1] - start[1]) * r.height;
+
+        return Math.sqrt(dx * dx + dy * dy) < 14;   // Pixel, nicht Anteile
+    },
+
+    /** Entwurf zum Ring schließen: zurück zum Anfangspunkt, dann ablegen. */
+    zugSchliessen() {
+        this.entwurf.push([...this.entwurf[0]]);
+        this.paths.push(this.entwurf);
+        this.entwurf = [];
+        this.cursor  = null;
+        this.speichern();
     },
 
     /** Mittelpunkt eines Zugs – dort sitzt der Griff zum Verschieben. */

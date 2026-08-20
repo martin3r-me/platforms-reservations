@@ -89,14 +89,14 @@
 
     {{-- Griffe der fertigen Züge: ziehen verschiebt, Alt-Klick löscht --}}
     <template x-for="(pfad, pi) in paths" :key="'g' + pi">
-        <template x-for="(pt, ii) in pfad" :key="'g' + pi + '-' + ii">
+        <template x-for="g in griffe(pfad)" :key="'g' + pi + '-' + g.i">
             <div
-                x-on:pointerdown.stop="griffAnfassen($event, pi, ii)"
-                x-on:click.stop="$event.altKey && punktLoeschen(pi, ii)"
+                x-on:pointerdown.stop="griffAnfassen($event, pi, g.i)"
+                x-on:click.stop="$event.altKey && punktLoeschen(pi, g.i)"
                 class="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-white"
                 style="border-color: {{ $linie }}; cursor: grab;"
-                :style="'left:' + (pt[0] * 100) + '%; top:' + (pt[1] * 100) + '%'"
-                :title="'Punkt ' + (ii + 1) + ' – ziehen zum Verschieben, Alt-Klick löscht'"
+                :style="'left:' + (g.pt[0] * 100) + '%; top:' + (g.pt[1] * 100) + '%'"
+                :title="'Punkt ' + (g.i + 1) + ' – ziehen zum Verschieben, Alt-Klick löscht'"
             ></div>
         </template>
     </template>
