@@ -22,15 +22,20 @@ use Platform\Reservation\Models\FloorPlan;
  * automatisch deckungsgleich zu den Tischen.
  *
  * Format in layout_json:
- *   { "room": { "paths": [ [[x,y],[x,y], …], … ] } }
+ *   { "room": {
+ *       "paths":   [ [[x,y],[x,y], …], … ],
+ *       "markers": [ { "x": …, "y": …, "label": "Eingang" }, … ]
+ *   } }
  *
  * Andere Schlüssel in layout_json bleiben unangetastet.
  */
 class RoomLayout
 {
-    /** Höchstzahl Züge und Punkte – gegen versehentlich riesige Nutzlasten. */
-    public const MAX_PATHS  = 20;
-    public const MAX_POINTS = 200;
+    /** Höchstzahlen – gegen versehentlich riesige Nutzlasten. */
+    public const MAX_PATHS   = 20;
+    public const MAX_POINTS  = 200;
+    public const MAX_MARKERS = 30;
+    public const MAX_LABEL   = 40;
 
     /**
      * Züge eines Grundrisses lesen.
@@ -47,24 +52,101 @@ class RoomLayout
     }
 
     /**
+     * Beschriftungen lesen ("Eingang", "Bühne").
+     *
+     * @return array<int, array{x: float, y: float, label: string}>
+     */
+    public static function markers(?FloorPlan $plan): array
+    {
+        if (! $plan) {
+            return [];
+        }
+
+        return self::sanitizeMarkers(data_get($plan->layout_json, 'room.markers', []));
+    }
+
+    /**
      * Züge speichern. Ersetzt die bisherigen; ein leeres Array löscht sie.
      *
      * @param  array<mixed>  $paths
      */
-    public static function save(FloorPlan $plan, array $paths): void
+    public static function savePaths(FloorPlan $plan, array $paths): void
+    {
+        self::write($plan, self::sanitize($paths), self::markers($plan));
+    }
+
+    /**
+     * Beschriftungen speichern.
+     *
+     * @param  array<mixed>  $markers
+     */
+    public static function saveMarkers(FloorPlan $plan, array $markers): void
+    {
+        self::write($plan, self::paths($plan), self::sanitizeMarkers($markers));
+    }
+
+    /**
+     * Beides zusammen ablegen.
+     *
+     * Sind weder Züge noch Beschriftungen da, verschwindet der Schlüssel wieder –
+     * layout_json sieht dann aus wie vor dieser Funktion. Fremde Schlüssel
+     * bleiben unangetastet.
+     */
+    protected static function write(FloorPlan $plan, array $paths, array $markers): void
     {
         $layout = $plan->layout_json ?? [];
-        $sauber = self::sanitize($paths);
 
-        if ($sauber === []) {
-            // Nichts Leeres zurücklassen: Ohne Züge verschwindet der Schlüssel
-            // wieder, damit layout_json so aussieht wie vor der Funktion.
+        if ($paths === [] && $markers === []) {
             unset($layout['room']);
         } else {
-            $layout['room'] = ['paths' => $sauber];
+            $layout['room'] = array_filter([
+                'paths'   => $paths,
+                'markers' => $markers,
+            ]);
         }
 
         $plan->update(['layout_json' => $layout ?: null]);
+    }
+
+    /**
+     * Beschriftungen säubern: Lage in [0,1], Text gekürzt, Anzahl begrenzt,
+     * Leeres verworfen.
+     *
+     * @param  mixed  $markers
+     * @return array<int, array{x: float, y: float, label: string}>
+     */
+    public static function sanitizeMarkers($markers): array
+    {
+        if (! is_array($markers)) {
+            return [];
+        }
+
+        $out = [];
+
+        foreach (array_slice($markers, 0, self::MAX_MARKERS) as $m) {
+            if (! is_array($m) || ! isset($m['x'], $m['y'])) {
+                continue;
+            }
+
+            if (! is_numeric($m['x']) || ! is_numeric($m['y'])) {
+                continue;
+            }
+
+            $label = trim((string) ($m['label'] ?? ''));
+
+            // Ohne Text hat der Punkt keinen Zweck – er soll ja etwas benennen.
+            if ($label === '') {
+                continue;
+            }
+
+            $out[] = [
+                'x'     => round(min(1, max(0, (float) $m['x'])), 4),
+                'y'     => round(min(1, max(0, (float) $m['y'])), 4),
+                'label' => mb_substr($label, 0, self::MAX_LABEL),
+            ];
+        }
+
+        return $out;
     }
 
     /**

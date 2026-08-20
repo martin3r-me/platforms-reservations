@@ -59,6 +59,61 @@
     />
 </svg>
 
+{{-- Beschriftungen: immer sichtbar, auch außerhalb des Beschriften-Modus.
+     Sie beantworten dem Gast später die eigentliche Frage – "wo sitze ich
+     eigentlich" –, für die ein Wandumriss allein nicht genügt. --}}
+<template x-for="(m, mi) in markers" :key="'m' + mi">
+    <div
+        x-on:pointerdown.stop="$wire.markerMode && markerAnfassen($event, mi)"
+        x-on:click.stop="$event.altKey && $wire.markerMode && markerLoeschen(mi)"
+        class="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border bg-white px-2 py-0.5 text-[11px] font-medium shadow-sm"
+        :style="{
+            left: (m.x * 100) + '%',
+            top: (m.y * 100) + '%',
+            borderColor: '{{ $linie }}',
+            color: '{{ $linie }}',
+            zIndex: 22,
+            pointerEvents: $wire.markerMode ? 'auto' : 'none',
+            cursor: 'grab'
+        }"
+        :title="$wire.markerMode ? 'Ziehen verschiebt · Alt-Klick löscht' : m.label"
+        x-text="m.label"
+    ></div>
+</template>
+
+{{-- Fläche zum Setzen einer Beschriftung --}}
+<div
+    x-show="$wire.markerMode"
+    class="absolute inset-0"
+    style="display: none; cursor: copy; pointer-events: auto; z-index: 20;"
+    x-on:click="markerSetzen($event)"
+></div>
+
+{{-- Auswahl der Beschriftung an der geklickten Stelle --}}
+<div
+    x-show="neu"
+    x-on:click.stop
+    x-on:pointerdown.stop
+    class="absolute -translate-x-1/2 translate-y-2 rounded-lg border border-[var(--ui-border)] bg-white p-2 shadow-lg"
+    style="display: none; z-index: 26;"
+    :style="neu ? { left: (neu.x * 100) + '%', top: (neu.y * 100) + '%' } : {}"
+>
+    <div class="flex flex-wrap gap-1">
+        @foreach (['Eingang', 'Bühne', 'Bar', 'Buffet', 'Theke'] as $vorschlag)
+            <button type="button"
+                x-on:click="markerAnlegen(@js($vorschlag))"
+                class="rounded-full border border-[var(--ui-border)] px-2 py-0.5 text-[11px] hover:bg-gray-50">{{ $vorschlag }}</button>
+        @endforeach
+    </div>
+    {{-- Räume unterscheiden sich; die Vorschläge decken den Normalfall ab,
+         der Rest wird eingetippt. --}}
+    <form x-on:submit.prevent="markerAnlegen(frei)" class="mt-2 flex gap-1">
+        <input x-model="frei" type="text" maxlength="40" placeholder="eigener Text"
+            class="w-32 rounded border border-[var(--ui-border)] px-2 py-0.5 text-[11px]">
+        <button type="submit" class="rounded border border-[var(--ui-border)] px-2 text-[11px] hover:bg-gray-50">OK</button>
+    </form>
+</div>
+
 {{-- Fangfläche + Griffe: nur im Zeichenmodus --}}
 <div
     x-show="$wire.roomMode"

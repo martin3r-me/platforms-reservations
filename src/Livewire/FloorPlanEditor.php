@@ -530,6 +530,10 @@ class FloorPlanEditor extends Component
     public function toggleRoomMode(): void
     {
         $this->roomMode = ! $this->roomMode;
+
+        if ($this->roomMode) {
+            $this->markerMode = false;
+        }
     }
 
     /**
@@ -547,9 +551,48 @@ class FloorPlanEditor extends Component
             return;
         }
 
-        RoomLayout::save($plan, $paths);
+        RoomLayout::savePaths($plan, $paths);
 
         unset($this->floorPlan, $this->roomPaths);
+        $this->skipRender();
+    }
+
+    /** Beschriftungen im Plan ("Eingang", "Bühne", "Bar"). */
+    #[Computed]
+    public function roomMarkers(): array
+    {
+        return RoomLayout::markers($this->floorPlan);
+    }
+
+    /** Beschriften statt zeichnen – die beiden schließen sich aus. */
+    public bool $markerMode = false;
+
+    public function toggleMarkerMode(): void
+    {
+        $this->markerMode = ! $this->markerMode;
+
+        if ($this->markerMode) {
+            $this->roomMode = false;
+        }
+    }
+
+    /**
+     * Beschriftungen speichern. Wie bei den Zügen kommt immer der vollständige
+     * Stand vom Client – es sind wenige, kurze Einträge.
+     *
+     * @param  array<mixed>  $markers
+     */
+    public function saveRoomMarkers(array $markers): void
+    {
+        $plan = $this->floorPlan;
+
+        if (! $plan) {
+            return;
+        }
+
+        RoomLayout::saveMarkers($plan, $markers);
+
+        unset($this->floorPlan, $this->roomMarkers);
         $this->skipRender();
     }
 
@@ -562,9 +605,10 @@ class FloorPlanEditor extends Component
             return;
         }
 
-        RoomLayout::save($plan, []);
+        RoomLayout::savePaths($plan, []);
+        RoomLayout::saveMarkers($plan, []);
 
-        unset($this->floorPlan, $this->roomPaths);
+        unset($this->floorPlan, $this->roomPaths, $this->roomMarkers);
     }
 
     public function deleteTableAndCloseModal(): void

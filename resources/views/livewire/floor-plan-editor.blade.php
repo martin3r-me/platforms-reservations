@@ -162,10 +162,10 @@
                      die Datei partials/floor-plan-room-layer.blade.php loeschen. --}}
                 @php $roomPaths = $this->roomPaths; @endphp
                 <div
-                    wire:key="room-layer-{{ md5(json_encode($roomPaths)) }}"
+                    wire:key="room-layer-{{ md5(json_encode([$roomPaths, $this->roomMarkers])) }}"
                     class="absolute inset-0"
                     style="pointer-events: none;"
-                    x-data="roomDraw(@js($roomPaths))"
+                    x-data="roomDraw(@js($roomPaths), @js($this->roomMarkers))"
                 >
                     @include('reservation::partials.floor-plan-room-layer')
                 </div>
@@ -343,6 +343,22 @@
                     <span>{{ $roomMode ? 'Zeichnen' : 'Raum' }}</span>
                 </button>
 
+                {{-- Orientierungspunkte: "Eingang", "Bühne" … Der Gast fragt
+                     nicht nach dem Wandverlauf, sondern wo er sitzt. --}}
+                <button
+                    type="button"
+                    wire:click="toggleMarkerMode()"
+                    @class([
+                        'inline-flex h-7 items-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium shadow-sm transition-colors',
+                        'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300' => $markerMode,
+                        'border-[var(--ui-border)] bg-white text-[var(--ui-muted)] dark:bg-gray-900' => ! $markerMode,
+                    ])
+                    title="{{ $markerMode ? 'Beschriften beenden' : 'Eingang, Bühne, Bar … eintragen' }}"
+                >
+                    @svg('heroicon-o-map-pin', 'w-3.5 h-3.5')
+                    <span>Punkte</span>
+                </button>
+
                 {{-- Grundriss ein-/ausblenden: zeigt, ob der Umriss allein schon trägt.
                      Nur sinnvoll, wenn überhaupt ein Bild hinterlegt ist. --}}
                 @if ($this->floorPlan?->backgroundUrl())
@@ -370,7 +386,12 @@
                 </button>
             </div>
             </div>{{-- /Rahmen --}}
-    @if ($roomMode)
+    @if ($markerMode)
+        {{-- RAUMUMRISS (Versuchsstand) --}}
+        <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
+            In den Plan klicken und beschriften · vorhandene Punkte ziehen verschiebt sie, Alt-Klick löscht
+        </p>
+    @elseif ($roomMode)
         {{-- RAUMUMRISS (Versuchsstand) --}}
         <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
             Von Ecke zu Ecke ziehen zeichnet eine Wand · an einem <strong>gefüllten Ende</strong> geht es weiter ·
@@ -1021,8 +1042,11 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
    Zum Entfernen: diesen Abschnitt, den Include im Markup und die Klasse
    Support\RoomLayout löschen. Der Tisch-Teil oben bleibt unberührt.
    ======================================================================= */
-Alpine.data('roomDraw', (initialPaths) => ({
+Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
     paths: initialPaths || [],
+    markers: initialMarkers || [],
+    neu: null,          // { x, y } – Stelle, an der eine Beschriftung entsteht
+    frei: '',           // frei eingetippter Text im Auswahlfeld
     zug: null,          // { von, bis } – Wand, die gerade gezogen wird
     flaeche: null,      // Element mit der Zeiger-Erfassung während des Ziehens
     menu: null,         // { pi, x, y } – Menü am Verschiebe-Griff
@@ -1054,7 +1078,7 @@ Alpine.data('roomDraw', (initialPaths) => ({
 
     init() {
         this._esc = (e) => {
-            if (e.key === 'Escape') { this.zug = null; this.menu = null; }
+            if (e.key === 'Escape') { this.zug = null; this.menu = null; this.neu = null; }
         };
         window.addEventListener('keydown', this._esc);
     },
@@ -1499,6 +1523,61 @@ Alpine.data('roomDraw', (initialPaths) => ({
         this.paths[pi].splice(ii, 1);
         if (this.paths[pi].length < 2) { this.paths.splice(pi, 1); }
         this.speichern();
+    },
+
+    /* --- Beschriftungen -------------------------------------------------- */
+
+    /** Klick auf die Fläche merkt sich die Stelle und öffnet die Auswahl. */
+    markerSetzen(e) {
+        if (this.neu) { this.neu = null; this.frei = ''; return; }
+
+        const pt = this.pos(e);
+        this.neu = { x: pt[0], y: pt[1] };
+        this.frei = '';
+    },
+
+    markerAnlegen(label) {
+        const text = (label || '').trim();
+
+        if (! text || ! this.neu) { this.neu = null; return; }
+
+        this.markers.push({ x: this.neu.x, y: this.neu.y, label: text });
+        this.neu  = null;
+        this.frei = '';
+        this.speichernMarker();
+    },
+
+    markerAnfassen(e, i) {
+        e.preventDefault();
+        this.hatGezogen = false;
+        e.target.setPointerCapture(e.pointerId);
+        e.target.style.cursor = 'grabbing';
+
+        const bewegen = (ev) => {
+            this.hatGezogen = true;
+            const pt = this.pos(ev);
+            this.markers[i] = { ...this.markers[i], x: pt[0], y: pt[1] };
+        };
+        const loslassen = () => {
+            e.target.style.cursor = 'grab';
+            e.target.removeEventListener('pointermove', bewegen);
+            e.target.removeEventListener('pointerup', loslassen);
+            e.target.removeEventListener('pointercancel', loslassen);
+            if (this.hatGezogen) { this.speichernMarker(); }
+        };
+
+        e.target.addEventListener('pointermove', bewegen);
+        e.target.addEventListener('pointerup', loslassen);
+        e.target.addEventListener('pointercancel', loslassen);
+    },
+
+    markerLoeschen(i) {
+        this.markers.splice(i, 1);
+        this.speichernMarker();
+    },
+
+    speichernMarker() {
+        this.$wire.saveRoomMarkers(this.markers);
     },
 
     speichern() {
