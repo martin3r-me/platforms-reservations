@@ -156,11 +156,18 @@ class RoomLayout
 
             // Ausdehnung nur ablegen, wenn es eine gibt: Ein Punkt bleibt dann
             // Byte für Byte das, was er vor dieser Erweiterung war.
-            foreach (['w', 'h'] as $achse) {
-                $wert = self::mass($m[$achse] ?? null);
+            //
+            // Die Fläche liegt mittig um den Punkt und wird so beschnitten, dass
+            // sie im Plan bleibt – ein Kasten, der über den Saalplan hinausragt,
+            // darf gar nicht erst entstehen. Das kostet nichts an der Sache: Bei
+            // einem Eingang an der Wand begrenzt die Regel nur die Tiefe der
+            // Öffnung, nicht ihre Breite. Die misst sich längs der Wand, und dort
+            // ist Platz.
+            foreach (['w' => $eintrag['x'], 'h' => $eintrag['y']] as $achse => $mitte) {
+                $wert = min(self::mass($m[$achse] ?? null), 2 * min($mitte, 1 - $mitte));
 
                 if ($wert > 0) {
-                    $eintrag[$achse] = $wert;
+                    $eintrag[$achse] = round($wert, 4);
                 }
             }
 

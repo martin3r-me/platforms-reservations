@@ -1702,6 +1702,21 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
         return false;
     },
 
+    /**
+     * Fläche so beschneiden, dass der Kasten im Plan bleibt.
+     *
+     * Dieselbe Regel steckt in Support\RoomLayout – dort ist sie die Zusage,
+     * hier nur die sofortige Rückmeldung. Stünde sie nur im Server, spränge der
+     * Kasten nach dem Speichern auf ein anderes Maß.
+     */
+    imPlan(m) {
+        return {
+            ...m,
+            w: Math.min(m.w || 0, 2 * Math.min(m.x, 1 - m.x)),
+            h: Math.min(m.h || 0, 2 * Math.min(m.y, 1 - m.y)),
+        };
+    },
+
     /** Klick auf die Fläche merkt sich die Stelle und öffnet die Auswahl. */
     markerSetzen(e) {
         if (this.neu) { this.neu = null; this.frei = ''; return; }
@@ -1735,7 +1750,7 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
         const bewegen = (ev) => {
             this.hatGezogen = true;
             const pt = this.fangWand(this.pos(ev));
-            this.markers[i] = { ...this.markers[i], x: pt[0], y: pt[1] };
+            this.markers[i] = this.imPlan({ ...this.markers[i], x: pt[0], y: pt[1] });
         };
         const loslassen = () => {
             e.target.style.cursor = 'grab';
@@ -1782,7 +1797,7 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
                 h = Math.max(h, this.MIN_FLAECHE_PX / r.height);
             }
 
-            this.markers[i] = { ...this.markers[i], w: Math.min(1, w), h: Math.min(1, h) };
+            this.markers[i] = this.imPlan({ ...this.markers[i], w: Math.min(1, w), h: Math.min(1, h) });
         };
 
         const loslassen = () => {
