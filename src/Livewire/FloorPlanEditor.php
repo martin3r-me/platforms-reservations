@@ -12,6 +12,7 @@ use Platform\Reservation\Models\Venue;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\Table;
 use Illuminate\Support\Facades\Auth;
+use Platform\Reservation\Support\RoomLayout;
 
 class FloorPlanEditor extends Component
 {
@@ -503,6 +504,69 @@ class FloorPlanEditor extends Component
      * Löscht den gerade bearbeiteten Tisch und schließt das Formular.
      * Parameterlos – siehe Hinweis an duplicateTable().
      */
+    /* =====================================================================
+     | RAUMUMRISS – VERSUCHSSTAND, rückstandsfrei entfernbar
+     |
+     | Zum Entfernen genügen drei Schnitte: dieser Block, der Include der
+     | Ebene im Blade samt zugehörigem Alpine-Abschnitt, und die Klasse
+     | Support\RoomLayout. Keine Migration, keine Änderung an den Tischen,
+     | nichts davon in der Gast-API – der Shop sieht den Umriss vorerst nicht.
+     ===================================================================== */
+
+    /** Zeichenmodus: solange aktiv, ruhen die Tische. */
+    public bool $roomMode = false;
+
+    /**
+     * Züge des Raumumrisses, normalisiert (0…1).
+     *
+     * @return array<int, array<int, array{0: float, 1: float}>>
+     */
+    #[Computed]
+    public function roomPaths(): array
+    {
+        return RoomLayout::paths($this->floorPlan);
+    }
+
+    public function toggleRoomMode(): void
+    {
+        $this->roomMode = ! $this->roomMode;
+    }
+
+    /**
+     * Umriss speichern. Der Client schickt immer den vollständigen Stand –
+     * einzelne Punkte nachzuhalten wäre fehleranfälliger als das bisschen
+     * Nutzlast, und die Züge sind winzig.
+     *
+     * @param  array<mixed>  $paths
+     */
+    public function saveRoomPaths(array $paths): void
+    {
+        $plan = $this->floorPlan;
+
+        if (! $plan) {
+            return;
+        }
+
+        RoomLayout::save($plan, $paths);
+
+        unset($this->floorPlan, $this->roomPaths);
+        $this->skipRender();
+    }
+
+    /** Alles verwerfen – layout_json sieht danach aus wie vor der Funktion. */
+    public function clearRoomPaths(): void
+    {
+        $plan = $this->floorPlan;
+
+        if (! $plan) {
+            return;
+        }
+
+        RoomLayout::save($plan, []);
+
+        unset($this->floorPlan, $this->roomPaths);
+    }
+
     public function deleteTableAndCloseModal(): void
     {
         if ($this->editingTableId) {

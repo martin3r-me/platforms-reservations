@@ -148,6 +148,19 @@
                     $plan = $this->floorPlan;
                 @endphp
 
+                {{-- RAUMUMRISS (Versuchsstand) – eigene Ebene, fasst die Tische nicht an.
+                     Zum Entfernen: diesen Block, den Alpine-Abschnitt unten und
+                     die Datei partials/floor-plan-room-layer.blade.php loeschen. --}}
+                @php $roomPaths = $this->roomPaths; @endphp
+                <div
+                    wire:key="room-layer-{{ md5(json_encode($roomPaths)) }}"
+                    class="absolute inset-0"
+                    style="pointer-events: none;"
+                    x-data="roomDraw(@js($roomPaths))"
+                >
+                    @include('reservation::partials.floor-plan-room-layer')
+                </div>
+
                 @foreach ($this->tables as $table)
                     <div
                         wire:key="table-{{ $table->id }}"
@@ -305,6 +318,21 @@
                     @svg('heroicon-o-squares-2x2', 'w-3.5 h-3.5')
                     <span x-text="$store.fpSnap.on ? 'Einrasten' : 'Frei'"></span>
                 </button>
+
+                {{-- RAUMUMRISS (Versuchsstand) – Auszeichnung wie beim Einrasten daneben --}}
+                <button
+                    type="button"
+                    wire:click="toggleRoomMode()"
+                    @class([
+                        'inline-flex h-7 items-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium shadow-sm transition-colors',
+                        'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300' => $roomMode,
+                        'border-[var(--ui-border)] bg-white text-[var(--ui-muted)] dark:bg-gray-900' => ! $roomMode,
+                    ])
+                    title="{{ $roomMode ? 'Zeichnen beenden' : 'Wände über dem Grundriss nachzeichnen' }}"
+                >
+                    @svg('heroicon-o-pencil', 'w-3.5 h-3.5')
+                    <span>{{ $roomMode ? 'Zeichnen' : 'Raum' }}</span>
+                </button>
                 </div>
 
                 {{-- Neuen Tisch hinzufügen: unten rechts, bleibt beim Zoomen sichtbar --}}
@@ -316,10 +344,19 @@
                 </button>
             </div>
             </div>{{-- /Rahmen --}}
-            <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
+    @if ($roomMode)
+        {{-- RAUMUMRISS (Versuchsstand) --}}
+        <p class="mt-2 text-center text-xs text-indigo-700">
+            Klicken setzt Punkte entlang der Wand · Doppelklick oder Rechtsklick schließt den Zug ·
+            Punkte lassen sich ziehen, Alt-Klick löscht sie · Esc bricht ab
+            <button type="button" wire:click="clearRoomPaths()" class="ml-2 underline">alles löschen</button>
+        </p>
+    @else
+        <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
                 Tische ziehen zum Positionieren · Ecke ziehen oder Größe im Formular eintragen ·
                 Doppelklick zum Bearbeiten, Duplizieren und Übertragen auf alle
             </p>
+    @endif
         </div>
 
         {{-- Tisch-Formular: Plattform-Modal statt handgebautes Overlay --}}
@@ -938,6 +975,94 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
     // Vom Resize-Griff aufgerufen
     startResize(e) {
         this.begin('resize', e);
+    },
+}));
+
+/* =======================================================================
+   RAUMUMRISS – VERSUCHSSTAND, rückstandsfrei entfernbar.
+   Zum Entfernen: diesen Abschnitt, den Include im Markup und die Klasse
+   Support\RoomLayout löschen. Der Tisch-Teil oben bleibt unberührt.
+   ======================================================================= */
+Alpine.data('roomDraw', (initialPaths) => ({
+    paths: initialPaths || [],
+    entwurf: [],
+    zug: null,          // laufendes Ziehen eines Griffs
+    hatGezogen: false,  // unterdrückt den Klick nach einem Ziehen
+
+    init() {
+        this._esc = (e) => {
+            if (e.key === 'Escape') { this.entwurf = []; }
+        };
+        window.addEventListener('keydown', this._esc);
+    },
+
+    destroy() {
+        window.removeEventListener('keydown', this._esc);
+    },
+
+    /** Mausposition in normalisierte Koordinaten (0…1) der Zeichenfläche. */
+    pos(e) {
+        const r = this.$root.getBoundingClientRect();
+        return [
+            Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)),
+            Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)),
+        ];
+    },
+
+    punktSetzen(e) {
+        // Nach dem Verschieben eines Griffs folgt ein Klick – der darf keinen
+        // neuen Punkt setzen.
+        if (this.hatGezogen) { this.hatGezogen = false; return; }
+        this.entwurf.push(this.pos(e));
+    },
+
+    zugAbschliessen() {
+        if (this.entwurf.length >= 2) {
+            this.paths.push(this.entwurf);
+            this.speichern();
+        }
+        this.entwurf = [];
+    },
+
+    griffAnfassen(e, pi, ii) {
+        e.preventDefault();
+        this.zug = { pi, ii };
+        this.hatGezogen = false;
+        e.target.setPointerCapture(e.pointerId);
+
+        const bewegen = (ev) => {
+            this.hatGezogen = true;
+            this.paths[pi][ii] = this.pos(ev);
+        };
+        const loslassen = () => {
+            e.target.removeEventListener('pointermove', bewegen);
+            e.target.removeEventListener('pointerup', loslassen);
+            e.target.removeEventListener('pointercancel', loslassen);
+            this.zug = null;
+            if (this.hatGezogen) { this.speichern(); }
+        };
+
+        // Am Element statt am Fenster: mit Pointer-Capture landen alle
+        // Ereignisse hier, und es bleibt nichts hängen.
+        e.target.addEventListener('pointermove', bewegen);
+        e.target.addEventListener('pointerup', loslassen);
+        e.target.addEventListener('pointercancel', loslassen);
+    },
+
+    punktLoeschen(pi, ii) {
+        this.paths[pi].splice(ii, 1);
+        // Ein Zug mit weniger als zwei Punkten ist keiner mehr.
+        if (this.paths[pi].length < 2) { this.paths.splice(pi, 1); }
+        this.speichern();
+    },
+
+    letztenZurueck() {
+        if (this.entwurf.length) { this.entwurf.pop(); return; }
+        if (this.paths.length) { this.paths.pop(); this.speichern(); }
+    },
+
+    speichern() {
+        this.$wire.saveRoomPaths(this.paths);
     },
 }));
 </script>
