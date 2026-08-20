@@ -83,6 +83,12 @@
                                         <x-nx-button icon variant="ghost" wire:click="openFloorPlanForm({{ $venue->id }}, {{ $plan->id }})" title="Umbenennen">
                                             @svg('heroicon-o-pencil', 'w-4 h-4')
                                         </x-nx-button>
+                                        {{-- Kopie zum Ausprobieren: Am Original hängen Termine und
+                                             Buchungen, an der Kopie nichts. --}}
+                                        <x-nx-button icon variant="ghost" wire:click="duplicateFloorPlan({{ $plan->id }})"
+                                            wire:confirm="Tischplan mit allen Tischen kopieren?" title="Duplizieren">
+                                            @svg('heroicon-o-document-duplicate', 'w-4 h-4')
+                                        </x-nx-button>
                                         <button type="button" wire:click="deleteFloorPlan({{ $plan->id }})" wire:confirm="Tischplan wirklich löschen?" title="Löschen"
                                             class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
                                             @svg('heroicon-o-trash', 'w-4 h-4')

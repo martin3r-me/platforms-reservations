@@ -8,6 +8,7 @@ use Livewire\Attributes\Locked;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\Venue;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class VenueManager extends Component
 {
@@ -123,6 +124,56 @@ class VenueManager extends Component
         $this->editingFloorPlanId = null;
         $this->floorPlanVenueId   = null;
         unset($this->venues);
+    }
+
+    /**
+     * Tischplan kopieren – mit Tischen, Grundriss und Raumumriss.
+     *
+     * Gedacht zum Ausprobieren: Am Original hängen Termine und Buchungen, an
+     * der Kopie nichts. Wer eine Bestuhlung durchspielen will, tut das an der
+     * Kopie und lässt den laufenden Betrieb in Ruhe.
+     *
+     * Der Grundriss wird NICHT als Datei kopiert, sondern mitbenutzt – eine
+     * Datei, zwei Verweise. Das spart Platz und hält die Kopie sofort
+     * einsatzbereit; damit ein Bildwechsel an der einen Seite die andere nicht
+     * beschädigt, löscht HasContextImage ein noch verwendetes File nicht mehr.
+     *
+     * Nicht mitkopiert werden die Atmosphäre-Bilder: Die hängen als eigene
+     * Dateien am Raum und sind Marketing, keine Bestuhlung.
+     */
+    public function duplicateFloorPlan(int $floorPlanId): void
+    {
+        // findOrFail über den Team-Scope – eine fremde ID läuft ins Leere.
+        $original = FloorPlan::with('tables')->findOrFail($floorPlanId);
+
+        DB::transaction(function () use ($original) {
+            $kopie = $original->replicate(['created_at', 'updated_at']);
+            $kopie->name = $this->kopieName($original);
+            $kopie->save();
+
+            // Tische einzeln, damit die creating-Hooks (team_id) greifen.
+            foreach ($original->tables as $tisch) {
+                $neu = $tisch->replicate(['created_at', 'updated_at']);
+                $neu->floor_plan_id = $kopie->id;
+                $neu->save();
+            }
+        });
+
+        unset($this->venues);
+    }
+
+    /** "ROSSINI (Kopie)", beim zweiten Mal "(Kopie 2)" – sonst raten alle. */
+    protected function kopieName(FloorPlan $original): string
+    {
+        $basis = mb_substr($original->name, 0, 240) . ' (Kopie)';
+        $name  = $basis;
+        $lauf  = 2;
+
+        while (FloorPlan::where('venue_id', $original->venue_id)->where('name', $name)->exists()) {
+            $name = $basis . ' ' . $lauf++;
+        }
+
+        return $name;
     }
 
     public function deleteFloorPlan(int $floorPlanId): void

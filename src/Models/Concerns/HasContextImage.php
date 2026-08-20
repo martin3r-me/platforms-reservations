@@ -75,7 +75,7 @@ trait HasContextImage
         $this->update([$column => $uploaded['id']]);
 
         // … dann altes File entfernen (Fehlen ist unkritisch).
-        if ($previousId) {
+        if ($previousId && ! $this->contextImageIsShared($previousId)) {
             try {
                 $service->delete($previousId, $teamId);
             } catch (\Throwable $e) {
@@ -100,13 +100,35 @@ trait HasContextImage
             return;
         }
 
-        try {
-            app(ContextFileService::class)->delete($previousId, $teamId);
-        } catch (\Throwable $e) {
-            // File bereits weg – Verknüpfung trotzdem lösen.
+        if (! $this->contextImageIsShared($previousId)) {
+            try {
+                app(ContextFileService::class)->delete($previousId, $teamId);
+            } catch (\Throwable $e) {
+                // File bereits weg – Verknüpfung trotzdem lösen.
+            }
         }
 
         $this->update([$column => null]);
         $this->unsetRelation('imageFile');
+    }
+
+    /**
+     * Zeigt noch ein anderer Datensatz auf dieses File?
+     *
+     * Seit Tischpläne dupliziert werden können, teilen sich Original und Kopie
+     * denselben Grundriss – eine Datei, zwei Verweise. Ohne diese Frage würde
+     * ein Bildwechsel an der Kopie dem Original den Grundriss unter den Füßen
+     * wegziehen.
+     *
+     * Ohne globale Scopes gefragt: Eine Verknüpfung in einem anderen Team wäre
+     * zwar unerwartet, aber das Ergebnis "nicht löschen" ist die harmlose
+     * Richtung – eine verwaiste Datei kostet Platz, eine gelöschte kostet Daten.
+     */
+    protected function contextImageIsShared(int $fileId): bool
+    {
+        return static::withoutGlobalScopes()
+            ->where($this->contextImageColumn(), $fileId)
+            ->whereKeyNot($this->getKey())
+            ->exists();
     }
 }
