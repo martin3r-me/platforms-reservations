@@ -24,8 +24,14 @@ use Platform\Reservation\Models\FloorPlan;
  * Format in layout_json:
  *   { "room": {
  *       "paths":   [ [[x,y],[x,y], …], … ],
- *       "markers": [ { "x": …, "y": …, "label": "Eingang", "gap": true }, … ]
+ *       "markers": [ { "x": …, "y": …, "label": "Eingang", "gap": true,
+ *                      "w": …, "h": … }, … ]
  *   } }
+ *
+ * w/h sind die Ausdehnung einer Beschriftung, ebenfalls normalisiert, und
+ * stehen nur dort, wo eine eingestellt ist. Eine Theke ist vier Meter lang
+ * oder einen – als reiner Punkt wäre sie im Plan nicht wiederzuerkennen.
+ * Fehlen sie, ist die Beschriftung ein Punkt wie bisher.
  *
  * Andere Schlüssel in layout_json bleiben unangetastet.
  */
@@ -54,7 +60,7 @@ class RoomLayout
     /**
      * Beschriftungen lesen ("Eingang", "Bühne").
      *
-     * @return array<int, array{x: float, y: float, label: string, gap: bool}>
+     * @return array<int, array{x: float, y: float, label: string, gap: bool, w?: float, h?: float}>
      */
     public static function markers(?FloorPlan $plan): array
     {
@@ -113,7 +119,7 @@ class RoomLayout
      * Leeres verworfen.
      *
      * @param  mixed  $markers
-     * @return array<int, array{x: float, y: float, label: string, gap: bool}>
+     * @return array<int, array{x: float, y: float, label: string, gap: bool, w?: float, h?: float}>
      */
     public static function sanitizeMarkers($markers): array
     {
@@ -139,7 +145,7 @@ class RoomLayout
                 continue;
             }
 
-            $out[] = [
+            $eintrag = [
                 'x'     => round(min(1, max(0, (float) $m['x'])), 4),
                 'y'     => round(min(1, max(0, (float) $m['y'])), 4),
                 'label' => mb_substr($label, 0, self::MAX_LABEL),
@@ -147,9 +153,31 @@ class RoomLayout
                 // die Punkte des Zugs bleiben unverändert.
                 'gap'   => (bool) ($m['gap'] ?? false),
             ];
+
+            // Ausdehnung nur ablegen, wenn es eine gibt: Ein Punkt bleibt dann
+            // Byte für Byte das, was er vor dieser Erweiterung war.
+            foreach (['w', 'h'] as $achse) {
+                $wert = self::mass($m[$achse] ?? null);
+
+                if ($wert > 0) {
+                    $eintrag[$achse] = $wert;
+                }
+            }
+
+            $out[] = $eintrag;
         }
 
         return $out;
+    }
+
+    /** Eine Ausdehnung auf [0,1] begrenzen; alles Unbrauchbare wird zu 0. */
+    protected static function mass($wert): float
+    {
+        if (! is_numeric($wert)) {
+            return 0.0;
+        }
+
+        return round(min(1, max(0, (float) $wert)), 4);
     }
 
     /**

@@ -69,19 +69,62 @@
              unterdrückt das nachfolgende click-Ereignis. Rechtsklick ist
              ohnehin dasselbe Muster wie beim Zug daneben. --}}
         x-on:contextmenu.prevent.stop="$wire.markerMode && markerMenuOeffnen($event, mi)"
-        class="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border bg-white px-2 py-0.5 text-[11px] font-medium shadow-sm"
+        class="absolute flex items-center justify-center"
+        {{-- Breite und Höhe "auto", solange keine Fläche eingestellt ist: Der
+             Kasten schrumpft dann auf die Beschriftung. Mit Fläche zentriert er
+             sie darin. Ein und dieselbe Auszeichnung trägt damit beide Fälle –
+             und der Eckgriff sitzt in beiden an der richtigen Stelle. --}}
         :style="{
             left: (m.x * 100) + '%',
             top: (m.y * 100) + '%',
-            borderColor: '{{ $linie }}',
-            color: '{{ $linie }}',
+            width:  m.w ? (m.w * 100) + '%' : 'auto',
+            height: m.h ? (m.h * 100) + '%' : 'auto',
+            transform: 'translate(-50%, -50%)',
             zIndex: 22,
-            pointerEvents: $wire.markerMode ? 'auto' : 'none',
-            cursor: 'grab'
+            {{-- Der Kasten selbst nimmt NICHTS an: Eine große Bühne würde sonst
+                 die Fläche darunter zudecken, und man käme nicht mehr dazu,
+                 innerhalb davon einen weiteren Punkt zu setzen. Angefasst wird
+                 die Beschriftung – die zielt man ohnehin an. --}}
+            pointerEvents: 'none'
         }"
-        :title="$wire.markerMode ? 'Ziehen verschiebt · Rechtsklick für mehr' : m.label"
-        x-text="m.label"
-    ></div>
+        :title="$wire.markerMode
+            ? 'Ziehen verschiebt · an der Ecke ziehen ändert die Größe · Rechtsklick für mehr'
+            : m.label"
+    >
+        {{-- Fläche: eine Theke ist vier Meter lang oder einen. Blass gefüllt,
+             damit sie den Grundriss darunter nicht zudeckt. --}}
+        <div
+            x-show="m.w || m.h"
+            class="pointer-events-none absolute inset-0 rounded-sm border"
+            style="display: none;"
+            :style="{ borderColor: '{{ $linie }}', background: '{{ $linie }}1a' }"
+        ></div>
+
+        <span
+            class="relative whitespace-nowrap rounded-full border bg-white px-2 py-0.5 text-[11px] font-medium shadow-sm"
+            :style="{
+                borderColor: '{{ $linie }}',
+                color: '{{ $linie }}',
+                pointerEvents: $wire.markerMode ? 'auto' : 'none',
+                cursor: 'grab'
+            }"
+            x-text="m.label"
+        ></span>
+
+        {{-- Eckgriff: zieht die Fläche auf und – ganz nach innen – wieder zu.
+             Ohne Fläche sitzt er an der Ecke der Beschriftung selbst, weil der
+             Kasten dann genau so groß ist. Dadurch braucht es kein Menü, um
+             überhaupt erst eine Fläche zu bekommen. --}}
+        <div
+            x-show="$wire.markerMode"
+            x-on:pointerdown.stop.prevent="markerGroesseAnfassen($event, mi)"
+            x-on:contextmenu.prevent.stop
+            class="absolute h-3 w-3 rounded-full border-2 bg-white shadow-sm"
+            style="display: none; right: 0; bottom: 0; transform: translate(50%, 50%); cursor: nwse-resize; pointer-events: auto;"
+            :style="{ borderColor: '{{ $linie }}' }"
+            title="Größe ziehen · ganz nach innen macht wieder einen Punkt"
+        ></div>
+    </div>
 </template>
 
 {{-- Fläche zum Setzen einer Beschriftung --}}
@@ -147,6 +190,12 @@
         class="flex w-full items-center gap-2 whitespace-nowrap px-3 py-1.5 text-left text-xs hover:bg-gray-50"
         x-text="markers[markerMenu?.mi]?.gap ? 'Wand wieder schließen' : 'Wand hier öffnen'"
     ></button>
+    <button type="button"
+        x-show="markers[markerMenu?.mi]?.w || markers[markerMenu?.mi]?.h"
+        x-on:click="flaecheEntfernen(markerMenu.mi)"
+        class="flex w-full items-center gap-2 whitespace-nowrap px-3 py-1.5 text-left text-xs hover:bg-gray-50"
+        style="display: none;"
+    >Fläche entfernen</button>
     <button type="button"
         x-on:click="markerLoeschen(markerMenu.mi)"
         class="flex w-full items-center gap-2 whitespace-nowrap px-3 py-1.5 text-left text-xs text-[var(--ui-danger)] hover:bg-red-50"

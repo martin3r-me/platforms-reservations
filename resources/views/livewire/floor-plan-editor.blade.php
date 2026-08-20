@@ -389,7 +389,7 @@
     @if ($markerMode)
         {{-- RAUMUMRISS (Versuchsstand) --}}
         <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
-            In den Plan klicken und beschriften · nah an einer Wand rastet der Punkt darauf ein und öffnet sie (Eingang),<br>mitten im Raum bleibt er frei · ziehen verschiebt · Rechtsklick öffnet, schließt oder löscht
+            In den Plan klicken und beschriften · nah an einer Wand rastet der Punkt darauf ein und öffnet sie (Eingang),<br>mitten im Raum bleibt er frei · ziehen verschiebt · <strong>Ecke ziehen</strong> gibt Theke, Bühne oder Buffet ihre Größe · Rechtsklick für mehr
         </p>
     @elseif ($roomMode)
         {{-- RAUMUMRISS (Versuchsstand) --}}
@@ -1063,8 +1063,11 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
      * tragen – damit entfällt die Schleife im SVG, wo Alpine-Templates nicht
      * funktionieren (im SVG-Namensraum hat <template> kein .content).
      */
-    /** Halbe Breite einer Wandöffnung, in Bildschirmpixeln. */
+    /** Halbe Breite einer Wandöffnung ohne eigene Fläche, in Bildschirmpixeln. */
     OEFFNUNG_PX: 16,
+
+    /** Ab wann eine gezogene Fläche eine ist – darunter bleibt es ein Punkt. */
+    MIN_FLAECHE_PX: 14,
 
     /**
      * Alle Wände als EIN d-Attribut, mit Lücken dort, wo eine Beschriftung die
@@ -1107,6 +1110,9 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
 
         if (laenge === 0) { return [[a, b]]; }
 
+        const ex = (bx - ax) / laenge;   // Richtung der Wand, Einheitslänge
+        const ey = (by - ay) / laenge;
+
         // Lücken als Bereiche des Parameters t (0…1) sammeln.
         const luecken = [];
 
@@ -1123,7 +1129,15 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
             // Nur wenn die Beschriftung wirklich auf DIESEM Stück sitzt.
             if (Math.hypot(mx - fx, my - fy) > 2) { continue; }
 
-            const halb = this.OEFFNUNG_PX / laenge;
+            // Die Öffnung ist so breit wie der Schatten, den die Fläche auf die
+            // Wand wirft – ein zwei Meter breites Tor reißt zwei Meter Wand auf.
+            // Ohne eigene Fläche bleibt es beim festen Maß.
+            const halbPx = (m.w || m.h)
+                ? Math.abs((m.w || 0) * r.width  / 2 * ex)
+                + Math.abs((m.h || 0) * r.height / 2 * ey)
+                : this.OEFFNUNG_PX;
+
+            const halb = halbPx / laenge;
             luecken.push([Math.max(0, t - halb), Math.min(1, t + halb)]);
         }
 
@@ -1723,6 +1737,60 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
         e.target.addEventListener('pointermove', bewegen);
         e.target.addEventListener('pointerup', loslassen);
         e.target.addEventListener('pointercancel', loslassen);
+    },
+
+    /**
+     * Fläche einer Beschriftung aufziehen.
+     *
+     * Verankert bleibt die MITTE, nicht die gegenüberliegende Ecke: Ein Punkt,
+     * der auf einer Wand eingerastet ist, bleibt beim Aufziehen darauf, und die
+     * Öffnung wächst nach beiden Seiten gleich. Zöge man von einer Ecke aus,
+     * wanderte der Eingang beim Größerziehen von der Wand weg.
+     */
+    markerGroesseAnfassen(e, i) {
+        const griff = e.currentTarget;
+        const r     = this.$root.getBoundingClientRect();
+        const m     = this.markers[i];   // x/y ändern sich beim Größe ziehen nicht
+
+        if (! r.width || ! r.height) { return; }
+
+        griff.setPointerCapture(e.pointerId);
+
+        const bewegen = (ev) => {
+            const pt = this.pos(ev);
+            let w = Math.abs(pt[0] - m.x) * 2;
+            let h = Math.abs(pt[1] - m.y) * 2;
+
+            // Ganz nach innen gezogen wird wieder ein Punkt. Das ist der
+            // Rückweg, den man ohne Menü findet.
+            if (w * r.width < this.MIN_FLAECHE_PX && h * r.height < this.MIN_FLAECHE_PX) {
+                w = 0;
+                h = 0;
+            } else {
+                w = Math.max(w, this.MIN_FLAECHE_PX / r.width);
+                h = Math.max(h, this.MIN_FLAECHE_PX / r.height);
+            }
+
+            this.markers[i] = { ...this.markers[i], w: Math.min(1, w), h: Math.min(1, h) };
+        };
+
+        const loslassen = () => {
+            griff.removeEventListener('pointermove', bewegen);
+            griff.removeEventListener('pointerup', loslassen);
+            griff.removeEventListener('pointercancel', loslassen);
+            this.speichernMarker();
+        };
+
+        griff.addEventListener('pointermove', bewegen);
+        griff.addEventListener('pointerup', loslassen);
+        griff.addEventListener('pointercancel', loslassen);
+    },
+
+    /** Zurück zum reinen Punkt – der genaue Weg, wenn Ziehen zu fummelig ist. */
+    flaecheEntfernen(i) {
+        this.markers[i] = { ...this.markers[i], w: 0, h: 0 };
+        this.markerMenu = null;
+        this.speichernMarker();
     },
 
     markerMenuOeffnen(e, i) {
