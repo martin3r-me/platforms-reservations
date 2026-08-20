@@ -342,6 +342,23 @@
                     @svg('heroicon-o-pencil', 'w-3.5 h-3.5')
                     <span>{{ $roomMode ? 'Zeichnen' : 'Raum' }}</span>
                 </button>
+
+                {{-- Grundriss ein-/ausblenden: zeigt, ob der Umriss allein schon trägt.
+                     Nur sinnvoll, wenn überhaupt ein Bild hinterlegt ist. --}}
+                @if ($this->floorPlan?->backgroundUrl())
+                    <button
+                        type="button"
+                        x-on:click="$store.fpBg.toggle()"
+                        :title="$store.fpBg.on ? 'Grundriss ausblenden' : 'Grundriss einblenden'"
+                        :class="$store.fpBg.on
+                            ? 'border-[var(--ui-border)] bg-white text-[var(--ui-muted)] dark:bg-gray-900'
+                            : 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'"
+                        class="inline-flex h-7 w-7 items-center justify-center rounded-lg border shadow-sm transition-colors"
+                    >
+                        <span x-show="$store.fpBg.on">@svg('heroicon-o-eye', 'w-3.5 h-3.5')</span>
+                        <span x-show="! $store.fpBg.on" style="display: none;">@svg('heroicon-o-eye-slash', 'w-3.5 h-3.5')</span>
+                    </button>
+                @endif
                 </div>
 
                 {{-- Neuen Tisch hinzufügen: unten rechts, bleibt beim Zoomen sichtbar --}}
@@ -547,7 +564,8 @@ Alpine.data('rotatableBg', (rotation) => ({
     get style() {
         return `position:absolute; left:50%; top:50%; width:${this.w}px; height:${this.h}px;`
             + `object-fit:contain; transform:translate(-50%,-50%) rotate(${this.rot}deg);`
-            + `pointer-events:none; user-select:none;`;
+            + `pointer-events:none; user-select:none;`
+            + `opacity:${this.$store.fpBg.on ? 1 : 0}; transition:opacity .15s;`;
     },
 }));
 
@@ -565,6 +583,13 @@ const SNAP_PX = 6;
 // verschiedene Alpine-Scopes sind: eine einfache Variable wäre nicht reaktiv,
 // der Knopf könnte seinen Zustand also nicht anzeigen.
 Alpine.store('fpSnap', {
+    on: true,
+    toggle() { this.on = !this.on; },
+});
+
+// Grundriss ein-/ausblenden – zum Prüfen, ob der nachgezeichnete Umriss
+// alleine schon trägt. Reine Ansichtssache, nichts wird gespeichert.
+Alpine.store('fpBg', {
     on: true,
     toggle() { this.on = !this.on; },
 });
