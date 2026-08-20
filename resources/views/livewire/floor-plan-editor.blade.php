@@ -1024,6 +1024,7 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
 Alpine.data('roomDraw', (initialPaths) => ({
     paths: initialPaths || [],
     zug: null,          // { von, bis } – Wand, die gerade gezogen wird
+    flaeche: null,      // Element mit der Zeiger-Erfassung während des Ziehens
     menu: null,         // { pi, x, y } – Menü am Verschiebe-Griff
     hatGezogen: false,  // unterdrückt den Klick nach einem Ziehen
 
@@ -1143,7 +1144,13 @@ Alpine.data('roomDraw', (initialPaths) => ({
         const von = this.fangEnde(roh) || roh;
 
         this.zug = { von, bis: von };
-        this.$root.setPointerCapture(e.pointerId);
+
+        // Erfassung auf die FLÄCHE, nicht auf $root: Der Wrapper ist ein
+        // anderes Element, und mit Erfassung dort würden pointermove und
+        // pointerup an ihn zugestellt – die Handler hängen aber an der Fläche
+        // und bekämen nichts mehr mit.
+        this.flaeche = e.currentTarget;
+        try { this.flaeche.setPointerCapture(e.pointerId); } catch (_) {}
     },
 
     zeichnenBewegt(e) {
@@ -1160,7 +1167,8 @@ Alpine.data('roomDraw', (initialPaths) => ({
         const { von, bis } = this.zug;
         this.zug = null;
 
-        try { this.$root.releasePointerCapture(e.pointerId); } catch (_) {}
+        try { this.flaeche?.releasePointerCapture(e.pointerId); } catch (_) {}
+        this.flaeche = null;
 
         // Ein Klick ohne Ziehen ist keine Wand – sonst entstünden bei jedem
         // versehentlichen Klick Punkte im Raum.
