@@ -44,10 +44,13 @@
 
     <span class="text-[11px] text-[color:var(--nx-muted)]">{{ $hint }}</span>
 
-    {{-- Direkt unter dem Hinweis und über die volle Breite zentriert: als
-         inline-flex richtete es sich nicht zuverlässig mittig aus. --}}
-    <span wire:loading wire:target="{{ $model }}"
-        class="mt-1 flex w-full items-center justify-center gap-1 text-[11px] text-[color:var(--nx-muted)]">
+    {{-- wire:loading.flex, nicht nur wire:loading: Livewire setzt beim Einblenden
+         "display: inline-block" als Inline-Stil, und der schlägt die flex-Klasse.
+         Ohne Flex-Box greift justify-center nicht – der Ladepfeil stand deshalb
+         weit links statt über der Schrift. Der Modifikator sagt Livewire, welche
+         Anzeigeart es setzen soll. --}}
+    <span wire:loading.flex wire:target="{{ $model }}"
+        class="mt-1 w-full items-center justify-center gap-1 text-[11px] text-[color:var(--nx-muted)]">
         @svg('heroicon-o-arrow-path', 'w-3.5 h-3.5 animate-spin')
         Wird hochgeladen…
     </span>

@@ -65,7 +65,7 @@
                                 @svg('heroicon-o-lock-closed', 'w-4 h-4')
                             </span>
                         @else
-                            <button type="button" wire:click="deleteVenue({{ $venue->id }})" wire:confirm="Venue wirklich löschen?" title="Löschen"
+                            <button type="button" wire:click="askDeleteVenue({{ $venue->id }})" title="Löschen"
                                 class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
                                 @svg('heroicon-o-trash', 'w-4 h-4')
                             </button>
@@ -99,8 +99,7 @@
                                         </x-nx-button>
                                         {{-- Kopie zum Ausprobieren: Am Original hängen Termine und
                                              Buchungen, an der Kopie nichts. --}}
-                                        <x-nx-button icon variant="ghost" wire:click="duplicateFloorPlan({{ $plan->id }})"
-                                            wire:confirm="Tischplan mit allen Tischen kopieren?" title="Duplizieren">
+                                        <x-nx-button icon variant="ghost" wire:click="askDuplicateFloorPlan({{ $plan->id }})" title="Duplizieren">
                                             @svg('heroicon-o-document-duplicate', 'w-4 h-4')
                                         </x-nx-button>
                                         @php ($eingeplant = (int) ($plan->anstehende_termine_count ?? 0)) 
@@ -112,7 +111,7 @@
                                                 @svg('heroicon-o-lock-closed', 'w-4 h-4')
                                             </span>
                                         @else
-                                            <button type="button" wire:click="deleteFloorPlan({{ $plan->id }})" wire:confirm="Tischplan wirklich löschen?" title="Löschen"
+                                            <button type="button" wire:click="askDeleteFloorPlan({{ $plan->id }})" title="Löschen"
                                                 class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
                                                 @svg('heroicon-o-trash', 'w-4 h-4')
                                             </button>
@@ -143,6 +142,67 @@
         <x-slot name="footer">
             <x-nx-button wire:click="$set('showVenueForm', false)">Abbrechen</x-nx-button>
             <x-nx-button variant="primary" wire:click="saveVenue">Speichern</x-nx-button>
+        </x-slot>
+    </x-nx-modal>
+
+    {{-- Rückfragen als eigene Modale. Der Browser-Dialog von wire:confirm sieht
+         nicht nur fremd aus, er kann auch nichts erklären – hier steht, was
+         kopiert wird und was am Plan hängt. --}}
+    <x-nx-modal size="sm" wire:model="showDuplicateConfirm">
+        <x-slot name="header">
+            <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">Tischplan kopieren</h3>
+        </x-slot>
+
+        <p class="m-0 text-sm text-[color:var(--nx-text)]">
+            „{{ $pendingName }}" wird kopiert – mit
+            {{ $pendingTables }} {{ $pendingTables === 1 ? 'Tisch' : 'Tischen' }},
+            dem Grundriss und dem gezeichneten Raumumriss.
+        </p>
+        <p class="m-0 mt-2 text-xs text-[color:var(--nx-muted)]">
+            An der Kopie hängen keine Termine und keine Buchungen. Sie ist zum Ausprobieren da.
+        </p>
+
+        <x-slot name="footer">
+            <x-nx-button wire:click="$set('showDuplicateConfirm', false)">Abbrechen</x-nx-button>
+            <x-nx-button variant="primary" wire:click="duplicateFloorPlanAndCloseModal">Kopieren</x-nx-button>
+        </x-slot>
+    </x-nx-modal>
+
+    <x-nx-modal size="sm" wire:model="showDeletePlanConfirm">
+        <x-slot name="header">
+            <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">Tischplan löschen</h3>
+        </x-slot>
+
+        <p class="m-0 text-sm text-[color:var(--nx-text)]">
+            „{{ $pendingName }}" wird gelöscht, mit
+            {{ $pendingTables }} {{ $pendingTables === 1 ? 'Tisch' : 'Tischen' }}
+            und dem gezeichneten Raumumriss.
+        </p>
+        <p class="m-0 mt-2 text-xs text-[color:var(--nx-muted)]">
+            Buchungen bleiben bestehen, verlieren aber ihren Tischbezug. Das lässt sich nicht zurückholen.
+        </p>
+
+        <x-slot name="footer">
+            <x-nx-button wire:click="$set('showDeletePlanConfirm', false)">Abbrechen</x-nx-button>
+            <x-nx-button variant="danger" wire:click="deleteFloorPlanAndCloseModal">Löschen</x-nx-button>
+        </x-slot>
+    </x-nx-modal>
+
+    <x-nx-modal size="sm" wire:model="showDeleteVenueConfirm">
+        <x-slot name="header">
+            <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">Venue löschen</h3>
+        </x-slot>
+
+        <p class="m-0 text-sm text-[color:var(--nx-text)]">
+            „{{ $pendingName }}" wird gelöscht – mit allen Tischplänen, die dazugehören.
+        </p>
+        <p class="m-0 mt-2 text-xs text-[color:var(--nx-muted)]">
+            Räume, die in anstehenden Terminen eingeplant sind, verhindern das Löschen.
+        </p>
+
+        <x-slot name="footer">
+            <x-nx-button wire:click="$set('showDeleteVenueConfirm', false)">Abbrechen</x-nx-button>
+            <x-nx-button variant="danger" wire:click="deleteVenueAndCloseModal">Löschen</x-nx-button>
         </x-slot>
     </x-nx-modal>
 

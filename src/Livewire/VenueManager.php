@@ -25,6 +25,25 @@ class VenueManager extends Component
     public string $venueName        = '';
     public string $venueAddress     = '';
 
+    // Rückfragen (eigene Modale statt Browser-Dialog).
+    // Die ID liegt auf einer #[Locked]-Property und die Aktion ist parameterlos –
+    // plattformweites Muster, siehe deleteTableAndCloseModal im Editor.
+    public bool $showDuplicateConfirm = false;
+
+    public bool $showDeletePlanConfirm = false;
+
+    public bool $showDeleteVenueConfirm = false;
+
+    #[Locked]
+    public ?int $pendingFloorPlanId = null;
+
+    #[Locked]
+    public ?int $pendingVenueId = null;
+
+    public string $pendingName = '';
+
+    public int $pendingTables = 0;
+
     // FloorPlan-Formular
     public bool   $showFloorPlanForm   = false;
     public ?int   $floorPlanVenueId    = null;
@@ -94,6 +113,26 @@ class VenueManager extends Component
         unset($this->venues);
     }
 
+    public function askDeleteVenue(int $venueId): void
+    {
+        $venue = Venue::findOrFail($venueId);
+
+        $this->pendingVenueId = $venue->id;
+        $this->pendingName    = $venue->name;
+        $this->showDeleteVenueConfirm = true;
+    }
+
+    public function deleteVenueAndCloseModal(): void
+    {
+        $this->showDeleteVenueConfirm = false;
+
+        if ($this->pendingVenueId) {
+            $this->deleteVenue($this->pendingVenueId);
+        }
+
+        $this->pendingVenueId = null;
+    }
+
     public function deleteVenue(int $venueId): void
     {
         try {
@@ -140,6 +179,49 @@ class VenueManager extends Component
         $this->editingFloorPlanId = null;
         $this->floorPlanVenueId   = null;
         unset($this->venues);
+    }
+
+    /** Rückfrage zum Kopieren – nennt Namen und Zahl der Tische. */
+    public function askDuplicateFloorPlan(int $floorPlanId): void
+    {
+        $plan = FloorPlan::withCount('tables')->findOrFail($floorPlanId);
+
+        $this->pendingFloorPlanId = $plan->id;
+        $this->pendingName        = $plan->name;
+        $this->pendingTables      = (int) $plan->tables_count;
+        $this->showDuplicateConfirm = true;
+    }
+
+    public function duplicateFloorPlanAndCloseModal(): void
+    {
+        $this->showDuplicateConfirm = false;
+
+        if ($this->pendingFloorPlanId) {
+            $this->duplicateFloorPlan($this->pendingFloorPlanId);
+        }
+
+        $this->pendingFloorPlanId = null;
+    }
+
+    public function askDeleteFloorPlan(int $floorPlanId): void
+    {
+        $plan = FloorPlan::withCount('tables')->findOrFail($floorPlanId);
+
+        $this->pendingFloorPlanId = $plan->id;
+        $this->pendingName        = $plan->name;
+        $this->pendingTables      = (int) $plan->tables_count;
+        $this->showDeletePlanConfirm = true;
+    }
+
+    public function deleteFloorPlanAndCloseModal(): void
+    {
+        $this->showDeletePlanConfirm = false;
+
+        if ($this->pendingFloorPlanId) {
+            $this->deleteFloorPlan($this->pendingFloorPlanId);
+        }
+
+        $this->pendingFloorPlanId = null;
     }
 
     /**

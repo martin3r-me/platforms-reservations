@@ -11,17 +11,30 @@ use GdImage;
  * ein VORSCHLAG für den Editor, kein gespeicherter Umriss – angenommen wird er
  * von Hand.
  *
- * NICHT nach Linien gesucht, sondern nach der FLÄCHE. Das ist die eigentliche
- * Entscheidung hinter dieser Klasse, und sie kommt von den echten Plänen: Deren
- * Böden sind mit Fischgrät-Parkett oder Marmor gefüllt. Eine Linienerkennung
- * würde in diesem Muster ertrinken – Hunderte kurzer Striche, alle so lang wie
- * eine Wand ist dick. Was dagegen in jedem geprüften Plan gilt: Draußen ist
- * weißes Papier, drinnen ist irgendetwas. Der Raum ist also der größte
- * zusammenhängende Fleck, der nicht Papier ist.
+ * NICHT nach Linien gesucht. Das kommt von den echten Plänen: Deren Böden sind
+ * mit Fischgrät-Parkett oder Marmor gefüllt, und eine Linienerkennung würde in
+ * diesem Muster ertrinken – Hunderte kurzer Striche, alle so lang wie eine Wand
+ * dick ist.
  *
- * Dadurch fällt Beiwerk von selbst weg: Beschriftungen wie "Eingang" liegen als
- * eigene kleine Flecken daneben, Möbel und Text INNERHALB des Raums stören
- * nicht, weil nur der äußere Rand des Flecks verfolgt wird.
+ * Gefragt wird stattdessen: WOHIN KOMMT DAS PAPIER VON DRAUSSEN? Vom Bildrand
+ * aus wird durchs Weiß geflutet, und dieses Draußen wird dann geöffnet – erst
+ * geschrumpft, dann wieder geweitet. Das Schrumpfen kappt schmale Ausläufer,
+ * das Weiten stellt die Grenze wieder her. Der Raum ist, was das Draußen so
+ * nicht erreicht.
+ *
+ * Der Weg über das Papier statt über die Tinte trägt drei Fälle auf einmal:
+ *
+ *   - Gefüllter Boden (Parkett, Marmor): Der Innenraum ist gar nicht Papier,
+ *     also von außen ohnehin unerreichbar.
+ *   - Weißer Innenraum mit Wandblöcken, zwischen denen Fenster sitzen: Das
+ *     Papier sickert nur durch schmale Lücken hinein, und genau die kappt das
+ *     Schrumpfen. Ein Weg über die Tinte scheiterte hier – jeder Wandblock war
+ *     ein eigener Fleck, gefunden wurde nur der eine durchgehende Streifen.
+ *   - Beschriftungen und Türbögen: Kleine Tinteninseln im Papier werden beim
+ *     Weiten überdeckt und gehören danach zum Draußen. Sie verschwinden, ohne
+ *     dass jemand nach ihrer Größe fragen muss – ein Versuch, sie über die
+ *     Größe zu erkennen, warf prompt die Wandblöcke mit weg, denn die sind
+ *     kleiner als eine Legende.
  *
  * Der Umriss folgt der Außenkante der Wände. Die Innenkante wäre um die
  * Mauerstärke genauer – bei den geprüften Plänen ein bis zwei Prozent der
@@ -37,35 +50,46 @@ final class RoomDetector
     public const PAPIER = 250;
 
     /**
-     * Radius zum Schließen von Lücken, in Arbeitspixeln.
+     * Radius, mit dem das Draußen geöffnet wird, in Arbeitspixeln.
      *
-     * Fenster und Türen sind im Plan weiße Kerben in der Wand. Ohne Schließen
-     * würde der Umriss in jede davon hineinlaufen und ausgefranst aussehen.
-     * Türöffnungen entstehen später ohnehin über die Beschriftungen.
+     * Er bestimmt, wie breit eine Öffnung sein darf, durch die das Papier noch
+     * hereinkommt: Alles bis zur doppelten Radiusbreite wird gekappt. Fenster
+     * und Türen im Plan liegen darunter, ein offener Saalzugang darüber – dort
+     * soll der Umriss auch offen bleiben.
+     *
+     * Zugleich die Größe, bis zu der Tinteninseln im Papier (Beschriftungen,
+     * Türbögen) beim Weiten überdeckt werden.
      */
-    public const SCHLIESSEN = 6;
+    public const ABSCHLUSS = 12;
+
+
+    /** Feinschliff am Raum: schneidet zurückgebliebene Fäden ab. */
+    public const OEFFNEN = 2;
 
     /**
-     * Kleines Schließen VOR der Fleckwahl, in Arbeitspixeln.
+     * Ab dieser Tintendichte in der Bildmitte gilt der Boden als gefüllt.
      *
-     * Nur so groß, dass eine Strichzeichnung mit Haarrissen zusammenhängt –
-     * und klein genug, dass keine Brücke zu einer nahen Beschriftung entsteht.
-     * Bei 2 klebten im Offenbachsaal die drei "Eingang"-Schriften über die
-     * Türflügel-Bögen am Raum und zogen den Umriss in drei Zipfeln nach unten.
+     * Die Weiche zwischen den zwei Wegen. Gemessen wird in der mittleren Hälfte
+     * des Tinten-Rechtecks: Parkett und Marmor füllen sie fast vollständig, eine
+     * Strichzeichnung hat dort nur ein paar Möbel.
      */
+    public const DICHTE_GEFUELLT = 0.4;
+
+    /** Schließen im Tinten-Weg: Fenster- und Türkerben im Umriss zumachen. */
+    public const SCHLIESSEN = 6;
+
+    /** Haarrisse überbrücken, bevor der Fleck gewählt wird (Tinten-Weg). */
     public const VORSCHLIESSEN = 1;
 
     /**
-     * Radius zum Öffnen, in Arbeitspixeln.
+     * Tinteninseln unter diesem Anteil fliegen im Papier-Weg raus.
      *
-     * Entfernt dünne Anhängsel: Türflügel-Bögen, die außen an der Wand kleben,
-     * und die Brücke, die das Schließen zu einer nahen Beschriftung baut. Ohne
-     * diesen Schritt lief der Umriss in der Gartenhalle bis in das Wort
-     * "Eingang" hinein.
-     *
-     * Muss kleiner sein als die halbe Wandstärke, sonst frisst er die Wand.
+     * Nur dort nötig und nur dort gefahrlos: In einer Strichzeichnung ist eine
+     * Beschriftung um ein Mehrfaches kleiner als ein Wandblock. Im Tinten-Weg
+     * wäre dieselbe Grenze schädlich – da fällt Beiwerk ohnehin über die
+     * Fleckwahl weg.
      */
-    public const OEFFNEN = 3;
+    public const INSEL = 0.002;
 
     /** Douglas-Peucker: erlaubte Abweichung in Arbeitspixeln. */
     public const GENAUIGKEIT = 2.5;
@@ -124,34 +148,18 @@ final class RoomDetector
 
         // Die Reihenfolge ist der Kern dieser Methode, und sie war zweimal falsch:
         //
-        //   1. Ein kleines Schließen überbrückt Haarrisse, damit eine reine
-        //      Strichzeichnung überhaupt einen Fleck bildet – aber klein genug,
-        //      um nicht bis zur nächsten Beschriftung zu reichen.
-        //   2. Größten Fleck wählen. HIER fallen "Eingang", "Bar" und Legenden
-        //      weg, weil sie eigene Flecken sind. Käme dieser Schritt später,
-        //      hätte das große Schließen sie längst an den Raum geklebt – genau
-        //      das lief im Offenbachsaal in drei Zipfeln nach unten.
-        //   3. Löcher füllen. Nötig, weil eine reine Strichzeichnung nur aus dem
-        //      Wandring besteht: Ohne Füllung ist der Raum ein dünner Rahmen,
-        //      und Schritt 5 würde ihn restlos abtragen.
-        //   4. Großes Schließen: Fenster- und Türkerben im Umriss zumachen.
-        //   5. Öffnen: dünne Anhängsel wie Türflügel-Bögen abschneiden.
-        //   6. Nochmal den größten Fleck – das Öffnen kann etwas abgetrennt haben.
-        self::schliessen($maske, $bw, $bh, self::VORSCHLIESSEN);
+        // Zwei Wege, und die Vorlage entscheidet. Ein Kompromiss aus beiden war
+        // schlechter als jeder einzeln: Der Radius, der Fensterlücken in einer
+        // Strichzeichnung zumacht, frisst in einem gefüllten Plan die schmalen
+        // Papierstreifen zwischen Raum und Beschriftung.
+        $raum = self::bodenGefuellt($maske, $bw, $bh)
+            ? self::raumAusTinte($maske, $bw, $bh)
+            : self::raumAusPapier($maske, $bw, $bh);
 
-        $fleck = self::groessterFleck($maske, $bw, $bh);
+        self::loecherFuellen($raum, $bw, $bh);
+        self::oeffnen($raum, $bw, $bh, self::OEFFNEN);
 
-        if ($fleck === null) {
-            return [];
-        }
-
-        $maske = $fleck[0];
-
-        self::loecherFuellen($maske, $bw, $bh);
-        self::schliessen($maske, $bw, $bh, self::SCHLIESSEN);
-        self::oeffnen($maske, $bw, $bh, self::OEFFNEN);
-
-        $fleck = self::groessterFleck($maske, $bw, $bh);
+        $fleck = self::groessterFleck($raum, $bw, $bh);
 
         if ($fleck === null) {
             return [];
@@ -358,6 +366,214 @@ final class RoomDetector
 
             $maske = $neu;
         }
+    }
+
+    /**
+     * Ist der Boden gefüllt (Parkett, Marmor) oder weiß?
+     *
+     * Gemessen in der mittleren Hälfte des Tinten-Rechtecks. Dort liegt bei
+     * einem gefüllten Plan Boden, bei einer Strichzeichnung Luft.
+     */
+    protected static function bodenGefuellt(string $maske, int $bw, int $bh): bool
+    {
+        $x0 = $bw; $y0 = $bh; $x1 = -1; $y1 = -1;
+
+        for ($y = 0; $y < $bh; $y++) {
+            for ($x = 0; $x < $bw; $x++) {
+                if ($maske[$y * $bw + $x] === "\1") {
+                    $x0 = min($x0, $x); $x1 = max($x1, $x);
+                    $y0 = min($y0, $y); $y1 = max($y1, $y);
+                }
+            }
+        }
+
+        if ($x1 <= $x0 || $y1 <= $y0) {
+            return false;
+        }
+
+        // Mittlere Hälfte des Rechtecks.
+        $mx0 = (int) round($x0 + ($x1 - $x0) * 0.25);
+        $mx1 = (int) round($x0 + ($x1 - $x0) * 0.75);
+        $my0 = (int) round($y0 + ($y1 - $y0) * 0.25);
+        $my1 = (int) round($y0 + ($y1 - $y0) * 0.75);
+
+        $tinte = 0;
+        $alle  = 0;
+
+        for ($y = $my0; $y <= $my1; $y++) {
+            for ($x = $mx0; $x <= $mx1; $x++) {
+                $alle++;
+
+                if ($maske[$y * $bw + $x] === "\1") {
+                    $tinte++;
+                }
+            }
+        }
+
+        return $alle > 0 && $tinte / $alle >= self::DICHTE_GEFUELLT;
+    }
+
+    /**
+     * Gefüllter Boden: Der Raum IST die Tinte.
+     *
+     * Erst Haarrisse überbrücken, dann den größten Fleck – hier fallen
+     * Beschriftungen und Legenden als eigene Flecken weg. Danach Löcher füllen,
+     * Kerben schließen, Fäden abschneiden.
+     */
+    protected static function raumAusTinte(string $maske, int $bw, int $bh): string
+    {
+        self::schliessen($maske, $bw, $bh, self::VORSCHLIESSEN);
+
+        $fleck = self::groessterFleck($maske, $bw, $bh);
+
+        if ($fleck === null) {
+            return $maske;
+        }
+
+        $raum = $fleck[0];
+
+        self::loecherFuellen($raum, $bw, $bh);
+        self::schliessen($raum, $bw, $bh, self::SCHLIESSEN);
+
+        return $raum;
+    }
+
+    /**
+     * Kleine Tinteninseln streichen – Beschriftungen, Türbögen, Krümel.
+     *
+     * Nur im Papier-Weg: Dort gibt es keine Fleckwahl, die sie von selbst
+     * aussortiert, und ein Wandblock ist um ein Mehrfaches größer als Schrift.
+     */
+    protected static function inselnEntfernen(string &$maske, int $bw, int $bh): void
+    {
+        $grenze  = max(1, (int) round(self::INSEL * $bw * $bh));
+        $gesehen = str_repeat("\0", $bw * $bh);
+
+        for ($start = 0, $n = $bw * $bh; $start < $n; $start++) {
+            if ($maske[$start] === "\0" || $gesehen[$start] === "\1") {
+                continue;
+            }
+
+            $stapel = [$start];
+            $gesehen[$start] = "\1";
+            $insel = [];
+
+            while ($stapel) {
+                $i = array_pop($stapel);
+                $insel[] = $i;
+
+                $x = $i % $bw;
+                $y = intdiv($i, $bw);
+
+                for ($dy = -1; $dy <= 1; $dy++) {
+                    for ($dx = -1; $dx <= 1; $dx++) {
+                        $nx = $x + $dx;
+                        $ny = $y + $dy;
+
+                        if ($nx < 0 || $ny < 0 || $nx >= $bw || $ny >= $bh) {
+                            continue;
+                        }
+
+                        $j = $ny * $bw + $nx;
+
+                        if ($maske[$j] === "\1" && $gesehen[$j] === "\0") {
+                            $gesehen[$j] = "\1";
+                            $stapel[] = $j;
+                        }
+                    }
+                }
+            }
+
+            if (count($insel) < $grenze) {
+                foreach ($insel as $i) {
+                    $maske[$i] = "\0";
+                }
+            }
+        }
+    }
+
+    /**
+     * Der Raum als das, was das Papier von draußen nicht erreicht.
+     *
+     * Drei Schritte, und der mittlere ist der eigentliche Trick:
+     *
+     *   1. Vom Bildrand durchs Weiß fluten – das ist "draußen".
+     *   2. Dieses Draußen ÖFFNEN: schrumpfen, nur den Teil behalten, der den
+     *      Bildrand noch berührt, wieder weiten. Beim Schrumpfen reißen schmale
+     *      Ausläufer ab – also genau die Fenster- und Türlücken, durch die das
+     *      Papier in den Saal sickert. Was dahinter lag, hängt danach nicht mehr
+     *      am Rand und fällt weg. Das Weiten stellt die Grenze wieder her, und
+     *      es überdeckt dabei kleine Tinteninseln: Beschriftungen und Türbögen
+     *      gehören danach zum Draußen.
+     *   3. Raum = alles Übrige.
+     */
+    protected static function raumAusPapier(string $maske, int $bw, int $bh): string
+    {
+        self::inselnEntfernen($maske, $bw, $bh);
+
+        $draussen = self::vomRandGeflutet($maske, $bw, $bh, "\0");
+
+        self::linie($draussen, $bw, $bh, self::ABSCHLUSS, false);
+        $draussen = self::vomRandGeflutet($draussen, $bw, $bh, "\1");
+        self::linie($draussen, $bw, $bh, self::ABSCHLUSS, true);
+
+        $raum = str_repeat("\0", $bw * $bh);
+
+        for ($i = 0, $n = $bw * $bh; $i < $n; $i++) {
+            if ($draussen[$i] === "\0") {
+                $raum[$i] = "\1";
+            }
+        }
+
+        return $raum;
+    }
+
+    /**
+     * Alles, was vom Bildrand aus über Pixel mit dem Wert $suche erreichbar ist.
+     *
+     * Vierer-Nachbarschaft: Diagonal darf das Papier nicht durch eine Ecke
+     * schlüpfen, sonst käme es an jeder über Eck gesetzten Wand vorbei.
+     */
+    protected static function vomRandGeflutet(string $maske, int $bw, int $bh, string $suche): string
+    {
+        $treffer = str_repeat("\0", $bw * $bh);
+        $stapel  = [];
+
+        $setzen = function (int $i) use (&$treffer, &$stapel, $maske, $suche): void {
+            if ($maske[$i] === $suche && $treffer[$i] === "\0") {
+                $treffer[$i] = "\1";
+                $stapel[] = $i;
+            }
+        };
+
+        for ($x = 0; $x < $bw; $x++) {
+            $setzen($x);
+            $setzen(($bh - 1) * $bw + $x);
+        }
+
+        for ($y = 0; $y < $bh; $y++) {
+            $setzen($y * $bw);
+            $setzen($y * $bw + $bw - 1);
+        }
+
+        while ($stapel) {
+            $i = array_pop($stapel);
+            $x = $i % $bw;
+            $y = intdiv($i, $bw);
+
+            foreach ([[1, 0], [-1, 0], [0, 1], [0, -1]] as [$dx, $dy]) {
+                $nx = $x + $dx;
+                $ny = $y + $dy;
+
+                if ($nx < 0 || $ny < 0 || $nx >= $bw || $ny >= $bh) {
+                    continue;
+                }
+
+                $setzen($ny * $bw + $nx);
+            }
+        }
+
+        return $treffer;
     }
 
     /**
