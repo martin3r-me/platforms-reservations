@@ -116,6 +116,21 @@ final class RoomDetector
     public const MIN_FLAECHE = 0.02;
 
     /**
+     * Deckt der gefundene Raum weniger als diesen Anteil des Wand-Rechtecks ab,
+     * gilt er als nicht gefunden – dann wird das Rechteck selbst vorgeschlagen.
+     *
+     * Der Rückfall für Säle, die NICHT umschlossen sind. Ein großer Zugang ist
+     * baulich eine offene Seite, und dann trägt keine der beiden Suchen: Das
+     * Papier läuft ungehindert herein, und übrig bleibt irgendein Zwickel neben
+     * der Öffnung. Der Rahmen um die Wände ist dort das ehrlichere Angebot – ein
+     * Rechteck, das der Mensch nachzieht, statt eines Zwickels, den er löscht.
+     *
+     * Die Grenze liegt tief genug, dass ein L-förmiger Saal (rund zwei Drittel
+     * seines Rechtecks) seine Form behält.
+     */
+    public const GRENZE_RAHMEN = 0.35;
+
+    /**
      * Umriss aus Bilddaten. Leeres Ergebnis heißt: nichts Brauchbares gefunden.
      *
      * @return array<int, array<int, array{0: float, 1: float}>>
@@ -148,6 +163,12 @@ final class RoomDetector
 
         // Die Reihenfolge ist der Kern dieser Methode, und sie war zweimal falsch:
         //
+        // Rechteck um die tragende Tinte – Maßstab für die Plausibilitätsprüfung
+        // unten und Rückfall, wenn der Saal keine geschlossene Wand hat.
+        $tragend = $maske;
+        self::inselnEntfernen($tragend, $bw, $bh);
+        $rahmen = self::rahmen($tragend, $bw, $bh);
+
         // Zwei Wege, und die Vorlage entscheidet. Ein Kompromiss aus beiden war
         // schlechter als jeder einzeln: Der Radius, der Fensterlücken in einer
         // Strichzeichnung zumacht, frisst in einem gefüllten Plan die schmalen
@@ -169,6 +190,20 @@ final class RoomDetector
 
         if (substr_count($flaeche, "\1") < self::MIN_FLAECHE * $bw * $bh) {
             return [];
+        }
+
+        // Deckt der Raum das Wand-Rechteck nicht halbwegs ab, war die Wand offen
+        // und gefunden wurde ein Zwickel. Dann lieber das Rechteck anbieten.
+        if ($rahmen !== null) {
+            [$rx0, $ry0, $rx1, $ry1] = $rahmen;
+            $flaecheRahmen = ($rx1 - $rx0 + 1) * ($ry1 - $ry0 + 1);
+
+            if ($flaecheRahmen > 0
+                && substr_count($flaeche, "\1") < self::GRENZE_RAHMEN * $flaecheRahmen) {
+                return self::alsZug([
+                    [$rx0, $ry0], [$rx1, $ry0], [$rx1, $ry1], [$rx0, $ry1], [$rx0, $ry0],
+                ], $bw, $bh);
+            }
         }
 
         $rand = self::randVerfolgen($flaeche, $bw, $bh, $start);
@@ -196,16 +231,7 @@ final class RoomDetector
         // Zeichnen von Hand.
         $punkte[] = $punkte[0];
 
-        $zug = [];
-
-        foreach (array_slice($punkte, 0, RoomLayout::MAX_POINTS) as [$x, $y]) {
-            $zug[] = [
-                round(min(1, max(0, $x / $bw)), 4),
-                round(min(1, max(0, $y / $bh)), 4),
-            ];
-        }
-
-        return [$zug];
+        return self::alsZug($punkte, $bw, $bh);
     }
 
     /**
@@ -372,6 +398,47 @@ final class RoomDetector
 
             $maske = $neu;
         }
+    }
+
+    /**
+     * Umschließendes Rechteck aller Tinte in Arbeitspixeln.
+     *
+     * @return array{0: int, 1: int, 2: int, 3: int}|null
+     */
+    protected static function rahmen(string $maske, int $bw, int $bh): ?array
+    {
+        $x0 = $bw; $y0 = $bh; $x1 = -1; $y1 = -1;
+
+        for ($y = 0; $y < $bh; $y++) {
+            for ($x = 0; $x < $bw; $x++) {
+                if ($maske[$y * $bw + $x] === "\1") {
+                    $x0 = min($x0, $x); $x1 = max($x1, $x);
+                    $y0 = min($y0, $y); $y1 = max($y1, $y);
+                }
+            }
+        }
+
+        return $x1 > $x0 && $y1 > $y0 ? [$x0, $y0, $x1, $y1] : null;
+    }
+
+    /**
+     * Punkte in Arbeitspixeln als normalisierten Zug ausgeben.
+     *
+     * @param  array<int, array{0: float, 1: float}>  $punkte
+     * @return array<int, array<int, array{0: float, 1: float}>>
+     */
+    protected static function alsZug(array $punkte, int $bw, int $bh): array
+    {
+        $zug = [];
+
+        foreach (array_slice($punkte, 0, RoomLayout::MAX_POINTS) as [$x, $y]) {
+            $zug[] = [
+                round(min(1, max(0, $x / $bw)), 4),
+                round(min(1, max(0, $y / $bh)), 4),
+            ];
+        }
+
+        return [$zug];
     }
 
     /**
