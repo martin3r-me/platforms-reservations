@@ -50,6 +50,16 @@ final class RoomDetector
     public const PAPIER = 250;
 
     /**
+     * Bis zu diesem Wert (größter Farbkanal) gilt ein Pixel als dunkel.
+     *
+     * Nur für die Eingangssuche. Dort genügt "nicht weiß" nicht: Ein gefüllter
+     * Boden ist auch nicht weiß, und das Band, das senkrecht in die Wand schaut,
+     * landete im Parkett und meldete überall Wand – gefunden wurde deshalb keine
+     * einzige Öffnung. Eine Wand ist dunkel, Parkett und Marmor sind es nicht.
+     */
+    public const DUNKEL = 110;
+
+    /**
      * Radius, mit dem das Draußen geöffnet wird, in Arbeitspixeln.
      *
      * Er bestimmt, wie breit eine Öffnung sein darf, durch die das Papier noch
@@ -139,6 +149,7 @@ final class RoomDetector
     /** Wie weit senkrecht in die Wand geschaut wird, um sie zu finden. */
     public const BAND_INNEN = 12;
 
+
     /**
      * Eingänge zu einem vorhandenen Umriss vorschlagen.
      *
@@ -147,17 +158,28 @@ final class RoomDetector
      * Öffnung ist keine.
      *
      * Geschaut wird senkrecht nach innen in ein Band, nicht auf den Punkt der
-     * Linie selbst. Zwei Gründe: Der Umriss liegt nach dem Vereinfachen nicht
-     * pixelgenau auf der Wand, und – wichtiger – Fenster liegen in der Wand,
-     * nicht durch sie hindurch. Wer nur die Außenkante prüft, hält jedes Fenster
-     * für eine Tür; wer in die Wand hineinschaut, findet dahinter noch Mauer.
+     * Linie selbst: Der Umriss liegt nach dem Vereinfachen nicht pixelgenau auf
+     * der Wand.
+     *
+     * Gesucht wird dabei nach DUNKEL, nicht nach "nicht weiß". Bei einem
+     * gefüllten Boden reicht das Band sonst ins Parkett, und Parkett ist auch
+     * Tinte – gemeldet wurde dann überall Wand und keine einzige Öffnung.
+     *
+     * WAS DIESE SUCHE NICHT KANN, und warum sie es nicht versucht: Ein
+     * Türflügel-Bogen ist selbst dunkel und liegt quer in der Öffnung, die er
+     * beschreibt – im Offenbachsaal verdeckt er sie damit vollständig, und dort
+     * findet die Suche nichts. Der naheliegende Ausweg, dünne Linien vorher
+     * wegzunehmen, ist geprüft und verworfen: Er zerstört gemauerte
+     * (schraffierte) Wände, und die Zahl der Fehlfunde sprang in den anderen
+     * Plänen von 2 auf 17 und 21. Lieber schweigen als raten – wo die Tür nur
+     * ein Bogen auf durchgehender Wand ist, wird der Eingang von Hand gesetzt.
      *
      * @param  array<int, array<int, array{0: float, 1: float}>>  $paths
      * @return array<int, array<string, mixed>>
      */
     public static function eingaenge(GdImage $bild, array $paths): array
     {
-        [$maske, $bw, $bh] = self::maske($bild);
+        [$maske, $bw, $bh] = self::maske($bild, true);
 
         if ($bw < 8 || $bh < 8) {
             return [];
@@ -413,7 +435,7 @@ final class RoomDetector
      *
      * @return array{0: string, 1: int, 2: int}
      */
-    protected static function maske(GdImage $bild): array
+    protected static function maske(GdImage $bild, bool $nurDunkel = false): array
     {
         $qw = imagesx($bild);
         $qh = imagesy($bild);
@@ -464,7 +486,11 @@ final class RoomDetector
                             continue;
                         }
 
-                        if (min(($c >> 16) & 255, ($c >> 8) & 255, $c & 255) < self::PAPIER) {
+                        $r = ($c >> 16) & 255;
+                        $g = ($c >> 8) & 255;
+                        $b = $c & 255;
+
+                        if ($nurDunkel ? max($r, $g, $b) < self::DUNKEL : min($r, $g, $b) < self::PAPIER) {
                             $tinte = 1;
 
                             break;
