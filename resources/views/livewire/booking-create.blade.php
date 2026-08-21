@@ -193,7 +193,12 @@
                                             </button>
                                         @endforeach
                                     </div>
-                                    @error('tableId') <p class="mt-1 text-xs text-[color:var(--nx-danger)]">{{ $message }}</p> @enderror
+                                    {{-- Die Meldung verschwindet, sobald ein Tisch angeklickt ist.
+                                         Ohne x-show blieb sie stehen: Die Auswahl läuft im Browser,
+                                         es kommt also keine Antwort, die sie wegräumt. --}}
+                                    @error('tableId')
+                                        <p x-show="! gewaehlt" class="mt-1 text-xs text-[color:var(--nx-danger)]">{{ $message }}</p>
+                                    @enderror
                                 </div>
                             @endif
                         @endif

@@ -60,7 +60,12 @@ class BookingCreate extends Component
     /** Meldung, wenn das Speichern an einer Prüfung scheitert. */
     public string $bookingError = '';
 
-    protected function rules(): array
+    /**
+     * Regeln je Schritt. Bewusst NICHT "rules" genannt: Unter diesem Namen ist
+     * es Livewires eigene Regelquelle, und dann prüft es beim Tippen mit. Geprüft
+     * werden soll aber erst beim Klick auf "Weiter".
+     */
+    protected function regelnFuerSchritt(): array
     {
         return match ($this->step) {
             1 => [
@@ -265,6 +270,7 @@ class BookingCreate extends Component
         $this->tableId       = null;
         $this->selectedItems = [];
         $this->bookingError  = '';
+        $this->resetValidation();
 
         unset($this->event, $this->slots, $this->slot, $this->tables, $this->availableMenuItems);
 
@@ -276,12 +282,15 @@ class BookingCreate extends Component
     {
         $this->tableId      = null;
         $this->bookingError = '';
+        $this->resetValidation();
 
         unset($this->slot, $this->tables);
     }
 
     public function updatedGuestCount(): void
     {
+        $this->resetValidation();
+
         unset($this->tables);
     }
 
@@ -295,10 +304,10 @@ class BookingCreate extends Component
 
     public function nextStep(): void
     {
-        $rules = $this->rules();
+        $regeln = $this->regelnFuerSchritt();
 
-        if (! empty($rules)) {
-            $this->validate($rules);
+        if (! empty($regeln)) {
+            $this->validate($regeln);
         }
 
         $this->step++;
