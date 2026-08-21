@@ -130,6 +130,172 @@ final class RoomDetector
      */
     public const GRENZE_RAHMEN = 0.35;
 
+    /** Wie tief ein erkannter Eingang in die Wand reicht, in Arbeitspixeln. */
+    public const TIEFE_EINGANG = 6;
+
+    /** Schmalere Lücken als diese (Arbeitspixel) sind Ecken-Ungenauigkeit, keine Tür. */
+    public const MIN_OEFFNUNG = 6;
+
+    /** Wie weit senkrecht in die Wand geschaut wird, um sie zu finden. */
+    public const BAND_INNEN = 12;
+
+    /**
+     * Eingänge zu einem vorhandenen Umriss vorschlagen.
+     *
+     * Zweiter, eigener Schritt – und er braucht den ersten: Gesucht wird dort,
+     * wo der Umriss durch WEISSES PAPIER läuft. Eine Wand ist Tinte, eine
+     * Öffnung ist keine.
+     *
+     * Geschaut wird senkrecht nach innen in ein Band, nicht auf den Punkt der
+     * Linie selbst. Zwei Gründe: Der Umriss liegt nach dem Vereinfachen nicht
+     * pixelgenau auf der Wand, und – wichtiger – Fenster liegen in der Wand,
+     * nicht durch sie hindurch. Wer nur die Außenkante prüft, hält jedes Fenster
+     * für eine Tür; wer in die Wand hineinschaut, findet dahinter noch Mauer.
+     *
+     * @param  array<int, array<int, array{0: float, 1: float}>>  $paths
+     * @return array<int, array<string, mixed>>
+     */
+    public static function eingaenge(GdImage $bild, array $paths): array
+    {
+        [$maske, $bw, $bh] = self::maske($bild);
+
+        if ($bw < 8 || $bh < 8) {
+            return [];
+        }
+
+        $marker = [];
+
+        foreach ($paths as $pfad) {
+            $pfad = array_values($pfad);
+
+            if (count($pfad) < 2) {
+                continue;
+            }
+
+            [$mx, $my] = self::mitte($pfad, $bw, $bh);
+
+            for ($i = 0; $i < count($pfad) - 1; $i++) {
+                $ax = $pfad[$i][0] * $bw;
+                $ay = $pfad[$i][1] * $bh;
+                $bx = $pfad[$i + 1][0] * $bw;
+                $by = $pfad[$i + 1][1] * $bh;
+
+                $laenge = hypot($bx - $ax, $by - $ay);
+
+                if ($laenge < self::MIN_OEFFNUNG * 2) {
+                    continue;
+                }
+
+                // Senkrechte, zur Mitte des Zugs hin gedreht: dort steht die Wand.
+                $ex = ($bx - $ax) / $laenge;
+                $ey = ($by - $ay) / $laenge;
+                $nx = $ey;
+                $ny = -$ex;
+
+                if ((($mx - ($ax + $bx) / 2) * $nx + ($my - ($ay + $by) / 2) * $ny) < 0) {
+                    $nx = -$nx;
+                    $ny = -$ny;
+                }
+
+                foreach (self::freieStuecke($maske, $bw, $bh, $ax, $ay, $bx, $by, $nx, $ny) as [$von, $bis]) {
+                    $t = ($von + $bis) / 2;
+
+                    $px = $ax + $ex * $t;
+                    $py = $ay + $ey * $t;
+
+                    $offen = $bis - $von;
+                    $waagerecht = abs($ex) >= abs($ey);
+
+                    $marker[] = [
+                        'x'     => round(min(1, max(0, $px / $bw)), 4),
+                        'y'     => round(min(1, max(0, $py / $bh)), 4),
+                        'w'     => round(($waagerecht ? $offen : self::TIEFE_EINGANG) / $bw, 4),
+                        'h'     => round(($waagerecht ? self::TIEFE_EINGANG : $offen) / $bh, 4),
+                        'label' => 'Eingang',
+                        'gap'   => true,
+                    ];
+                }
+            }
+        }
+
+        return array_slice($marker, 0, RoomLayout::MAX_MARKERS);
+    }
+
+    /**
+     * Mitte des umschließenden Rechtecks eines Zugs, in Arbeitspixeln.
+     *
+     * Nicht der Schwerpunkt der Punkte: Der doppelte Schlusspunkt und ungleich
+     * verteilte Ecken zögen ihn aus der Mitte.
+     *
+     * @param  array<int, array{0: float, 1: float}>  $pfad
+     * @return array{0: float, 1: float}
+     */
+    protected static function mitte(array $pfad, int $bw, int $bh): array
+    {
+        $xs = array_column($pfad, 0);
+        $ys = array_column($pfad, 1);
+
+        return [
+            (min($xs) + max($xs)) / 2 * $bw,
+            (min($ys) + max($ys)) / 2 * $bh,
+        ];
+    }
+
+    /**
+     * Stücke einer Kante, hinter denen keine Wand steht.
+     *
+     * @return array<int, array{0: float, 1: float}>
+     */
+    protected static function freieStuecke(
+        string $maske, int $bw, int $bh,
+        float $ax, float $ay, float $bx, float $by, float $nx, float $ny
+    ): array {
+        $laenge = hypot($bx - $ax, $by - $ay);
+        $ex = ($bx - $ax) / $laenge;
+        $ey = ($by - $ay) / $laenge;
+
+        $wand = function (float $x, float $y) use ($maske, $bw, $bh, $nx, $ny): bool {
+            // Von zwei Pixeln vor der Linie bis tief in die Wand hinein.
+            for ($d = -2; $d <= self::BAND_INNEN; $d++) {
+                $ix = (int) round($x + $nx * $d);
+                $iy = (int) round($y + $ny * $d);
+
+                if ($ix < 0 || $iy < 0 || $ix >= $bw || $iy >= $bh) {
+                    continue;
+                }
+
+                if ($maske[$iy * $bw + $ix] === "\1") {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        $stuecke = [];
+        $start   = null;
+
+        for ($t = 0.0; $t <= $laenge; $t += 1.0) {
+            $frei = ! $wand($ax + $ex * $t, $ay + $ey * $t);
+
+            if ($frei && $start === null) {
+                $start = $t;
+            }
+
+            if (! $frei && $start !== null) {
+                $stuecke[] = [$start, $t];
+                $start = null;
+            }
+        }
+
+        if ($start !== null) {
+            $stuecke[] = [$start, $laenge];
+        }
+
+        // Zu schmale Stücke sind Ungenauigkeit an den Ecken, keine Tür.
+        return array_values(array_filter($stuecke, fn ($s) => $s[1] - $s[0] >= self::MIN_OEFFNUNG));
+    }
+
     /**
      * Umriss aus Bilddaten. Leeres Ergebnis heißt: nichts Brauchbares gefunden.
      *

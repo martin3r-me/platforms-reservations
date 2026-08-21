@@ -621,8 +621,9 @@ class FloorPlanEditor extends Component
      */
     public function detectRoom(): void
     {
-        $this->roomHint    = '';
-        $this->roomProposal = [];
+        $this->roomHint       = '';
+        $this->roomProposal   = [];
+        $this->markerProposal = [];
 
         $plan = $this->floorPlan;
         $datei = $plan?->imageFile;
@@ -658,6 +659,106 @@ class FloorPlanEditor extends Component
         $this->roomProposal = $vorschlag;
         $this->roomMode     = true;
         $this->markerMode   = false;
+    }
+
+    /**
+     * Erkannte Eingänge, noch nicht gespeichert.
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    public array $markerProposal = [];
+
+    /**
+     * Eingänge in den vorhandenen Wänden vorschlagen.
+     *
+     * Zweiter Schritt, bewusst getrennt: Wer ihn verwirft, behält den Umriss.
+     *
+     * Voraussetzung ist NICHT, dass der Umriss erkannt wurde – nur, dass es
+     * einen gibt. Gesucht wird, wo er durch weißes Papier läuft, und dafür ist
+     * einerlei, ob ihn ein Mensch gezeichnet oder ein Vorschlag geliefert hat.
+     */
+    public function detectEntrances(): void
+    {
+        $this->roomHint       = '';
+        $this->markerProposal = [];
+        $this->roomProposal   = [];
+
+        $plan  = $this->floorPlan;
+        $datei = $plan?->imageFile;
+
+        if (! $plan || ! $datei) {
+            $this->roomHint = 'Für die Erkennung braucht es einen hochgeladenen Grundriss.';
+
+            return;
+        }
+
+        $wände = RoomLayout::paths($plan);
+
+        if ($wände === []) {
+            $this->roomHint = 'Erst die Wände – Eingänge werden entlang des Umrisses gesucht.';
+
+            return;
+        }
+
+        try {
+            $binaer = Storage::disk($datei->disk)->get($datei->path);
+        } catch (\Throwable $e) {
+            $binaer = null;
+        }
+
+        if (! $binaer) {
+            $this->roomHint = 'Der Grundriss ließ sich nicht laden.';
+
+            return;
+        }
+
+        $bild = @imagecreatefromstring($binaer);
+
+        if (! $bild) {
+            $this->roomHint = 'Der Grundriss ließ sich nicht lesen.';
+
+            return;
+        }
+
+        try {
+            $gefunden = RoomDetector::eingaenge($bild, $wände);
+        } finally {
+            imagedestroy($bild);
+        }
+
+        if ($gefunden === []) {
+            $this->roomHint = 'Keine Öffnungen in den Wänden gefunden. In vielen Plänen ist die Tür '
+                . 'nur als Bogen gezeichnet und die Wand durchgehend – dann bitte von Hand setzen.';
+
+            return;
+        }
+
+        $this->markerProposal = $gefunden;
+        $this->markerMode     = true;
+        $this->roomMode       = false;
+    }
+
+    /** Erkannte Eingänge übernehmen – zusätzlich zu den vorhandenen. */
+    public function applyMarkerProposal(): void
+    {
+        $plan = $this->floorPlan;
+
+        if (! $plan || $this->markerProposal === []) {
+            return;
+        }
+
+        RoomLayout::saveMarkers($plan, array_merge(RoomLayout::markers($plan), $this->markerProposal));
+
+        $this->markerProposal = [];
+        $this->roomHint       = '';
+
+        unset($this->floorPlan, $this->roomMarkers);
+    }
+
+    public function discardMarkerProposal(): void
+    {
+        $this->markerProposal = [];
+        $this->roomHint       = '';
     }
 
     /** Vorschlag als zusätzlichen Zug übernehmen. */

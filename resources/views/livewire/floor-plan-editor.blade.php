@@ -359,8 +359,14 @@
                     <span>Punkte</span>
                 </button>
 
-                {{-- Wände aus dem Bild vorschlagen. Nur sinnvoll, wenn ein Grundriss
-                     hinterlegt ist – ohne Vorlage gibt es nichts zu erkennen. --}}
+                {{-- Erkennen in zwei Schritten: erst Wände, dann Eingänge. Getrennt,
+                     damit ein verworfener Eingangs-Vorschlag den Umriss nicht
+                     mitnimmt – und damit man den zweiten Schritt wiederholen kann,
+                     ohne den ersten anzufassen.
+
+                     Beide nur mit hinterlegtem Grundriss: ohne Vorlage gibt es
+                     nichts zu erkennen. Der zweite zusätzlich nur mit Wänden, denn
+                     entlang derer wird gesucht – gezeichnet oder erkannt, einerlei. --}}
                 @if ($this->floorPlan?->backgroundUrl())
                     <button
                         type="button"
@@ -372,7 +378,21 @@
                     >
                         <span wire:loading.remove wire:target="detectRoom">@svg('heroicon-o-sparkles', 'w-3.5 h-3.5')</span>
                         <span wire:loading wire:target="detectRoom">@svg('heroicon-o-arrow-path', 'w-3.5 h-3.5')</span>
-                        <span>Erkennen</span>
+                        <span>Wände</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        wire:click="detectEntrances"
+                        wire:loading.attr="disabled"
+                        wire:target="detectEntrances"
+                        @disabled(empty($this->roomPaths))
+                        class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-[var(--ui-border)] bg-white px-2 text-[11px] font-medium text-[var(--ui-muted)] shadow-sm transition-colors disabled:opacity-40 dark:bg-gray-900"
+                        title="{{ empty($this->roomPaths) ? 'Erst die Wände – Eingänge werden entlang des Umrisses gesucht' : 'Eingänge in den Wänden vorschlagen' }}"
+                    >
+                        <span wire:loading.remove wire:target="detectEntrances">@svg('heroicon-o-sparkles', 'w-3.5 h-3.5')</span>
+                        <span wire:loading wire:target="detectEntrances">@svg('heroicon-o-arrow-path', 'w-3.5 h-3.5')</span>
+                        <span>Eingänge</span>
                     </button>
                 @endif
 
@@ -1211,6 +1231,11 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
         }
 
         return teile.join(' ');
+    },
+
+    /** Erkannte Eingänge, noch nicht übernommen. */
+    get vorschlagMarker() {
+        return this.$wire.markerProposal || [];
     },
 
     /** Die Wand, die gerade gezogen wird. */

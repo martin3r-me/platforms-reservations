@@ -140,7 +140,51 @@
     </div>
 </template>
 
-{{-- Anfrage zum Vorschlag. Liegt über allem, damit sie in jedem Modus
+{{-- Erkannte Eingänge, noch nicht übernommen: dieselbe Form wie eine fertige
+     Beschriftung, aber gestrichelt und in der Vorschlagsfarbe. --}}
+<template x-for="(m, vi) in vorschlagMarker" :key="'v' + vi">
+    <div
+        class="pointer-events-none absolute flex items-center justify-center"
+        :style="{
+            left: (m.x * 100) + '%',
+            top: (m.y * 100) + '%',
+            width:  m.w ? (m.w * 100) + '%' : 'auto',
+            height: m.h ? (m.h * 100) + '%' : 'auto',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 24
+        }"
+    >
+        <div
+            x-show="m.w || m.h"
+            class="absolute inset-0 rounded-sm border-2 border-dashed"
+            style="display: none; border-color: #d97706; background: rgba(217, 119, 6, 0.10);"
+        ></div>
+
+        <span
+            class="relative whitespace-nowrap rounded-full border border-dashed bg-white px-2 py-0.5 text-[11px] font-medium"
+            style="border-color: #d97706; color: #d97706;"
+            x-text="m.label"
+        ></span>
+    </div>
+</template>
+
+{{-- Anfrage zu den erkannten Eingängen --}}
+<div
+    x-show="vorschlagMarker.length"
+    class="absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-2 rounded-lg border bg-white px-3 py-1.5 shadow-lg"
+    style="display: none; z-index: 28; pointer-events: auto; border-color: #d97706;"
+>
+    <span class="text-xs font-medium" style="color: #d97706;">
+        <span x-text="vorschlagMarker.length"></span> <span x-text="vorschlagMarker.length === 1 ? 'Eingang' : 'Eingänge'"></span> erkannt
+    </span>
+    <button type="button" wire:click="applyMarkerProposal"
+        class="rounded-md px-2 py-1 text-xs font-medium text-white"
+        style="background: #d97706;">Übernehmen</button>
+    <button type="button" wire:click="discardMarkerProposal"
+        class="rounded-md px-2 py-1 text-xs text-[var(--ui-muted)] hover:bg-gray-50">Verwerfen</button>
+</div>
+
+{{-- Anfrage zum Wand-Vorschlag. Liegt über allem, damit sie in jedem Modus
      erreichbar bleibt. --}}
 <div
     x-show="dVorschlag"
