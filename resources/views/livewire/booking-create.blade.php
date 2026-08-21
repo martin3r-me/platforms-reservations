@@ -102,7 +102,44 @@
                             />
                         @endif
 
-                        <x-nx-input-number name="guestCount" label="Personen" wire:model.live="guestCount" min="1" max="100" />
+                        {{-- Personen als Auswahl statt als Zahlenfeld, wie im Shop:
+                             Für vier Personen soll niemand tippen oder an einem
+                             Pfeilchen ziehen. Größere Gruppen über "+", dann kommt
+                             das Feld. --}}
+                        @php ($schnell = collect([1, 2, 3, 4])->filter(fn ($z) => $z <= $this->maxGuests))
+                        <div x-data="{ frei: {{ $guestCount > $schnell->max() ? 'true' : 'false' }} }">
+                            <span class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Personen</span>
+                            <div class="flex flex-wrap items-center gap-2">
+                                @foreach ($schnell as $z)
+                                    <button
+                                        type="button"
+                                        wire:click="$set('guestCount', {{ $z }})"
+                                        x-on:click="frei = false"
+                                        wire:key="pers-{{ $z }}"
+                                        @class([
+                                            'h-9 w-9 rounded-[6px] border text-sm font-medium tabular-nums transition-colors',
+                                            'border-[color:var(--nx-accent)] bg-[color:var(--nx-accent-soft)] text-[color:var(--nx-text)]' => $guestCount === $z,
+                                            'border-[color:var(--nx-line-strong)] text-[color:var(--nx-text)] hover:bg-[color:var(--nx-hover)]' => $guestCount !== $z,
+                                        ])
+                                    >{{ $z }}</button>
+                                @endforeach
+
+                                <button
+                                    type="button"
+                                    x-on:click="frei = true"
+                                    :class="frei ? 'border-[color:var(--nx-accent)] bg-[color:var(--nx-accent-soft)]' : ''"
+                                    class="h-9 w-9 rounded-[6px] border border-[color:var(--nx-line-strong)] text-sm font-medium text-[color:var(--nx-text)] transition-colors hover:bg-[color:var(--nx-hover)]"
+                                    title="Größere Gruppe"
+                                >+</button>
+
+                                <span class="text-[11px] text-[color:var(--nx-muted)]">max. {{ $this->maxGuests }} Personen</span>
+                            </div>
+
+                            <div x-show="frei" style="display: none;" class="mt-2 max-w-[10rem]">
+                                <x-nx-input-number name="guestCount" wire:model.live="guestCount" min="1" :max="$this->maxGuests" />
+                            </div>
+                            @error('guestCount') <p class="mt-1 text-xs text-[color:var(--nx-danger)]">{{ $message }}</p> @enderror
+                        </div>
 
                         {{-- Tisch mit freien Plätzen. Volle Tische stehen dabei, aber
                              gesperrt: Sonst sucht jemand einen Tisch, der einfach fehlt. --}}
