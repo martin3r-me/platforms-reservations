@@ -89,8 +89,12 @@ class CartCalculator
      * damit die Kalkulation auch im authentifizierten API-Kontext (Gast-API,
      * Service-Token-User) auf das richtige Team auflöst – nicht nur im
      * auth-losen Livewire-Gastflow.
+     *
+     * Öffentlich, weil das Backoffice dieselbe Liste anzeigen muss: Eine
+     * manuelle Buchung darf nichts enthalten, was am Termin nicht verkauft
+     * wird. Vorher zeigte sie das ganze Team-Menü.
      */
-    protected function allowedItems(Event $event): Collection
+    public function allowedItems(Event $event): Collection
     {
         $salesList = $event->sales_list_id
             ? SalesList::withoutGlobalScope('team')->find($event->sales_list_id)

@@ -2,18 +2,34 @@
 
 namespace Platform\Reservation\Livewire;
 
-use Livewire\Component;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
-use Platform\Reservation\Models\Booking;
-use Platform\Reservation\Models\BookingItem;
-use Platform\Reservation\Models\FloorPlan;
+use Livewire\Component;
+use Platform\Reservation\Exceptions\GuestOrderException;
+use Platform\Reservation\Models\CheckoutSetting;
+use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Table;
 use Platform\Reservation\Services\CartCalculator;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
+use Platform\Reservation\Services\GuestOrderService;
+use Platform\Reservation\Services\SeatAvailabilityService;
 
+/**
+ * Buchung von Hand anlegen – telefonisch, am Schalter, nachträglich.
+ *
+ * Hängt an einem TERMIN und einer PAUSE, nicht an einem frei gewählten Datum.
+ * Vorher fragte dieser Weg nach Datum und Uhrzeit und schrieb weder event_id
+ * noch event_slot_id. Damit fiel die Buchung durch jedes Raster, das darauf
+ * aufsetzt: Küche und Laufzettel gruppieren über Termin und Pause, und die
+ * Platzprüfung zählt über die Pause – eine so angelegte Buchung belegte also
+ * keinen Platz, und der Shop konnte denselben Tisch ein zweites Mal verkaufen.
+ *
+ * Geschrieben wird über GuestOrderService::placeForStaff() und damit über
+ * denselben Kern wie der Gast-Checkout: Artikel gegen die Verkaufsliste des
+ * Termins, Tisch muss zum Termin gehören, Plätze geprüft, Preise aus der
+ * Datenbank eingefroren, Bundles in Bestandteile aufgelöst.
+ */
 class BookingCreate extends Component
 {
     // Aus Auth im mount abgeleitet – darf clientseitig nicht überschrieben
@@ -21,34 +37,35 @@ class BookingCreate extends Component
     #[Locked]
     public int $teamId;
 
-    public ?int $tableId = null;
-
-    // Schritt-Wizard: 1 = Datum/Zeit, 2 = Gastdaten, 3 = Menü, 4 = Bestätigung
+    /** Schritt-Wizard: 1 = Termin/Pause/Tisch, 2 = Gast, 3 = Artikel, 4 = fertig */
     public int $step = 1;
 
-    // Schritt 1: Datum & Zeit
-    public string $date = '';
-    public string $timeStart = '';
-    public string $timeEnd = '';
+    // Schritt 1
+    public ?int $eventId = null;
+    public ?int $slotId = null;
+    public ?int $tableId = null;
     public int $guestCount = 2;
 
-    // Schritt 2: Gastdaten
+    // Schritt 2
     public string $guestName = '';
     public string $guestEmail = '';
     public string $guestPhone = '';
     public string $notes = '';
 
-    // Schritt 3: Menü-Vorbestellung
-    public array $selectedItems = []; // [menu_item_id => quantity]
+    // Schritt 3: [menu_item_id => Menge]
+    public array $selectedItems = [];
+
+    /** Meldung, wenn das Speichern an einer Prüfung scheitert. */
+    public string $bookingError = '';
 
     protected function rules(): array
     {
         return match ($this->step) {
             1 => [
-                'date'       => 'required|date|after_or_equal:today',
-                'timeStart'  => 'required|date_format:H:i',
-                'guestCount' => 'required|integer|min:1|max:20',
-                'tableId'    => ['nullable', 'integer', Rule::exists('reservation_tables', 'id')->where('team_id', $this->teamId)],
+                'eventId'    => 'required|integer',
+                'slotId'     => 'required|integer',
+                'tableId'    => 'required|integer',
+                'guestCount' => 'required|integer|min:1|max:100',
             ],
             2 => [
                 'guestName'  => 'required|string|max:255',
@@ -59,43 +76,134 @@ class BookingCreate extends Component
         };
     }
 
+    protected function messages(): array
+    {
+        return [
+            'eventId.required' => 'Bitte einen Termin wählen.',
+            'slotId.required'  => 'Bitte eine Pause wählen.',
+            'tableId.required' => 'Bitte einen Tisch wählen.',
+        ];
+    }
+
     public function mount(?int $tableId = null): void
     {
         $this->teamId  = Auth::user()->current_team_id;
         $this->tableId = $tableId;
-        $this->date    = now()->toDateString();
+
+        // Nur ein Termin in Frage: dann keine Wahl vorlegen, die keine ist.
+        if ($this->events->count() === 1) {
+            $this->eventId = $this->events->first()->id;
+            $this->slotGewaehltWennEindeutig();
+        }
     }
 
+    /**
+     * Buchbare Termine: ab heute und nicht abgesagt.
+     *
+     * Bewusst OHNE Bestellschluss-Prüfung – intern darf nachgebucht werden,
+     * wenn der Shop längst zu ist. Das ist der Zweck dieses Wegs.
+     */
     #[Computed]
-    public function availableTables(): \Illuminate\Database\Eloquent\Collection
+    public function events(): \Illuminate\Support\Collection
     {
-        return Table::whereHas('floorPlan', fn ($q) => $q->whereHas('venue', fn ($q2) => $q2->where('team_id', $this->teamId)))
-            ->orderBy('label')
+        return Event::query()
+            ->where('team_id', $this->teamId)
+            ->whereIn('status', [Event::STATUS_DRAFT, Event::STATUS_PUBLISHED, Event::STATUS_CLOSED])
+            ->upcoming()
+            ->with(['slots', 'eventRooms.floorPlan.tables'])
+            ->orderBy('date')
             ->get();
     }
 
     #[Computed]
-    public function availableMenuItems(): \Illuminate\Database\Eloquent\Collection
+    public function event(): ?Event
     {
-        return MenuItem::with('category', 'allergens', 'components')
-            ->forTeam($this->teamId)
-            ->available()
-            ->orderBy('sort_order')
-            ->get()
+        return $this->eventId ? $this->events->firstWhere('id', $this->eventId) : null;
+    }
+
+    #[Computed]
+    public function slots(): \Illuminate\Support\Collection
+    {
+        return $this->event?->slots->sortBy(fn ($s) => (string) $s->time_start)->values() ?? collect();
+    }
+
+    #[Computed]
+    public function slot(): mixed
+    {
+        return $this->slotId ? $this->slots->firstWhere('id', $this->slotId) : null;
+    }
+
+    /**
+     * Tische der Räume DIESES Termins, mit freien Plätzen für die gewählte Pause.
+     *
+     * Vorher standen hier alle Tische des Teams – auch solche aus Räumen, die
+     * dem Termin nicht zugeordnet sind. Der Service hätte sie abgelehnt, aber
+     * erst nach dem Ausfüllen.
+     *
+     * @return \Illuminate\Support\Collection<int, array{table: Table, free: int, bookable: bool}>
+     */
+    #[Computed]
+    public function tables(): \Illuminate\Support\Collection
+    {
+        $event = $this->event;
+        $slot  = $this->slot;
+
+        if (! $event || ! $slot) {
+            return collect();
+        }
+
+        $seats    = app(SeatAvailabilityService::class);
+        $checkout = CheckoutSetting::forTeam($this->teamId);
+
+        return $event->eventRooms
+            ->flatMap(fn ($room) => $room->floorPlan?->tables->where('is_active', true) ?? collect())
+            ->reject(fn (Table $t) => $event->isTableDisabled($t->id))
+            ->sortBy('label')
+            ->map(fn (Table $t) => [
+                'table'    => $t,
+                'free'     => $seats->remainingSeats($t, $slot),
+                'bookable' => $seats->canSeat(
+                    $t,
+                    $slot,
+                    $this->guestCount,
+                    $checkout->softTableCapacity(),
+                    $checkout->maxGroupEmptyTable(),
+                ),
+            ])
+            ->values();
+    }
+
+    /**
+     * Artikel aus der Verkaufsliste DES TERMINS.
+     *
+     * Vorher war es das ganze Team-Menü – damit ließ sich buchen, was es an
+     * dem Abend nicht gibt. Dieselbe Quelle wie im Gast-Checkout.
+     */
+    #[Computed]
+    public function availableMenuItems(): \Illuminate\Support\Collection
+    {
+        $event = $this->event;
+
+        if (! $event) {
+            return collect();
+        }
+
+        // allowedItems liefert die Bestandteile schon mitgeladen; die Kategorie
+        // braucht nur die Anzeige.
+        return app(CartCalculator::class)->allowedItems($event)
+            ->load('category')
             // Ein Bundle ohne Bestandteile zerfällt in null Positionen – die
             // Buchung hätte dann eine Zeile weniger, ohne dass es auffällt.
-            // Normale Artikel bleiben unangetastet.
             ->filter(fn (MenuItem $item) => ! $item->isBundle() || $item->components->isNotEmpty())
+            ->sortBy('sort_order')
             ->values();
     }
 
     /**
      * Die Auswahl als Warenkorb-Positionen.
      *
-     * Geht bewusst ueber den CartCalculator: dort liegt die Mengenbegrenzung
-     * und – wichtiger – die Auflösung von Bundles in ihre Bestandteile.
-     *
-     * @return \Illuminate\Support\Collection<int, array{item: MenuItem, quantity: int, total: float}>
+     * Über den CartCalculator: dort liegen Mengenbegrenzung und die Auflösung
+     * von Bundles in ihre Bestandteile.
      */
     #[Computed]
     public function bookingLines(): \Illuminate\Support\Collection
@@ -109,7 +217,9 @@ class BookingCreate extends Component
     #[Computed]
     public function selectedTable(): ?Table
     {
-        return $this->tableId ? Table::find($this->tableId) : null;
+        return $this->tableId
+            ? $this->tables->firstWhere(fn ($z) => $z['table']->id === $this->tableId)['table'] ?? null
+            : null;
     }
 
     #[Computed]
@@ -118,12 +228,49 @@ class BookingCreate extends Component
         return app(CartCalculator::class)->total($this->bookingLines);
     }
 
+    /** Termin gewechselt: Pause, Tisch und Auswahl gehören zum alten. */
+    public function updatedEventId(): void
+    {
+        $this->slotId        = null;
+        $this->tableId       = null;
+        $this->selectedItems = [];
+        $this->bookingError  = '';
+
+        unset($this->event, $this->slots, $this->slot, $this->tables, $this->availableMenuItems);
+
+        $this->slotGewaehltWennEindeutig();
+    }
+
+    /** Pause gewechselt: Der Tisch kann in der neuen Pause voll sein. */
+    public function updatedSlotId(): void
+    {
+        $this->tableId      = null;
+        $this->bookingError = '';
+
+        unset($this->slot, $this->tables);
+    }
+
+    public function updatedGuestCount(): void
+    {
+        unset($this->tables);
+    }
+
+    /** Eine einzige Pause ist keine Wahl. */
+    protected function slotGewaehltWennEindeutig(): void
+    {
+        if ($this->slots->count() === 1) {
+            $this->slotId = $this->slots->first()->id;
+        }
+    }
+
     public function nextStep(): void
     {
         $rules = $this->rules();
-        if (!empty($rules)) {
+
+        if (! empty($rules)) {
             $this->validate($rules);
         }
+
         $this->step++;
     }
 
@@ -140,6 +287,7 @@ class BookingCreate extends Component
     public function decrementItem(int $itemId): void
     {
         $current = $this->selectedItems[$itemId] ?? 0;
+
         if ($current <= 1) {
             unset($this->selectedItems[$itemId]);
         } else {
@@ -147,40 +295,63 @@ class BookingCreate extends Component
         }
     }
 
+    /**
+     * Speichern über denselben Kern wie der Gast-Checkout.
+     *
+     * Die Prüfungen dort sind autoritativ; was die Oberfläche vorher schon
+     * einschränkt, ist nur Bequemlichkeit. Scheitert eine, steht sie als
+     * Meldung im Formular statt als Ausnahme im Log.
+     */
     public function confirm(): void
     {
+        $this->bookingError = '';
+
         $this->validate([
+            'eventId'    => 'required|integer',
+            'slotId'     => 'required|integer',
+            'tableId'    => 'required|integer',
             'guestName'  => 'required|string|max:255',
-            'date'       => 'required|date',
-            'timeStart'  => 'required|date_format:H:i',
-            'tableId'    => ['nullable', 'integer', Rule::exists('reservation_tables', 'id')->where('team_id', $this->teamId)],
+            'guestCount' => 'required|integer|min:1|max:100',
         ]);
 
-        $booking = Booking::create([
-            'team_id'     => $this->teamId,
-            'table_id'    => $this->tableId ?: null,
-            'guest_name'  => $this->guestName,
-            'guest_email' => $this->guestEmail,
-            'guest_phone' => $this->guestPhone,
-            'guest_count' => $this->guestCount,
-            'notes'       => $this->notes,
-            'date'        => $this->date,
-            'time_start'  => $this->timeStart,
-            'time_end'    => $this->timeEnd ?: null,
-            'status'      => Booking::STATUS_PENDING,
-        ]);
+        $event = $this->event;
 
-        // Wie im Gast-Checkout: ein Bundle ist ein Verkaufsobjekt, aber keine
-        // Abrechnungsposition. frozenItemAttributes() löst es in die
-        // Bestandteile auf – jeder mit eigenem Steuersatz und eigener
-        // Standzeit, zusammengehalten ueber bundle_ref. Ohne das stünde auf
-        // dem Küchenzettel ein Posten statt zwei und die MwSt wäre falsch.
-        foreach (app(CartCalculator::class)->frozenItemAttributes($this->bookingLines) as $attributes) {
-            BookingItem::create($attributes + ['booking_id' => $booking->id]);
+        if (! $event) {
+            $this->bookingError = 'Der Termin ist nicht mehr verfügbar.';
+
+            return;
+        }
+
+        if ($this->selectedItems === []) {
+            $this->bookingError = 'Bitte mindestens einen Artikel wählen.';
+
+            return;
+        }
+
+        try {
+            app(GuestOrderService::class)->placeForStaff(
+                $event,
+                [
+                    'first_name' => $this->guestName,
+                    'last_name'  => '',
+                    'email'      => $this->guestEmail ?: null,
+                    'phone'      => $this->guestPhone ?: null,
+                    'count'      => $this->guestCount,
+                    'notes'      => $this->notes ?: null,
+                ],
+                [[
+                    'slot_id'  => $this->slotId,
+                    'table_id' => $this->tableId,
+                    'items'    => $this->selectedItems,
+                ]],
+            );
+        } catch (GuestOrderException $e) {
+            $this->bookingError = $e->getMessage();
+
+            return;
         }
 
         $this->step = 4;
-        $this->dispatch('booking-created', bookingId: $booking->id);
     }
 
     public function render()

@@ -39,6 +39,74 @@ class GuestOrderService
             throw new GuestOrderException('Der Bestellschluss für diesen Termin ist erreicht.', 'ORDER_CLOSED');
         }
 
+        $order = $this->store($event, $guest, $slotOrders, $ageConfirmed);
+
+        $checkoutUrl = null;
+        if ($order->total_amount > 0 && $this->payments->isEnabledForTeam($event->team_id)) {
+            $checkoutUrl = $this->payments->createForOrder($order, $redirectUrl);
+        }
+
+        return ['order' => $order, 'checkout_url' => $checkoutUrl];
+    }
+
+    /**
+     * Buchung durch das Backoffice: telefonisch, am Schalter, nachträglich.
+     *
+     * Denselben schreibenden Kern wie der Gast-Weg – Artikel gegen die
+     * Verkaufsliste des Termins, Tisch muss zum Termin gehören, Plätze werden
+     * geprüft, Preise aus der Datenbank eingefroren. Zwei Unterschiede, und
+     * beide sind Absicht:
+     *
+     *   - KEIN Bestellschluss. Genau deshalb ruft jemand an; der Shop ist dann
+     *     schon zu. Wer intern bucht, übernimmt die Verantwortung dafür.
+     *   - Sofort bestätigt und ohne Zahlungslink. Bezahlt wird vor Ort, es
+     *     entsteht keine offene Mollie-Zahlung. Bestätigt heißt: zählt in Küche,
+     *     Laufzettel, Platzprüfung und Umsatz.
+     *
+     * @param array{first_name?:string,last_name?:string,company?:?string,email:?string,phone:?string,count:int,notes:?string} $guest
+     * @param array<int, array{slot_id:int, table_id:int, items:array<int,int>}> $slotOrders
+     *
+     * @throws GuestOrderException
+     */
+    public function placeForStaff(Event $event, array $guest, array $slotOrders): Order
+    {
+        // Altersbestätigung: Wer am Telefon sitzt, fragt und verantwortet es.
+        // Eine Häkchen-Abfrage im Backoffice wäre Theater.
+        return $this->store(
+            $event,
+            $guest,
+            $slotOrders,
+            true,
+            Order::STATUS_CONFIRMED,
+            Booking::STATUS_CONFIRMED,
+            'onsite',
+        );
+    }
+
+    /**
+     * Der schreibende Kern: prüfen, einfrieren, speichern.
+     *
+     * Bewusst herausgelöst, damit Gast-Weg und Backoffice DIESELBEN Prüfungen
+     * nehmen. Zwei Fassungen davon wären die Art Fehler, die man erst merkt,
+     * wenn die Zahlen auseinanderlaufen.
+     *
+     * @param array<int, array{slot_id:int, table_id:int, items:array<int,int>}> $slotOrders
+     *
+     * @throws GuestOrderException
+     */
+    protected function store(
+        Event $event,
+        array $guest,
+        array $slotOrders,
+        bool $ageConfirmed,
+        string $orderStatus = Order::STATUS_PENDING,
+        string $bookingStatus = Booking::STATUS_PENDING,
+        ?string $paymentMethod = null,
+    ): Order {
+        // Der Backoffice-Weg kommt aus einer Livewire-Komponente und hat die
+        // Beziehungen nicht zwingend geladen.
+        $event->loadMissing(['slots', 'eventRooms']);
+
         if (empty($slotOrders)) {
             throw new GuestOrderException('Es wurde keine Pause mit Produkten übermittelt.', 'EMPTY_ORDER');
         }
@@ -82,13 +150,13 @@ class GuestOrderService
             throw new GuestOrderException('Die Bestellung enthält alkoholische Getränke – Altersbestätigung erforderlich.', 'AGE_REQUIRED');
         }
 
-        $order = DB::transaction(function () use ($event, $guest, $prepared, $allLines) {
+        $order = DB::transaction(function () use ($event, $guest, $prepared, $allLines, $orderStatus, $bookingStatus, $paymentMethod) {
             $billing = (array) ($guest['billing'] ?? []);
 
             $order = Order::create([
                 'team_id'         => $event->team_id,
                 'event_id'        => $event->id,
-                'status'          => Order::STATUS_PENDING,
+                'status'          => $orderStatus,
                 'first_name'      => $guest['first_name'] ?? null,
                 'last_name'       => $guest['last_name'] ?? null,
                 'company'         => ($guest['company'] ?? null) ?: null,
@@ -120,8 +188,8 @@ class GuestOrderService
                     'date'                   => $event->date->toDateString(),
                     'time_start'             => $p['slot']->time_start,
                     'time_end'               => $p['slot']->time_end,
-                    'status'                 => Booking::STATUS_PENDING,
-                    'payment_method'         => null,
+                    'status'                 => $bookingStatus,
+                    'payment_method'         => $paymentMethod,
                     'age_check_confirmed_at' => $ageAt,
                     'legal_accepted_at'      => now(),
                 ]);
@@ -137,11 +205,6 @@ class GuestOrderService
         // Scope-sicher nachladen (API-Kontext ist authentifiziert → Global Scope aktiv).
         $order->load(['bookings' => fn ($q) => $q->withoutGlobalScope('team')->with('items')]);
 
-        $checkoutUrl = null;
-        if ($order->total_amount > 0 && $this->payments->isEnabledForTeam($event->team_id)) {
-            $checkoutUrl = $this->payments->createForOrder($order, $redirectUrl);
-        }
-
-        return ['order' => $order, 'checkout_url' => $checkoutUrl];
+        return $order;
     }
 }

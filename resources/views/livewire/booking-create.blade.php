@@ -49,43 +49,103 @@
         @endforeach
     </div>
 
-    {{-- Schritt 1: Termin --}}
+    @if ($bookingError)
+        <x-nx-callout variant="danger">{{ $bookingError }}</x-nx-callout>
+    @endif
+
+    {{-- Schritt 1: Termin, Pause, Tisch --}}
     @if ($step === 1)
         <x-nx-card flush>
             <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-                @svg('heroicon-o-clock', 'w-4 h-4 text-[color:var(--nx-muted)]')
-                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Termin</h2>
+                @svg('heroicon-o-calendar-days', 'w-4 h-4 text-[color:var(--nx-muted)]')
+                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Termin & Pause</h2>
             </div>
             <div class="space-y-4 p-5">
-                @if ($this->selectedTable)
-                    <x-nx-callout>
-                        <strong>{{ $this->selectedTable->label }}</strong> · max. {{ $this->selectedTable->capacity }} Personen
+                @if ($this->events->isEmpty())
+                    <x-nx-callout variant="warning">
+                        Kein anstehender Termin vorhanden. Eine Buchung hängt immer an einem Termin –
+                        bitte zuerst einen anlegen.
                     </x-nx-callout>
-                @endif
+                @else
+                    <x-nx-input-select
+                        name="eventId"
+                        label="Termin"
+                        required
+                        nullable
+                        nullLabel="– Termin wählen –"
+                        :options="$this->events->map(fn ($e) => [
+                            'value' => $e->id,
+                            'label' => $e->date?->format('d.m.Y') . ' · ' . $e->name
+                                . ($e->status->value === 'closed' ? ' (Bestellschluss)' : '')
+                                . ($e->status->value === 'draft' ? ' (Entwurf)' : ''),
+                        ])->values()->all()"
+                        wire:model.live="eventId"
+                    />
 
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <x-nx-input-date name="date" label="Datum" wire:model="date" required min="{{ now()->toDateString() }}" />
-                    {{-- Kein input-time im Baukasten – input-text mit type nimmt es auf. --}}
-                    <x-nx-input-text name="timeStart" label="Uhrzeit" type="time" wire:model="timeStart" required />
-                </div>
+                    @if ($this->event)
+                        @if ($this->slots->isEmpty())
+                            <x-nx-callout variant="warning">
+                                Dieser Termin hat noch keine Pause. Ohne Pause lässt sich nicht buchen.
+                            </x-nx-callout>
+                        @else
+                            <x-nx-input-select
+                                name="slotId"
+                                label="Pause"
+                                required
+                                nullable
+                                nullLabel="– Pause wählen –"
+                                :options="$this->slots->map(fn ($s) => [
+                                    'value' => $s->id,
+                                    'label' => $s->displayLabel(),
+                                ])->values()->all()"
+                                wire:model.live="slotId"
+                            />
+                        @endif
 
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <x-nx-input-number name="guestCount" label="Personen" wire:model="guestCount" min="1" max="20" />
+                        <x-nx-input-number name="guestCount" label="Personen" wire:model.live="guestCount" min="1" max="100" />
 
-                    @if ($this->availableTables->isNotEmpty())
-                        <x-nx-input-select
-                            name="tableId"
-                            label="Tisch"
-                            nullable
-                            nullLabel="– kein Tisch –"
-                            :options="$this->availableTables->map(fn ($t) => ['value' => $t->id, 'label' => $t->label . ' (max. ' . $t->capacity . ' P.)'])->values()->all()"
-                            wire:model="tableId"
-                        />
+                        {{-- Tisch mit freien Plätzen. Volle Tische stehen dabei, aber
+                             gesperrt: Sonst sucht jemand einen Tisch, der einfach fehlt. --}}
+                        @if ($this->slot)
+                            @if ($this->tables->isEmpty())
+                                <x-nx-callout variant="warning">
+                                    Dem Termin ist kein Raum mit Tischen zugeordnet.
+                                </x-nx-callout>
+                            @else
+                                <div>
+                                    <span class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Tisch <span class="text-[color:var(--nx-danger)]">*</span></span>
+                                    <div class="grid gap-2 sm:grid-cols-2">
+                                        @foreach ($this->tables as $zeile)
+                                            @php ($t = $zeile['table'])
+                                            @php ($frei = $zeile['free'])
+                                            @php ($moeglich = $zeile['bookable'])
+                                            <button
+                                                type="button"
+                                                @if ($moeglich) wire:click="$set('tableId', {{ $t->id }})" @else disabled @endif
+                                                wire:key="tisch-{{ $t->id }}"
+                                                @class([
+                                                    'flex items-center justify-between rounded-[6px] border px-3 py-2 text-left transition-colors',
+                                                    'border-[color:var(--nx-accent)] bg-[color:var(--nx-accent-soft)]' => $tableId === $t->id,
+                                                    'border-[color:var(--nx-line-strong)] hover:bg-[color:var(--nx-hover)]' => $moeglich && $tableId !== $t->id,
+                                                    'cursor-not-allowed border-[color:var(--nx-line)] opacity-50' => ! $moeglich,
+                                                ])
+                                            >
+                                                <span class="text-sm font-medium text-[color:var(--nx-text)]">{{ $t->label }}</span>
+                                                <span class="whitespace-nowrap text-[11px] tabular-nums text-[color:var(--nx-muted)]">
+                                                    {{ $frei }} / {{ $t->capacity }} frei
+                                                </span>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                    @error('tableId') <p class="mt-1 text-xs text-[color:var(--nx-danger)]">{{ $message }}</p> @enderror
+                                </div>
+                            @endif
+                        @endif
                     @endif
-                </div>
+                @endif
             </div>
             <div class="flex justify-end border-t border-[color:var(--nx-line)] px-4 py-3">
-                <x-nx-button variant="primary" wire:click="nextStep">
+                <x-nx-button variant="primary" wire:click="nextStep" :disabled="$this->events->isEmpty()">
                     <span>Weiter</span>
                     @svg('heroicon-o-arrow-right', 'w-4 h-4')
                 </x-nx-button>
@@ -128,8 +188,10 @@
         <x-nx-card flush>
             <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
                 @svg('heroicon-o-shopping-bag', 'w-4 h-4 text-[color:var(--nx-muted)]')
-                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Vorbestellung</h2>
-                <span class="ml-auto text-[11px] text-[color:var(--nx-muted)]">optional</span>
+                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Artikel</h2>
+                <span class="ml-auto text-[11px] text-[color:var(--nx-muted)]">
+                    {{ $this->event?->name }}@if ($this->slot) · {{ $this->slot->displayLabel() }}@endif
+                </span>
             </div>
 
             @forelse ($this->availableMenuItems->groupBy('category_id') as $categoryId => $items)
@@ -181,7 +243,7 @@
                 </div>
             @empty
                 <div class="px-4 py-6 text-sm text-[color:var(--nx-muted)]">
-                    Keine freigegebenen Artikel vorhanden.
+                    Die Verkaufsliste dieses Termins enthält keine freigegebenen Artikel.
                 </div>
             @endforelse
 
@@ -213,9 +275,12 @@
             <x-nx-empty icon="heroicon-o-check-circle">
                 <span class="text-sm font-medium text-[color:var(--nx-text)]">Buchung angelegt</span>
                 <span class="mt-1 block">
-                    {{ $guestName }} · {{ \Carbon\Carbon::parse($date)->format('d.m.Y') }}@if ($timeStart) um {{ $timeStart }} Uhr @endif
+                    {{ $guestName }} · {{ $this->event?->date?->format('d.m.Y') }}@if ($this->slot) · {{ $this->slot->displayLabel() }}@endif
+                    @if ($this->selectedTable) · Tisch {{ $this->selectedTable->label }} @endif
                 </span>
-                <span class="mt-1 block text-[11px]">Die Bestätigung geht per E-Mail an den Gast.</span>
+                <span class="mt-1 block text-[11px]">
+                    Bestätigt, Zahlung vor Ort. Zählt ab jetzt in Küche, Laufzettel und Platzprüfung.
+                </span>
                 <x-slot name="action">
                     <x-nx-button variant="primary" :href="route('reservation.bookings.index')">
                         @svg('heroicon-o-list-bullet', 'w-4 h-4')
