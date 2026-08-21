@@ -359,6 +359,23 @@
                     <span>Punkte</span>
                 </button>
 
+                {{-- Wände aus dem Bild vorschlagen. Nur sinnvoll, wenn ein Grundriss
+                     hinterlegt ist – ohne Vorlage gibt es nichts zu erkennen. --}}
+                @if ($this->floorPlan?->backgroundUrl())
+                    <button
+                        type="button"
+                        wire:click="detectRoom"
+                        wire:loading.attr="disabled"
+                        wire:target="detectRoom"
+                        class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-[var(--ui-border)] bg-white px-2 text-[11px] font-medium text-[var(--ui-muted)] shadow-sm transition-colors disabled:opacity-50 dark:bg-gray-900"
+                        title="Wände aus dem Grundriss vorschlagen"
+                    >
+                        <span wire:loading.remove wire:target="detectRoom">@svg('heroicon-o-sparkles', 'w-3.5 h-3.5')</span>
+                        <span wire:loading wire:target="detectRoom">@svg('heroicon-o-arrow-path', 'w-3.5 h-3.5')</span>
+                        <span>Erkennen</span>
+                    </button>
+                @endif
+
                 {{-- Grundriss ein-/ausblenden: zeigt, ob der Umriss allein schon trägt.
                      Nur sinnvoll, wenn überhaupt ein Bild hinterlegt ist. --}}
                 @if ($this->floorPlan?->backgroundUrl())
@@ -386,6 +403,11 @@
                 </button>
             </div>
             </div>{{-- /Rahmen --}}
+    @if ($roomHint)
+        {{-- RAUMUMRISS (Versuchsstand) --}}
+        <p class="mt-2 text-center text-xs text-[var(--ui-danger)]">{{ $roomHint }}</p>
+    @endif
+
     @if ($markerMode)
         {{-- RAUMUMRISS (Versuchsstand) --}}
         <p class="mt-2 text-center text-xs text-[var(--ui-muted)]">
@@ -1166,6 +1188,29 @@ Alpine.data('roomDraw', (initialPaths, initialMarkers) => ({
         if (cursor < 1) { teile.push([punkt(cursor), punkt(1)]); }
 
         return teile;
+    },
+
+    /**
+     * Der erkannte Vorschlag, so wie er vom Server kommt.
+     *
+     * Ohne Lücken: Türöffnungen entstehen über die Beschriftungen, und die gibt
+     * es zu einem Vorschlag noch nicht.
+     */
+    get dVorschlag() {
+        const zuege = this.$wire.roomProposal || [];
+        const teile = [];
+
+        for (const pfad of zuege) {
+            if (! pfad || pfad.length < 2) { continue; }
+
+            teile.push('M' + pfad[0][0] + ' ' + pfad[0][1]);
+
+            for (let i = 1; i < pfad.length; i++) {
+                teile.push('L' + pfad[i][0] + ' ' + pfad[i][1]);
+            }
+        }
+
+        return teile.join(' ');
     },
 
     /** Die Wand, die gerade gezogen wird. */

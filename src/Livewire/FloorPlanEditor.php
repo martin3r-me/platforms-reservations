@@ -12,6 +12,8 @@ use Platform\Reservation\Models\Venue;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\Table;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Platform\Reservation\Support\RoomDetector;
 use Platform\Reservation\Support\RoomLayout;
 
 class FloorPlanEditor extends Component
@@ -594,6 +596,93 @@ class FloorPlanEditor extends Component
 
         unset($this->floorPlan, $this->roomMarkers);
         $this->skipRender();
+    }
+
+    /**
+     * Vorschlag der Erkennung, noch nicht gespeichert.
+     *
+     * Bewusst ein eigener Zwischenstand und kein direktes Speichern: Die
+     * Erkennung liegt bei den geprüften Plänen richtig, aber sie RÄT. Was rät,
+     * darf nicht ungefragt in die Daten schreiben – der Vorschlag steht
+     * gestrichelt im Plan, und angenommen wird er von Hand.
+     *
+     * @var array<int, array<int, array{0: float, 1: float}>>
+     */
+    public array $roomProposal = [];
+
+    public string $roomHint = '';
+
+    /**
+     * Wände aus dem Grundriss-Bild vorschlagen.
+     *
+     * Gerechnet wird auf dem Server: Die Geometrie liegt schon zweimal vor
+     * (PHP für die Gast-API, JavaScript für das Zeichnen), eine dritte Fassung
+     * im Browser wäre eine zu viel. Außerdem ist das Ergebnis so prüfbar.
+     */
+    public function detectRoom(): void
+    {
+        $this->roomHint    = '';
+        $this->roomProposal = [];
+
+        $plan = $this->floorPlan;
+        $datei = $plan?->imageFile;
+
+        if (! $plan || ! $datei) {
+            $this->roomHint = 'Für die Erkennung braucht es einen hochgeladenen Grundriss.';
+
+            return;
+        }
+
+        try {
+            $binaer = Storage::disk($datei->disk)->get($datei->path);
+        } catch (\Throwable $e) {
+            $binaer = null;
+        }
+
+        if (! $binaer) {
+            $this->roomHint = 'Der Grundriss ließ sich nicht laden.';
+
+            return;
+        }
+
+        $vorschlag = RoomDetector::ausBinaerdaten($binaer);
+
+        if ($vorschlag === []) {
+            // Kein Fehler, sondern ein Befund: Auf manchen Vorlagen ist der
+            // Raum nicht vom Papier zu unterscheiden.
+            $this->roomHint = 'Auf diesem Grundriss war kein Raum zu erkennen. Bitte von Hand zeichnen.';
+
+            return;
+        }
+
+        $this->roomProposal = $vorschlag;
+        $this->roomMode     = true;
+        $this->markerMode   = false;
+    }
+
+    /** Vorschlag als zusätzlichen Zug übernehmen. */
+    public function applyRoomProposal(): void
+    {
+        $plan = $this->floorPlan;
+
+        if (! $plan || $this->roomProposal === []) {
+            return;
+        }
+
+        // Zusätzlich, nicht ersetzend: Wer schon gezeichnet hat, soll seine
+        // Arbeit nicht durch einen Knopfdruck verlieren.
+        RoomLayout::savePaths($plan, array_merge(RoomLayout::paths($plan), $this->roomProposal));
+
+        $this->roomProposal = [];
+        $this->roomHint     = '';
+
+        unset($this->floorPlan, $this->roomPaths);
+    }
+
+    public function discardRoomProposal(): void
+    {
+        $this->roomProposal = [];
+        $this->roomHint     = '';
     }
 
     /** Alles verwerfen – layout_json sieht danach aus wie vor der Funktion. */

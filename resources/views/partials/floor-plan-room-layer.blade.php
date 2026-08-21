@@ -46,6 +46,19 @@
         vector-effect="non-scaling-stroke"
     />
 
+    {{-- Vorschlag der Erkennung: gestrichelt und in anderer Farbe. Auf den
+         ersten Blick soll erkennbar sein, dass das noch nichts ist – erst das
+         Übernehmen macht daraus eine Wand. --}}
+    <path
+        :d="dVorschlag"
+        fill="none"
+        stroke="#d97706"
+        stroke-width="5"
+        stroke-dasharray="10 6"
+        stroke-linejoin="round"
+        vector-effect="non-scaling-stroke"
+    />
+
     {{-- Zug, der gerade entsteht: gestrichelt bis zum Abschluss --}}
     <path
         :d="dEntwurf"
@@ -126,6 +139,21 @@
         ></div>
     </div>
 </template>
+
+{{-- Anfrage zum Vorschlag. Liegt über allem, damit sie in jedem Modus
+     erreichbar bleibt. --}}
+<div
+    x-show="dVorschlag"
+    class="absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-2 rounded-lg border bg-white px-3 py-1.5 shadow-lg"
+    style="display: none; z-index: 28; pointer-events: auto; border-color: #d97706;"
+>
+    <span class="text-xs font-medium" style="color: #d97706;">Erkannter Umriss</span>
+    <button type="button" wire:click="applyRoomProposal"
+        class="rounded-md px-2 py-1 text-xs font-medium text-white"
+        style="background: #d97706;">Übernehmen</button>
+    <button type="button" wire:click="discardRoomProposal"
+        class="rounded-md px-2 py-1 text-xs text-[var(--ui-muted)] hover:bg-gray-50">Verwerfen</button>
+</div>
 
 {{-- Fläche zum Setzen einer Beschriftung --}}
 <div
