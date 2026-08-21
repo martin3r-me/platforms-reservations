@@ -62,13 +62,34 @@ class Finance extends Component
         return (int) (Auth::user()?->current_team_id ?? 0);
     }
 
-    /** Basis-Query: Positionen aktiver Buchungen im Zeitraum. */
+    /**
+     * Status, die Umsatz sind.
+     *
+     * Ausstehende Buchungen gehören NICHT dazu: Das ist bestellt, aber nicht
+     * bezahlt und nicht bestätigt. Vorher zählte alles außer Storno und
+     * No-Show mit, und der Umsatz war damit zu hoch – eine Bestellung, die im
+     * Zahlungsvorgang liegen bleibt, sah aus wie Geld.
+     */
+    protected const UMSATZ_STATUS = [Booking::STATUS_CONFIRMED, Booking::STATUS_COMPLETED];
+
+    /** Basis-Query: Positionen bezahlter/bestätigter Buchungen im Zeitraum. */
     protected function itemsQuery()
+    {
+        return $this->zeitraum()->whereIn('b.status', self::UMSATZ_STATUS);
+    }
+
+    /** Dieselbe Abgrenzung, aber nur die ausstehenden – zum Ausweisen daneben. */
+    protected function pendingQuery()
+    {
+        return $this->zeitraum()->where('b.status', Booking::STATUS_PENDING);
+    }
+
+    /** Gemeinsamer Rumpf: Team und Zeitraum. */
+    protected function zeitraum()
     {
         return BookingItem::query()
             ->join('reservation_bookings as b', 'b.id', '=', 'reservation_booking_items.booking_id')
             ->where('b.team_id', $this->getTeamId())
-            ->whereNotIn('b.status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
             ->when($this->dateFrom, fn ($q) => $q->whereDate('b.date', '>=', $this->dateFrom))
             ->when($this->dateTo, fn ($q) => $q->whereDate('b.date', '<=', $this->dateTo));
     }
@@ -120,9 +141,11 @@ class Finance extends Component
             ->get()
             ->keyBy(fn ($r) => $r->event_id ?? 0);
 
+        // Dieselbe Abgrenzung wie beim Umsatz: Sonst stünden in einer Zeile
+        // Gäste, deren Geld nicht mitgezählt ist.
         $guests = Booking::query()
             ->where('team_id', $this->getTeamId())
-            ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
+            ->whereIn('status', self::UMSATZ_STATUS)
             ->when($this->dateFrom, fn ($q) => $q->whereDate('date', '>=', $this->dateFrom))
             ->when($this->dateTo, fn ($q) => $q->whereDate('date', '<=', $this->dateTo))
             ->groupBy('event_id')
@@ -174,12 +197,21 @@ class Finance extends Component
         $bookings = $monthly->sum('bookings');
         $best = $monthly->sortByDesc('revenue')->filter(fn ($m) => $m->revenue > 0);
 
+        // Das Ausstehende daneben ausweisen statt stillschweigend weglassen:
+        // Sonst sieht es aus, als wäre Geld verschwunden.
+        $offen = $this->pendingQuery()
+            ->selectRaw('SUM(reservation_booking_items.quantity * reservation_booking_items.unit_price) as revenue,
+                COUNT(DISTINCT b.id) as bookings')
+            ->first();
+
         return (object) [
-            'revenue'    => $revenue,
-            'bookings'   => $bookings,
-            'average'    => $bookings > 0 ? $revenue / $bookings : 0,
-            'best_month' => $best->keys()->first(),
-            'max_month'  => (float) ($monthly->max('revenue') ?: 0),
+            'revenue'          => $revenue,
+            'bookings'         => $bookings,
+            'average'          => $bookings > 0 ? $revenue / $bookings : 0,
+            'best_month'       => $best->keys()->first(),
+            'max_month'        => (float) ($monthly->max('revenue') ?: 0),
+            'pending'          => (float) ($offen->revenue ?? 0),
+            'pending_bookings' => (int) ($offen->bookings ?? 0),
         ];
     }
 

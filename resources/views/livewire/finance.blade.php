@@ -39,11 +39,15 @@
         </div>
     </div>
 
-    {{-- KPIs --}}
+    {{-- KPIs. "Umsatz" sind bestätigte und abgeschlossene Buchungen; Ausstehendes
+         steht daneben, damit nichts verschwunden aussieht. --}}
     <x-nx-stat-grid>
         <x-nx-stat label="Umsatz im Zeitraum" :value="number_format($this->totals->revenue, 2, ',', '.') . ' €'" />
         <x-nx-stat label="Buchungen mit Bestellung" :value="(string) $this->totals->bookings" />
         <x-nx-stat label="Ø pro Buchung" :value="number_format($this->totals->average, 2, ',', '.') . ' €'" />
+        <x-nx-stat label="Ausstehend (noch nicht bestätigt)"
+            :value="number_format($this->totals->pending, 2, ',', '.') . ' €'"
+            :hint="$this->totals->pending_bookings . ' ' . ($this->totals->pending_bookings === 1 ? 'Buchung' : 'Buchungen')" />
         <x-nx-stat label="Stärkster Monat" :value="$this->totals->best_month ? \Illuminate\Support\Carbon::parse($this->totals->best_month . '-01')->locale('de')->isoFormat('MMM Y') : '–'" />
     </x-nx-stat-grid>
 
