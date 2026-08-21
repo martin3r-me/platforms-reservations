@@ -18,6 +18,10 @@
     <x-ui-page-container width="contained">
     <div class="space-y-5">
 
+    @if (session('venue_error'))
+        <x-nx-callout variant="danger">{{ session('venue_error') }}</x-nx-callout>
+    @endif
+
     {{-- Leer-Zustand --}}
     @if ($this->venues->isEmpty())
         <x-nx-card>
@@ -52,10 +56,20 @@
                         <x-nx-button icon variant="ghost" wire:click="openVenueForm({{ $venue->id }})" title="Venue bearbeiten">
                             @svg('heroicon-o-pencil', 'w-4 h-4')
                         </x-nx-button>
-                        <button type="button" wire:click="deleteVenue({{ $venue->id }})" wire:confirm="Venue wirklich löschen?" title="Löschen"
-                            class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
-                            @svg('heroicon-o-trash', 'w-4 h-4')
-                        </button>
+                        @php ($venueGesperrt = $venue->floorPlans->sum(fn ($p) => (int) ($p->anstehende_termine_count ?? 0)))
+                        @if ($venueGesperrt > 0)
+                            {{-- Das Venue nimmt seine Raeume mit – solange einer davon
+                                 eingeplant ist, bleibt es stehen. --}}
+                            <span title="Enthält Räume, die in anstehenden Terminen eingeplant sind – nicht löschbar"
+                                class="inline-flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-[6px] text-[color:var(--nx-faint)]">
+                                @svg('heroicon-o-lock-closed', 'w-4 h-4')
+                            </span>
+                        @else
+                            <button type="button" wire:click="deleteVenue({{ $venue->id }})" wire:confirm="Venue wirklich löschen?" title="Löschen"
+                                class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
+                                @svg('heroicon-o-trash', 'w-4 h-4')
+                            </button>
+                        @endif
                     </div>
                 </div>
 
@@ -89,10 +103,20 @@
                                             wire:confirm="Tischplan mit allen Tischen kopieren?" title="Duplizieren">
                                             @svg('heroicon-o-document-duplicate', 'w-4 h-4')
                                         </x-nx-button>
-                                        <button type="button" wire:click="deleteFloorPlan({{ $plan->id }})" wire:confirm="Tischplan wirklich löschen?" title="Löschen"
-                                            class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
-                                            @svg('heroicon-o-trash', 'w-4 h-4')
-                                        </button>
+                                        @php ($eingeplant = (int) ($plan->anstehende_termine_count ?? 0)) 
+                                        @if ($eingeplant > 0)
+                                            {{-- Gesperrt statt fehlschlagend: Der Raum haengt in einem
+                                                 Termin, der noch ansteht. --}}
+                                            <span title="In {{ $eingeplant }} {{ $eingeplant === 1 ? 'anstehenden Termin' : 'anstehenden Terminen' }} eingeplant – nicht löschbar"
+                                                class="inline-flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-[6px] text-[color:var(--nx-faint)]">
+                                                @svg('heroicon-o-lock-closed', 'w-4 h-4')
+                                            </span>
+                                        @else
+                                            <button type="button" wire:click="deleteFloorPlan({{ $plan->id }})" wire:confirm="Tischplan wirklich löschen?" title="Löschen"
+                                                class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
+                                                @svg('heroicon-o-trash', 'w-4 h-4')
+                                            </button>
+                                        @endif
                                     </div>
                                 </div>
                             </div>

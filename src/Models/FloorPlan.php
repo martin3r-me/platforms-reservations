@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Platform\Reservation\Models\Concerns\HasContextImage;
 use Platform\Core\Services\ContextFileService;
+use Platform\Reservation\Exceptions\FloorPlanInUseException;
 
 class FloorPlan extends Model
 {
@@ -44,6 +45,27 @@ class FloorPlan extends Model
                     ->value('team_id');
             }
         });
+
+        // Ein eingeplanter Raum darf nicht verschwinden. Am Löschen hängen drei
+        // Kaskaden in der Datenbank: die Raumzuordnung des Termins, die Tische
+        // des Plans – und über nullOnDelete verlieren die Buchungen der Gäste
+        // ihren Tisch. Nichts davon meldet sich, es wäre einfach weg.
+        //
+        // Die Prüfung sitzt am Modell und nicht in der Oberfläche, damit jeder
+        // Weg sie trifft: Oberfläche, MCP-Werkzeug, Skript.
+        static::deleting(function (self $model) {
+            $termine = $model->anstehendeTermine();
+
+            if ($termine->isEmpty()) {
+                return;
+            }
+
+            throw new FloorPlanInUseException(
+                'Der Raum „' . $model->name . '" ist noch in Terminen eingeplant: '
+                . $termine->map(fn ($e) => $e->name . ' (' . $e->date?->format('d.m.Y') . ')')->implode(', ')
+                . '. Bitte dort erst den Raum entfernen oder den Termin absagen.'
+            );
+        });
     }
 
     public function team(): BelongsTo
@@ -62,6 +84,34 @@ class FloorPlan extends Model
     public function tables(): HasMany
     {
         return $this->hasMany(Table::class, 'floor_plan_id');
+    }
+
+    /** Termine, in die dieser Raum eingeplant ist. */
+    public function eventRooms(): HasMany
+    {
+        return $this->hasMany(EventRoom::class, 'floor_plan_id');
+    }
+
+    /**
+     * Termine, die diesen Raum noch brauchen: ab heute und nicht abgesagt.
+     *
+     * Abgesagte zählen nicht – da findet nichts mehr statt. Entwürfe zählen
+     * mit: Der Raum ist dort eingeplant, und ein verschwundener Raum in einem
+     * Entwurf fällt erst beim Veröffentlichen auf.
+     *
+     * "Closed" zählt ebenfalls mit: Der Bestellschluss ist vorbei, die
+     * Veranstaltung aber nicht – Küche und Laufzettel brauchen die Tische noch.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, Event>
+     */
+    public function anstehendeTermine(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Event::withoutGlobalScope('team')
+            ->whereIn('id', EventRoom::query()->where('floor_plan_id', $this->getKey())->select('event_id'))
+            ->upcoming()
+            ->where('status', '!=', Event::STATUS_CANCELLED)
+            ->orderBy('date')
+            ->get();
     }
 
     /**

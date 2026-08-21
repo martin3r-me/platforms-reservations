@@ -5,6 +5,8 @@ namespace Platform\Reservation\Livewire;
 use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
+use Platform\Reservation\Exceptions\FloorPlanInUseException;
+use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\Venue;
 use Illuminate\Support\Facades\Auth;
@@ -38,7 +40,14 @@ class VenueManager extends Component
     public function venues(): \Illuminate\Database\Eloquent\Collection
     {
         return Venue::where('team_id', $this->teamId)
-            ->with(['floorPlans' => fn ($q) => $q->withCount('tables')->orderBy('name')])
+            ->with(['floorPlans' => fn ($q) => $q
+                ->withCount('tables')
+                // Mitgezaehlt, damit der Loeschknopf gar nicht erst anklickbar
+                // ist, wenn der Raum eingeplant ist. Ein Knopf, der immer nur
+                // eine Fehlermeldung bringt, ist eine Falle.
+                ->withCount(['eventRooms as anstehende_termine_count' => fn ($q2) => $q2
+                    ->whereHas('event', fn ($q3) => $q3->upcoming()->where('status', '!=', Event::STATUS_CANCELLED))])
+                ->orderBy('name')])
             ->orderBy('name')
             ->get();
     }
@@ -87,7 +96,14 @@ class VenueManager extends Component
 
     public function deleteVenue(int $venueId): void
     {
-        Venue::findOrFail($venueId)->delete();
+        try {
+            Venue::findOrFail($venueId)->delete();
+        } catch (FloorPlanInUseException $e) {
+            session()->flash('venue_error', $e->getMessage());
+
+            return;
+        }
+
         unset($this->venues);
     }
 
@@ -178,7 +194,14 @@ class VenueManager extends Component
 
     public function deleteFloorPlan(int $floorPlanId): void
     {
-        FloorPlan::findOrFail($floorPlanId)->delete();
+        try {
+            FloorPlan::findOrFail($floorPlanId)->delete();
+        } catch (FloorPlanInUseException $e) {
+            session()->flash('venue_error', $e->getMessage());
+
+            return;
+        }
+
         unset($this->venues);
     }
 
