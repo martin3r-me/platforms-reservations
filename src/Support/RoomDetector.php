@@ -182,6 +182,12 @@ final class RoomDetector
         $punkte = self::kantenBuendeln($punkte, $bw, $bh);
         $punkte = self::aufraeumen($punkte);
 
+        // Letzter Schliff: Das Bündeln zieht die Kanten auf gemeinsame Linien,
+        // lässt dabei aber den ersten Punkt an seiner alten Stelle – der
+        // Schlusskante fehlte danach ein Pixel zur Geraden.
+        $punkte = self::achsenEinrasten($punkte);
+        $punkte = self::aufraeumen($punkte);
+
         if (count($punkte) < 3) {
             return [];
         }
@@ -1014,12 +1020,38 @@ final class RoomDetector
     /**
      * Zu kurze Kanten und Punkte auf einer Geraden entfernen.
      *
+     * In Runden, bis sich nichts mehr ändert: Fällt ein Punkt als "liegt auf der
+     * Geraden" weg, können die beiden Nachbarn plötzlich aufeinanderliegen – so
+     * blieb eine Kante der Länge Null zurück, weil nach dem Geraden-Durchgang
+     * niemand mehr nach zu kurzen Kanten sah.
+     *
      * @param  array<int, array{0: float, 1: float}>  $punkte
      * @return array<int, array{0: float, 1: float}>
      */
     protected static function aufraeumen(array $punkte): array
     {
-        // Zu kurze Kanten: den späteren Punkt fallen lassen.
+        for ($runde = 0; $runde < 4; $runde++) {
+            $vorher = count($punkte);
+
+            $punkte = self::kurzeKantenWeg($punkte);
+            $punkte = self::geradeWeg($punkte);
+
+            if (count($punkte) === $vorher) {
+                break;
+            }
+        }
+
+        return $punkte;
+    }
+
+    /**
+     * Punkte verwerfen, die zu nah am vorigen liegen.
+     *
+     * @param  array<int, array{0: float, 1: float}>  $punkte
+     * @return array<int, array{0: float, 1: float}>
+     */
+    protected static function kurzeKantenWeg(array $punkte): array
+    {
         $out = [];
 
         foreach ($punkte as $pt) {
@@ -1028,23 +1060,34 @@ final class RoomDetector
             }
         }
 
+        // Auch der Ringschluss ist eine Kante.
         if (count($out) > 2 && hypot($out[0][0] - end($out)[0], $out[0][1] - end($out)[1]) < self::MIN_KANTE) {
             array_pop($out);
         }
 
-        // Punkte, die auf der Verbindung ihrer Nachbarn liegen, sagen nichts.
-        $n = count($out);
+        return $out;
+    }
+
+    /**
+     * Punkte verwerfen, die auf der Verbindung ihrer Nachbarn liegen.
+     *
+     * @param  array<int, array{0: float, 1: float}>  $punkte
+     * @return array<int, array{0: float, 1: float}>
+     */
+    protected static function geradeWeg(array $punkte): array
+    {
+        $n = count($punkte);
 
         if ($n < 4) {
-            return $out;
+            return $punkte;
         }
 
         $behalten = [];
 
         for ($i = 0; $i < $n; $i++) {
-            $a = $out[($i - 1 + $n) % $n];
-            $b = $out[$i];
-            $c = $out[($i + 1) % $n];
+            $a = $punkte[($i - 1 + $n) % $n];
+            $b = $punkte[$i];
+            $c = $punkte[($i + 1) % $n];
 
             $laenge = hypot($c[0] - $a[0], $c[1] - $a[1]);
 
@@ -1057,6 +1100,6 @@ final class RoomDetector
             }
         }
 
-        return count($behalten) >= 3 ? $behalten : $out;
+        return count($behalten) >= 3 ? $behalten : $punkte;
     }
 }
