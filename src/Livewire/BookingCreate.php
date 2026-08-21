@@ -318,21 +318,12 @@ class BookingCreate extends Component
         $this->step = max(1, $this->step - 1);
     }
 
-    public function incrementItem(int $itemId): void
-    {
-        $this->selectedItems[$itemId] = ($this->selectedItems[$itemId] ?? 0) + 1;
-    }
-
-    public function decrementItem(int $itemId): void
-    {
-        $current = $this->selectedItems[$itemId] ?? 0;
-
-        if ($current <= 1) {
-            unset($this->selectedItems[$itemId]);
-        } else {
-            $this->selectedItems[$itemId] = $current - 1;
-        }
-    }
+    /*
+     * incrementItem/decrementItem sind entfallen: Die Mengen führt der Browser
+     * und schickt die ganze Auswahl gebündelt als selectedItems. Verbindlich
+     * bleibt, was CartCalculator daraus macht – Artikel außerhalb der
+     * Verkaufsliste und übergroße Mengen fallen dort weg, nicht hier.
+     */
 
     /**
      * Speichern über denselben Kern wie der Gast-Checkout.

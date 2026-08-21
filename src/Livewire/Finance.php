@@ -197,6 +197,14 @@ class Finance extends Component
         $bookings = $monthly->sum('bookings');
         $best = $monthly->sortByDesc('revenue')->filter(fn ($m) => $m->revenue > 0);
 
+        // Anteil, der noch an der Kasse kassiert wird: manuell angelegte Buchungen
+        // zahlen vor Ort. Das ist Umsatz, aber noch kein Geld in der Kasse – der
+        // Unterschied zwischen verdient und vereinnahmt.
+        $vorOrt = (float) ($this->itemsQuery()
+            ->where('b.payment_method', 'onsite')
+            ->selectRaw('SUM(reservation_booking_items.quantity * reservation_booking_items.unit_price) as s')
+            ->value('s') ?? 0);
+
         // Das Ausstehende daneben ausweisen statt stillschweigend weglassen:
         // Sonst sieht es aus, als wäre Geld verschwunden.
         $offen = $this->pendingQuery()
@@ -212,6 +220,7 @@ class Finance extends Component
             'max_month'        => (float) ($monthly->max('revenue') ?: 0),
             'pending'          => (float) ($offen->revenue ?? 0),
             'pending_bookings' => (int) ($offen->bookings ?? 0),
+            'onsite'           => $vorOrt,
         ];
     }
 

@@ -92,6 +92,12 @@
                                 ][$booking->status] ?? [ucfirst($booking->status), 'neutral'];
                             @endphp
                             <x-nx-badge :variant="$statusVariant">{{ $statusLabel }}</x-nx-badge>
+                            {{-- Woher die Buchung kam, gehört NICHT in den Status: Der sagt,
+                                 wo sie im Ablauf steht. "onsite" setzt nur der manuelle Weg –
+                                 dort wird an der Kasse bezahlt, nicht über Mollie. --}}
+                            @if ($booking->payment_method === 'onsite')
+                                <x-nx-badge variant="neutral" title="Manuell angelegt, Zahlung vor Ort">Vor Ort</x-nx-badge>
+                            @endif
                         </x-nx-table-cell>
                         <x-nx-table-cell class="whitespace-nowrap text-[color:var(--nx-muted)]">
                             @if ($booking->created_at)

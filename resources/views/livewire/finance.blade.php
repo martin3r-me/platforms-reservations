@@ -48,6 +48,13 @@
         <x-nx-stat label="Ausstehend (noch nicht bestätigt)"
             :value="number_format($this->totals->pending, 2, ',', '.') . ' €'"
             :hint="$this->totals->pending_bookings . ' ' . ($this->totals->pending_bookings === 1 ? 'Buchung' : 'Buchungen')" />
+        {{-- Nur zeigen, wenn es etwas zu zeigen gibt: Eine Kennzahl, die dauerhaft
+             null anzeigt, ist Rauschen. Manuelle Buchungen sind die Ausnahme. --}}
+        @if ($this->totals->onsite > 0)
+            <x-nx-stat label="davon vor Ort zu zahlen"
+                :value="number_format($this->totals->onsite, 2, ',', '.') . ' €'"
+                hint="manuell angelegt" />
+        @endif
         <x-nx-stat label="Stärkster Monat" :value="$this->totals->best_month ? \Illuminate\Support\Carbon::parse($this->totals->best_month . '-01')->locale('de')->isoFormat('MMM Y') : '–'" />
     </x-nx-stat-grid>
 

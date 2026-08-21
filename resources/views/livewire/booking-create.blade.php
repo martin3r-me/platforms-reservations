@@ -249,8 +249,35 @@
         </x-nx-card>
     @endif
 
-    {{-- Schritt 3: Vorbestellung --}}
+    {{-- Schritt 3: Artikel.
+
+         Die Mengen führt der Browser, nicht der Server: Vorher lief pro Klick auf
+         "+" eine Anfrage, und die Zahl änderte sich erst mit der Antwort. Jetzt
+         springt sie sofort, und die Auswahl wird gebündelt nachgeschickt – wer
+         fünfmal tippt, löst eine Anfrage aus, nicht fünf.
+
+         Die SUMME rechnet weiter der Server. Sie hängt an der Auflösung der
+         Bundles in Bestandteile und an der cent-genauen Verteilung des
+         Bundle-Preises; das im Browser nachzubauen wäre die zweite Fassung
+         derselben Rechnung. Solange sie noch unterwegs ist, steht sie blass. --}}
     @if ($step === 3)
+        <div x-data="{
+            mengen: @js($selectedItems),
+            timer: null,
+            unterwegs: false,
+            menge(id) { return this.mengen[id] ?? 0 },
+            aendern(id, schritt) {
+                const neu = (this.mengen[id] ?? 0) + schritt;
+
+                if (neu <= 0) { delete this.mengen[id]; } else { this.mengen[id] = neu; }
+
+                this.unterwegs = true;
+                clearTimeout(this.timer);
+                this.timer = setTimeout(() => {
+                    this.$wire.$set('selectedItems', this.mengen).then(() => this.unterwegs = false);
+                }, 350);
+            },
+        }">
         <x-nx-card flush>
             <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
                 @svg('heroicon-o-shopping-bag', 'w-4 h-4 text-[color:var(--nx-muted)]')
@@ -270,7 +297,6 @@
                     </div>
 
                     @foreach ($items as $item)
-                        @php ($menge = $selectedItems[$item->id] ?? 0)
                         <div class="flex items-center gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5" wire:key="item-{{ $item->id }}">
                             <div class="min-w-0 flex-1">
                                 <span class="text-sm font-medium text-[color:var(--nx-text)]">{{ $item->name }}</span>
@@ -294,13 +320,14 @@
                             </span>
 
                             <div class="flex shrink-0 items-center gap-1">
-                                @if ($menge > 0)
-                                    <x-nx-button icon variant="ghost" wire:click="decrementItem({{ $item->id }})" title="Weniger">
+                                <span x-show="menge({{ $item->id }}) > 0" style="display: none;" class="flex items-center gap-1">
+                                    <x-nx-button icon variant="ghost" x-on:click="aendern({{ $item->id }}, -1)" title="Weniger">
                                         @svg('heroicon-o-minus', 'w-4 h-4')
                                     </x-nx-button>
-                                    <span class="w-5 text-center text-sm font-medium tabular-nums text-[color:var(--nx-text)]">{{ $menge }}</span>
-                                @endif
-                                <x-nx-button icon wire:click="incrementItem({{ $item->id }})" title="Mehr">
+                                    <span class="w-5 text-center text-sm font-medium tabular-nums text-[color:var(--nx-text)]"
+                                        x-text="menge({{ $item->id }})"></span>
+                                </span>
+                                <x-nx-button icon x-on:click="aendern({{ $item->id }}, 1)" title="Mehr">
                                     @svg('heroicon-o-plus', 'w-4 h-4')
                                 </x-nx-button>
                             </div>
@@ -313,14 +340,15 @@
                 </div>
             @endforelse
 
-            @if ($this->orderTotal > 0)
-                <div class="flex items-center justify-between border-b border-[color:var(--nx-line)] px-4 py-3">
-                    <span class="text-sm font-medium text-[color:var(--nx-text)]">Gesamt</span>
-                    <span class="whitespace-nowrap text-sm font-semibold tabular-nums text-[color:var(--nx-text)]">
-                        {{ number_format($this->orderTotal, 2, ',', '.') }} €
-                    </span>
-                </div>
-            @endif
+            {{-- Immer sichtbar, auch bei null: Sonst springt die Zeile beim ersten
+                 Artikel in die Liste hinein. --}}
+            <div class="flex items-center justify-between border-b border-[color:var(--nx-line)] px-4 py-3">
+                <span class="text-sm font-medium text-[color:var(--nx-text)]">Gesamt</span>
+                <span class="whitespace-nowrap text-sm font-semibold tabular-nums text-[color:var(--nx-text)] transition-opacity"
+                    :class="unterwegs ? 'opacity-40' : ''">
+                    {{ number_format($this->orderTotal, 2, ',', '.') }} €
+                </span>
+            </div>
 
             <div class="flex items-center justify-between px-4 py-3">
                 <x-nx-button wire:click="prevStep">
@@ -333,6 +361,7 @@
                 </x-nx-button>
             </div>
         </x-nx-card>
+        </div>
     @endif
 
     {{-- Schritt 4: Bestätigung --}}
