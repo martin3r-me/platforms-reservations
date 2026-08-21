@@ -46,8 +46,10 @@ class BookingCreate extends Component
     public ?int $tableId = null;
     public int $guestCount = 2;
 
-    // Schritt 2
-    public string $guestName = '';
+    // Schritt 2. Vor- und Nachname getrennt wie im Shop – der Auftrag hält beide
+    // Felder, und Order::customerName() setzt daraus den Anzeigenamen zusammen.
+    public string $guestFirstName = '';
+    public string $guestLastName = '';
     public string $guestEmail = '';
     public string $guestPhone = '';
     public string $notes = '';
@@ -68,9 +70,10 @@ class BookingCreate extends Component
                 'guestCount' => 'required|integer|min:1|max:100',
             ],
             2 => [
-                'guestName'  => 'required|string|max:255',
-                'guestEmail' => 'nullable|email|max:255',
-                'guestPhone' => 'nullable|string|max:30',
+                'guestFirstName' => 'required|string|max:255',
+                'guestLastName'  => 'required|string|max:255',
+                'guestEmail'     => 'nullable|email|max:255',
+                'guestPhone'     => 'nullable|string|max:30',
             ],
             default => [],
         };
@@ -81,7 +84,9 @@ class BookingCreate extends Component
         return [
             'eventId.required' => 'Bitte einen Termin wählen.',
             'slotId.required'  => 'Bitte eine Pause wählen.',
-            'tableId.required' => 'Bitte einen Tisch wählen.',
+            'tableId.required'        => 'Bitte einen Tisch wählen.',
+            'guestFirstName.required' => 'Bitte den Vornamen angeben.',
+            'guestLastName.required'  => 'Bitte den Nachnamen angeben.',
         ];
     }
 
@@ -332,11 +337,12 @@ class BookingCreate extends Component
         $this->bookingError = '';
 
         $this->validate([
-            'eventId'    => 'required|integer',
-            'slotId'     => 'required|integer',
-            'tableId'    => 'required|integer',
-            'guestName'  => 'required|string|max:255',
-            'guestCount' => 'required|integer|min:1|max:100',
+            'eventId'        => 'required|integer',
+            'slotId'         => 'required|integer',
+            'tableId'        => 'required|integer',
+            'guestFirstName' => 'required|string|max:255',
+            'guestLastName'  => 'required|string|max:255',
+            'guestCount'     => 'required|integer|min:1|max:100',
         ]);
 
         $event = $this->event;
@@ -357,8 +363,8 @@ class BookingCreate extends Component
             app(GuestOrderService::class)->placeForStaff(
                 $event,
                 [
-                    'first_name' => $this->guestName,
-                    'last_name'  => '',
+                    'first_name' => $this->guestFirstName,
+                    'last_name'  => $this->guestLastName,
                     'email'      => $this->guestEmail ?: null,
                     'phone'      => $this->guestPhone ?: null,
                     'count'      => $this->guestCount,

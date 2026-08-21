@@ -107,20 +107,21 @@
                              Pfeilchen ziehen. Größere Gruppen über "+", dann kommt
                              das Feld. --}}
                         @php ($schnell = collect([1, 2, 3, 4])->filter(fn ($z) => $z <= $this->maxGuests))
-                        <div x-data="{ frei: {{ $guestCount > $schnell->max() ? 'true' : 'false' }} }">
+                        {{-- Hier läuft die Anfrage bewusst mit: An der Personenzahl hängt,
+                             welche Tische noch passen. Die Markierung wartet aber nicht
+                             darauf, die macht Alpine sofort. --}}
+                        <div x-data="{ frei: {{ $guestCount > $schnell->max() ? 'true' : 'false' }}, anzahl: @js($guestCount) }">
                             <span class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Personen</span>
                             <div class="flex flex-wrap items-center gap-2">
                                 @foreach ($schnell as $z)
                                     <button
                                         type="button"
-                                        wire:click="$set('guestCount', {{ $z }})"
-                                        x-on:click="frei = false"
+                                        x-on:click="frei = false; anzahl = {{ $z }}; $wire.$set('guestCount', {{ $z }})"
                                         wire:key="pers-{{ $z }}"
-                                        @class([
-                                            'h-9 w-9 rounded-[6px] border text-sm font-medium tabular-nums transition-colors',
-                                            'border-[color:var(--nx-accent)] bg-[color:var(--nx-accent-soft)] text-[color:var(--nx-text)]' => $guestCount === $z,
-                                            'border-[color:var(--nx-line-strong)] text-[color:var(--nx-text)] hover:bg-[color:var(--nx-hover)]' => $guestCount !== $z,
-                                        ])
+                                        class="h-9 w-9 rounded-[6px] border border-[color:var(--nx-line-strong)] text-sm font-medium tabular-nums text-[color:var(--nx-text)] transition-colors hover:bg-[color:var(--nx-hover)]"
+                                        :style="anzahl === {{ $z }}
+                                            ? { borderColor: 'var(--nx-accent)', background: 'var(--nx-accent-soft)' }
+                                            : {}"
                                     >{{ $z }}</button>
                                 @endforeach
 
@@ -135,7 +136,8 @@
                                 <span class="text-[11px] text-[color:var(--nx-muted)]">max. {{ $this->maxGuests }} Personen</span>
                             </div>
 
-                            <div x-show="frei" style="display: none;" class="mt-2 max-w-[10rem]">
+                            <div x-show="frei" style="display: none;" class="mt-2 max-w-[10rem]"
+                                x-on:input="anzahl = Number($event.target.value)">
                                 <x-nx-input-number name="guestCount" wire:model.live="guestCount" min="1" :max="$this->maxGuests" />
                             </div>
                             @error('guestCount') <p class="mt-1 text-xs text-[color:var(--nx-danger)]">{{ $message }}</p> @enderror
@@ -149,7 +151,14 @@
                                     Dem Termin ist kein Raum mit Tischen zugeordnet.
                                 </x-nx-callout>
                             @else
-                                <div>
+                                {{-- Die Markierung passiert im Browser, nicht auf dem Server.
+                                     $set mit false als drittem Argument setzt die Eigenschaft
+                                     nur örtlich; mitgeschickt wird sie mit dem nächsten
+                                     Klick auf "Weiter". Vorher lief pro Tischklick eine
+                                     Anfrage, und die Markierung erschien erst mit der
+                                     Antwort – bei einem Dutzend Tischen fühlte sich das
+                                     zäh an, obwohl der Server nichts zu rechnen hatte. --}}
+                                <div x-data="{ gewaehlt: @js($tableId) }">
                                     <span class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Tisch <span class="text-[color:var(--nx-danger)]">*</span></span>
                                     <div class="grid gap-2 sm:grid-cols-2">
                                         @foreach ($this->tables as $zeile)
@@ -158,14 +167,24 @@
                                             @php ($moeglich = $zeile['bookable'])
                                             <button
                                                 type="button"
-                                                @if ($moeglich) wire:click="$set('tableId', {{ $t->id }})" @else disabled @endif
+                                                @if ($moeglich)
+                                                    x-on:click="gewaehlt = {{ $t->id }}; $wire.$set('tableId', {{ $t->id }}, false)"
+                                                @else
+                                                    disabled
+                                                @endif
                                                 wire:key="tisch-{{ $t->id }}"
                                                 @class([
                                                     'flex items-center justify-between rounded-[6px] border px-3 py-2 text-left transition-colors',
-                                                    'border-[color:var(--nx-accent)] bg-[color:var(--nx-accent-soft)]' => $tableId === $t->id,
-                                                    'border-[color:var(--nx-line-strong)] hover:bg-[color:var(--nx-hover)]' => $moeglich && $tableId !== $t->id,
+                                                    'border-[color:var(--nx-line-strong)] hover:bg-[color:var(--nx-hover)]' => $moeglich,
                                                     'cursor-not-allowed border-[color:var(--nx-line)] opacity-50' => ! $moeglich,
                                                 ])
+                                                @if ($moeglich)
+                                                    {{-- :style als Objekt, nicht als Zeichenkette: Eine
+                                                         Zeichenkette ersetzt das ganze style-Attribut. --}}
+                                                    :style="gewaehlt === {{ $t->id }}
+                                                        ? { borderColor: 'var(--nx-accent)', background: 'var(--nx-accent-soft)' }
+                                                        : {}"
+                                                @endif
                                             >
                                                 <span class="text-sm font-medium text-[color:var(--nx-text)]">{{ $t->label }}</span>
                                                 <span class="whitespace-nowrap text-[11px] tabular-nums text-[color:var(--nx-muted)]">
@@ -198,7 +217,12 @@
                 <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Gast</h2>
             </div>
             <div class="space-y-4 p-5">
-                <x-nx-input-text name="guestName" label="Name" wire:model="guestName" required autocomplete="name" />
+                {{-- Getrennt wie im Shop: Der Auftrag hält Vor- und Nachnamen einzeln,
+                     und Anschreiben wie Beleg brauchen beide. --}}
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-nx-input-text name="guestFirstName" label="Vorname" wire:model="guestFirstName" required autocomplete="given-name" />
+                    <x-nx-input-text name="guestLastName" label="Nachname" wire:model="guestLastName" required autocomplete="family-name" />
+                </div>
 
                 <div class="grid gap-4 sm:grid-cols-2">
                     <x-nx-input-text name="guestEmail" label="E-Mail" type="email" wire:model="guestEmail" autocomplete="email" />
@@ -312,7 +336,7 @@
             <x-nx-empty icon="heroicon-o-check-circle">
                 <span class="text-sm font-medium text-[color:var(--nx-text)]">Buchung angelegt</span>
                 <span class="mt-1 block">
-                    {{ $guestName }} · {{ $this->event?->date?->format('d.m.Y') }}@if ($this->slot) · {{ $this->slot->displayLabel() }}@endif
+                    {{ trim($guestFirstName . ' ' . $guestLastName) }} · {{ $this->event?->date?->format('d.m.Y') }}@if ($this->slot) · {{ $this->slot->displayLabel() }}@endif
                     @if ($this->selectedTable) · Tisch {{ $this->selectedTable->label }} @endif
                 </span>
                 <span class="mt-1 block text-[11px]">
