@@ -296,9 +296,19 @@
                     :options="[['value' => 4, 'label' => '4-stellig'], ['value' => 5, 'label' => '5-stellig']]"
                     wire:model="datevSachkontenlaenge"
                 />
-                <x-nx-input-text name="datevWjBeginn" label="Beginn Wirtschaftsjahr (TT-MM als MM-TT)"
-                    wire:model="datevWjBeginn" placeholder="01-01"
-                    hint="Monat und Tag, z.B. 01-01 oder 07-01. Das Jahr ergibt sich aus dem Zeitraum." />
+                {{-- Auswahl statt Textfeld: Ein Wirtschaftsjahr beginnt am
+                     Monatsersten, und damit ist die Frage nach dem Format weg.
+                     Das Jahr steht bewusst nicht dabei – es ergibt sich beim
+                     Export aus dem Zeitraum. --}}
+                <x-nx-input-select
+                    name="datevWjBeginn"
+                    label="Beginn Wirtschaftsjahr"
+                    :options="collect(range(1, 12))->map(fn ($m) => [
+                        'value' => str_pad((string) $m, 2, '0', STR_PAD_LEFT) . '-01',
+                        'label' => '1. ' . \Illuminate\Support\Carbon::create(2000, $m, 1)->locale('de')->isoFormat('MMMM'),
+                    ])->all()"
+                    wire:model="datevWjBeginn"
+                />
             </div>
 
             <div class="grid gap-4 sm:grid-cols-3">
