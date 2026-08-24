@@ -49,6 +49,7 @@ class Export extends Component
             // Nicht "Ab heute": Das sagt, wo es anfängt, aber nicht, wo es
             // aufhört. Gemeint ist von heute bis Silvester.
             'ahead'      => 'Rest des Jahres',
+            'all'        => 'Alles',
         ];
     }
 
@@ -73,8 +74,24 @@ class Export extends Component
                 now()->subYear()->endOfYear()->toDateString(),
             ],
             'ahead'      => [now()->toDateString(), now()->endOfYear()->toDateString()],
+            // Von der ersten bis zur letzten Buchung – auch in die Zukunft, denn
+            // Buchungen liegen dort. Ohne Buchungen das laufende Jahr.
+            //
+            // Durch Carbon geschickt, weil die Datenbank je nach Spaltentyp
+            // "2026-06-15" oder "2026-06-15 00:00:00" liefert – das Datumsfeld
+            // versteht nur das Erste.
+            'all'        => [
+                self::alsDatum(Booking::where('team_id', $this->getTeamId())->min('date'), now()->startOfYear()),
+                self::alsDatum(Booking::where('team_id', $this->getTeamId())->max('date'), now()->endOfYear()),
+            ],
             default      => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
         };
+    }
+
+    /** Wert aus der Datenbank als reines Datum, sonst der Ersatzwert. */
+    protected static function alsDatum($wert, $ersatz): string
+    {
+        return $wert ? CarbonImmutable::parse($wert)->toDateString() : $ersatz->toDateString();
     }
 
     /** Von Hand gewählte Daten heben die Schnellwahl auf. */
