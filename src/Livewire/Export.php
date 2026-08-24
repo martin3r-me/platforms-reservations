@@ -40,12 +40,15 @@ class Export extends Component
     public static function presets(): array
     {
         return [
+            'last_week'  => 'Letzte Woche',
             'month'      => 'Dieser Monat',
             'last_month' => 'Letzter Monat',
             'quarter'    => 'Dieses Quartal',
             'year'       => 'Dieses Jahr',
             'last_year'  => 'Letztes Jahr',
-            'ahead'      => 'Ab heute',
+            // Nicht "Ab heute": Das sagt, wo es anfängt, aber nicht, wo es
+            // aufhört. Gemeint ist von heute bis Silvester.
+            'ahead'      => 'Rest des Jahres',
         ];
     }
 
@@ -55,6 +58,10 @@ class Export extends Component
         $this->exportError  = '';
 
         [$this->dateFrom, $this->dateTo] = match ($preset) {
+            'last_week'  => [
+                now()->subWeek()->startOfWeek()->toDateString(),
+                now()->subWeek()->endOfWeek()->toDateString(),
+            ],
             'last_month' => [
                 now()->subMonthNoOverflow()->startOfMonth()->toDateString(),
                 now()->subMonthNoOverflow()->endOfMonth()->toDateString(),
