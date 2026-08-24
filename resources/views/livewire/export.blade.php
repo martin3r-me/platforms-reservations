@@ -19,6 +19,18 @@
             <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Zeitraum &amp; Filter</h2>
         </div>
         <div class="p-5 space-y-4">
+            {{-- Schnellzeiträume. Dasselbe Muster wie in den Finanzen, damit man
+                 es nicht zweimal lernen muss. --}}
+            <div class="flex flex-wrap items-center gap-1 rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] p-1">
+                @foreach (\Platform\Reservation\Livewire\Export::presets() as $preset => $label)
+                    <button type="button" wire:click="setPreset('{{ $preset }}')"
+                        class="inline-flex h-7 items-center rounded-[6px] px-3 text-xs font-medium transition-colors
+                            {{ $activePreset === $preset ? 'bg-[color:var(--nx-surface)] font-semibold text-[color:var(--nx-text)]' : 'bg-transparent text-[color:var(--nx-muted)] hover:text-[color:var(--nx-text)]' }}">
+                        {{ $label }}
+                    </button>
+                @endforeach
+            </div>
+
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <x-nx-input-date name="dateFrom" label="Von" wire:model.live="dateFrom" />
                 <x-nx-input-date name="dateTo" label="Bis" wire:model.live="dateTo" />
@@ -42,10 +54,34 @@
                     :options="[
                         ['value' => 'csv', 'label' => 'CSV (Excel)'],
                         ['value' => 'json', 'label' => 'JSON'],
+                        ['value' => 'datev', 'label' => 'DATEV (Buchungsstapel)'],
                     ]"
-                    wire:model="format"
+                    wire:model.live="format"
                 />
             </div>
+
+            @if ($format === 'datev')
+                @php ($fehlt = $this->settings->datevMissing())
+                @if ($fehlt)
+                    <x-nx-callout variant="warning" title="Angaben fehlen">
+                        Für den DATEV-Export fehlen: {{ implode(', ', $fehlt) }}.
+                        Die Werte werden in den <a href="{{ route('reservation.settings.checkout') }}" class="underline">Einstellungen</a> gepflegt.
+                    </x-nx-callout>
+                @else
+                    <x-nx-callout>
+                        Ausgegeben werden <strong>bestätigte und abgeschlossene</strong> Buchungen – der Statusfilter
+                        wirkt hier nicht, in die Buchhaltung gehören keine ausstehenden oder stornierten Umsätze.
+                        Gebucht wird je Steuersatz auf
+                        {{ $this->settings->datev_erloes_7 }} (7 %) und {{ $this->settings->datev_erloes_19 }} (19 %),
+                        Gegenkonto {{ $this->settings->datev_geldkonto }},
+                        {{ $this->settings->datev_modus === 'tagessumme' ? 'als Tagessummen' : 'je Buchung einzeln' }}.
+                    </x-nx-callout>
+                @endif
+            @endif
+
+            @if ($exportError)
+                <x-nx-callout variant="danger">{{ $exportError }}</x-nx-callout>
+            @endif
 
             <div class="flex items-center justify-between rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] p-3">
                 <p class="text-sm text-[color:var(--nx-muted)] m-0">
@@ -68,7 +104,9 @@
         </div>
         <div class="p-5">
             <div class="flex flex-wrap gap-1.5">
-                @foreach(['Buchungs-ID', 'Datum', 'Uhrzeit', 'Tisch', 'Venue', 'Gast', 'E-Mail', 'Telefon', 'Personen', 'Status', 'Betrag', 'Zahlungsart', 'Mollie-ID', 'Steuersatz', 'Erstellt'] as $field)
+                @foreach($format === 'datev'
+                    ? ['Umsatz', 'Soll/Haben', 'WKZ', 'Konto', 'Gegenkonto', 'Belegdatum', 'Belegfeld 1', 'Buchungstext']
+                    : ['Buchungs-ID', 'Datum', 'Uhrzeit', 'Tisch', 'Venue', 'Gast', 'E-Mail', 'Telefon', 'Personen', 'Status', 'Betrag', 'Zahlungsart', 'Mollie-ID', 'Steuersatz', 'Erstellt'] as $field)
                     <x-nx-badge >{{ $field }}</x-nx-badge>
                 @endforeach
             </div>

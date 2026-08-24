@@ -68,6 +68,14 @@ class CheckoutSetting extends Model
         'auto_print_enabled',
         'auto_print_printer_id',
         'auto_print_printer_group_id',
+        'datev_berater',
+        'datev_mandant',
+        'datev_sachkontenlaenge',
+        'datev_wj_beginn',
+        'datev_erloes_7',
+        'datev_erloes_19',
+        'datev_geldkonto',
+        'datev_modus',
     ];
 
     protected $casts = [
@@ -81,6 +89,7 @@ class CheckoutSetting extends Model
         'auto_print_enabled'             => 'boolean',
         'auto_print_printer_id'          => 'integer',
         'auto_print_printer_group_id'    => 'integer',
+        'datev_sachkontenlaenge'         => 'integer',
     ];
 
     /** Felder der Aussteller-/Rechnungsangaben. */
@@ -333,5 +342,63 @@ class CheckoutSetting extends Model
     {
         return (bool) $this->auto_print_enabled
             && ($this->auto_print_printer_id || $this->auto_print_printer_group_id);
+    }
+
+    /** Ein Satz je Buchung – oder eine Summe je Tag und Steuersatz? */
+    public const DATEV_EINZEL     = 'einzel';
+    public const DATEV_TAGESSUMME = 'tagessumme';
+
+    /**
+     * Welche Angaben für den DATEV-Export noch fehlen.
+     *
+     * Als Liste sprechender Namen statt eines Ja/Nein: Ein Export, der ohne
+     * Begründung nicht geht, schickt Leute suchen.
+     *
+     * @return array<int, string>
+     */
+    public function datevMissing(): array
+    {
+        $pflicht = [
+            'datev_berater'    => 'Beraternummer',
+            'datev_mandant'    => 'Mandantennummer',
+            'datev_erloes_7'   => 'Erlöskonto 7 %',
+            'datev_erloes_19'  => 'Erlöskonto 19 %',
+            'datev_geldkonto'  => 'Gegenkonto (Zahlungseingang)',
+        ];
+
+        $fehlt = [];
+
+        foreach ($pflicht as $feld => $name) {
+            if (blank($this->{$feld})) {
+                $fehlt[] = $name;
+            }
+        }
+
+        return $fehlt;
+    }
+
+    public function datevReady(): bool
+    {
+        return $this->datevMissing() === [];
+    }
+
+    /**
+     * Beginn des Wirtschaftsjahres, das den genannten Tag enthält.
+     *
+     * Gespeichert ist nur Tag und Monat. Liegt der Stichtag davor, gehört er
+     * noch ins Wirtschaftsjahr, das im Vorjahr begonnen hat – bei einem
+     * Geschäftsjahr ab Juli ist der Januar genau dieser Fall.
+     */
+    public function datevWirtschaftsjahrBeginn(\DateTimeInterface $stichtag): \Carbon\CarbonImmutable
+    {
+        [$monat, $tag] = array_pad(explode('-', (string) ($this->datev_wj_beginn ?: '01-01')), 2, '01');
+
+        $beginn = \Carbon\CarbonImmutable::create(
+            (int) $stichtag->format('Y'),
+            max(1, min(12, (int) $monat)),
+            max(1, min(31, (int) $tag)),
+        );
+
+        return $beginn->greaterThan($stichtag) ? $beginn->subYear() : $beginn;
     }
 }

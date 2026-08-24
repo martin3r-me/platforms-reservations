@@ -96,6 +96,15 @@ class CheckoutSettings extends Component
         $this->fieldPhone             = $setting->fieldMode('phone');
         $this->fieldNotes             = $setting->fieldMode('notes');
 
+        $this->datevBerater          = (string) ($setting->datev_berater ?? '');
+        $this->datevMandant          = (string) ($setting->datev_mandant ?? '');
+        $this->datevSachkontenlaenge = (int) ($setting->datev_sachkontenlaenge ?: 4);
+        $this->datevWjBeginn         = (string) ($setting->datev_wj_beginn ?: '01-01');
+        $this->datevErloes7          = (string) ($setting->datev_erloes_7 ?? '');
+        $this->datevErloes19         = (string) ($setting->datev_erloes_19 ?? '');
+        $this->datevGeldkonto        = (string) ($setting->datev_geldkonto ?? '');
+        $this->datevModus            = (string) ($setting->datev_modus ?: CheckoutSetting::DATEV_EINZEL);
+
         $this->autoPrintEnabled        = (bool) $setting->auto_print_enabled;
         $this->autoPrintPrinterId      = $setting->auto_print_printer_id;
         $this->autoPrintPrinterGroupId = $setting->auto_print_printer_group_id;
@@ -110,6 +119,17 @@ class CheckoutSettings extends Component
             $this->liveKeySet = (bool) $payment->live_api_key;
         }
     }
+
+    /* --- DATEV ---------------------------------------------------------- */
+
+    public string $datevBerater = '';
+    public string $datevMandant = '';
+    public int    $datevSachkontenlaenge = 4;
+    public string $datevWjBeginn = '01-01';
+    public string $datevErloes7 = '';
+    public string $datevErloes19 = '';
+    public string $datevGeldkonto = '';
+    public string $datevModus = 'einzel';
 
     public function save(): void
     {
@@ -150,6 +170,15 @@ class CheckoutSettings extends Component
             'privacy_url'               => trim($this->privacyUrl) ?: null,
             'default_room_release_mode' => $this->defaultRoomReleaseMode,
             'soft_table_capacity'       => $this->softTableCapacity,
+            'datev_berater'             => trim($this->datevBerater) ?: null,
+            'datev_mandant'             => trim($this->datevMandant) ?: null,
+            'datev_sachkontenlaenge'    => in_array($this->datevSachkontenlaenge, [4, 5], true) ? $this->datevSachkontenlaenge : 4,
+            'datev_wj_beginn'           => preg_match('/^\d{2}-\d{2}$/', $this->datevWjBeginn) ? $this->datevWjBeginn : '01-01',
+            'datev_erloes_7'            => trim($this->datevErloes7) ?: null,
+            'datev_erloes_19'           => trim($this->datevErloes19) ?: null,
+            'datev_geldkonto'           => trim($this->datevGeldkonto) ?: null,
+            'datev_modus'               => in_array($this->datevModus, [CheckoutSetting::DATEV_EINZEL, CheckoutSetting::DATEV_TAGESSUMME], true)
+                ? $this->datevModus : CheckoutSetting::DATEV_EINZEL,
             'auto_print_enabled'        => $this->autoPrintEnabled,
             // Immer nur EIN Ziel speichern – sonst bliebe beim Umschalten der
             // alte Wert stehen und es wuerde doppelt gedruckt.

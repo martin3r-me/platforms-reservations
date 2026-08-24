@@ -6,6 +6,9 @@ use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Platform\Reservation\Models\Booking;
 use Illuminate\Support\Facades\Auth;
+use Carbon\CarbonImmutable;
+use Platform\Reservation\Models\CheckoutSetting;
+use Platform\Reservation\Support\DatevBuchungsstapel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class Export extends Component
@@ -13,12 +16,74 @@ class Export extends Component
     public string $dateFrom = '';
     public string $dateTo = '';
     public string $filterStatus = '';
-    public string $format = 'csv'; // csv | json
+    public string $format = 'csv'; // csv | json | datev
+
+    /** Welcher Schnellzeitraum gerade aktiv ist ('' = von Hand gewählt). */
+    public string $activePreset = 'month';
+
+    public string $exportError = '';
 
     public function mount(): void
     {
-        $this->dateFrom = now()->startOfMonth()->toDateString();
-        $this->dateTo   = now()->toDateString();
+        $this->setPreset('month');
+    }
+
+    /**
+     * Schnellzeiträume.
+     *
+     * "Ab heute" ist dabei der eine, den ein Kalender nicht hergibt: Buchungen
+     * liegen in der ZUKUNFT, und wer wissen will, was noch ansteht, will von
+     * heute bis Jahresende – nicht den abgelaufenen Monat.
+     *
+     * @return array<string, string>
+     */
+    public static function presets(): array
+    {
+        return [
+            'month'      => 'Dieser Monat',
+            'last_month' => 'Letzter Monat',
+            'quarter'    => 'Dieses Quartal',
+            'year'       => 'Dieses Jahr',
+            'last_year'  => 'Letztes Jahr',
+            'ahead'      => 'Ab heute',
+        ];
+    }
+
+    public function setPreset(string $preset): void
+    {
+        $this->activePreset = $preset;
+        $this->exportError  = '';
+
+        [$this->dateFrom, $this->dateTo] = match ($preset) {
+            'last_month' => [
+                now()->subMonthNoOverflow()->startOfMonth()->toDateString(),
+                now()->subMonthNoOverflow()->endOfMonth()->toDateString(),
+            ],
+            'quarter'    => [now()->startOfQuarter()->toDateString(), now()->endOfQuarter()->toDateString()],
+            'year'       => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
+            'last_year'  => [
+                now()->subYear()->startOfYear()->toDateString(),
+                now()->subYear()->endOfYear()->toDateString(),
+            ],
+            'ahead'      => [now()->toDateString(), now()->endOfYear()->toDateString()],
+            default      => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+        };
+    }
+
+    /** Von Hand gewählte Daten heben die Schnellwahl auf. */
+    public function updatedDateFrom(): void
+    {
+        $this->activePreset = '';
+    }
+
+    public function updatedDateTo(): void
+    {
+        $this->activePreset = '';
+    }
+
+    public function updatedFormat(): void
+    {
+        $this->exportError = '';
     }
 
     protected function getTeamId(): ?int
@@ -35,7 +100,7 @@ class Export extends Component
 
     protected function buildQuery()
     {
-        $query = Booking::with(['table.floorPlan.venue', 'items', 'order.payment'])
+        $query = Booking::with(['table.floorPlan.venue', 'items', 'order.payment', 'event'])
             ->where('team_id', $this->getTeamId());
 
         if ($this->dateFrom) {
@@ -53,15 +118,67 @@ class Export extends Component
         return $query->orderBy('date')->orderBy('time_start');
     }
 
-    public function export(): StreamedResponse
+    /** Einstellungen des Teams – für den DATEV-Export. */
+    #[Computed]
+    public function settings(): CheckoutSetting
     {
-        $bookings = $this->buildQuery()->get();
+        return CheckoutSetting::forTeam((int) $this->getTeamId());
+    }
 
-        if ($this->format === 'json') {
-            return $this->exportJson($bookings);
+    public function export(): ?StreamedResponse
+    {
+        $this->exportError = '';
+
+        if ($this->format === 'datev') {
+            $fehlt = $this->settings->datevMissing();
+
+            if ($fehlt !== []) {
+                // Kein halbfertiger Stapel: Der würde in der Kanzlei landen und
+                // dort Arbeit machen. Lieber sagen, was fehlt.
+                $this->exportError = 'Für den DATEV-Export fehlen noch Angaben in den Einstellungen: '
+                    . implode(', ', $fehlt) . '.';
+
+                return null;
+            }
         }
 
-        return $this->exportCsv($bookings);
+        $bookings = $this->buildQuery()->get();
+
+        return match ($this->format) {
+            'json'  => $this->exportJson($bookings),
+            'datev' => $this->exportDatev($bookings),
+            default => $this->exportCsv($bookings),
+        };
+    }
+
+    /**
+     * Buchungsstapel im DATEV-Format.
+     *
+     * Der Statusfilter greift hier bewusst NICHT: In die Buchhaltung gehören
+     * bestätigte und abgeschlossene Umsätze, nie ausstehende oder stornierte.
+     * Wer "Alle Status" gewählt hat, bekommt trotzdem einen richtigen Stapel.
+     */
+    protected function exportDatev($bookings): StreamedResponse
+    {
+        $einst = $this->settings;
+
+        $inhalt = DatevBuchungsstapel::bauen(
+            $bookings,
+            $einst,
+            CarbonImmutable::parse($this->dateFrom ?: now()->startOfMonth()),
+            CarbonImmutable::parse($this->dateTo ?: now()),
+        );
+
+        // Dateiname nach DATEV-Gewohnheit: EXTF_ und der Zeitraum.
+        $filename = 'EXTF_Buchungsstapel_'
+            . CarbonImmutable::parse($this->dateFrom)->format('Ymd') . '-'
+            . CarbonImmutable::parse($this->dateTo)->format('Ymd') . '.csv';
+
+        return response()->streamDownload(
+            fn () => print $inhalt,
+            $filename,
+            ['Content-Type' => 'text/csv; charset=Windows-1252'],
+        );
     }
 
     protected function exportCsv($bookings): StreamedResponse
