@@ -96,6 +96,79 @@
         </div>
     </x-nx-card>
 
+    {{-- Vorschau auf den Buchungsstapel. Nur bei DATEV: Bei CSV und JSON sieht
+         man die Datei in Excel, hier kann sie niemand lesen. --}}
+    @if ($format === 'datev' && $this->settings->datevReady())
+        @php ($vorschau = $this->datevPreview)
+        <x-nx-card flush>
+            <div class="flex flex-wrap items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+                @svg('heroicon-o-eye', 'w-4 h-4 text-[color:var(--nx-muted)]')
+                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Vorschau</h2>
+                <span class="ml-auto text-[11px] text-[color:var(--nx-muted)]">
+                    {{ $vorschau['buchungen'] }} {{ $vorschau['buchungen'] === 1 ? 'Buchung' : 'Buchungen' }}
+                    → {{ count($vorschau['saetze']) }} {{ count($vorschau['saetze']) === 1 ? 'Buchungssatz' : 'Buchungssätze' }}
+                </span>
+            </div>
+
+            @if ($vorschau['saetze'])
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-[color:var(--nx-line)] bg-[color:var(--nx-hover)] text-left text-[11px] uppercase tracking-wide text-[color:var(--nx-muted)]">
+                                <th class="px-4 py-2 font-medium">Datum</th>
+                                <th class="px-4 py-2 text-right font-medium">Umsatz</th>
+                                <th class="px-4 py-2 font-medium">S/H</th>
+                                <th class="px-4 py-2 font-medium">Konto</th>
+                                <th class="px-4 py-2 font-medium">Gegenkonto</th>
+                                <th class="px-4 py-2 font-medium">Beleg</th>
+                                <th class="px-4 py-2 font-medium">Buchungstext</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{-- Nur die ersten Zeilen: Die Vorschau soll zeigen, dass die
+                                 Konten stimmen, nicht die Datei ersetzen. --}}
+                            @foreach (array_slice($vorschau['saetze'], 0, 10) as $satz)
+                                <tr class="border-b border-[color:var(--nx-line)] last:border-0">
+                                    <td class="whitespace-nowrap px-4 py-2 tabular-nums text-[color:var(--nx-muted)]">
+                                        {{ substr($satz['belegdatum'], 0, 2) }}.{{ substr($satz['belegdatum'], 2, 2) }}.
+                                    </td>
+                                    <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-[color:var(--nx-text)]">{{ $satz['umsatz'] }} €</td>
+                                    <td class="px-4 py-2 text-[color:var(--nx-muted)]">{{ $satz['soll_haben'] }}</td>
+                                    <td class="whitespace-nowrap px-4 py-2 tabular-nums text-[color:var(--nx-text)]">{{ $satz['konto'] }}</td>
+                                    <td class="whitespace-nowrap px-4 py-2 tabular-nums text-[color:var(--nx-text)]">{{ $satz['gegenkonto'] }}</td>
+                                    <td class="whitespace-nowrap px-4 py-2 tabular-nums text-[color:var(--nx-muted)]">{{ $satz['belegfeld1'] }}</td>
+                                    <td class="px-4 py-2 text-[color:var(--nx-muted)]">{{ $satz['buchungstext'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (count($vorschau['saetze']) > 10)
+                    <p class="m-0 border-b border-[color:var(--nx-line)] px-4 py-2 text-[11px] text-[color:var(--nx-muted)]">
+                        … und {{ count($vorschau['saetze']) - 10 }} weitere Sätze in der Datei.
+                    </p>
+                @endif
+
+                <div class="flex items-center justify-between px-4 py-3">
+                    <span class="text-sm font-medium text-[color:var(--nx-text)]">Summe</span>
+                    <span class="whitespace-nowrap text-sm font-semibold tabular-nums text-[color:var(--nx-text)]">
+                        {{ number_format($vorschau['summe'], 2, ',', '.') }} €
+                    </span>
+                </div>
+                <p class="m-0 border-t border-[color:var(--nx-line)] px-4 py-2 text-[11px] text-[color:var(--nx-muted)]">
+                    Diese Summe muss mit dem Umsatz auf der Finanzen-Seite für denselben Zeitraum übereinstimmen –
+                    das ist die Prüfung, die die Kanzlei als Erstes macht.
+                </p>
+            @else
+                <div class="px-4 py-6 text-sm text-[color:var(--nx-muted)]">
+                    Im gewählten Zeitraum gibt es keine bestätigten oder abgeschlossenen Buchungen –
+                    es gäbe nichts zu buchen.
+                </div>
+            @endif
+        </x-nx-card>
+    @endif
+
     {{-- Felder-Übersicht --}}
     <x-nx-card flush>
         <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">

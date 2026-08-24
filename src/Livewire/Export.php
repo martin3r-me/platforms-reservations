@@ -149,6 +149,39 @@ class Export extends Component
         return CheckoutSetting::forTeam((int) $this->getTeamId());
     }
 
+    /**
+     * Vorschau auf den Buchungsstapel.
+     *
+     * Nur für DATEV, und dort aus einem konkreten Grund: Diese Datei kann
+     * niemand lesen – zwei Kopfzeilen, Semikolons, Kontonummern statt Namen.
+     * Eine falsche Kontonummer erzeugt keinen Fehler, sondern einen plausibel
+     * aussehenden, aber falschen Stapel, der erst in der Kanzlei auffällt.
+     *
+     * Gerechnet wird mit derselben Methode wie beim Export. Eine eigene
+     * Vorschau-Rechnung wäre die zweite Fassung derselben Sache – und damit
+     * eine Vorschau, die irgendwann etwas anderes zeigt als die Datei.
+     *
+     * @return array{saetze: array<int, array<string, string>>, summe: float, buchungen: int}
+     */
+    #[Computed]
+    public function datevPreview(): array
+    {
+        if ($this->format !== 'datev' || ! $this->settings->datevReady()) {
+            return ['saetze' => [], 'summe' => 0.0, 'buchungen' => 0];
+        }
+
+        $bookings = $this->buildQuery()->get();
+        $saetze   = DatevBuchungsstapel::saetze($bookings, $this->settings);
+
+        return [
+            'saetze'    => $saetze,
+            'summe'     => collect($saetze)->sum(fn ($s) => (float) str_replace(',', '.', $s['umsatz'])),
+            'buchungen' => $bookings->filter(
+                fn ($b) => in_array($b->status, DatevBuchungsstapel::UMSATZ_STATUS, true)
+            )->count(),
+        ];
+    }
+
     public function export(): ?StreamedResponse
     {
         $this->exportError = '';
