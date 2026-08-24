@@ -169,20 +169,56 @@
         </x-nx-card>
     @endif
 
-    {{-- Felder-Übersicht --}}
+    {{-- Felder. Bei CSV und JSON zum Abwählen, bei DATEV fest: Dort schreibt
+         das Format vor, welche Spalten in welcher Reihenfolge stehen. --}}
     <x-nx-card flush>
-        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
+        <div class="flex flex-wrap items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
             @svg('heroicon-o-table-cells', 'w-4 h-4 text-[color:var(--nx-muted)]')
             <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Exportierte Felder</h2>
+            @if ($format !== 'datev')
+                <span class="text-[11px] text-[color:var(--nx-muted)]">zum Abwählen anklicken</span>
+                @if (count($fields) < count(\Platform\Reservation\Livewire\Export::fields()))
+                    <button type="button" wire:click="allFields"
+                        class="ml-auto text-[11px] text-[color:var(--nx-muted)] underline hover:text-[color:var(--nx-text)]">
+                        alle wieder aufnehmen
+                    </button>
+                @endif
+            @else
+                <span class="ml-auto text-[11px] text-[color:var(--nx-muted)]">vom Format vorgegeben</span>
+            @endif
         </div>
         <div class="p-5">
-            <div class="flex flex-wrap gap-1.5">
-                @foreach($format === 'datev'
-                    ? ['Umsatz', 'Soll/Haben', 'WKZ', 'Konto', 'Gegenkonto', 'Belegdatum', 'Belegfeld 1', 'Buchungstext']
-                    : ['Buchungs-ID', 'Datum', 'Uhrzeit', 'Tisch', 'Venue', 'Gast', 'E-Mail', 'Telefon', 'Personen', 'Status', 'Betrag', 'Zahlungsart', 'Mollie-ID', 'Steuersatz', 'Erstellt'] as $field)
-                    <x-nx-badge >{{ $field }}</x-nx-badge>
-                @endforeach
-            </div>
+            @if ($format === 'datev')
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach(['Umsatz', 'Soll/Haben', 'WKZ', 'Konto', 'Gegenkonto', 'Belegdatum', 'Belegfeld 1', 'Buchungstext'] as $field)
+                        <x-nx-badge>{{ $field }}</x-nx-badge>
+                    @endforeach
+                </div>
+            @else
+                {{-- Umschalten im Browser: Der Server braucht die Auswahl erst beim
+                     Export, und ein Serverweg je Klick fühlt sich zäh an. --}}
+                <div class="flex flex-wrap gap-1.5"
+                    x-data="{ aus: @js(array_values(array_diff(array_keys(\Platform\Reservation\Livewire\Export::fields()), $fields))) }">
+                    @foreach(\Platform\Reservation\Livewire\Export::fields() as $key => $label)
+                        <button
+                            type="button"
+                            wire:key="feld-{{ $key }}"
+                            x-on:click="
+                                aus.includes('{{ $key }}') ? aus = aus.filter(k => k !== '{{ $key }}') : aus.push('{{ $key }}');
+                                $wire.$set('fields', @js(array_keys(\Platform\Reservation\Livewire\Export::fields())).filter(k => ! aus.includes(k)), false)
+                            "
+                            class="rounded-full border px-2.5 py-1 text-[11px] transition-colors"
+                            :class="aus.includes('{{ $key }}')
+                                ? 'border-[color:var(--nx-line)] text-[color:var(--nx-faint)] line-through'
+                                : 'border-[color:var(--nx-line-strong)] text-[color:var(--nx-text)]'"
+                        >{{ $label }}</button>
+                    @endforeach
+                </div>
+                <p class="m-0 mt-3 text-[11px] text-[color:var(--nx-muted)]">
+                    Durchgestrichene Felder stehen nicht in der Datei. Wird alles abgewählt, bleibt es bei allen –
+                    eine Datei ohne Spalten ist keine.
+                </p>
+            @endif
         </div>
     </x-nx-card>
 

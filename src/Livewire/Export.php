@@ -21,11 +21,79 @@ class Export extends Component
     /** Welcher Schnellzeitraum gerade aktiv ist ('' = von Hand gewählt). */
     public string $activePreset = 'month';
 
+    /**
+     * Ausgewählte Felder für CSV und JSON.
+     *
+     * Standardmäßig alle – wer nichts einstellt, bekommt alles. Abwählen ist
+     * für die Fälle da, in denen eine Datei weitergereicht wird und Name,
+     * E-Mail und Telefon nichts darin verloren haben.
+     *
+     * @var array<int, string>
+     */
+    public array $fields = [];
+
     public string $exportError = '';
 
     public function mount(): void
     {
         $this->setPreset('month');
+        $this->fields = array_keys(self::fields());
+    }
+
+    /**
+     * Die ausgebbaren Felder in ihrer Reihenfolge.
+     *
+     * Eine Liste für beide Formate: Sonst hätte CSV bald ein Feld, das JSON
+     * nicht kennt, und niemand merkt es.
+     *
+     * @return array<string, string>
+     */
+    public static function fields(): array
+    {
+        return [
+            'id'       => 'Buchungs-ID',
+            'date'     => 'Datum',
+            'time'     => 'Uhrzeit',
+            'table'    => 'Tisch',
+            'venue'    => 'Venue',
+            'event'    => 'Termin',
+            'guest'    => 'Gast',
+            'email'    => 'E-Mail',
+            'phone'    => 'Telefon',
+            'guests'   => 'Personen',
+            'status'   => 'Status',
+            'amount'   => 'Betrag',
+            'payment'  => 'Zahlungsart',
+            'mollie'   => 'Mollie-ID',
+            'tax'      => 'Steuersatz',
+            'created'  => 'Erstellt',
+        ];
+    }
+
+    /** Ausgewählte Felder in der festen Reihenfolge, nie leer. */
+    protected function gewaehlteFelder(): array
+    {
+        $gueltig = array_values(array_intersect(array_keys(self::fields()), $this->fields));
+
+        // Eine Datei ohne Spalten ist keine Datei.
+        return $gueltig ?: array_keys(self::fields());
+    }
+
+    /** Feld an- oder abwählen. */
+    public function toggleField(string $key): void
+    {
+        if (! array_key_exists($key, self::fields())) {
+            return;
+        }
+
+        $this->fields = in_array($key, $this->fields, true)
+            ? array_values(array_diff($this->fields, [$key]))
+            : [...$this->fields, $key];
+    }
+
+    public function allFields(): void
+    {
+        $this->fields = array_keys(self::fields());
     }
 
     /**
@@ -241,70 +309,97 @@ class Export extends Component
     protected function exportCsv($bookings): StreamedResponse
     {
         $filename = 'reservierungen_' . now()->format('Y-m-d') . '.csv';
+        $felder   = $this->gewaehlteFelder();
+        $namen    = self::fields();
 
-        return response()->streamDownload(function () use ($bookings) {
+        return response()->streamDownload(function () use ($bookings, $felder, $namen) {
             $handle = fopen('php://output', 'w');
             // UTF-8 BOM für Excel
             fputs($handle, "\xEF\xBB\xBF");
 
-            fputcsv($handle, [
-                'Buchungs-ID', 'Datum', 'Uhrzeit', 'Tisch', 'Venue',
-                'Gast', 'E-Mail', 'Telefon', 'Personen',
-                'Status', 'Betrag', 'Zahlungsart', 'Mollie-ID',
-                'Steuersatz', 'Erstellt',
-            ], ';');
+            fputcsv($handle, array_map(fn ($k) => $namen[$k], $felder), ';');
 
             foreach ($bookings as $booking) {
-                $total = $booking->items->sum(fn ($i) => $i->unit_price * $i->quantity);
-                fputcsv($handle, [
-                    $booking->id,
-                    $booking->date->format('d.m.Y'),
-                    $booking->time_start,
-                    $booking->table?->label,
-                    $booking->table?->floorPlan?->venue?->name,
-                    $booking->guest_name,
-                    $booking->guest_email,
-                    $booking->guest_phone,
-                    $booking->guest_count,
-                    $booking->status,
-                    number_format($total, 2, ',', '.'),
-                    $booking->payment?->method,
-                    $booking->mollie_payment_id,
-                    $booking->items->first()?->tax_rate ?? '',
-                    $booking->created_at->format('d.m.Y H:i'),
-                ], ';');
+                fputcsv($handle, array_map(fn ($k) => self::csvWert($k, $booking), $felder), ';');
             }
 
             fclose($handle);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
+    /** Ein Feld als Text für die CSV – deutsche Schreibweise. */
+    protected static function csvWert(string $key, $b): string
+    {
+        $summe = fn () => $b->items->sum(fn ($i) => $i->unit_price * $i->quantity);
+
+        return (string) match ($key) {
+            'id'      => $b->id,
+            'date'    => $b->date?->format('d.m.Y'),
+            'time'    => $b->time_start,
+            'table'   => $b->table?->label,
+            'venue'   => $b->table?->floorPlan?->venue?->name,
+            'event'   => $b->event?->name,
+            'guest'   => $b->guest_name,
+            'email'   => $b->guest_email,
+            'phone'   => $b->guest_phone,
+            'guests'  => $b->guest_count,
+            'status'  => $b->status,
+            'amount'  => number_format($summe(), 2, ',', '.'),
+            'payment' => $b->payment?->method ?? $b->payment_method,
+            'mollie'  => $b->mollie_payment_id,
+            'tax'     => $b->items->first()?->tax_rate ?? '',
+            'created' => $b->created_at?->format('d.m.Y H:i'),
+            default   => '',
+        };
+    }
+
+    /** Ein Feld für die JSON – maschinenlesbar, ISO-Datum, Zahlen als Zahlen. */
+    protected static function jsonWert(string $key, $b)
+    {
+        return match ($key) {
+            'id'      => $b->id,
+            'date'    => $b->date?->toDateString(),
+            'time'    => ['start' => $b->time_start, 'end' => $b->time_end],
+            'table'   => $b->table?->label,
+            'venue'   => $b->table?->floorPlan?->venue?->name,
+            'event'   => $b->event?->name,
+            'guest'   => $b->guest_name,
+            'email'   => $b->guest_email,
+            'phone'   => $b->guest_phone,
+            'guests'  => (int) $b->guest_count,
+            'status'  => $b->status,
+            'amount'  => round((float) $b->items->sum(fn ($i) => $i->unit_price * $i->quantity), 2),
+            'payment' => $b->payment?->method ?? $b->payment_method,
+            'mollie'  => $b->mollie_payment_id,
+            'tax'     => $b->items->first()?->tax_rate,
+            'created' => $b->created_at?->toIso8601String(),
+            default   => null,
+        };
+    }
+
     protected function exportJson($bookings): StreamedResponse
     {
         $filename = 'reservierungen_' . now()->format('Y-m-d') . '.json';
-        $data = $bookings->map(fn ($b) => [
-            'id'              => $b->id,
-            'uuid'            => $b->uuid,
-            'date'            => $b->date->toDateString(),
-            'time_start'      => $b->time_start,
-            'time_end'        => $b->time_end,
-            'table'           => $b->table?->label,
-            'venue'           => $b->table?->floorPlan?->venue?->name,
-            'guest_name'      => $b->guest_name,
-            'guest_email'     => $b->guest_email,
-            'guest_phone'     => $b->guest_phone,
-            'guest_count'     => $b->guest_count,
-            'status'          => $b->status,
-            'total_amount'    => $b->items->sum(fn ($i) => $i->unit_price * $i->quantity),
-            'payment_method'  => $b->payment?->method,
-            'mollie_id'       => $b->mollie_payment_id,
-            'items'           => $b->items->map(fn ($i) => [
-                'name'       => $i->menuItem?->name,
-                'quantity'   => $i->quantity,
-                'unit_price' => $i->unit_price,
-                'tax_rate'   => $i->tax_rate,
-            ]),
-        ]);
+        $felder   = $this->gewaehlteFelder();
+
+        $data = $bookings->map(function ($b) use ($felder) {
+            $zeile = [];
+
+            foreach ($felder as $key) {
+                $zeile[$key] = self::jsonWert($key, $b);
+            }
+
+            // Die Positionen hängen nicht an der Feldauswahl: Sie sind der
+            // Inhalt der Bestellung, keine Spalte daneben.
+            $zeile['items'] = $b->items->map(fn ($i) => [
+                'name'       => $i->name ?: $i->menuItem?->name,
+                'quantity'   => (int) $i->quantity,
+                'unit_price' => (float) $i->unit_price,
+                'tax_rate'   => (float) $i->tax_rate,
+            ]);
+
+            return $zeile;
+        });
 
         return response()->streamDownload(
             fn () => print json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
