@@ -24,27 +24,65 @@
                 </button>
             @endforeach
         </div>
-        <div class="flex flex-wrap items-end gap-2">
-            {{-- Termin statt Zeitraum: Ein Caterer plant nach Veranstaltung,
-                 nicht nach Kalendermonat. --}}
-            @if ($this->events->isNotEmpty())
-                <x-nx-input-select
-                    name="eventId"
-                    label="Termin"
-                    size="sm"
-                    nullable
-                    nullLabel="– alle –"
-                    :options="$this->events->map(fn ($e) => [
-                        'value' => $e->id,
-                        'label' => $e->date?->format('d.m.Y') . ' · ' . $e->name,
-                    ])->all()"
-                    wire:model.live="eventId"
-                />
-            @endif
+        <div class="flex items-end gap-2">
             <x-nx-input-date name="dateFrom" label="Von" size="sm" wire:model.live="dateFrom" />
             <x-nx-input-date name="dateTo" label="Bis" size="sm" wire:model.live="dateTo" />
         </div>
     </div>
+
+    {{-- Termin: eine Liste mit Suche statt einer Auswahlliste. Termine werden
+         mit jeder Veranstaltung mehr, und in einer Klappliste mit hundert
+         Einträgen findet niemand den vom letzten Sommer. Gefiltert wird im
+         Browser – die Liste steht schon da, dafür braucht es keinen Server. --}}
+    @if ($this->events->isNotEmpty())
+        @php ($gewaehlt = $eventId ? $this->events->firstWhere('id', $eventId) : null)
+        <div x-data="{ offen: false, suche: '' }" class="relative w-full max-w-sm"
+            x-on:keydown.escape.window="offen = false">
+            <span class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Termin</span>
+
+            <button type="button"
+                x-on:click="offen = ! offen; if (offen) $nextTick(() => $refs.suche.focus())"
+                class="flex w-full items-center gap-2 rounded-[6px] border border-[color:var(--nx-line-strong)] bg-[color:var(--nx-surface)] px-3 py-2 text-left text-sm transition-colors hover:bg-[color:var(--nx-hover)]">
+                @svg('heroicon-o-calendar-days', 'w-4 h-4 shrink-0 text-[color:var(--nx-muted)]')
+                <span class="truncate {{ $gewaehlt ? 'text-[color:var(--nx-text)]' : 'text-[color:var(--nx-muted)]' }}">
+                    {{ $gewaehlt ? $gewaehlt->date?->format('d.m.Y') . ' · ' . $gewaehlt->name : 'Alle Termine' }}
+                </span>
+                @svg('heroicon-o-chevron-down', 'ml-auto w-3.5 h-3.5 shrink-0 text-[color:var(--nx-muted)]')
+            </button>
+
+            <div x-show="offen" x-on:click.outside="offen = false" style="display: none;"
+                class="absolute left-0 right-0 z-30 mt-1 overflow-hidden rounded-[8px] border border-[color:var(--nx-line-strong)] bg-[color:var(--nx-surface)] shadow-lg">
+                <div class="border-b border-[color:var(--nx-line)] p-2">
+                    <input x-ref="suche" x-model="suche" type="text" placeholder="Termin suchen …"
+                        class="w-full rounded-[6px] border border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] px-2.5 py-1.5 text-sm text-[color:var(--nx-text)] outline-none focus:border-[color:var(--nx-accent)]">
+                </div>
+
+                <div class="max-h-64 overflow-y-auto">
+                    <button type="button" wire:click="$set('eventId', null)" x-on:click="offen = false; suche = ''"
+                        x-show="! suche"
+                        class="block w-full px-3 py-2 text-left text-sm text-[color:var(--nx-muted)] transition-colors hover:bg-[color:var(--nx-hover)]">
+                        Alle Termine
+                    </button>
+
+                    @foreach ($this->events as $e)
+                        @php ($suchtext = mb_strtolower(($e->date?->format('d.m.Y') ?? '') . ' ' . $e->name))
+                        <button type="button"
+                            wire:key="ev-{{ $e->id }}"
+                            wire:click="$set('eventId', {{ $e->id }})"
+                            x-on:click="offen = false; suche = ''"
+                            x-show="! suche || @js($suchtext).includes(suche.toLowerCase().trim())"
+                            @class([
+                                'block w-full px-3 py-2 text-left text-sm transition-colors hover:bg-[color:var(--nx-hover)]',
+                                'bg-[color:var(--nx-accent-soft)] font-medium' => $eventId === $e->id,
+                            ])>
+                            <span class="tabular-nums text-[color:var(--nx-muted)]">{{ $e->date?->format('d.m.Y') }}</span>
+                            <span class="ml-2 text-[color:var(--nx-text)]">{{ $e->name }}</span>
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    @endif
 
     @php ($davor = $this->vorzeitraum)
     @php ($pfeil = fn ($jetzt, $vorher) => $vorher === null ? null : ($jetzt <=> $vorher))
