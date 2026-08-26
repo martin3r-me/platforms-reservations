@@ -65,6 +65,9 @@ Route::get('/dropoff', DropoffManager::class)->name('reservation.dropoff.index')
 // Export
 Route::get('/export', Export::class)->name('reservation.export');
 
+// Artikel-Auswertung (Mengen und Umsaetze je Artikel)
+Route::get('/products', \Platform\Reservation\Livewire\ProductStats::class)->name('reservation.products.stats');
+
 // Finanzen (Umsatz nach Monaten/Terminen)
 Route::get('/finance', \Platform\Reservation\Livewire\Finance::class)->name('reservation.finance.index');
 

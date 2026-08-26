@@ -61,6 +61,10 @@
     </x-ui-sidebar-list>
 
     <x-ui-sidebar-list label="Auswertung">
+        <x-ui-sidebar-item :href="route('reservation.products.stats')">
+            @svg('heroicon-o-chart-bar', 'w-4 h-4 text-[color:var(--nx-muted)]')
+            <span class="ml-2 text-sm">Artikel</span>
+        </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.export')">
             @svg('heroicon-o-arrow-down-tray', 'w-4 h-4 text-[color:var(--nx-muted)]')
             <span class="ml-2 text-sm">Export</span>
