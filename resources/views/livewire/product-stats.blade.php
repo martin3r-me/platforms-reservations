@@ -24,15 +24,42 @@
                 </button>
             @endforeach
         </div>
-        <div class="flex items-end gap-2">
+        <div class="flex flex-wrap items-end gap-2">
+            {{-- Termin statt Zeitraum: Ein Caterer plant nach Veranstaltung,
+                 nicht nach Kalendermonat. --}}
+            @if ($this->events->isNotEmpty())
+                <x-nx-input-select
+                    name="eventId"
+                    label="Termin"
+                    size="sm"
+                    nullable
+                    nullLabel="– alle –"
+                    :options="$this->events->map(fn ($e) => [
+                        'value' => $e->id,
+                        'label' => $e->date?->format('d.m.Y') . ' · ' . $e->name,
+                    ])->all()"
+                    wire:model.live="eventId"
+                />
+            @endif
             <x-nx-input-date name="dateFrom" label="Von" size="sm" wire:model.live="dateFrom" />
             <x-nx-input-date name="dateTo" label="Bis" size="sm" wire:model.live="dateTo" />
         </div>
     </div>
 
+    @php ($davor = $this->vorzeitraum)
+    @php ($pfeil = fn ($jetzt, $vorher) => $vorher === null ? null : ($jetzt <=> $vorher))
+
     <x-nx-stat-grid>
-        <x-nx-stat label="Verkaufte Artikel" :value="number_format($this->totals->menge, 0, ',', '.') . ' Stück'" />
-        <x-nx-stat label="Umsatz" :value="number_format($this->totals->umsatz, 2, ',', '.') . ' €'" />
+        <x-nx-stat label="Verkaufte Artikel"
+            :value="number_format($this->totals->menge, 0, ',', '.') . ' Stück'"
+            :hint="$this->totals->menge_davor !== null
+                ? 'davor ' . number_format($this->totals->menge_davor, 0, ',', '.') . ' Stück'
+                : null" />
+        <x-nx-stat label="Umsatz"
+            :value="number_format($this->totals->umsatz, 2, ',', '.') . ' €'"
+            :hint="$this->totals->umsatz_davor !== null
+                ? 'davor ' . number_format($this->totals->umsatz_davor, 2, ',', '.') . ' €'
+                : null" />
         <x-nx-stat label="Verschiedene Artikel" :value="(string) $this->totals->sorten" />
         @if ($this->totals->menge_bundle > 0)
             <x-nx-stat label="davon über Bundles"
@@ -71,6 +98,9 @@
                             <th class="px-4 py-2 font-medium">#</th>
                             <th class="px-4 py-2 font-medium">Artikel</th>
                             <th class="px-4 py-2 text-right font-medium">Menge</th>
+                            @if ($davor)
+                                <th class="px-4 py-2 text-right font-medium" title="{{ \Illuminate\Support\Carbon::parse($davor[0])->format('d.m.Y') }} – {{ \Illuminate\Support\Carbon::parse($davor[1])->format('d.m.Y') }}">davor</th>
+                            @endif
                             <th class="px-4 py-2 text-right font-medium">davon im Bundle</th>
                             <th class="px-4 py-2 text-right font-medium">Umsatz</th>
                             <th class="px-4 py-2 text-right font-medium">Anteil</th>
@@ -89,6 +119,18 @@
                                 <td class="whitespace-nowrap px-4 py-2 text-right font-semibold tabular-nums text-[color:var(--nx-text)]">
                                     {{ number_format($zeile['menge'], 0, ',', '.') }}
                                 </td>
+                                @if ($davor)
+                                    @php ($richtung = $pfeil($zeile['menge'], $zeile['menge_davor']))
+                                    <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums">
+                                        <span class="text-[color:var(--nx-muted)]">{{ number_format($zeile['menge_davor'] ?? 0, 0, ',', '.') }}</span>
+                                        @if ($richtung !== null && $richtung !== 0)
+                                            <span class="ml-1 text-[11px]"
+                                                style="color: {{ $richtung > 0 ? 'var(--nx-success)' : 'var(--nx-danger)' }}">
+                                                {{ $richtung > 0 ? '▲' : '▼' }}{{ number_format(abs($zeile['menge'] - ($zeile['menge_davor'] ?? 0)), 0, ',', '.') }}
+                                            </span>
+                                        @endif
+                                    </td>
+                                @endif
                                 <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-[color:var(--nx-muted)]">
                                     @if ($zeile['menge_bundle'] > 0)
                                         {{ number_format($zeile['menge_bundle'], 0, ',', '.') }}
@@ -116,13 +158,47 @@
         @endif
     </x-nx-card>
 
+    {{-- Nicht verkauft. Standardmäßig zu: Bei einer großen Karte ist das die
+         längste Liste der Seite, und gesucht wird sie nur, wenn jemand die Karte
+         ausmistet. --}}
+    @if ($this->unsold->isNotEmpty())
+        <x-nx-card flush>
+            <button type="button" wire:click="$toggle('showUnsold')"
+                class="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-[color:var(--nx-hover)]">
+                @svg('heroicon-o-eye-slash', 'w-4 h-4 text-[color:var(--nx-muted)]')
+                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Nicht verkauft</h2>
+                <span class="text-[11px] text-[color:var(--nx-muted)]">
+                    {{ $this->unsold->count() }} {{ $this->unsold->count() === 1 ? 'Artikel stand' : 'Artikel standen' }}
+                    auf der Karte, ohne bestellt zu werden
+                </span>
+                <span class="ml-auto text-[11px] text-[color:var(--nx-muted)]">{{ $showUnsold ? 'ausblenden' : 'einblenden' }}</span>
+                @svg('heroicon-o-chevron-down', 'w-3.5 h-3.5 text-[color:var(--nx-muted)] transition-transform ' . ($showUnsold ? 'rotate-180' : ''))
+            </button>
+
+            @if ($showUnsold)
+                <div class="border-t border-[color:var(--nx-line)] p-5">
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach ($this->unsold as $zeile)
+                            <span class="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--nx-line)] px-2.5 py-1 text-[11px] text-[color:var(--nx-muted)]"
+                                wire:key="uns-{{ $zeile['id'] }}">
+                                {{ $zeile['name'] }}
+                                @if ($zeile['category'])
+                                    <span class="text-[color:var(--nx-faint)]">{{ $zeile['category'] }}</span>
+                                @endif
+                            </span>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </x-nx-card>
+    @endif
+
     {{-- Bundles --}}
     @if ($this->bundles->isNotEmpty())
         <x-nx-card flush>
             <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
                 @svg('heroicon-o-gift', 'w-4 h-4 text-[color:var(--nx-muted)]')
                 <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Verkaufte Bundles</h2>
-                <span class="ml-auto text-[11px] text-[color:var(--nx-muted)]">zieht das Paket?</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
