@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Platform\Reservation\Livewire\Concerns\PrintsBookingReceipt;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\Event;
@@ -17,6 +18,8 @@ use Platform\Reservation\Models\Event;
  */
 class EventDashboard extends Component
 {
+    use PrintsBookingReceipt;
+
     #[Locked]
     public int $eventId;
 

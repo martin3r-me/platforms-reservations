@@ -113,6 +113,16 @@
 
         @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'dashboard'])
 
+        @if (session('booking_message'))
+            <x-nx-callout variant="success">{{ session('booking_message') }}</x-nx-callout>
+        @endif
+        @if (session('booking_error'))
+            <x-nx-callout variant="danger">{{ session('booking_error') }}</x-nx-callout>
+        @endif
+        @if (session('event_message'))
+            <x-nx-callout variant="success">{{ session('event_message') }}</x-nx-callout>
+        @endif
+
         {{-- Kennzahlen --}}
         <div class="grid grid-cols-2 gap-x-4 gap-y-4 border-y border-[color:var(--nx-line)] py-4 sm:grid-cols-4">
             @foreach ($tiles as [$label, $value])
@@ -146,10 +156,13 @@
                                 <x-nx-table-header-cell compact align="center">Personen</x-nx-table-header-cell>
                                 <x-nx-table-header-cell compact align="right">Bestellung</x-nx-table-header-cell>
                                 <x-nx-table-header-cell compact>Status</x-nx-table-header-cell>
+                                @if ($this->printingAvailable)
+                                    <x-nx-table-header-cell compact><span class="sr-only">Aktionen</span></x-nx-table-header-cell>
+                                @endif
                             </x-nx-table-header>
                             <x-nx-table-body>
                                 @foreach ($group['bookings'] as $b)
-                                    <x-nx-table-row compact wire:key="b-{{ $b->id }}">
+                                    <x-nx-table-row compact wire:key="b-{{ $b->id }}" class="group">
                                         <x-nx-table-cell compact>
                                             <span class="font-medium text-[color:var(--nx-text)]">{{ $b->guest_name }}</span>
                                             @if ($b->guest_email)<span class="block text-xs text-[color:var(--nx-faint)]">{{ $b->guest_email }}</span>@endif
@@ -169,6 +182,16 @@
                                             ][$b->status] ?? [ucfirst($b->status), 'neutral']; @endphp
                                             <x-nx-badge :variant="$sv">{{ $sl }}</x-nx-badge>
                                         </x-nx-table-cell>
+                                        @if ($this->printingAvailable)
+                                            <x-nx-table-cell compact align="right">
+                                                {{-- Aktion erscheint beim Hover über die Zeile (wie in „Alle Buchungen") --}}
+                                                <div class="flex items-center justify-end opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
+                                                    <x-nx-button icon variant="ghost" wire:click="openPrintModal({{ $b->id }})" title="Bon drucken">
+                                                        @svg('heroicon-o-printer', 'w-4 h-4')
+                                                    </x-nx-button>
+                                                </div>
+                                            </x-nx-table-cell>
+                                        @endif
                                     </x-nx-table-row>
                                 @endforeach
                             </x-nx-table-body>
@@ -280,5 +303,7 @@
             <x-nx-button wire:click="closeShareModal()">Schließen</x-nx-button>
         </x-slot>
     </x-nx-modal>
+
+    @include('reservation::partials.booking-print-modal')
 
 </x-ui-page>
