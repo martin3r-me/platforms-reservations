@@ -41,9 +41,6 @@ Route::get('/events/{eventId}/orders', EventOrders::class)->name('reservation.ev
 // Laufzettel (Function Sheet) als vollwertige In-App-View
 Route::get('/events/{eventId}/function', \Platform\Reservation\Livewire\EventFunctionSheet::class)->name('reservation.events.function');
 
-// Druckbare Standalone-Ansicht (Laufzettel)
-Route::get('/events/{eventId}/function-sheet', \Platform\Reservation\Http\Controllers\FunctionSheetController::class)->name('reservation.events.function-sheet');
-
 // Venues & Tischpläne verwalten
 Route::get('/venues', VenueManager::class)->name('reservation.venues.index');
 
