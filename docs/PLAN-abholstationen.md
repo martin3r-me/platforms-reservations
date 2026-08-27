@@ -38,7 +38,7 @@ Die Station gehört zum **Venue**, so wie ein Raum.
 | `capacity_per_slot` | smallint, nullable | Gäste **je Pause**; null = unbegrenzt |
 | `sort_order` | smallint | Reihenfolge im Shop |
 | `is_active` | bool | |
-| `sales_list_id` | FK, nullable | leer = Sortiment des Termins |
+| `sales_list_id` | FK, nullable | leer = Sortiment des Termins – **erst Etappe 7** |
 | `floor_plan_id` | FK, nullable | `nullOnDelete` – Lage im Plan, optional |
 | `x_pct` `y_pct` `w_pct` `h_pct` | float, nullable | normalisiert, wie beim Tisch |
 | `shape` `rotation` | | Form und Ausrichtung der Fläche |
@@ -96,6 +96,11 @@ Je Pause an oder aus. Zwei Pausen, Station nur in der ersten – genau dieser Fa
 
 `event_station_id`, `event_slot_id`, `unique` über beide.
 
+Wird eine Pause am Termin gelöscht, räumt die Kaskade die Zuordnung mit ab – eine Station
+kann so bei **null** Pausen landen und verschwindet lautlos aus dem Shop. Deshalb: Beim
+Speichern des Termins ist eine Station ohne Pause ein Validierungsfehler, kein stiller
+Zustand.
+
 **Explizite Zeilen, kein „leer heißt alle".** Beim Speichern werden die gewählten
 Pausen immer geschrieben, mit der Regel: mindestens eine. Sonst hätte „keine Zeile"
 zwei Bedeutungen – alle Pausen oder gar keine –, und diese Sorte Zweideutigkeit fällt
@@ -137,6 +142,17 @@ Jede Anzeige fragt dort und nirgends sonst.
   bestehenden Buchung den Tisch, wenn dieser gelöscht wird – solche Datensätze gibt es
   heute schon, und sie müssen speicherbar bleiben.
 
+**Werfen ausschließlich bei `creating`.** Ein `saving`-Hook läuft bei jedem Speichern
+einer Buchung im Livebetrieb – auch beim Statuswechsel, an dem der automatische Bondruck
+hängt. Wirft er dort zu Unrecht, steht die Bestellstrecke. Das Risiko ist klein, weil es
+genau **einen** Erzeuger von Buchungen gibt (`GuestOrderService:177`), aber die
+Einschränkung kostet nichts.
+
+Die eigentliche Prüfung bleibt ohnehin in `store()`: Die Station muss zum Termin **und**
+zur gewählten Pause gehören – dieselbe Strenge, mit der heute der Tisch gegen
+`allowedFloorPlanIds` geprüft wird. Ohne diese Prüfung wäre die Stations-ID aus dem
+Request ein IDOR.
+
 `zielortLabel()` deckt den dritten Fall (weder noch) mit einem neutralen Strich ab.
 Die Ansichten prüfen heute bereits auf `null`.
 
@@ -150,6 +166,12 @@ einfacher: Gäste je Station **und Pause** gegen eine optionale Obergrenze
 geprüft.
 
 150 in Pause 1 und 150 in Pause 2 – nicht 150 zusammen.
+
+**Der Wettlauf bleibt, wie er beim Tisch ist.** `SeatAvailabilityService` sperrt nichts:
+Zwei gleichzeitige Bestellungen können dieselben letzten Plätze nehmen. Bei Tischen lebt
+das System seit jeher damit. Bei einer Station ist die Obergrenze eine härtere Zusage
+(„150 Portionen sind da"), und wer sie ernst meint, braucht ein `lockForUpdate` in der
+Prüfung. Bewusst gleich schlecht wie beim Tisch – aber benannt, nicht heimlich anders.
 
 Weiche Kapazität, Großgruppen-Regel, gesperrte Tische: nichts davon gilt hier.
 `SeatAvailabilityService` bleibt unberührt. **Eine Station darf in der Platzrechnung
@@ -210,7 +232,16 @@ die Abholliste, ein zusätzlicher Ausdruck ist nicht nötig.
 sobald welche im Spiel sind. Ohne Stationen bleibt die Ansicht Zeile für Zeile die alte.
 
 **Bon, Beleg-PDF, beide Bestätigungsmails, Buchungsliste, Dashboard, VA-Dashboard,
-Export, `ListBookingsTool`** – alle über `zielortLabel()`.
+`ListBookingsTool`** – alle über `zielortLabel()`.
+
+**Export mit einer Ausnahme: keine Spalte umbenennen.** Der Kunde arbeitet mit dem CSV
+(die Juni-Datei lag uns vor). „Tisch" bleibt „Tisch" und ist bei Stationsbuchungen leer;
+„Abholstation" kommt als **neue** Spalte dazu. Wer die Datei automatisiert einliest, merkt
+davon nichts.
+
+Ein Feld dort ist heute schon abgeleitet und muss mit: `venue` kommt über
+`table.floorPlan.venue`. Bei einer Stationsbuchung wäre es leer – es muss aus der Station
+kommen, die ihr Venue selbst kennt.
 
 ---
 
@@ -262,6 +293,13 @@ ab, die Vergabe versucht es erneut – nicht die Zahl vorher „freihalten".
 **`GET /events/{event}/floor-plan`** liefert zusätzlich `stations`: Name und
 Beschreibung (übersetzt), Reihenfolge und je Pause die Restkapazität bzw. „unbegrenzt".
 Eine Station erscheint nur bei den Pausen, für die sie freigegeben ist.
+
+**`withoutGlobalScope('team')` ist hier Pflicht, nicht Geschmack.** In der API ist ein
+Service-User angemeldet; `Auth::check()` ist also true, und `currentTeam` kann ein anderes
+Team sein als das des Termins. Genau deshalb steht der Aufruf in `EventController` heute
+an jeder Stelle. Fehlt er bei den Stationen, liefert die API keinen Fehler, sondern **null
+Stationen** – und niemand merkt es, bis abends jemand vor einem leeren Shop steht.
+Dasselbe gilt für `OrderReceiptController` und den Freigabe-Link ohne Login.
 
 Liegt sie in dem Plan, der gerade abgefragt wird, kommen `x_pct`/`y_pct`/`w_pct`/`h_pct`,
 `shape` und `rotation` mit – sonst stehen sie auf `null`. Der Shop entscheidet daran, ob
@@ -327,7 +365,7 @@ Erst lokal auf `127.0.0.1:8010` prüfen, dann committen und deployen – wie bei
 6. **Aufräumen** – `reservation_dropoff_slots`, `DropoffSlot`, `DropoffManager` entfernen.
    Vorher nachsehen, ob auf demo oder bei Culinaria noch Zeilen drinstehen: eine leere
    Tabelle löscht man ohne Nachdenken, eine gefüllte will man erst angesehen haben.
-7. **Sortiment je Station** (Abschnitt K) – eigene Verkaufsliste an der Station, benannte
+7. **Sortiment je Station** (Abschnitt K) – Spalte `sales_list_id` **erst hier**, benannte
    Schritte im Wizard, Reihenfolge nur dort gekippt, wo eine Station ein eigenes Angebot
    führt. Bewusst nach Etappe 6: Bis dahin ändert sich am Bestellweg nichts.
 
@@ -400,3 +438,80 @@ Räume.
 
 Für die Stationen heißt das vor allem: **keine Freigabe-Logik nachbauen**, die es beim
 Vorbild gar nicht gibt.
+
+---
+
+## O. Livebetrieb: Risiken und Reihenfolge
+
+Culinaria läuft, es kommen Bestellungen herein. Deshalb hier explizit, was beim
+Ausrollen passiert und was nicht.
+
+### Der Deploy selbst ist wirkungslos
+
+Es gibt kein Modus-Flag und keine geänderte Vorgabe. Solange keinem Termin eine Station
+zugeordnet ist, ändert sich kein einziger Ablauf: dieselben Buchungen, dieselben Bons,
+derselbe Shop. Das ist die stärkste Eigenschaft dieses Entwurfs und der Grund für den
+Schnitt – nicht ein glücklicher Nebeneffekt.
+
+### Der Punkt ohne Rückkehr ist nicht der Deploy
+
+Er ist die **erste echte Stationsbestellung**. Davor lässt sich der Code zurückrollen; die
+neuen Spalten sind nullable und stören niemanden. Danach existieren Buchungen mit
+`pickup_station_id` und ohne `table_id` – die alte Fassung zeigt auf dem Bon keine
+Ortszeile (der Block hängt an `@if($printable->table)`) und gruppiert im Laufzettel unter
+„kein Tisch". Kein Absturz, aber Datenmüll im laufenden Betrieb.
+
+Praktisch heißt das: erst demo, dort eine Station anlegen und einen Termin komplett
+durchspielen – Bestellung, Zahlung, Bon, Laufzettel, Beleg, Storno. Erst danach Culinaria.
+
+### Reihenfolge der beiden Repos
+
+Office zuerst, Shop danach. Jede Seite muss mit der **alten** Fassung der anderen laufen:
+Die neuen API-Felder sind additiv, `station_id` im Auftrag ist optional. Ein Shop, der
+`stations` noch nicht kennt, ignoriert sie; ein Backend, das keinen Auftrag mit
+`station_id` bekommt, verhält sich wie heute.
+
+### Migrationen
+
+Alle additiv und nullable. Der eindeutige Index auf `(event_id, pickup_code)` ist
+unkritisch – NULL kollidiert in MySQL nicht mit NULL. Läuft im Betrieb, kein Fenster nötig.
+
+Etappe 6 ist die Ausnahme: Sie **löscht** eine Tabelle. Eigener Deploy, nach mindestens
+einer durchgeführten Veranstaltung mit Stationen, und vorher `SELECT COUNT(*)`.
+
+### Die eigentliche Schwachstelle: es gibt keine Tests
+
+Kein `tests/`, kein PHPUnit in der `composer.json`. Was bisher „Test" hieß, war ein
+Wegwerf-Skript gegen eine temporäre SQLite – es lief und ist danach verschwunden.
+
+Für ein Feature, das die Bestellstrecke anfasst, während Bestellungen hereinkommen, ist
+das die größte strukturelle Lücke im ganzen Vorhaben. Vorschlag: mit Etappe 1 eine kleine,
+**eingecheckte** Basis anlegen, die genau die Stellen bewacht, an denen ein Fehler Geld
+kostet – der Guard, die Kapazität je Pause, die Prüfung in `store()` (Station gehört zum
+Termin und zur Pause), die API-Regel „genau eines von beidem".
+
+### Offene Frage an den Betrieb: Vorkasse oder vor Ort?
+
+Eine Bestellung wird heute auf genau drei Wegen bestätigt: durch den Mollie-Webhook, von
+Hand im Posteingang oder als Backoffice-Buchung. Ohne Online-Zahlung bleibt sie
+„ausstehend" liegen und wird weder gedruckt noch gezählt.
+
+Bei Abholung liegt „vor Ort zahlen" nahe – dann bräuchte es einen vierten Weg, sonst muss
+jemand jeden Auftrag von Hand freigeben. Wird an der Station wie bisher vorab bezahlt,
+ändert sich nichts.
+
+## P. Drei Leichen im Modul
+
+Beim Prüfen gefunden, alle ohne Bezug zu diesem Feature:
+
+1. `RoomReleaseService::openRooms()` – kein Aufrufer (Abschnitt N).
+2. `BookingConfirmationMailer` – kein Aufrufer. Verschickt wird ausschließlich der
+   `OrderConfirmationMailer` aus dem Mollie-Webhook. Sein Template enthält als **einzige**
+   Stelle im ganzen Modul einen ungeschützten `$booking->table->label`
+   (`emails/booking-confirmation.blade.php:47`) – tot und damit harmlos, aber genau die
+   Zeile, die eine Stationsbuchung zerlegen würde, falls jemand den Mailer wiederbelebt.
+3. `DropoffSlot` samt Tabelle und Maske – geht in Etappe 6.
+
+Alle drei Stellen, an denen `->table->` ohne `?->` steht, sind sonst durch ein `@if`
+gedeckt; die Vorlagen für Bon, Beleg, Buchungsliste und Dashboard laufen mit einer
+Stationsbuchung fehlerfrei – sie zeigen nur nichts an, bis Etappe 3 sie umstellt.
