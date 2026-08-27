@@ -35,12 +35,17 @@
                 overflow: visible !important;
                 background: #fff !important;
             }
-            body * {
+            /* Gezielt nur die Hüllen, die auf Fensterhöhe rechnen. NICHT alle
+               Elemente: Ein leeres <span class="h-3 w-3"> ist ein farbiger
+               Punkt, dessen ganze Höhe aus der Klasse kommt – mit
+               "height: auto" fällt er auf null zusammen und verschwindet
+               spurlos aus dem Ausdruck. */
+            .h-full, .h-screen, .min-h-screen {
                 height: auto !important;
                 min-height: 0 !important;
                 max-height: none !important;
-                overflow: visible !important;
             }
+            body * { overflow: visible !important; }
 
             /* Alles aus, nur den Druckbereich an. */
             body * { visibility: hidden !important; }
