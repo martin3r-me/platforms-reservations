@@ -1,6 +1,22 @@
 <?php
 
 return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Schnittbefehl zwischen zwei Bons
+    |--------------------------------------------------------------------------
+    |
+    | Nur für den Sammel-Bon (alle Bons einer Veranstaltung in EINEM Auftrag).
+    | Star-Geräte: ESC d 3 = Teilschnitt mit Vorschub.
+    |
+    | Versteht der Drucker die Folge nicht, kommt ein durchgehender Bon statt
+    | einzelner - unschön, aber es geht nichts verloren. Dann hier die für das
+    | Gerät passende Folge eintragen.
+    |
+    */
+    'bon_cut' => "\x1b\x64\x33",
+
     /**
      * Routing – wie die übrigen Module über den Pfad (…/reservation/…).
      */

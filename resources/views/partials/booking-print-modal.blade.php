@@ -7,7 +7,7 @@
         <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">{{ $printBatch ? 'Alle Bons drucken' : 'Bon drucken' }}</h3>
         <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">
             @if ($printBatch)
-                Je Buchung ein eigener Bon, alle auf einmal
+                Je Buchung ein eigener Bon – als ein Druckauftrag
             @else
                 Buchung als Beleg an einen Drucker senden
             @endif

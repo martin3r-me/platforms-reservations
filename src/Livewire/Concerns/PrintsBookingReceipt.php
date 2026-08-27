@@ -13,13 +13,18 @@ use Platform\Reservation\Support\PrintingBridge;
  *
  * Zwei Wege, ein Ablauf: eine einzelne Buchung (openPrintModal) oder ein
  * ganzer Stapel (openBatchPrintModal) – etwa alle Buchungen einer
- * Veranstaltung. Auch der Stapel druckt je Buchung einen eigenen Bon; das
- * Druck-Modul kennt nur Einzelaufträge, und mehr braucht es nicht: Die
- * Aufträge stehen in einer Warteschlange, die der Drucker der Reihe nach
- * abarbeitet. Gespart wird der Knopfdruck, nicht das Papier.
+ * Veranstaltung. In beiden Fällen bekommt jede Buchung ihren eigenen Beleg.
  *
  * Was ein Stapel umfasst, entscheidet die Komponente über
- * batchPrintBookings() – hier ist er leer.
+ * batchPrintBookings() – hier ist er leer. WIE er gedruckt wird, entscheidet
+ * batchPrintable(): Liefert es ein Druckobjekt, entsteht EIN Auftrag, dessen
+ * Vorlage alle Bons nacheinander rendert, getrennt durch Schnittbefehle.
+ * Liefert es null, entsteht ein Auftrag je Buchung.
+ *
+ * Der Unterschied ist keine Feinheit: Das Gerät wartet nach jeder
+ * Auftragsmeldung rund 30 Sekunden, bevor es abholt – gemessen, unabhängig
+ * vom Poll-Takt, serverseitig nicht abstellbar. Zwanzig Einzelaufträge sind
+ * damit zehn Minuten, ein Sammelauftrag eine halbe.
  *
  * Liegt hier, weil derselbe Ablauf an mehreren Stellen gebraucht wird –
  * in „Alle Buchungen" und im VA-Dashboard. Die Oberfläche dazu steht einmal
@@ -167,6 +172,31 @@ trait PrintsBookingReceipt
         return collect();
     }
 
+    /**
+     * Den Stapel als EINEN Druckauftrag ausgeben statt als viele.
+     *
+     * Gibt eine Komponente hier ein Druckobjekt und eine Vorlage zurück,
+     * entsteht ein einziger Auftrag, dessen Vorlage alle Bons nacheinander
+     * rendert - mit einem Schnittbefehl dazwischen, sodass jede Buchung
+     * weiterhin ihren eigenen Beleg bekommt.
+     *
+     * Der Grund ist gemessen: Das Gerät wartet nach jeder Auftragsmeldung
+     * rund 30 Sekunden, bevor es abholt. Das hängt nicht am Poll-Takt (5s)
+     * und ist serverseitig nicht abstellbar. Bei zwanzig Einzelaufträgen sind
+     * das zehn Minuten, bei einem einzigen eine halbe Minute.
+     *
+     * Der Preis: Bricht der Druck ab - Papierende, Deckel offen -, ist der
+     * ganze Auftrag betroffen und muss komplett wiederholt werden, nicht nur
+     * der fehlende Bon. Wer das nicht will, lässt diese Methode null liefern
+     * und bekommt wie bisher einen Auftrag je Buchung.
+     *
+     * @return array{printable: \Illuminate\Database\Eloquent\Model, template: string}|null
+     */
+    protected function batchPrintable(): ?array
+    {
+        return null;
+    }
+
     public function printBookingConfirm(): void
     {
         $service = PrintingBridge::service();
@@ -188,9 +218,27 @@ trait PrintsBookingReceipt
             return;
         }
 
-        // Ein Auftrag je Buchung, in der Reihenfolge der Liste. Der Drucker
-        // arbeitet die Warteschlange nach Eingang ab, der Stapel liegt also
-        // so da, wie er auf dem Schirm steht.
+        $anzahl = $bookings->count();
+
+        // Stapel als ein einziger Auftrag, wenn die Komponente das anbietet.
+        if ($this->printBatch && ($sammel = $this->batchPrintable())) {
+            $service->createJob(
+                printable: $sammel['printable'],
+                template: $sammel['template'],
+                data: ['requested_by' => Auth::user()?->name, 'anzahl' => $anzahl],
+                printerId: $this->selectedPrinterId ? (int) $this->selectedPrinterId : null,
+                printerGroupId: $this->selectedPrinterGroupId ? (int) $this->selectedPrinterGroupId : null,
+            );
+
+            $this->closePrintModal();
+            session()->flash('booking_message', $anzahl.' Bons wurden als ein Druckauftrag erstellt.');
+
+            return;
+        }
+
+        // Sonst ein Auftrag je Buchung, in der Reihenfolge der Liste. Der
+        // Drucker arbeitet die Warteschlange nach Eingang ab, der Stapel liegt
+        // also so da, wie er auf dem Schirm steht.
         foreach ($bookings as $booking) {
             $service->createJob(
                 printable: $booking,
@@ -199,8 +247,6 @@ trait PrintsBookingReceipt
                 printerGroupId: $this->selectedPrinterGroupId ? (int) $this->selectedPrinterGroupId : null,
             );
         }
-
-        $anzahl = $bookings->count();
 
         $this->closePrintModal();
         session()->flash('booking_message', $anzahl === 1

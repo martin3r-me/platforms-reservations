@@ -128,6 +128,24 @@ class EventDashboard extends Component
             ->values();
     }
 
+    /**
+     * Der Stapel geht als EIN Auftrag raus, nicht als einer je Buchung.
+     *
+     * Die Vorlage rendert alle Bons des Termins nacheinander, getrennt durch
+     * Schnittbefehle – jede Buchung bekommt also weiterhin ihren eigenen
+     * Beleg, nur eben aus einem Auftrag.
+     *
+     * Team-Grenze: $this->event ist über forTeam()->findOrFail() aufgelöst,
+     * ein fremder Termin endet in 404, bevor etwas gedruckt wird.
+     */
+    protected function batchPrintable(): ?array
+    {
+        return [
+            'printable' => $this->event,
+            'template'  => 'reservation-event-bons',
+        ];
+    }
+
     /* --- Freigabe-Link für Veranstaltungsleiter (Küche + Laufzettel) --- */
 
     public bool $showShareModal = false;

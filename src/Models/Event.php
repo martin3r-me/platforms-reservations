@@ -102,6 +102,29 @@ class Event extends Model
         return $this->hasMany(Booking::class, 'event_id');
     }
 
+    /**
+     * Aktive Buchungen in Bon-Reihenfolge: nach Pause, darin nach Gastname.
+     *
+     * Dieselbe Reihenfolge, in der die Buchungen im VA-Dashboard stehen –
+     * damit der Papierstapel zur Ansicht auf dem Schirm passt. Sortiert wird
+     * in PHP statt per JOIN, weil die Pausenzeit am Slot hängt und die Liste
+     * je Termin klein ist.
+     *
+     * @return \Illuminate\Support\Collection<int, Booking>
+     */
+    public function bonBookings(): \Illuminate\Support\Collection
+    {
+        return $this->bookings()
+            ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
+            ->with(['items.menuItem', 'items.bundleMenuItem', 'table.floorPlan', 'event', 'slot'])
+            ->get()
+            ->sortBy([
+                fn ($b) => (string) ($b->slot?->time_start ?? '99:99'),
+                fn ($b) => (string) $b->guest_name,
+            ])
+            ->values();
+    }
+
     public function scopeForTeam($query, int $teamId)
     {
         return $query->where('team_id', $teamId);
