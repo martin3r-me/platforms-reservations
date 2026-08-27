@@ -10,7 +10,7 @@
             ['label' => $this->event->name, 'href' => route('reservation.events.dashboard', $this->event->id)],
             ['label' => 'Laufzettel'],
         ]">
-            <x-nx-button :href="route('reservation.events.function-sheet', $this->event->id)" target="_blank">
+            <x-nx-button onclick="window.print()">
                 @svg('heroicon-o-printer', 'w-4 h-4')
                 <span>Drucken</span>
             </x-nx-button>
@@ -18,14 +18,19 @@
     </x-slot>
 
     <x-ui-page-container width="contained">
-    {{-- Der Knopf oben führt auf die eigene Druckseite, die schöner aussieht.
-         Diese Regeln sind für den Fall, dass jemand einfach Strg+P drückt –
-         dann kommt wenigstens kein Programmgerüst mit aufs Papier. --}}
     @include('reservation::partials.print-styles')
     <div id="pp-print" class="space-y-5">
 
+        {{-- Nur auf Papier: Auf dem Schirm sagen Navigation und Reiter, wo man
+             ist – im Ausdruck fehlen beide, und ohne Kopf wüsste niemand, zu
+             welcher Veranstaltung der Zettel gehört. --}}
         <div class="pp-print-only mb-4 border-b border-[color:var(--nx-line)] pb-2">
             <h1 class="m-0 text-lg font-bold text-[color:var(--nx-text)]">Laufzettel · {{ $this->event->name }}</h1>
+            <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">
+                {{ $this->event->date?->format('d.m.Y') }}
+                @if ($this->event->venue) · {{ $this->event->venue->name }} @endif
+                · gedruckt {{ now()->format('d.m.Y H:i') }}
+            </p>
         </div>
 
         <div class="pp-no-print">
@@ -34,7 +39,9 @@
 
         @php $sheet = $this->sheet; @endphp
 
-        <p class="m-0 text-xs text-[color:var(--nx-muted)]">
+        {{-- Am Schirm die Kopfdaten; auf Papier stehen sie schon in der
+             Druck-Kopfzeile und wuerden sich sonst doppeln. --}}
+        <p class="pp-no-print m-0 text-xs text-[color:var(--nx-muted)]">
             {{ optional($sheet['event']['date'])->format('d.m.Y') }}
             @if ($sheet['event']['venue']) · {{ $sheet['event']['venue'] }} @endif
             · erstellt {{ $sheet['generated_at']->format('d.m.Y H:i') }}
