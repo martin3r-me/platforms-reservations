@@ -175,8 +175,7 @@
                                             :style="{ top: oben + 'px', right: rechts + 'px' }"
                                             class="fixed z-50 w-56 rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-surface)] p-1 shadow-[var(--nx-shadow-pop)]">
                                             @if ($booking->status !== 'no_show')
-                                                <x-nx-dropdown-item wire:click="markNoShow({{ $booking->id }})"
-                                                    wire:confirm="Gast als No-Show markieren? Die Buchung zählt dann nicht mehr für Umsatz und Küche.">
+                                                <x-nx-dropdown-item wire:click="askNoShow({{ $booking->id }})">
                                                     @svg('heroicon-o-user-minus', 'w-4 h-4') <span>No-Show</span>
                                                 </x-nx-dropdown-item>
                                             @endif
@@ -187,8 +186,11 @@
                                             @endif
                                             @if (in_array($booking->status, ['no_show', 'completed'], true))
                                                 <x-nx-dropdown-divider />
-                                                <x-nx-dropdown-item wire:click="reopenBooking({{ $booking->id }})">
-                                                    @svg('heroicon-o-arrow-uturn-left', 'w-4 h-4') <span>Zurück auf Bestätigt</span>
+                                                {{-- Nicht "Zurück auf Bestätigt": Wohin es geht, hängt
+                                                     an der Bestellung – bei unbezahlten Shop-Buchungen
+                                                     auf ausstehend. Die Rückfrage sagt es. --}}
+                                                <x-nx-dropdown-item wire:click="askReopen({{ $booking->id }})">
+                                                    @svg('heroicon-o-arrow-uturn-left', 'w-4 h-4') <span>Zurücknehmen</span>
                                                 </x-nx-dropdown-item>
                                             @endif
                                         </div>
@@ -329,6 +331,8 @@
     </x-nx-modal>
 
     @include('reservation::partials.booking-print-modal')
+
+    @include('reservation::partials.booking-status-modal')
 
     </div>
     </x-ui-page-container>

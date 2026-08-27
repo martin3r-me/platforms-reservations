@@ -7,11 +7,13 @@ use Livewire\Attributes\Computed;
 use Livewire\WithPagination;
 use Platform\Reservation\Models\Booking;
 use Illuminate\Support\Facades\Auth;
+use Platform\Reservation\Livewire\Concerns\ChangesBookingStatus;
 use Platform\Reservation\Livewire\Concerns\PrintsBookingReceipt;
 use Platform\Reservation\Support\BookingItemsPresenter;
 
 class BookingList extends Component
 {
+    use ChangesBookingStatus;
     use PrintsBookingReceipt;
     use WithPagination;
 
@@ -83,45 +85,9 @@ class BookingList extends Component
         unset($this->bookings);
     }
 
-    /**
-     * Gast ist nicht erschienen.
-     *
-     * Wirkt weiter als nur auf das Abzeichen in der Liste: No-Shows sind aus
-     * Umsatz, Küchenmengen und Sitzplatz-Verfügbarkeit ausgenommen. Ein
-     * Fehlgriff verschiebt also Zahlen, deshalb der Rückweg über
-     * reopenBooking().
-     */
-    public function markNoShow(int $bookingId): void
+    /** Nach einem Statuswechsel: die Liste neu holen. */
+    protected function afterBookingStatusChanged(): void
     {
-        Booking::findOrFail($bookingId)->update(['status' => Booking::STATUS_NO_SHOW]);
-        unset($this->bookings);
-    }
-
-    /** Gast war da, der Abend ist für diese Buchung erledigt. */
-    public function markCompleted(int $bookingId): void
-    {
-        Booking::findOrFail($bookingId)->update(['status' => Booking::STATUS_COMPLETED]);
-        unset($this->bookings);
-    }
-
-    /**
-     * Zurück auf "bestätigt" - der Rückweg aus No-Show und Abgeschlossen.
-     *
-     * Ohne ihn wäre beides eine Einbahnstraße: Die Oberfläche kennt sonst
-     * keine Stelle, an der sich ein Status wieder ändern lässt, und ein
-     * Fehlgriff im Menü bliebe für immer stehen.
-     *
-     * Ohne automatischen Bon-Druck, denn genau den löst ein Wechsel auf
-     * "bestätigt" sonst aus (siehe Booking::booted). Bei einer Korrektur ist
-     * der Bon längst gedruckt; ein zweiter würde in der Küche als weitere
-     * Bestellung gelesen.
-     */
-    public function reopenBooking(int $bookingId): void
-    {
-        Booking::ohneAutoDruck(function () use ($bookingId) {
-            Booking::findOrFail($bookingId)->update(['status' => Booking::STATUS_CONFIRMED]);
-        });
-
         unset($this->bookings);
     }
 

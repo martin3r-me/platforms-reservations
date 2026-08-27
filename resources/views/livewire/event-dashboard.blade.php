@@ -164,13 +164,18 @@
                                 <x-nx-table-header-cell compact align="center">Personen</x-nx-table-header-cell>
                                 <x-nx-table-header-cell compact align="right">Bestellung</x-nx-table-header-cell>
                                 <x-nx-table-header-cell compact>Status</x-nx-table-header-cell>
-                                @if ($this->printingAvailable)
-                                    <x-nx-table-header-cell compact><span class="sr-only">Aktionen</span></x-nx-table-header-cell>
-                                @endif
+                                {{-- Nicht mehr an printingAvailable gehaengt: Das Menue fuer
+                                     No-Show und Abgeschlossen gehoert auch in Apps ohne
+                                     Druckmodul - gerade dort wird von Hand gefuehrt. --}}
+                                <x-nx-table-header-cell compact><span class="sr-only">Aktionen</span></x-nx-table-header-cell>
                             </x-nx-table-header>
                             <x-nx-table-body>
                                 @foreach ($group['bookings'] as $b)
-                                    <x-nx-table-row compact wire:key="b-{{ $b->id }}" class="group">
+                                    {{-- No-Shows bleiben stehen, treten aber zurueck: Sie zaehlen
+                                         nirgends mit, und die Zeile soll nicht mit den Gaesten
+                                         konkurrieren, die kommen. --}}
+                                    <x-nx-table-row compact wire:key="b-{{ $b->id }}"
+                                        class="group {{ $b->status === 'no_show' ? 'opacity-60' : '' }}">
                                         <x-nx-table-cell compact>
                                             <span class="font-medium text-[color:var(--nx-text)]">{{ $b->guest_name }}</span>
                                             @if ($b->guest_email)<span class="block text-xs text-[color:var(--nx-faint)]">{{ $b->guest_email }}</span>@endif
@@ -190,16 +195,76 @@
                                             ][$b->status] ?? [ucfirst($b->status), 'neutral']; @endphp
                                             <x-nx-badge :variant="$sv">{{ $sl }}</x-nx-badge>
                                         </x-nx-table-cell>
-                                        @if ($this->printingAvailable)
-                                            <x-nx-table-cell compact align="right">
-                                                {{-- Aktion erscheint beim Hover über die Zeile (wie in „Alle Buchungen") --}}
-                                                <div class="flex items-center justify-end opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
+                                        <x-nx-table-cell compact align="right">
+                                            {{-- Aktionen erscheinen beim Hover über die Zeile (wie in „Alle Buchungen").
+                                                 Der Alpine-Zustand sitzt am ganzen Block, nicht nur am Menü:
+                                                 Solange es offen ist, muss der Block sichtbar bleiben, sonst
+                                                 blendet ihn das group-hover aus, sobald der Zeiger auf dem Weg
+                                                 zum Eintrag die Zeile verlässt. --}}
+                                            <div class="flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
+                                                x-data="{
+                                                    open: false,
+                                                    oben: 0,
+                                                    rechts: 0,
+                                                    auf() {
+                                                        /* Menue haengt frei am Fenster (siehe unten), seine
+                                                           Lage kommt daher beim Oeffnen aus dem Knopf. */
+                                                        const r = this.$refs.kebab.getBoundingClientRect();
+                                                        this.oben = r.bottom + 6;
+                                                        this.rechts = window.innerWidth - r.right;
+                                                        this.open = true;
+                                                    },
+                                                }"
+                                                :style="open ? { opacity: 1 } : {}"
+                                                @keydown.escape.window="open = false"
+                                                {{-- .capture, weil Scroll-Ereignisse nicht aufsteigen: Das
+                                                     Programm scrollt in einem inneren Kasten, nicht am Fenster. --}}
+                                                @scroll.window.capture="open = false"
+                                                @resize.window="open = false">
+                                                <div @click.stop>
+                                                    <x-nx-button icon variant="ghost" type="button" x-ref="kebab"
+                                                        @click="open ? open = false : auf()" title="Status ändern">
+                                                        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                            <circle cx="10" cy="4" r="1.4"/><circle cx="10" cy="10" r="1.4"/><circle cx="10" cy="16" r="1.4"/>
+                                                        </svg>
+                                                    </x-nx-button>
+
+                                                    {{-- "fixed" statt "absolute" wie in x-nx-dropdown: Die Tabelle
+                                                         steckt in einem Kasten mit overflow-x-auto, und der
+                                                         beschneidet nach CSS auch senkrecht - in den unteren
+                                                         Zeilen waere das Menue abgeschnitten. Der Name "open"
+                                                         bewusst wie dort, sonst passen die x-nx-dropdown-item
+                                                         nicht, die selbst "open = false" setzen. --}}
+                                                    <div x-show="open" style="display:none" x-transition
+                                                        @click.outside="open = false"
+                                                        :style="{ top: oben + 'px', right: rechts + 'px' }"
+                                                        class="fixed z-50 w-56 rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-surface)] p-1 shadow-[var(--nx-shadow-pop)]">
+                                                        @if ($b->status !== 'no_show')
+                                                            <x-nx-dropdown-item wire:click="askNoShow({{ $b->id }})">
+                                                                @svg('heroicon-o-user-minus', 'w-4 h-4') <span>No-Show</span>
+                                                            </x-nx-dropdown-item>
+                                                        @endif
+                                                        @if ($b->status !== 'completed')
+                                                            <x-nx-dropdown-item wire:click="markCompleted({{ $b->id }})">
+                                                                @svg('heroicon-o-check-circle', 'w-4 h-4') <span>Abgeschlossen</span>
+                                                            </x-nx-dropdown-item>
+                                                        @endif
+                                                        @if (in_array($b->status, ['no_show', 'completed'], true))
+                                                            <x-nx-dropdown-divider />
+                                                            <x-nx-dropdown-item wire:click="askReopen({{ $b->id }})">
+                                                                @svg('heroicon-o-arrow-uturn-left', 'w-4 h-4') <span>Zurücknehmen</span>
+                                                            </x-nx-dropdown-item>
+                                                        @endif
+                                                    </div>
+                                                </div>
+
+                                                @if ($this->printingAvailable)
                                                     <x-nx-button icon variant="ghost" wire:click="openPrintModal({{ $b->id }})" title="Bon drucken">
                                                         @svg('heroicon-o-printer', 'w-4 h-4')
                                                     </x-nx-button>
-                                                </div>
-                                            </x-nx-table-cell>
-                                        @endif
+                                                @endif
+                                            </div>
+                                        </x-nx-table-cell>
                                     </x-nx-table-row>
                                 @endforeach
                             </x-nx-table-body>
@@ -313,5 +378,7 @@
     </x-nx-modal>
 
     @include('reservation::partials.booking-print-modal')
+
+    @include('reservation::partials.booking-status-modal')
 
 </x-ui-page>

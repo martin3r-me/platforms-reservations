@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Platform\Reservation\Livewire\Concerns\ChangesBookingStatus;
 use Platform\Reservation\Livewire\Concerns\PrintsBookingReceipt;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\BookingItem;
@@ -18,6 +19,7 @@ use Platform\Reservation\Models\Event;
  */
 class EventDashboard extends Component
 {
+    use ChangesBookingStatus;
     use PrintsBookingReceipt;
 
     #[Locked]
@@ -74,9 +76,16 @@ class EventDashboard extends Component
     #[Computed]
     public function bookingsBySlot(): \Illuminate\Support\Collection
     {
+        // No-Shows bleiben in der Liste, anders als in den Zahlen.
+        //
+        // Am Abend ist "die beiden kamen nicht" eine Information, kein Grund
+        // zum Verschwinden. Vor allem aber: Wer hier von Hand auf No-Show
+        // stellt, muss den Fehlgriff auch hier zurücknehmen koennen - eine
+        // Zeile, die sich beim Klick in Luft aufloest, laesst genau das nicht
+        // zu. Storniert bleibt draussen, das ist der Zustand vor der VA.
         $bookings = Booking::where('event_id', $this->eventId)
-            ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
-            ->with('table')
+            ->where('status', '!=', Booking::STATUS_CANCELLED)
+            ->with(['table', 'order'])
             ->withCount('items')
             ->orderBy('guest_name')
             ->get();
@@ -96,16 +105,32 @@ class EventDashboard extends Component
         return $groups;
     }
 
-    /** @param  \Illuminate\Support\Collection  $bookings */
+    /**
+     * Eine Pausen-Gruppe: alle Zeilen, aber nur die zaehlenden im Kopf.
+     *
+     * Die Zahlen rechnen ohne No-Shows - wie die Kennzahlen oben, wie Kueche,
+     * Laufzettel und Platzpruefung. Sonst stuenden im Kopf der Gruppe andere
+     * Gaestezahlen als in der Kachel darueber.
+     *
+     * @param  \Illuminate\Support\Collection  $bookings
+     */
     private function slotGroup(string $label, $bookings): array
     {
+        $zaehlend = $bookings->where('status', '!=', Booking::STATUS_NO_SHOW);
+
         return [
             'label'    => $label,
             'bookings' => $bookings->values(),
-            'count'    => $bookings->count(),
-            'guests'   => (int) $bookings->sum('guest_count'),
-            'revenue'  => (float) $bookings->sum('total_amount'),
+            'count'    => $zaehlend->count(),
+            'guests'   => (int) $zaehlend->sum('guest_count'),
+            'revenue'  => (float) $zaehlend->sum('total_amount'),
         ];
+    }
+
+    /** Nach einem Statuswechsel: Liste und Kennzahlen neu rechnen. */
+    protected function afterBookingStatusChanged(): void
+    {
+        unset($this->bookingsBySlot, $this->stats);
     }
 
     /**
@@ -123,8 +148,12 @@ class EventDashboard extends Component
      */
     protected function batchPrintBookings(): \Illuminate\Support\Collection
     {
+        // Ohne No-Shows: Die Liste zeigt sie, die Vorlage des Sammel-Bons
+        // (Event::bonBookings) laesst sie aus. Stuenden sie hier drin, nennte
+        // der Dialog eine Bon-Zahl, die der Drucker nicht liefert.
         return $this->bookingsBySlot
             ->flatMap(fn (array $group) => $group['bookings'])
+            ->where('status', '!=', Booking::STATUS_NO_SHOW)
             ->values();
     }
 
