@@ -50,6 +50,36 @@ class Booking extends Model
         'legal_accepted_at'      => 'datetime',
     ];
 
+    /**
+     * Schalter für Statuswechsel ohne automatischen Bon-Druck.
+     *
+     * Gedacht für Korrekturen: Wer eine irrtümlich als No-Show markierte
+     * Buchung zurück auf "bestätigt" setzt, hat den Bon längst in der Hand.
+     * Ohne diesen Schalter käme ein zweiter aus dem Drucker, den niemand
+     * bestellt hat - und in der Küche stünde dieselbe Bestellung zweimal.
+     */
+    protected static bool $autoDruckAus = false;
+
+    /**
+     * Einen Vorgang ausführen, ohne dass ein Wechsel auf "bestätigt" druckt.
+     *
+     * Bewusst als Klammer um den Vorgang statt als Flag am Model: Der Zustand
+     * wird danach in jedem Fall zurückgesetzt, auch wenn zwischendrin etwas
+     * schiefgeht. Ein liegengebliebenes Flag würde den automatischen Druck
+     * für den Rest der Anfrage still abschalten.
+     */
+    public static function ohneAutoDruck(callable $vorgang): mixed
+    {
+        $vorher = static::$autoDruckAus;
+        static::$autoDruckAus = true;
+
+        try {
+            return $vorgang();
+        } finally {
+            static::$autoDruckAus = $vorher;
+        }
+    }
+
     protected static function booted(): void
     {
         static::creating(function (self $model) {
@@ -65,6 +95,10 @@ class Booking extends Model
         // Freigabe im Posteingang. wasChanged() liefert nur bei einem echten
         // Wechsel true, ein erneutes Speichern druckt also nicht noch einmal.
         static::updated(function (self $model) {
+            if (static::$autoDruckAus) {
+                return;
+            }
+
             if ($model->status !== self::STATUS_CONFIRMED) {
                 return;
             }
@@ -81,6 +115,10 @@ class Booking extends Model
         // aber die Regel soll lauten: eine bestätigte Buchung wird einmal
         // gedruckt, nicht nur eine, die vorher pending war.
         static::created(function (self $model) {
+            if (static::$autoDruckAus) {
+                return;
+            }
+
             if ($model->status !== self::STATUS_CONFIRMED) {
                 return;
             }
