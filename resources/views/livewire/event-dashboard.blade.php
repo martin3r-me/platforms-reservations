@@ -13,6 +13,14 @@
                  den Dialog oeffnen, um es herauszufinden. Punktfarbe per style
                  statt Utility-Klasse: haengt so nicht am CSS-Build. --}}
             @php $zugang = $this->event; @endphp
+            {{-- Alle Bons der Veranstaltung auf einen Schlag – je Buchung einer.
+                 Ohne Buchungen gäbe es nichts zu drucken, dann fällt der Knopf weg. --}}
+            @if ($this->printingAvailable && $this->stats['bookings'] > 0)
+                <x-nx-button wire:click="openBatchPrintModal">
+                    @svg('heroicon-o-printer', 'w-4 h-4')
+                    <span>Alle Bons drucken</span>
+                </x-nx-button>
+            @endif
             <x-nx-button wire:click="openShareModal()">
                 @if ($zugang->shareIsActive())
                     <span class="h-2 w-2 rounded-full" style="background: var(--nx-success)"></span>

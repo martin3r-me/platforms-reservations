@@ -108,6 +108,26 @@ class EventDashboard extends Component
         ];
     }
 
+    /**
+     * Stapeldruck: alle aktiven Buchungen des Termins, je eine als eigener Bon.
+     *
+     * Reihenfolge wie in der Tabelle – nach Pause, darin nach Gastname. Der
+     * Drucker arbeitet die Warteschlange nach Eingang ab, der Papierstapel
+     * liegt also so da, wie die Liste auf dem Schirm steht.
+     *
+     * Team-Grenze: bookingsBySlot() hängt an $this->event, und das ist über
+     * forTeam()->findOrFail() aufgelöst – ein fremder Termin endet in 404,
+     * bevor hier irgendetwas gedruckt wird.
+     *
+     * @return \Illuminate\Support\Collection<int, Booking>
+     */
+    protected function batchPrintBookings(): \Illuminate\Support\Collection
+    {
+        return $this->bookingsBySlot
+            ->flatMap(fn (array $group) => $group['bookings'])
+            ->values();
+    }
+
     /* --- Freigabe-Link für Veranstaltungsleiter (Küche + Laufzettel) --- */
 
     public bool $showShareModal = false;
