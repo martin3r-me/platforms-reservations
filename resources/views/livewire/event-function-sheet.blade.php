@@ -18,8 +18,19 @@
     </x-slot>
 
     <x-ui-page-container width="contained">
-    <div class="space-y-5">
-        @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'function'])
+    {{-- Der Knopf oben führt auf die eigene Druckseite, die schöner aussieht.
+         Diese Regeln sind für den Fall, dass jemand einfach Strg+P drückt –
+         dann kommt wenigstens kein Programmgerüst mit aufs Papier. --}}
+    @include('reservation::partials.print-styles')
+    <div id="pp-print" class="space-y-5">
+
+        <div class="pp-print-only mb-4 border-b border-[color:var(--nx-line)] pb-2">
+            <h1 class="m-0 text-lg font-bold text-[color:var(--nx-text)]">Laufzettel · {{ $this->event->name }}</h1>
+        </div>
+
+        <div class="pp-no-print">
+            @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'function'])
+        </div>
 
         @php $sheet = $this->sheet; @endphp
 

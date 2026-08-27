@@ -18,9 +18,24 @@
     </x-slot>
 
     <x-ui-page-container width="contained">
-    <div class="space-y-5">
+    @include('reservation::partials.print-styles')
+    <div id="pp-print" class="space-y-5">
 
-        @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'kitchen'])
+        {{-- Nur auf Papier: Auf dem Schirm sagen Navigation und Reiter, wo man
+             ist – im Ausdruck fehlen beide, und ohne Kopf wüsste niemand, zu
+             welcher Veranstaltung der Zettel gehört. --}}
+        <div class="pp-print-only mb-4 border-b border-[color:var(--nx-line)] pb-2">
+            <h1 class="m-0 text-lg font-bold text-[color:var(--nx-text)]">Küche · {{ $this->event->name }}</h1>
+            <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">
+                {{ $this->event->date?->format('d.m.Y') }}
+                @if ($this->event->venue) · {{ $this->event->venue->name }} @endif
+                · gedruckt {{ now()->format('d.m.Y H:i') }}
+            </p>
+        </div>
+
+        <div class="pp-no-print">
+            @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'kitchen'])
+        </div>
 
         @php $totals = $this->slotStats->get(0); @endphp
         {{-- dünne Kennzahl-Zeile --}}
