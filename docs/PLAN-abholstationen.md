@@ -167,11 +167,14 @@ geprüft.
 
 150 in Pause 1 und 150 in Pause 2 – nicht 150 zusammen.
 
-**Der Wettlauf bleibt, wie er beim Tisch ist.** `SeatAvailabilityService` sperrt nichts:
-Zwei gleichzeitige Bestellungen können dieselben letzten Plätze nehmen. Bei Tischen lebt
-das System seit jeher damit. Bei einer Station ist die Obergrenze eine härtere Zusage
-(„150 Portionen sind da"), und wer sie ernst meint, braucht ein `lockForUpdate` in der
-Prüfung. Bewusst gleich schlecht wie beim Tisch – aber benannt, nicht heimlich anders.
+**Der Wettlauf bleibt, wie er beim Tisch ist – Entscheidung vom 28.08.2026.** Kein
+`lockForUpdate`. Zwei gleichzeitige Bestellungen können dieselbe letzte Kapazität nehmen;
+in seltenen Fällen steht am Ende eine Portion mehr auf der Liste als die Obergrenze sagt.
+
+Der Grund, warum das hier trägt: Der Bestellschluss liegt Stunden vor der Pause. Produziert
+wird **danach**, und zwar das, was bestellt ist. Die Obergrenze ist damit eine Bremse gegen
+Überlast, keine Zusage über vorhandene Ware. Bei einer Just-in-time-Ausgabe wäre die
+Antwort eine andere.
 
 Weiche Kapazität, Großgruppen-Regel, gesperrte Tische: nichts davon gilt hier.
 `SeatAvailabilityService` bleibt unberührt. **Eine Station darf in der Platzrechnung
@@ -365,8 +368,11 @@ Erst lokal auf `127.0.0.1:8010` prüfen, dann committen und deployen – wie bei
 
 ## J. Etappen
 
+0. **Maximale Gruppengröße** (Abschnitt Q) – unabhängig von den Stationen und vorweg,
+   weil der Shop heute die falsche Einstellung als Obergrenze liest.
 1. **Fundament** – Migrationen, Modelle (`PickupStation`, `EventStation`),
-   `zielort()`, Guard, `PickupCapacityService`, Tests.
+   `zielort()`, Guard, `PickupCapacityService`, dazu die eingecheckte Testbasis
+   (Abschnitt O).
 2. **Pflege** – Stationen-CRUD, Werkzeug im Tischplan-Editor, Zuordnung am Termin samt
    Pausen-Häkchen, Veröffentlichungs-Regel, Löschschutz, Duplizieren,
    Einstellung `pickup_identification`.
@@ -443,8 +449,13 @@ nur in `events-api.php`; `guest-api.php` bleibt auf dem Stand von heute.
 der erste Raum tatsächlich ausgebucht ist. Siehe Abschnitt N.
 
 **Historie beim Löschen.** `pickup_station_id` ist `nullOnDelete`, der Löschschutz greift
-nur für anstehende Termine. Wer nach der Veranstaltung löscht, nimmt alten Laufzetteln den
-Ort. Bei Tischen ist das heute genauso – bleibt gleich, bis es bei beiden stört.
+nur für anstehende Termine. Wer eine Station nach der Veranstaltung löscht, nimmt alten
+Laufzetteln und Belegen den Ort – dort steht dann ein Strich statt „Foyer links".
+
+Beim Tisch ist das heute Zeile für Zeile dasselbe: `table_id` ist ebenfalls `nullOnDelete`,
+ein gelöschter Tisch verschwindet rückwirkend aus allen alten Buchungen. Bleibt gleich, bis
+es bei beiden stört; die Alternative wäre, das Label auf der Buchung einzufrieren, so wie
+Preise eingefroren werden.
 
 **Drucker je Station.** Der Bon geht an den Team-Drucker. Ob eine Station einen eigenen
 bekommt, entscheidet der Betrieb nach dem ersten Einsatz – technisch wäre es inzwischen
@@ -507,20 +518,29 @@ Kein `tests/`, kein PHPUnit in der `composer.json`. Was bisher „Test" hieß, w
 Wegwerf-Skript gegen eine temporäre SQLite – es lief und ist danach verschwunden.
 
 Für ein Feature, das die Bestellstrecke anfasst, während Bestellungen hereinkommen, ist
-das die größte strukturelle Lücke im ganzen Vorhaben. Vorschlag: mit Etappe 1 eine kleine,
-**eingecheckte** Basis anlegen, die genau die Stellen bewacht, an denen ein Fehler Geld
-kostet – der Guard, die Kapazität je Pause, die Prüfung in `store()` (Station gehört zum
-Termin und zur Pause), die API-Regel „genau eines von beidem".
+das die größte strukturelle Lücke im ganzen Vorhaben.
 
-### Offene Frage an den Betrieb: Vorkasse oder vor Ort?
+**Entschieden am 28.08.2026: Tests kommen dazu.** Mit Etappe 1 entsteht eine kleine,
+eingecheckte Basis – `tests/`, PHPUnit in der `composer.json`, Sqlite gegen die echten
+Migrationen des Moduls. Bewacht werden die vier Stellen, an denen ein Fehler Geld kostet:
 
-Eine Bestellung wird heute auf genau drei Wegen bestätigt: durch den Mollie-Webhook, von
-Hand im Posteingang oder als Backoffice-Buchung. Ohne Online-Zahlung bleibt sie
-„ausstehend" liegen und wird weder gedruckt noch gezählt.
+1. der Guard (genau eines beim Anlegen, nicht beides beim Ändern, weder-noch bleibt speicherbar),
+2. die Kapazität je Station **und Pause**,
+3. `store()` – die Station gehört zum Termin **und** zur gewählten Pause (IDOR),
+4. die API-Regel „`table_id` oder `station_id`, genau eines".
 
-Bei Abholung liegt „vor Ort zahlen" nahe – dann bräuchte es einen vierten Weg, sonst muss
-jemand jeden Auftrag von Hand freigeben. Wird an der Station wie bisher vorab bezahlt,
-ändert sich nichts.
+Bewusst kein Anspruch auf Vollständigkeit: Diese vier tragen das Feature. Ein Testgerüst,
+das alles abdecken will, wird nicht geschrieben.
+
+### Zahlung: unverändert Vorkasse (Entscheidung 28.08.2026)
+
+Der Gast zahlt **immer vorab über Mollie**, auch an einer Abholstation. Damit bleibt es bei
+den drei Bestätigungswegen von heute, und dieses Feature fasst die Zahlung nicht an – kein
+vierter Weg, keine Kasse an der Station.
+
+Eine Buchung aus dem Backoffice ist der Sonderfall: ein eingeladener Gast. Sie wird sofort
+bestätigt und erwartet keine Zahlung. Siehe dazu Abschnitt R – das hat eine Nebenwirkung,
+die nichts mit Stationen zu tun hat.
 
 ## P. Drei Leichen im Modul
 
@@ -542,3 +562,57 @@ Stationsbuchung fehlerfrei; sie zeigen nur nichts an, bis Etappe 3 sie umstellt.
 Ein Anzeigeort ist seit `5d186eb` **weggefallen**: Die eigenständige Laufzettel-Druckseite
 (`function-sheet.blade.php`, `FunctionSheetController`) gibt es nicht mehr, gedruckt wird
 aus der Ansicht heraus. Eine Stelle weniger, die Etappe 3 anfassen muss.
+
+---
+
+## Q. Maximale Gruppengröße (Entscheidung 28.08.2026)
+
+Unabhängig von den Stationen, aber hier entschieden und deshalb hier notiert.
+
+Die größte buchbare Personenzahl wird **einstellbar**: eine Vorgabe fürs Team, je Termin
+überschreibbar, und der Shop zeigt genau diesen Wert in seiner Personen-Auswahl.
+
+- `reservation_checkout_settings.max_guest_count` – Vorgabe des Teams, Kategorie
+  „Veranstaltung & Plätze" (`partials/settings/termine.blade.php`).
+- `reservation_events.max_guest_count` – nullable, leer = Vorgabe des Teams.
+
+Der wirksame Wert geht über die API mit und ersetzt **drei** heutige Behelfe:
+
+1. `guest.count` wird in `EventController::createOrder` und im `GuestBookingController`
+   hart gegen `max:20` geprüft – eine Zahl im Code, die niemand ändern kann.
+2. `BookingCreate::maxGuests()` im Backoffice rechnet sich seinen eigenen Wert.
+3. **Der Shop zweckentfremdet die falsche Einstellung.** `CheckoutWizard` setzt
+   `maxGuests` aus `max_group_empty` – also aus `max_group_empty_table`. Das bedeutet
+   „so viele Personen dürfen einen **leeren Tisch** über seine Platzzahl hinaus belegen"
+   und nicht „so groß darf eine Gruppe sein". Wer die weiche Kapazität auf 12 stellt,
+   deckelt heute unbemerkt die Personen-Auswahl im Shop auf 12.
+
+Nach der Änderung liest der Shop den wirksamen Wert und die weiche Kapazität macht wieder
+nur das, wofür sie da ist.
+
+Fällig **vor** den Stationen, weil unabhängig und klein – und weil Punkt 3 heute schon
+falsch wirkt. Der Bestellweg im Shop ändert sich dabei nicht, nur die Obergrenze der
+Auswahl.
+
+## R. Fund: eingeladene Gäste erzeugen Umsatz, der nie eingeht
+
+Aus der Antwort „Backoffice-Buchung = eingeladener Gast" folgt etwas, das vorher niemand
+so betrachtet hat.
+
+`placeForStaff()` legt die Buchung **sofort bestätigt** an, mit `payment_method = 'onsite'`.
+Preise kommen wie überall aus der Datenbank – eine Einladung hat also einen Betrag.
+„Bestätigt" ist zugleich die Grenze, an der die Finanzen zählen
+(`Finance::UMSATZ_STATUS = [confirmed, completed]`), und dieselbe Grenze benutzt der
+DATEV-Export (`DatevBuchungsstapel::UMSATZ_STATUS`).
+
+Damit gilt heute: Ein eingeladener Gast erhöht den ausgewiesenen Umsatz, und im
+Buchungsstapel entsteht ein Satz „Geldkonto an Erlöskonto" über Geld, das nie eingegangen
+ist. Die Finanzen weisen den Anteil zwar getrennt aus (`onsite`), ziehen ihn aber nicht ab.
+
+Solange „vor Ort bezahlt" wörtlich gemeint war, stimmte das. Für eine Einladung stimmt es
+nicht.
+
+Denkbare Antwort, **nicht Teil dieses Plans**: ein eigener Zahlungsweg „eingeladen" neben
+`onsite`, der in Küche, Laufzettel und Bon voll zählt, in Umsatz und DATEV aber nicht.
+Ob das drängt, hängt daran, wie oft eingeladen wird – und ob der Steuerberater die Zahlen
+schon so bekommen hat.
