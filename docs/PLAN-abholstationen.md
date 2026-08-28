@@ -108,11 +108,22 @@ genau dann auf, wenn abends eine Station stumm verschwindet.
 
 ### `reservation_bookings` (Erweiterung)
 
-Eine Spalte: `pickup_station_id`, nullable, `nullOnDelete`.
+Drei Spalten:
+
+| Spalte | | |
+|---|---|---|
+| `pickup_station_id` | FK, nullable | `nullOnDelete` |
+| `place_kind` | string, nullable | `table` \| `station` – was es **war** |
+| `place_label` | string, nullable | wie der Ort **hieß** |
+
 Dazu Index `(event_slot_id, pickup_station_id, status)` für die Kapazitätsabfrage –
 dasselbe Muster wie der Platz-Index von `2026_07_18_000004`.
 
 `table_id` ist bereits nullable; dort ändert sich nichts.
+
+`place_kind`/`place_label` sind der eingefrorene Ort – die Begründung steht in Abschnitt S.
+Englische Spaltennamen, weil das Schema durchgängig englisch ist (`guest_name`,
+`payment_method`), auch wenn die Methoden deutsch heißen.
 
 ### Kein Modus-Flag am Termin
 
@@ -153,8 +164,17 @@ zur gewählten Pause gehören – dieselbe Strenge, mit der heute der Tisch gege
 `allowedFloorPlanIds` geprüft wird. Ohne diese Prüfung wäre die Stations-ID aus dem
 Request ein IDOR.
 
-`zielortLabel()` deckt den dritten Fall (weder noch) mit einem neutralen Strich ab.
-Die Ansichten prüfen heute bereits auf `null`.
+**`zielortLabel()` liest in dieser Reihenfolge:**
+
+1. Die lebende Beziehung – Tisch oder Station. Ein umbenannter Tisch heißt damit überall
+   gleich, auch auf alten Listen.
+2. `place_kind` + `place_label` – der eingefrorene Stand, wenn der Ort gelöscht wurde.
+3. Ein neutraler Strich, wenn beides fehlt (Buchungen von vor dieser Änderung, deren Tisch
+   schon weg ist).
+
+Die Wortwahl („Tisch 12", „Foyer links") entsteht dabei **in dieser Methode**, nicht in der
+Datenbank. Deshalb zwei Spalten statt einer fertigen Zeichenkette: Ändert sich später die
+Schreibweise, ändern sich alte Buchungen mit, statt in ihrer alten Fassung zu erstarren.
 
 ---
 
@@ -375,8 +395,8 @@ Erst lokal auf `127.0.0.1:8010` prüfen, dann committen und deployen – wie bei
 0. **Maximale Gruppengröße** (Abschnitt Q) – unabhängig von den Stationen und vorweg,
    weil der Shop heute die falsche Einstellung als Obergrenze liest.
 1. **Fundament** – Migrationen, Modelle (`PickupStation`, `EventStation`),
-   `zielort()`, Guard, `PickupCapacityService`, dazu die eingecheckte Testbasis
-   (Abschnitt O).
+   `zielort()` samt eingefrorenem Ort und Nachfüllung (Abschnitt S), Guard,
+   `PickupCapacityService`, dazu die eingecheckte Testbasis (Abschnitt O).
 2. **Pflege** – Stationen-CRUD, Werkzeug im Tischplan-Editor, Zuordnung am Termin samt
    Pausen-Häkchen, Veröffentlichungs-Regel, Löschschutz, Duplizieren,
    Einstellung `pickup_identification`.
@@ -525,7 +545,8 @@ Migrationen des Moduls. Bewacht werden die vier Stellen, an denen ein Fehler Gel
 1. der Guard (genau eines beim Anlegen, nicht beides beim Ändern, weder-noch bleibt speicherbar),
 2. die Kapazität je Station **und Pause**,
 3. `store()` – die Station gehört zum Termin **und** zur gewählten Pause (IDOR),
-4. die API-Regel „`table_id` oder `station_id`, genau eines".
+4. die API-Regel „`table_id` oder `station_id`, genau eines",
+5. der eingefrorene Ort – Tisch löschen, Label bleibt.
 
 Bewusst kein Anspruch auf Vollständigkeit: Diese vier tragen das Feature. Ein Testgerüst,
 das alles abdecken will, wird nicht geschrieben.
@@ -653,19 +674,28 @@ Veranstaltungen. Ohne Rückfrage, ohne Hinweis.
 Der Tischplan ist gegen Löschen geschützt (`anstehendeTermine()`), der einzelne Tisch
 darin nicht. Und das Umstellen einzelner Tische ist der häufigere Vorgang.
 
-### Vorschlag: das Label einfrieren
+### Entschieden am 28.08.2026: der Ort wird eingefroren
 
-Eine nullable Spalte `zielort_label` an der Buchung, beim Anlegen in `store()` gefüllt.
-Gelesen wird sie **nachrangig**: Existiert der Tisch oder die Station noch, gilt der
-aktuelle Name (ein umbenannter Tisch heißt überall gleich); ist er weg, steht dort weiter
-„Tisch 12" statt einem Strich.
+`place_kind` und `place_label` an der Buchung, beim Anlegen in `store()` gefüllt – dort,
+wo Preise und Steuersätze schon eingefroren werden. Ein Beleg soll zeigen, was galt.
 
-Das ist dieselbe Regel, nach der Preise und Steuersätze eingefroren werden – ein Beleg
-soll zeigen, was galt. Es kostet eine Spalte und eine Zeile in `store()`, es wirkt für
-Tisch **und** Station gleichermaßen, und es macht die Frage „darf man das löschen?"
+Gelesen wird **nachrangig** (Abschnitt B): Solange Tisch oder Station existieren, gilt der
+aktuelle Name; ist der Ort gelöscht, steht dort weiter „Tisch 12" statt einem Strich.
+Wirkt für Tisch und Station gleichermaßen und macht die Frage „darf ich den löschen?"
 harmlos.
 
-Alte Buchungen haben die Spalte leer und verhalten sich wie bisher.
+**Einmalige Nachfüllung in der Migration.** Alle vorhandenen Buchungen, deren Tisch noch
+existiert, bekommen Art und Namen aus dem heutigen Stand. Damit greift der Schutz auch
+rückwirkend, statt erst ab der nächsten Bestellung. In Laravel geschrieben, nicht als SQL
+mit JOIN – die Testbasis läuft auf SQLite, der Betrieb auf MySQL.
 
-**Noch nicht entschieden.** Gehört sinnvoll in Etappe 1, weil `zielortLabel()` dort ohnehin
-entsteht – aber es ist eine Erweiterung über die Stationen hinaus.
+**Was NICHT eingefroren wird: der Raumname.** Der Bon zeigt heute „Tisch 5 – Großer Saal";
+nach dem Löschen des Tisches bleibt „Tisch 5". Der Raum ist Beiwerk, nicht die Kennung des
+Ortes, und drei eingefrorene Spalten für einen Zusatz wären zu viel. Bewusst so, nicht
+übersehen.
+
+Ein Test hält es fest: Tisch löschen, Label bleibt.
+
+Damit ist der Löschschutz für die Station auch nicht mehr die einzige Verteidigung – er
+verhindert weiterhin das Löschen bei anstehenden Terminen, aber die Vergangenheit hängt
+nicht mehr daran.
