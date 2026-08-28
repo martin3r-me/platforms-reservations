@@ -1,12 +1,32 @@
+@php
+    // Nur für die Brotkrume – die Kategorien selbst stehen im Nav-Partial.
+    $kategorieLabel = [
+        'veranstaltung'      => 'Veranstaltung & Plätze',
+        'checkout'           => 'Gast-Checkout',
+        'zahlung'            => 'Zahlung',
+        'belege'             => 'Belege & Druck',
+        'benachrichtigungen' => 'Benachrichtigungen',
+        'buchhaltung'        => 'Buchhaltung',
+    ][$tab] ?? 'Einstellungen';
+@endphp
 <x-ui-page>
     <x-slot name="navbar">
         <x-ui-page-navbar title="Einstellungen" icon="heroicon-o-cog-6-tooth" />
     </x-slot>
 
+    {{-- Kategorien in der zweiten Sidebar. Elf Abschnitte untereinander waren
+         zu lang zum Suchen und zu viele für Reiter. --}}
+    <x-slot name="sidebar">
+        <x-ui-page-sidebar title="Einstellungen" width="w-64" :defaultOpen="true" side="left">
+            @include('reservation::partials.settings-nav', ['aktiv' => $tab, 'modus' => 'inline'])
+        </x-ui-page-sidebar>
+    </x-slot>
+
     <x-slot name="actionbar">
         <x-ui-page-actionbar :breadcrumbs="[
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
-            ['label' => 'Einstellungen'],
+            ['label' => 'Einstellungen', 'href' => route('reservation.settings.checkout')],
+            ['label' => $kategorieLabel],
         ]">
             {{-- Rueckmeldung in der Leiste: Die liegt ausserhalb des scrollenden
                  Bereichs und ist damit immer sichtbar. Ein Hinweis oben im Inhalt
@@ -38,479 +58,41 @@
     <x-ui-page-container width="contained">
     <div class="max-w-2xl space-y-5">
 
-    {{-- Termine --}}
-    <x-nx-card flush>
-        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-            @svg('heroicon-o-ticket', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Termine</h2>
-        </div>
-        <div class="p-5">
-            <x-nx-input-select
-                name="defaultRoomReleaseMode"
-                label="Standard-Raumfreigabe (Vorauswahl bei neuen Terminen)"
-                :options="[
-                    ['value' => 'parallel', 'label' => 'Parallel (alle Räume offen)'],
-                    ['value' => 'sequential', 'label' => 'Sequentiell (Raum 2 nach Füllung von Raum 1)'],
-                ]"
-                wire:model="defaultRoomReleaseMode"
-            />
-            <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Beim Anlegen eines Termins kann die Freigabe weiterhin einzeln geändert werden.</p>
+    {{-- Je Kategorie die zugehörigen Abschnitte. Alles bleibt EINE Komponente
+         mit EINEM Speichern: Livewire hält auch die Eigenschaften, die gerade
+         nicht gezeichnet sind, ein Wechsel verliert also keine Eingabe. Und der
+         Speichern-Knopf steht in der Aktionsleiste außerhalb des scrollenden
+         Bereichs, ist also in jeder Kategorie sichtbar. --}}
+    @switch($tab)
+        @case('checkout')
+            @include('reservation::partials.settings.anmeldefelder')
+            @include('reservation::partials.settings.shop-sprachen')
+            @include('reservation::partials.settings.checkout-texte')
+            @break
 
-            <label class="mt-4 flex items-start gap-2 text-sm text-[color:var(--nx-text)] cursor-pointer">
-                <input wire:model.live="softTableCapacity" type="checkbox" class="mt-0.5 rounded-[4px] accent-[var(--nx-accent)]" />
-                <span>
-                    Weiche Tisch-Kapazität (Großgruppen)
-                    <span class="block text-[11px] text-[color:var(--nx-muted)]">Eine Gruppe, die nicht in die freien Plätze passt, darf einen <strong>komplett leeren</strong> Tisch über die Platzzahl hinaus belegen (z. B. Stehtische). Teilbelegte Tische bleiben für zu große Gruppen gesperrt.</span>
-                </span>
-            </label>
+        @case('zahlung')
+            @include('reservation::partials.settings.mollie')
+            @include('reservation::partials.settings.selbst-storno')
+            @break
 
-            @if ($softTableCapacity)
-                <div class="mt-3 ml-6 max-w-xs">
-                    <x-nx-input-text type="number" name="maxGroupEmptyTable" label="Max. Gruppe auf leerem Tisch (leer = unbegrenzt)" size="sm" wire:model="maxGroupEmptyTable" placeholder="z. B. 12" errorKey="maxGroupEmptyTable" />
-                    <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Deckelt, wie viele Personen einen leeren Tisch über die Platzzahl hinaus belegen dürfen.</p>
-                </div>
-            @endif
-        </div>
-    </x-nx-card>
+        @case('belege')
+            @include('reservation::partials.settings.rechnungsangaben')
+            @include('reservation::partials.settings.beleg-design')
+            @include('reservation::partials.settings.bon-druck')
+            @break
 
-    {{-- Anmeldefelder (Gast-Checkout) --}}
-    <x-nx-card flush>
-        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-            @svg('heroicon-o-identification', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Anmeldefelder im Gast-Checkout</h2>
-        </div>
-        <div class="p-5 space-y-4">
-            <p class="text-[11px] text-[color:var(--nx-muted)] m-0">Steuert je Feld, ob es im Gast-Checkout abgefragt wird. <strong>Name</strong> und <strong>Personenzahl</strong> sind immer Pflicht.</p>
-            @php
-                $fieldModeOptions = [
-                    ['value' => 'required', 'label' => 'Pflicht'],
-                    ['value' => 'optional', 'label' => 'Optional'],
-                    ['value' => 'hidden',   'label' => 'Ausgeblendet'],
-                ];
-            @endphp
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <x-nx-input-select name="fieldEmail" label="E-Mail" :options="$fieldModeOptions" wire:model="fieldEmail" />
-                <x-nx-input-select name="fieldPhone" label="Rufnummer" :options="$fieldModeOptions" wire:model="fieldPhone" />
-                <x-nx-input-select name="fieldNotes" label="Anmerkungen" :options="$fieldModeOptions" wire:model="fieldNotes" />
-            </div>
-            <p class="text-[11px] text-[color:var(--nx-muted)] m-0">Hinweis: Wird die E-Mail ausgeblendet oder optional gesetzt, kann für diese Bestellung keine automatische Bestätigungs-E-Mail versendet werden.</p>
-        </div>
-    </x-nx-card>
+        @case('benachrichtigungen')
+            @include('reservation::partials.settings.bestaetigungsmail')
+            @break
 
-    {{-- Shop-Sprachen (#522) --}}
-    <x-nx-card flush>
-        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-            @svg('heroicon-o-language', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Shop-Sprachen</h2>
-        </div>
-        <div class="p-5">
-            <x-nx-input-text name="languagesCsv" label="Zusätzliche Sprachen (Codes, kommagetrennt)" size="sm" wire:model="languagesCsv" placeholder="en, fr" errorKey="languagesCsv" />
-            <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]"><strong>Deutsch</strong> ist Basis-/Standardsprache und immer aktiv. Zusätzliche Sprachen z. B. <code>en, fr</code>. Übersetzungen der Speisen, Kategorien, Allergene und Checkout-Texte pflegst du je Objekt (auch per MCP); fehlt eine Übersetzung, wird Deutsch angezeigt.</p>
+        @case('buchhaltung')
+            @include('reservation::partials.settings.datev')
+            @break
 
-            <div class="mt-4">
-                <x-nx-input-text name="guestFrontendUrl" label="Shop-Frontend-URL (für Zahlungs-Rücksprung)" size="sm" wire:model="guestFrontendUrl" placeholder="https://culinaria.pauseplus.de" errorKey="guestFrontendUrl" />
-                <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Basis-URL des externen Shops. Nach der Zahlung darf Mollie nur auf eine <code>redirect_url</code> mit <strong>diesem Origin</strong> zurückspringen (Schutz vor offenen Weiterleitungen). Ohne Eintrag wird eine vom Frontend übergebene Rücksprung-URL abgelehnt und die In-App-Seite genutzt.</p>
-            </div>
-        </div>
-    </x-nx-card>
-
-    {{-- Rechnungsangaben (Aussteller) --}}
-    <x-nx-card flush>
-        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-            @svg('heroicon-o-building-office-2', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Rechnungsangaben (Aussteller)</h2>
-        </div>
-        <div class="p-5 space-y-3">
-            <p class="text-[11px] text-[color:var(--nx-muted)] m-0">Diese Firmendaten erscheinen auf Beleg und Bewirtungsbeleg (USt-IdNr/Steuernummer nach Bedarf).</p>
-            <x-nx-input-text name="issuer.name" label="Firmenname" size="sm" wire:model="issuer.name" placeholder="Musterkatering GmbH" />
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div class="sm:col-span-2"><x-nx-input-text name="issuer.street" label="Straße & Nr." size="sm" wire:model="issuer.street" /></div>
-                <x-nx-input-text name="issuer.zip" label="PLZ" size="sm" wire:model="issuer.zip" />
-            </div>
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div class="sm:col-span-2"><x-nx-input-text name="issuer.city" label="Ort" size="sm" wire:model="issuer.city" /></div>
-                <x-nx-input-text name="issuer.country" label="Land" size="sm" wire:model="issuer.country" placeholder="DE" />
-            </div>
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <x-nx-input-text name="issuer.vat_id" label="USt-IdNr" size="sm" wire:model="issuer.vat_id" placeholder="DE123456789" />
-                <x-nx-input-text name="issuer.tax_number" label="Steuernummer" size="sm" wire:model="issuer.tax_number" />
-            </div>
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <x-nx-input-text name="issuer.register_court" label="Registergericht" size="sm" wire:model="issuer.register_court" placeholder="Amtsgericht Wuppertal" />
-                <x-nx-input-text name="issuer.register_number" label="HRB-Nr." size="sm" wire:model="issuer.register_number" placeholder="8727" />
-                <x-nx-input-text name="issuer.managing_directors" label="Vertreten durch" size="sm" wire:model="issuer.managing_directors" placeholder="Max Muster & …" />
-            </div>
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
-                <x-nx-input-text name="issuer.email" label="E-Mail" size="sm" wire:model="issuer.email" errorKey="issuer.email" />
-                <x-nx-input-text name="issuer.phone" label="Telefon" size="sm" wire:model="issuer.phone" />
-                <x-nx-input-text name="issuer.fax" label="Telefax" size="sm" wire:model="issuer.fax" />
-                <x-nx-input-text name="issuer.website" label="Website" size="sm" wire:model="issuer.website" />
-            </div>
-        </div>
-    </x-nx-card>
-
-    {{-- Beleg-Design --}}
-    <x-nx-card flush>
-        <div class="flex items-start gap-2.5 border-b border-[color:var(--nx-line)] px-4 py-3">
-            @svg('heroicon-o-document-text', 'mt-0.5 w-4 h-4 shrink-0 text-[color:var(--nx-muted)]')
-            <div class="min-w-0">
-                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Beleg-Design</h2>
-                <p class="mt-1 max-w-2xl text-xs leading-relaxed text-[color:var(--nx-muted)]">
-                    Gilt für Bestellbestätigung und Bewirtungsbeleg. Der Absenderblock kommt aus den
-                    Rechnungsangaben darüber.
-                </p>
-            </div>
-            <div class="ml-auto shrink-0">
-                <x-nx-button :href="route('reservation.settings.receipt-preview')" target="_blank">
-                    @svg('heroicon-o-eye', 'w-4 h-4')
-                    <span>Testbeleg ansehen</span>
-                </x-nx-button>
-            </div>
-        </div>
-
-        <div class="space-y-4 p-4">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {{-- Logo --}}
-                <div>
-                    <label class="block text-xs font-medium text-[color:var(--nx-text)]">Logo</label>
-                    @if ($this->setting->imageFile)
-                        <div class="mt-2 flex items-center gap-3">
-                            <img src="{{ $this->setting->imageUrl('medium_1_1') }}" alt="Logo"
-                                class="h-12 w-auto rounded border border-[color:var(--nx-line)] bg-white p-1" />
-                            <x-nx-button wire:click="removeReceiptLogo" wire:confirm="Logo entfernen?">
-                                @svg('heroicon-o-trash', 'w-4 h-4')
-                                <span>Entfernen</span>
-                            </x-nx-button>
-                        </div>
-                    @else
-                        <div class="mt-2">
-                            @include('reservation::partials.image-upload', [
-                                'model' => 'receiptLogo',
-                                'hint'  => 'PNG mit transparentem Hintergrund empfohlen · max. 4 MB.',
-                            ])
-                        </div>
-                    @endif
-                </div>
-
-                {{-- Akzentfarbe --}}
-                <div>
-                    <label class="block text-xs font-medium text-[color:var(--nx-text)]">Akzentfarbe</label>
-                    <p class="mt-1 text-xs text-[color:var(--nx-muted)]">Linien und Hervorhebungen im Beleg.</p>
-                    <div class="mt-2 flex items-center gap-2">
-                        <input type="color" wire:model.live="receiptAccentColor"
-                            value="{{ $receiptAccentColor ?: '#285567' }}"
-                            class="h-9 w-14 cursor-pointer rounded border border-[color:var(--nx-line)] bg-transparent p-0.5" />
-                        <div class="w-28">
-                            <x-nx-input-text name="receiptAccentColor" label="" size="sm"
-                                :value="$receiptAccentColor"
-                                wire:model.live="receiptAccentColor" placeholder="#285567" errorKey="receiptAccentColor" />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <x-nx-input-textarea name="receiptFooterText" label="Fußzeile (optional)" rows="3"
-                :value="$receiptFooterText"
-                wire:model="receiptFooterText" errorKey="receiptFooterText"
-                placeholder="z. B. Bankverbindung, Hinweise – erscheint unten auf dem Beleg." />
-        </div>
-    </x-nx-card>
-
-    {{-- Bestellbestätigung (E-Mail-Absender) --}}
-    <x-nx-card flush>
-        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-            @svg('heroicon-o-envelope', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Bestellbestätigung (E-Mail)</h2>
-        </div>
-        <div class="p-5">
-            @if (count($emailChannels))
-                <x-nx-input-select
-                    name="confirmationChannelId"
-                    label="Absender für Bestellbestätigungen"
-                    :options="$emailChannels"
-                    :nullable="true"
-                    nullLabel="— kein Versand —"
-                    wire:model="confirmationChannelId"
-                />
-                <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Wähle den Postmark-Absender (aus dem CRM), über den die „Vielen Dank für Ihre Bestellung"-Mail verschickt wird. <strong>Ohne Auswahl wird keine Bestätigung versendet</strong> (kein Standard-Absender).</p>
-            @else
-                <p class="text-[11px] text-[color:var(--nx-muted)] m-0">Es sind keine aktiven Postmark-E-Mail-Absender im CRM vorhanden. Lege zuerst im CRM einen E-Mail-Channel (Provider Postmark) an – dann kannst du ihn hier auswählen.</p>
-            @endif
-        </div>
-    </x-nx-card>
-
-    {{-- Selbst-Storno --}}
-    <x-nx-card flush>
-        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-            @svg('heroicon-o-arrow-uturn-left', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Stornierung durch Kunden</h2>
-        </div>
-        <div class="p-5 space-y-4">
-            <label class="flex items-start gap-2 text-sm text-[color:var(--nx-text)] cursor-pointer">
-                <input wire:model.live="cancellationEnabled" type="checkbox" class="mt-0.5 rounded-[4px] accent-[var(--nx-accent)]" />
-                <span>
-                    Selbst-Storno erlauben
-                    <span class="block text-[11px] text-[color:var(--nx-muted)]">Kunden erhalten in der Bestätigungs-Mail einen Storno-Link. Innerhalb der Frist wird die Bestellung storniert und die Zahlung über Mollie erstattet.</span>
-                </span>
-            </label>
-
-            @if ($cancellationEnabled)
-                <div class="ml-6 max-w-xs">
-                    <x-nx-input-text type="number" name="cancellationDeadlineHours" label="Frist: Stunden vor Veranstaltung" size="sm" wire:model="cancellationDeadlineHours" placeholder="z. B. 72" errorKey="cancellationDeadlineHours" />
-                    <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Bis wie viele Stunden vor dem Veranstaltungsdatum ein Storno möglich ist. Leer = keine Frist.</p>
-                </div>
-                <label class="ml-6 flex items-start gap-2 text-sm text-[color:var(--nx-text)] cursor-pointer">
-                    <input wire:model="cancellationRequiresApproval" type="checkbox" class="mt-0.5 rounded-[4px] accent-[var(--nx-accent)]" />
-                    <span>
-                        Storno erst nach Freigabe
-                        <span class="block text-[11px] text-[color:var(--nx-muted)]">Standard: aus – der Klick storniert sofort und löst die Rückerstattung aus. Aktiv: der Kunde fragt nur an, das Team gibt frei (dann erst Rückerstattung).</span>
-                    </span>
-                </label>
-            @endif
-        </div>
-    </x-nx-card>
-
-    {{-- DATEV: Angaben fuer den Buchungsstapel. Sie stehen hier und nicht im Code,
-         weil Kontonummern je Mandant verschieden sind und vom Kontenrahmen
-         abhaengen – SKR03 bucht Erloese auf 8400/8300, SKR04 auf 4400/4300. --}}
-    <x-nx-card flush>
-        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-            @svg('heroicon-o-calculator', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">DATEV-Export</h2>
-            <span class="ml-auto text-[11px] text-[color:var(--nx-muted)]">für den Buchungsstapel im Export</span>
-        </div>
-        <div class="space-y-4 p-5">
-            <p class="m-0 text-[11px] text-[color:var(--nx-muted)]">
-                Die Angaben kommen aus der Kanzlei. Ohne sie bleibt das Format „DATEV" im Export gesperrt.
-            </p>
-
-            <div class="grid gap-4 sm:grid-cols-2">
-                <x-nx-input-text name="datevBerater" label="Beraternummer" wire:model="datevBerater" placeholder="z.B. 1234567" />
-                <x-nx-input-text name="datevMandant" label="Mandantennummer" wire:model="datevMandant" placeholder="z.B. 12345" />
-            </div>
-
-            <div class="grid gap-4 sm:grid-cols-2">
-                <x-nx-input-select
-                    name="datevSachkontenlaenge"
-                    label="Sachkontenlänge"
-                    :options="[['value' => 4, 'label' => '4-stellig'], ['value' => 5, 'label' => '5-stellig']]"
-                    wire:model="datevSachkontenlaenge"
-                />
-                {{-- Auswahl statt Textfeld: Ein Wirtschaftsjahr beginnt am
-                     Monatsersten, und damit ist die Frage nach dem Format weg.
-                     Das Jahr steht bewusst nicht dabei – es ergibt sich beim
-                     Export aus dem Zeitraum. --}}
-                <x-nx-input-select
-                    name="datevWjBeginn"
-                    label="Beginn Wirtschaftsjahr"
-                    :options="collect(range(1, 12))->map(fn ($m) => [
-                        'value' => str_pad((string) $m, 2, '0', STR_PAD_LEFT) . '-01',
-                        'label' => '1. ' . \Illuminate\Support\Carbon::create(2000, $m, 1)->locale('de')->isoFormat('MMMM'),
-                    ])->all()"
-                    wire:model="datevWjBeginn"
-                />
-            </div>
-
-            <div class="grid gap-4 sm:grid-cols-3">
-                <x-nx-input-text name="datevErloes7" label="Erlöskonto 7 %" wire:model="datevErloes7" placeholder="8300" />
-                <x-nx-input-text name="datevErloes19" label="Erlöskonto 19 %" wire:model="datevErloes19" placeholder="8400" />
-                <x-nx-input-text name="datevGeldkonto" label="Gegenkonto (Zahlungseingang)" wire:model="datevGeldkonto" placeholder="1200" />
-            </div>
-
-            <x-nx-input-select
-                name="datevModus"
-                label="Buchungsweise"
-                :options="[
-                    ['value' => 'einzel', 'label' => 'Je Bestellung einzeln'],
-                    ['value' => 'tagessumme', 'label' => 'Tagessumme je Steuersatz'],
-                ]"
-                wire:model="datevModus"
-            />
-            <p class="m-0 text-[11px] text-[color:var(--nx-muted)]">
-                An einem Veranstaltungsabend kommen schnell hunderte Bestellungen zusammen – viele Kanzleien
-                wollen dann eine Summe pro Tag mit dem Veranstaltungsnamen als Buchungstext.
-            </p>
-        </div>
-    </x-nx-card>
-
-    {{-- Bon-Druck: neue Auftraege automatisch drucken. Der Druckknopf je Zeile
-         in der Buchungsliste bleibt davon unberuehrt. --}}
-    @if ($this->printingAvailable)
-        <x-nx-card flush>
-            <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-                @svg('heroicon-o-printer', 'w-4 h-4 text-[color:var(--nx-muted)]')
-                <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Bon-Druck</h2>
-            </div>
-            <div class="p-5">
-                <label class="flex items-start gap-2 text-sm text-[color:var(--nx-text)] cursor-pointer">
-                    <input wire:model.live="autoPrintEnabled" type="checkbox" class="mt-0.5 rounded-[4px] accent-[var(--nx-accent)]" />
-                    <span>
-                        Neue Aufträge automatisch drucken
-                        <span class="block text-[11px] text-[color:var(--nx-muted)]">Sobald eine Buchung bestätigt ist – nach der Zahlung ebenso wie bei manueller Bestätigung –, wird der Bon gedruckt. Einzelne Aufträge lassen sich weiterhin über das Druckersymbol in der Buchungsliste drucken.</span>
-                    </span>
-                </label>
-
-                @if ($autoPrintEnabled)
-                    <div class="mt-4 ml-6">
-                        <div class="mb-2 text-[11px] uppercase tracking-wide text-[color:var(--nx-muted)]">Ziel</div>
-                        <div class="flex flex-wrap gap-4">
-                            <label class="flex items-center gap-2 text-sm text-[color:var(--nx-text)] cursor-pointer">
-                                <input wire:model.live="autoPrintTarget" type="radio" value="printer" class="accent-[var(--nx-accent)]" />
-                                <span>Einzelner Drucker</span>
-                            </label>
-                            <label class="flex items-center gap-2 text-sm text-[color:var(--nx-text)] cursor-pointer">
-                                <input wire:model.live="autoPrintTarget" type="radio" value="group" class="accent-[var(--nx-accent)]" />
-                                <span>Druckergruppe</span>
-                            </label>
-                        </div>
-
-                        <div class="mt-3 max-w-sm">
-                            @if ($autoPrintTarget === 'printer')
-                                <x-nx-input-select
-                                    name="autoPrintPrinterId"
-                                    label="Drucker"
-                                    size="sm"
-                                    :options="$this->printers"
-                                    optionValue="id"
-                                    optionLabel="name"
-                                    :nullable="true"
-                                    nullLabel="— bitte wählen —"
-                                    wire:model.live="autoPrintPrinterId"
-                                    errorKey="autoPrintPrinterId"
-                                />
-                                @if ($this->printers->isEmpty())
-                                    <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Noch kein Drucker eingerichtet.</p>
-                                @endif
-                            @else
-                                <x-nx-input-select
-                                    name="autoPrintPrinterGroupId"
-                                    label="Druckergruppe"
-                                    size="sm"
-                                    :options="$this->printerGroups"
-                                    optionValue="id"
-                                    optionLabel="name"
-                                    :nullable="true"
-                                    nullLabel="— bitte wählen —"
-                                    wire:model.live="autoPrintPrinterGroupId"
-                                    errorKey="autoPrintPrinterGroupId"
-                                />
-                                @if ($this->printerGroups->isEmpty())
-                                    <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Noch keine Druckergruppe eingerichtet.</p>
-                                @endif
-                            @endif
-                        </div>
-
-                        {{-- Ohne Ziel ginge der Druck ins Leere – lieber vorher sagen.
-                             Geprueft wird nur das gerade gewaehlte Ziel: Beim Umschalten
-                             wird das andere ohnehin verworfen. --}}
-                        @if (($autoPrintTarget === 'printer' && ! $autoPrintPrinterId)
-                            || ($autoPrintTarget === 'group' && ! $autoPrintPrinterGroupId))
-                            <div class="mt-3">
-                                <x-nx-callout variant="warning">
-                                    Ohne ausgewähltes Ziel wird nichts gedruckt.
-                                </x-nx-callout>
-                            </div>
-                        @endif
-                    </div>
-                @endif
-            </div>
-        </x-nx-card>
-    @endif
-
-    {{-- Zahlung (Mollie) --}}
-    <x-nx-card flush>
-        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-            @svg('heroicon-o-credit-card', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Zahlung (Mollie)</h2>
-            @if ($payReady)
-                <span class="ml-auto inline-flex items-center gap-1 rounded-full bg-[rgba(47,158,68,.12)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--nx-success)]">
-                    @svg('heroicon-o-check', 'w-3.5 h-3.5') aktiv ({{ $payMode === 'live' ? 'Live' : 'Test' }})
-                </span>
-            @else
-                <span class="ml-auto text-[11px] text-[color:var(--nx-muted)]">nicht aktiv – Checkout im Demo-Modus</span>
-            @endif
-        </div>
-        <div class="p-5 space-y-4">
-            <label class="flex items-center gap-2 text-sm text-[color:var(--nx-text)] cursor-pointer">
-                <input wire:model="payEnabled" type="checkbox" class="rounded-[4px] accent-[var(--nx-accent)]" />
-                Mollie-Zahlungen aktivieren
-            </label>
-
-            <x-nx-input-select
-                name="payMode"
-                label="Modus"
-                :options="[
-                    ['value' => 'test', 'label' => 'Test (Sandbox)'],
-                    ['value' => 'live', 'label' => 'Live (echte Zahlungen)'],
-                ]"
-                wire:model="payMode"
-            />
-
-            <x-nx-input-text
-                type="password"
-                name="testApiKey"
-                label="Test-API-Key"
-                wire:model="testApiKey"
-                :placeholder="$testKeySet ? '•••••••• (gespeichert – zum Ändern neuen Key eingeben)' : 'test_...'"
-                autocomplete="off"
-            />
-            <x-nx-input-text
-                type="password"
-                name="liveApiKey"
-                label="Live-API-Key"
-                wire:model="liveApiKey"
-                :placeholder="$liveKeySet ? '•••••••• (gespeichert – zum Ändern neuen Key eingeben)' : 'live_...'"
-                autocomplete="off"
-            />
-
-            <div>
-                <p class="m-0 text-[12px] font-medium text-[color:var(--nx-muted)]">Webhook-URL (im Mollie-Dashboard)</p>
-                <code class="mt-1 block break-all rounded-[8px] bg-[color:var(--nx-bg)] px-3 py-2 text-xs text-[color:var(--nx-text)]">{{ $webhookUrl }}</code>
-                <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Muss öffentlich erreichbar sein (auf localhost erhält Mollie keinen Callback).</p>
-            </div>
-        </div>
-    </x-nx-card>
-
-    {{-- Gast-Checkout --}}
-    <x-nx-card flush>
-        <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] px-4 py-3">
-            @svg('heroicon-o-document-text', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Texte im Gast-Checkout</h2>
-        </div>
-        <div class="p-5 space-y-5">
-            <div>
-                <x-nx-input-textarea
-                    name="ageCheckText"
-                    label="18+-Hinweis (erscheint nur bei alkoholischen Artikeln)"
-                    wire:model="ageCheckText"
-                    rows="3"
-                    :placeholder="$defaultAge"
-                />
-                <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Leer lassen = Standardtext wird verwendet.</p>
-            </div>
-
-            <div>
-                <x-nx-input-textarea
-                    name="legalText"
-                    label="Pflicht-Bestätigung (Checkbox vor dem Bezahlen)"
-                    wire:model="legalText"
-                    rows="3"
-                    :placeholder="$defaultLegal"
-                />
-                <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Leer lassen = Standardtext wird verwendet.</p>
-            </div>
-
-            <x-nx-input-text
-                type="url"
-                name="privacyUrl"
-                label="Link zur Datenschutzerklärung (optional)"
-                wire:model="privacyUrl"
-                placeholder="https://…"
-            />
-        </div>
-    </x-nx-card>
+        @default
+            @include('reservation::partials.settings.termine')
+    @endswitch
 
     </div>
-
     </x-ui-page-container>
 </x-ui-page>

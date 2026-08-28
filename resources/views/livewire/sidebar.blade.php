@@ -71,18 +71,15 @@
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
 
+    {{-- Ein Eintrag statt drei. Allergene und Standzeit-Klassen sind
+         Einstellungen wie die übrigen auch; sie stehen jetzt in der zweiten
+         Sidebar der Einstellungsseite, zusammen mit den restlichen Kategorien.
+         Hier links wurde die Liste sonst länger als die Arbeitsbereiche
+         darüber. --}}
     <x-ui-sidebar-list label="Einstellungen">
         <x-ui-sidebar-item :href="route('reservation.settings.checkout')">
             @svg('heroicon-o-cog-6-tooth', 'w-4 h-4 text-[color:var(--nx-muted)]')
             <span class="ml-2 text-sm">Einstellungen</span>
-        </x-ui-sidebar-item>
-        <x-ui-sidebar-item :href="route('reservation.settings.declarations')">
-            @svg('heroicon-o-beaker', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <span class="ml-2 text-sm">Allergene &amp; Zusatzstoffe</span>
-        </x-ui-sidebar-item>
-        <x-ui-sidebar-item :href="route('reservation.settings.holding-classes')">
-            @svg('heroicon-o-fire', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <span class="ml-2 text-sm">Standzeit-Klassen</span>
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
     </div>

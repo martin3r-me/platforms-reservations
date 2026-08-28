@@ -3,9 +3,19 @@
         <x-ui-page-navbar title="Standzeit-Klassen" icon="heroicon-o-fire" />
     </x-slot>
 
+    {{-- Dieselbe Kategorien-Sidebar wie in den Einstellungen: Diese Seite ist
+         eine davon, sie hat nur ihr eigenes Speichern und deshalb eine eigene
+         Route. --}}
+    <x-slot name="sidebar">
+        <x-ui-page-sidebar title="Einstellungen" width="w-64" :defaultOpen="true" side="left">
+            @include('reservation::partials.settings-nav', ['aktiv' => 'standzeiten', 'modus' => 'link'])
+        </x-ui-page-sidebar>
+    </x-slot>
+
     <x-slot name="actionbar">
         <x-ui-page-actionbar :breadcrumbs="[
             ['label' => 'PausePlus', 'href' => route('reservation.dashboard'), 'icon' => 'calendar-days'],
+            ['label' => 'Einstellungen', 'href' => route('reservation.settings.checkout')],
             ['label' => 'Standzeit-Klassen'],
         ]">
             <x-nx-button wire:click="loadStandard"

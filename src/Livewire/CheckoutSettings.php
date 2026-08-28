@@ -3,6 +3,7 @@
 namespace Platform\Reservation\Livewire;
 
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Platform\Reservation\Models\CheckoutSetting;
@@ -17,6 +18,22 @@ use Platform\Reservation\Support\PrintingBridge;
 class CheckoutSettings extends Component
 {
     use WithFileUploads;
+
+    /**
+     * Offene Kategorie in der zweiten Sidebar.
+     *
+     * In der URL, damit sich von anderer Stelle direkt hierher verlinken lässt
+     * – etwa vom Bon-Dialog zu „Belege & Druck“, statt „geh in die
+     * Einstellungen und scroll nach unten“.
+     *
+     * Der Wechsel ist bewusst nur ein $set und kein Seitenwechsel: Alle
+     * Abschnitte gehören zu EINEM save(), und Livewire hält auch die
+     * Eigenschaften, die gerade nicht gezeichnet sind. Wer in „Zahlung“ etwas
+     * ändert und zu „Buchhaltung“ wechselt, verliert also nichts – bei einer
+     * echten Navigation wäre die Eingabe weg.
+     */
+    #[Url]
+    public string $tab = 'veranstaltung';
 
     // Beleg-Branding (Logo, Akzentfarbe, Fußzeile)
     public string $receiptAccentColor = '';
