@@ -27,6 +27,21 @@
             wire:model="payMode"
         />
 
+        {{-- Für neue Kunden: Ohne diesen Hinweis sucht man die Schlüssel im
+             Mollie-Dashboard erst einmal eine Weile. Der Pfad steht ausgeschrieben
+             daneben, damit er auch dann noch hilft, wenn Mollie die Adresse ändert. --}}
+        <x-nx-callout variant="info" title="Woher kommen die Schlüssel?">
+            Im Mollie-Dashboard unter <strong>Entwickler → API-Keys</strong>. Dort stehen zwei:
+            der <code>test_…</code> für Probebestellungen ohne echtes Geld und der
+            <code>live_…</code> für den Betrieb. Der Live-Schlüssel funktioniert erst, wenn
+            Mollie das Konto geprüft und freigegeben hat.
+            <a href="https://my.mollie.com/dashboard/developers/api-keys" target="_blank" rel="noopener noreferrer"
+                class="mt-1 inline-flex items-center gap-1 font-medium text-[color:var(--nx-accent)] hover:underline">
+                <span>Zum Mollie-Dashboard</span>
+                @svg('heroicon-o-arrow-top-right-on-square', 'w-3.5 h-3.5')
+            </a>
+        </x-nx-callout>
+
         <x-nx-input-text
             type="password"
             name="testApiKey"
@@ -44,10 +59,59 @@
             autocomplete="off"
         />
 
-        <div>
-            <p class="m-0 text-[12px] font-medium text-[color:var(--nx-muted)]">Webhook-URL (im Mollie-Dashboard)</p>
-            <code class="mt-1 block break-all rounded-[8px] bg-[color:var(--nx-bg)] px-3 py-2 text-xs text-[color:var(--nx-text)]">{{ $webhookUrl }}</code>
-            <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Muss öffentlich erreichbar sein (auf localhost erhält Mollie keinen Callback).</p>
+        {{-- Der Titel hiess frueher "im Mollie-Dashboard". Das war falsch und
+             schickte neue Kunden auf die Suche nach einer Einstellung, die es
+             nicht braucht: Die Adresse geht bei JEDER Zahlung mit im Aufruf mit
+             (MolliePaymentService, Feld webhookUrl). Zu sehen ist sie trotzdem
+             wert - fuer eine Rueckfrage beim Mollie-Support oder wenn geprueft
+             wird, ob die Rueckmeldung ankommt. --}}
+        <div x-data="{
+            kopiert: false,
+            kopieren() {
+                const text = this.$refs.url.textContent.trim();
+                const fertig = () => {
+                    this.kopiert = true;
+                    setTimeout(() => this.kopiert = false, 2000);
+                };
+
+                /* Die Zwischenablage gibt es nur auf sicheren Verbindungen. Auf
+                   http oder wenn der Browser sie verweigert der alte Weg ueber
+                   ein kurz eingehaengtes Feld - sonst passiert beim Klick
+                   scheinbar nichts. */
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(fertig).catch(() => this.ersatzweg(text, fertig));
+                } else {
+                    this.ersatzweg(text, fertig);
+                }
+            },
+            ersatzweg(text, fertig) {
+                const feld = document.createElement('textarea');
+                feld.value = text;
+                feld.setAttribute('readonly', '');
+                feld.style.position = 'fixed';
+                feld.style.opacity = '0';
+                document.body.appendChild(feld);
+                feld.select();
+                try { document.execCommand('copy'); fertig(); } finally { feld.remove(); }
+            },
+        }">
+            <p class="m-0 text-[12px] font-medium text-[color:var(--nx-muted)]">Webhook-URL (Rückmeldung von Mollie)</p>
+
+            <div class="mt-1 flex items-start gap-2">
+                <code x-ref="url" class="min-w-0 flex-1 break-all rounded-[8px] bg-[color:var(--nx-bg)] px-3 py-2 text-xs text-[color:var(--nx-text)]">{{ $webhookUrl }}</code>
+
+                <x-nx-button icon variant="ghost" type="button" @click="kopieren()"
+                    ::title="kopiert ? 'Kopiert' : 'In die Zwischenablage kopieren'">
+                    <span x-show="! kopiert">@svg('heroicon-o-clipboard-document', 'w-4 h-4')</span>
+                    <span x-show="kopiert" x-cloak style="color: var(--nx-success);">@svg('heroicon-o-check', 'w-4 h-4')</span>
+                </x-nx-button>
+            </div>
+
+            <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">
+                Wird bei jeder Zahlung automatisch mitgeschickt – im Mollie-Dashboard ist
+                dafür nichts einzutragen. Sie muss aber öffentlich erreichbar sein; auf
+                localhost erhält Mollie keinen Callback.
+            </p>
         </div>
     </div>
 </x-nx-card>
