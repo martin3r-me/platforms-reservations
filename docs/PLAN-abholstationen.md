@@ -239,6 +239,29 @@ Raum – künftig mindestens einen Raum **oder** eine Station.
 
 Das Duplizieren eines Termins nimmt Stationen samt Pausen-Zuordnung mit.
 
+**Löschschutz an zwei Stellen.** Die Station selbst ist nicht löschbar, solange sie in einem
+anstehenden Termin hängt (Vorbild `FloorPlanInUseException`). Und `Venue::deleting` läuft
+heute nur über `floorPlans` – künftig auch über die Stationen, sonst nimmt ein gelöschtes
+Venue eine Abholstelle mit, die morgen gebraucht wird.
+
+**MCP-Tools – gleich mit, nicht nachgereicht** (Entscheidung 28.08.2026). Räume haben fünf,
+Stationen bekommen dieselbe Reihe:
+
+- `PickupStationList/Create/Update/Delete` – die Stationen eines Venues pflegen.
+- `EventStationList/Create/Delete` und ein **BulkCreate** – Zuordnung zu Terminen,
+  einschließlich der Pausen. Das Bulk-Tool ist das eigentlich wichtige: 54 Termine sind
+  über die Tools entstanden, und eine Station, die man 54-mal von Hand zuordnen muss,
+  wird nicht benutzt.
+
+`EventRoomBulkCreateTool` ist auch fachlich das Vorbild: Es entfernt **keinen** Raum, auf
+dessen Tischen der Termin Buchungen hat – außer mit `force`. Für Stationen gilt dasselbe,
+und eine Stufe feiner: Auch eine einzelne **Pause** darf einer Station nicht weggenommen
+werden, wenn für genau diese Pause schon Buchungen darauf zeigen. Sonst zeigt eine Buchung
+auf einen Ort, den es für sie nicht mehr gibt.
+
+`ReservationOverviewTool` erklärt dem Assistenten die Begriffe des Moduls – Termine,
+Pausen, Verkaufslisten, Buchungen, Orders. Die Abholstation gehört dazu.
+
 **Manuelle Buchung** (`BookingCreate`) – der Tisch-Schritt wird zum Ort-Schritt.
 Bietet der Termin nur Stationen, entfällt der Saalplan.
 
@@ -472,8 +495,8 @@ widerspricht die Website dem Bestellweg.
    `zielort()` samt eingefrorenem Ort und Nachfüllung (Abschnitt S), Guard,
    `PickupCapacityService`, dazu die eingecheckte Testbasis (Abschnitt O).
 2. **Pflege** – Stationen-CRUD, Werkzeug im Tischplan-Editor, Zuordnung am Termin samt
-   Pausen-Häkchen, Veröffentlichungs-Regel, Löschschutz, Duplizieren,
-   Einstellung `pickup_identification`.
+   Pausen-Häkchen, Veröffentlichungs-Regel, Löschschutz (Station **und** Venue),
+   MCP-Tools samt Bulk-Zuordnung, Duplizieren, Einstellung `pickup_identification`.
 3. **Betrieb** – Laufzettel, Küche, Bon, Beleg-PDF, Mails, Listen, Export über `zielortLabel()`;
    Codevergabe und -anzeige.
 4. **Gast-API + manuelle Buchung** – `floor-plan` um `stations` erweitert,
@@ -568,6 +591,28 @@ Vorbild gar nicht gibt.
 stehen. Die Einstellung ist dort also nicht nur vorhanden, sondern bewusst gesetzt – und
 wirkt trotzdem nirgends. Wer davon ausgeht, dass der zweite Raum erst öffnet, wenn der
 erste voll ist, irrt sich heute.
+
+**Und sie wird gebraucht** (28.08.2026): Die sequentielle Freigabe soll bald bei vielen
+Terminen eingestellt sein. Damit ist das kein Altlast-Fund mehr, sondern eine Lücke mit
+Termin. Sie gehört **vor** die ersten Termine, die sich darauf verlassen – und sie ist
+nicht Teil dieses Plans, sondern ein eigenes, kleines Stück Arbeit.
+
+Was dazu fehlt, ist überschaubar, weil die Rechnung schon dasteht:
+
+1. `EventController::floorPlan` fragt `RoomReleaseService::openRooms()` und markiert jeden
+   Raum je Pause als offen oder geschlossen. **Nicht weglassen** – ein Raum, der einfach
+   verschwindet, sieht aus wie ein Fehler. „Öffnet, sobald Raum X voll ist" erklärt sich
+   selbst.
+2. Der Shop zeigt geschlossene Räume gesperrt an.
+3. `GuestOrderService::store()` weist einen Tisch aus einem geschlossenen Raum ab – sonst
+   ist die Freigabe nur Anzeige. Eigener Fehlercode, wie die übrigen.
+4. Das Backoffice bleibt außen vor: Wer telefonisch bucht, entscheidet selbst.
+
+Offen ist dabei eine fachliche Frage, die der Betrieb beantworten muss: Ob „voll" wirklich
+100 % heißt. `fill_threshold_percent` steht auf 100 – der zweite Raum öffnet also erst,
+wenn im ersten kein einziger Platz mehr frei ist. Ein Rest von zwei Plätzen an einem
+Sechsertisch blockiert dann eine Vierergruppe komplett. Ein Schwellwert von 85 oder 90 ist
+in der Praxis oft das, was gemeint ist.
 
 ---
 
@@ -723,8 +768,11 @@ Denkbare Antwort, **nicht Teil dieses Plans**: ein eigener Zahlungsweg „eingel
 `onsite`, der in Küche, Laufzettel und Bon voll zählt, in Umsatz und DATEV aber nicht.
 Seit die Abgrenzung an einer Stelle steht, wäre das auch nur noch ein Eingriff statt vier –
 allerdings kein Status, sondern ein Zahlungsweg, die Abgrenzung müsste also beides ansehen.
-Ob das drängt, hängt daran, wie oft eingeladen wird – und ob der Steuerberater die Zahlen
-schon so bekommen hat.
+**Nachgefragt am 28.08.2026: „sehr sehr selten".** Damit ist die Verzerrung klein und die
+Sache nicht dringend. Notiert bleibt sie trotzdem – nicht wegen der Höhe, sondern weil
+niemand rät, wenn die Frage einmal gestellt wird. Wer den Betrag braucht, findet ihn:
+Buchungen mit `payment_method = 'onsite'` im Zeitraum, die Finanzen weisen ihn ohnehin
+getrennt aus.
 
 ---
 
@@ -793,6 +841,9 @@ nicht mehr daran.
 ## T. Nachträge aus dem letzten Durchgang (28.08.2026)
 
 Sieben Kleinigkeiten, die in keinem der bisherigen Abschnitte standen.
+
+*(Die ersten beiden sind am 28.08.2026 entschieden und in Abschnitt D bzw. Etappe 2
+eingearbeitet – sie stehen hier nur noch der Vollständigkeit halber.)*
 
 **Der Venue-Löschschutz kennt nur Räume.** `Venue::deleting` läuft über `floorPlans` und
 prüft je Raum die anstehenden Termine. Stationen hängen künftig ebenfalls am Venue – ohne
