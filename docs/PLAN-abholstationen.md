@@ -472,8 +472,8 @@ nur in `events-api.php`; `guest-api.php` bleibt auf dem Stand von heute.
 **Sequentielle Raumfreigabe.** Vertagt (Entscheidung 26.08.2026) – wird angesehen, wenn
 der erste Raum tatsächlich ausgebucht ist. Siehe Abschnitt N.
 
-**Historie beim Löschen.** Siehe Abschnitt S – dort ausführlich, weil die Nachfrage vom
-28.08.2026 gezeigt hat, dass es heute schon ein Loch gibt.
+**Historie beim Löschen.** Nicht mehr offen – entschieden am 28.08.2026, siehe Abschnitt S:
+Der Ort wird an der Buchung eingefroren.
 
 **Drucker je Station.** Der Bon geht an den Team-Drucker. Ob eine Station einen eigenen
 bekommt, entscheidet der Betrieb nach dem ersten Einsatz – technisch wäre es inzwischen
@@ -489,6 +489,11 @@ Räume.
 
 Für die Stationen heißt das vor allem: **keine Freigabe-Logik nachbauen**, die es beim
 Vorbild gar nicht gibt.
+
+**Nachgesehen am 28.08.2026:** Culinaria hat `default_room_release_mode` auf `sequential`
+stehen. Die Einstellung ist dort also nicht nur vorhanden, sondern bewusst gesetzt – und
+wirkt trotzdem nirgends. Wer davon ausgeht, dass der zweite Raum erst öffnet, wenn der
+erste voll ist, irrt sich heute.
 
 ---
 
@@ -600,18 +605,27 @@ Der wirksame Wert geht über die API mit und ersetzt **drei** heutige Behelfe:
 1. `guest.count` wird in `EventController::createOrder` und im `GuestBookingController`
    hart gegen `max:20` geprüft – eine Zahl im Code, die niemand ändern kann.
 2. `BookingCreate::maxGuests()` im Backoffice rechnet sich seinen eigenen Wert.
-3. **Der Shop zweckentfremdet die falsche Einstellung.** `CheckoutWizard` setzt
-   `maxGuests` aus `max_group_empty` – also aus `max_group_empty_table`. Das bedeutet
-   „so viele Personen dürfen einen **leeren Tisch** über seine Platzzahl hinaus belegen"
-   und nicht „so groß darf eine Gruppe sein". Wer die weiche Kapazität auf 12 stellt,
-   deckelt heute unbemerkt die Personen-Auswahl im Shop auf 12.
+3. **Der Shop leitet die Obergrenze aus der weichen Kapazität ab.** `CheckoutWizard`
+   setzt `maxGuests` aus `max_group_empty` – also aus `max_group_empty_table`. Das ist
+   nicht willkürlich: Ist die weiche Kapazität an, kann eine Gruppe entweder in die freien
+   Plätze eines Tisches passen oder über die Sonderregel auf einen leeren – die größte
+   überhaupt platzierbare Gruppe ist also das Maximum aus beidem.
 
-Nach der Änderung liest der Shop den wirksamen Wert und die weiche Kapazität macht wieder
-nur das, wofür sie da ist.
+   Genau daran hakt es: Der Shop nimmt nur den zweiten Teil. Ist ein Tisch größer als die
+   weiche Grenze, deckelt er zu tief; ist die weiche Kapazität aus, hat die Zahl gar keine
+   Bedeutung mehr, wird aber weiter gelesen.
 
-Fällig **vor** den Stationen, weil unabhängig und klein – und weil Punkt 3 heute schon
-falsch wirkt. Der Bestellweg im Shop ändert sich dabei nicht, nur die Obergrenze der
-Auswahl.
+**Nachgemessen am 28.08.2026 bei Culinaria:** `max_group_empty_table` = 8, weiche
+Kapazität an, größter Tisch in allen drei Plänen (Rossini, Gartenhalle, Offenbach Saal)
+= 6. Die Rechnung des Shops liefert dort also **derzeit das richtige Ergebnis** – acht.
+Falsch wird sie in dem Moment, in dem ein Tisch mit mehr als acht Plätzen entsteht oder
+jemand die weiche Kapazität abschaltet.
+
+Also kein Feuer, sondern eine Zahl, die aus Versehen stimmt. Die eigene Einstellung sagt,
+was gemeint ist, statt es aus einer verwandten Größe zu erraten.
+
+Fällig **vor** den Stationen, weil unabhängig und klein. Der Bestellweg im Shop ändert sich
+dabei nicht, nur woher die Obergrenze kommt.
 
 ## R. Fund: eingeladene Gäste erzeugen Umsatz, der nie eingeht
 
