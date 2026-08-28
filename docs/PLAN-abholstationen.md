@@ -599,9 +599,9 @@ so betrachtet hat.
 
 `placeForStaff()` legt die Buchung **sofort bestätigt** an, mit `payment_method = 'onsite'`.
 Preise kommen wie überall aus der Datenbank – eine Einladung hat also einen Betrag.
-„Bestätigt" ist zugleich die Grenze, an der die Finanzen zählen
-(`Finance::UMSATZ_STATUS = [confirmed, completed]`), und dieselbe Grenze benutzt der
-DATEV-Export (`DatevBuchungsstapel::UMSATZ_STATUS`).
+„Bestätigt" liegt zugleich innerhalb der Grenze, an der gezählt wird – seit `9615c48`
+steht die an einer Stelle (`CheckoutSetting::umsatzStatus()`) und gilt für Finanzen,
+Artikel-Auswertung, Export und DATEV gemeinsam.
 
 Damit gilt heute: Ein eingeladener Gast erhöht den ausgewiesenen Umsatz, und im
 Buchungsstapel entsteht ein Satz „Geldkonto an Erlöskonto" über Geld, das nie eingegangen
@@ -612,6 +612,8 @@ nicht.
 
 Denkbare Antwort, **nicht Teil dieses Plans**: ein eigener Zahlungsweg „eingeladen" neben
 `onsite`, der in Küche, Laufzettel und Bon voll zählt, in Umsatz und DATEV aber nicht.
+Seit die Abgrenzung an einer Stelle steht, wäre das auch nur noch ein Eingriff statt vier –
+allerdings kein Status, sondern ein Zahlungsweg, die Abgrenzung müsste also beides ansehen.
 Ob das drängt, hängt daran, wie oft eingeladen wird – und ob der Steuerberater die Zahlen
 schon so bekommen hat.
 
