@@ -146,6 +146,22 @@ class ProductStats extends Component
         return (int) (Auth::user()?->current_team_id ?? 0);
     }
 
+    /**
+     * Abgrenzung aus den Einstellungen – dieselbe wie in den Finanzen.
+     *
+     * Einmal je Request gemerkt: positionen() laeuft fuer Zeitraum und
+     * Vorzeitraum und noch ein paar Mal daneben.
+     *
+     * @return array<int, string>
+     */
+    protected function umsatzStatus(): array
+    {
+        return $this->umsatzStatusCache ??= CheckoutSetting::forTeam($this->teamId())->umsatzStatus();
+    }
+
+    /** @var array<int, string>|null */
+    private ?array $umsatzStatusCache = null;
+
     /** Positionen bezahlter Buchungen im Zeitraum. */
     protected function positionen(?string $von = null, ?string $bis = null)
     {
@@ -155,7 +171,7 @@ class ProductStats extends Component
         return DB::table('reservation_booking_items as bi')
             ->join('reservation_bookings as b', 'b.id', '=', 'bi.booking_id')
             ->where('b.team_id', $this->teamId())
-            ->whereIn('b.status', CheckoutSetting::forTeam($this->teamId())->umsatzStatus())
+            ->whereIn('b.status', $this->umsatzStatus())
             ->when($this->eventId, fn ($q) => $q->where('b.event_id', $this->eventId))
             ->when($von, fn ($q) => $q->whereDate('b.date', '>=', $von))
             ->when($bis, fn ($q) => $q->whereDate('b.date', '<=', $bis));

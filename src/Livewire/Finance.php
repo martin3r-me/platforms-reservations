@@ -78,8 +78,13 @@ class Finance extends Component
      */
     protected function umsatzStatus(): array
     {
-        return CheckoutSetting::forTeam($this->getTeamId())->umsatzStatus();
+        // Einmal je Request gemerkt: itemsQuery() steckt in einem halben
+        // Dutzend Auswertungen, und jede holte sonst die Einstellungen neu.
+        return $this->umsatzStatusCache ??= CheckoutSetting::forTeam($this->getTeamId())->umsatzStatus();
     }
+
+    /** @var array<int, string>|null */
+    private ?array $umsatzStatusCache = null;
 
     /** Basis-Query: Positionen bezahlter/bestätigter Buchungen im Zeitraum. */
     protected function itemsQuery()
