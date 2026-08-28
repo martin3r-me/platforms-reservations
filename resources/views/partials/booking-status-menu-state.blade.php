@@ -5,6 +5,12 @@
      Gehört zu partials/booking-status-menu.blade.php – wer das eine einbindet,
      bindet auch das andere ein.
 
+     ACHTUNG: Hier darf KEIN Anführungszeichen (") vorkommen, auch nicht in
+     einem Kommentar. Alles hier steht in einem Attributwert; ein " beendet ihn
+     mitten im Satz, und der Rest landet als sichtbarer Text auf der Seite.
+     Genau das ist einmal passiert. Für Zitate „…" nehmen, das sind andere
+     Zeichen.
+
      Der Zustand sitzt am ganzen Aktionsblock, nicht nur am Menü: Solange es
      offen ist, muss der Block sichtbar bleiben. Sonst blendet ihn das
      group-hover aus, sobald der Zeiger auf dem Weg zum Eintrag die Zeile
@@ -18,8 +24,8 @@ x-data="{
 
            Nötig, weil der Klick auf den Knopf am Aktionsblock gestoppt wird -
            sonst öffnete er die Zeile. Damit erreicht er aber auch nie das
-           Dokument, wo die übrigen Menüs auf "woanders geklickt" horchen: Sie
-           blieben offen und stapelten sich übereinander.
+           Dokument, wo die uebrigen Menues auf einen Klick daneben horchen:
+           Sie blieben offen und stapelten sich uebereinander.
 
            dispatchEvent arbeitet die Zuhörer sofort ab, nicht später. Mein
            eigenes Menü hört mit und schließt sich - es steht ohnehin noch auf
