@@ -425,8 +425,14 @@ nicht wählen kann.
 Also: **ein Schritt „Wann?" im Shop**, eingeblendet ab zwei Pausen. Er gehört ohnehin
 dorthin und ist die Voraussetzung für Abschnitt A (`reservation_event_station_slots`).
 
-Vorher prüfen, ob bei Culinaria Termine mit mehr als einer Pause existieren – dann ist es
-kein Ausbau, sondern eine Reparatur.
+**Geprüft am 28.08.2026:** Alle 54 Termine bei Culinaria haben genau eine Pause
+(`slots_count: 1`, ohne Ausnahme). Es ist also **kein** stiller Fehler im Livebetrieb,
+sondern eine echte Erweiterung – nötig in dem Moment, in dem der erste Termin eine zweite
+Pause bekommt, und Voraussetzung für die pausenweise Freigabe einer Station.
+
+Beim selben Blick: über alle 54 Termine liegen sechs Buchungen. Der Betrieb läuft, aber
+das Mengengerüst ist klein – ein Fehler beim Ausrollen träfe wenige Gäste. Das ändert
+nichts an der Sorgfalt, aber es relativiert die Panik.
 
 ## M. Offen – bewusst vertagt
 
