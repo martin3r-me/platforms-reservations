@@ -340,7 +340,11 @@ Service-User angemeldet; `Auth::check()` ist also true, und `currentTeam` kann e
 Team sein als das des Termins. Genau deshalb steht der Aufruf in `EventController` heute
 an jeder Stelle. Fehlt er bei den Stationen, liefert die API keinen Fehler, sondern **null
 Stationen** – und niemand merkt es, bis abends jemand vor einem leeren Shop steht.
-Dasselbe gilt für `OrderReceiptController` und den Freigabe-Link ohne Login.
+Dasselbe gilt für `OrderReceiptController`, der auch aus dem Backoffice heraus aufgerufen
+wird. Beim Freigabe-Link ohne Konto ist der Scope inert, solange niemand angemeldet ist –
+`EventPlan` nimmt `withoutGlobalScope` für den Termin trotzdem, und aus gutem Grund: Öffnet
+ein angemeldeter Mitarbeiter eines anderen Teams den Link, greift der Scope sehr wohl.
+`FunctionSheetService` folgt dem heute nicht; die Stationen sollen es tun.
 
 Liegt sie in dem Plan, der gerade abgefragt wird, kommen `x_pct`/`y_pct`/`w_pct`/`h_pct`,
 `shape` und `rotation` mit – sonst stehen sie auf `null`. Der Shop entscheidet daran, ob
@@ -783,3 +787,34 @@ Ein Test hält es fest: Tisch löschen, Label bleibt.
 Damit ist der Löschschutz für die Station auch nicht mehr die einzige Verteidigung – er
 verhindert weiterhin das Löschen bei anstehenden Terminen, aber die Vergangenheit hängt
 nicht mehr daran.
+
+---
+
+## T. Nachträge aus dem letzten Durchgang (28.08.2026)
+
+Sieben Kleinigkeiten, die in keinem der bisherigen Abschnitte standen.
+
+**Der Venue-Löschschutz kennt nur Räume.** `Venue::deleting` läuft über `floorPlans` und
+prüft je Raum die anstehenden Termine. Stationen hängen künftig ebenfalls am Venue – ohne
+Ergänzung ließe sich ein Venue löschen und nähme eine Station mit, die morgen gebraucht
+wird. Gehört in Etappe 2, zusammen mit dem Löschschutz der Station selbst.
+
+**Der Sidebar-Eintrag steht zweimal.** `sidebar.blade.php` führt `reservation.dropoff.index`
+in der ausgeklappten **und** in der eingeklappten Leiste. Beim Umbenennen der Route beide.
+
+**`BookingList` lädt zweimal vor.** `table.floorPlan.venue` steht in der Listen- und in der
+Detailabfrage. Beide brauchen die Station, sonst holt die Liste sie zeilenweise nach.
+
+**Es fehlen MCP-Tools.** Räume haben fünf (`EventRoomList/Create/Update/Delete/BulkCreate`),
+Stationen im Plan keine. Für ein Haus, das 54 Termine über die Tools angelegt hat, ist das
+eine echte Lücke: Ohne Tools müsste jede Station und jede Zuordnung von Hand geklickt
+werden. Mindestens Liste, Anlegen, Zuordnen zum Termin – Etappe 2.
+
+**`ReservationOverviewTool` erklärt das Modul.** Dort stehen die Begriffe – Termine, Pausen,
+Verkaufslisten, Buchungen, Orders. Die Abholstation gehört dazu, sonst kennt der Assistent
+das halbe Modell.
+
+**`docs/ROADMAP.md` weiß nichts davon.** Ein Zweizeiler mit Verweis auf diesen Plan.
+
+**Der DemoSeeder legt keine Station an.** Für Etappe 1 nützlich: Wer auf demo prüfen soll,
+soll nicht erst eine Station von Hand anlegen müssen.
