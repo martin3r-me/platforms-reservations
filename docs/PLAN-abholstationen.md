@@ -232,7 +232,18 @@ die Abholliste, ein zusätzlicher Ausdruck ist nicht nötig.
 sobald welche im Spiel sind. Ohne Stationen bleibt die Ansicht Zeile für Zeile die alte.
 
 **Bon, Beleg-PDF, beide Bestätigungsmails, Buchungsliste, Dashboard, VA-Dashboard,
-`ListBookingsTool`** – alle über `zielortLabel()`.
+Statuswechsel-Dialog (`partials/booking-status-modal.blade.php`), `ListBookingsTool`** –
+alle über `zielortLabel()`.
+
+**Nur eine Bon-Vorlage.** Der Sammel-Bon (`printing/reservation-event-bons.blade.php`)
+bindet für jede Buchung dieselbe Einzelvorlage ein; geändert wird also einmal. Aber
+`Event::bonBookings()` lädt heute `table.floorPlan` vor – die Station muss mit, sonst
+holt der Ausdruck sie zeilenweise nach.
+
+Und die **Sortierung** dort gehört überdacht: Sie läuft nach Pause, darin nach Gastname,
+damit der Papierstapel zur Ansicht auf dem Schirm passt. Sind Stationen im Spiel, gehört
+die Station dazwischen – nach Pause, dann Station, dann Name. Sonst sortiert jemand einen
+Stapel von Hand, den die Maschine schon richtig hätte legen können.
 
 **Export mit einer Ausnahme: keine Spalte umbenennen.** Der Kunde arbeitet mit dem CSV
 (die Juni-Datei lag uns vor). „Tisch" bleibt „Tisch" und ist bei Stationsbuchungen leer;
@@ -249,8 +260,11 @@ kommen, die ihr Venue selbst kennt.
 
 **`pickup_identification`: `name` | `code`** – die Einstellung steht an **zwei** Stellen:
 
-- `reservation_checkout_settings.default_pickup_identification` – die Vorgabe des Teams,
-  dort wo Auto-Druck, Pflichtfelder und DATEV schon liegen.
+- `reservation_checkout_settings.default_pickup_identification` – die Vorgabe des Teams.
+  Die Einstellungen sind seit `84c288c` nach Kategorien geteilt (zweite Sidebar,
+  `partials/settings-nav.blade.php`, je Thema ein Partial). Der Schalter gehört unter
+  **„Veranstaltung & Plätze"** in `partials/settings/termine.blade.php`, wo schon die
+  weiche Tisch-Kapazität steht: Es geht um die Form der Bewirtung, nicht um den Beleg.
 - `reservation_events.pickup_identification` – der Wert, der wirklich gilt. Beim Anlegen
   eines Termins aus der Vorgabe gefüllt, danach am Termin änderbar.
 
@@ -427,7 +441,9 @@ nur für anstehende Termine. Wer nach der Veranstaltung löscht, nimmt alten Lau
 Ort. Bei Tischen ist das heute genauso – bleibt gleich, bis es bei beiden stört.
 
 **Drucker je Station.** Der Bon geht an den Team-Drucker. Ob eine Station einen eigenen
-bekommt, entscheidet der Betrieb nach dem ersten Einsatz.
+bekommt, entscheidet der Betrieb nach dem ersten Einsatz – technisch wäre es inzwischen
+klein: Die Wahl des Ziels sitzt seit `5641861` an einer Stelle
+(`PrintsBookingReceipt::resetPrintSelection()`).
 
 ## N. Fund außerhalb dieses Features
 
@@ -512,6 +528,11 @@ Beim Prüfen gefunden, alle ohne Bezug zu diesem Feature:
    Zeile, die eine Stationsbuchung zerlegen würde, falls jemand den Mailer wiederbelebt.
 3. `DropoffSlot` samt Tabelle und Maske – geht in Etappe 6.
 
-Alle drei Stellen, an denen `->table->` ohne `?->` steht, sind sonst durch ein `@if`
-gedeckt; die Vorlagen für Bon, Beleg, Buchungsliste und Dashboard laufen mit einer
-Stationsbuchung fehlerfrei – sie zeigen nur nichts an, bis Etappe 3 sie umstellt.
+Alle übrigen Stellen mit `->table->` ohne `?->` sind durch ein `@if` gedeckt – geprüft
+gegen den Stand nach `d1e9d4b`, also einschließlich des neuen Statuswechsel-Dialogs. Die
+Vorlagen für Bon, Beleg, Buchungsliste, Dashboard und Statuswechsel laufen mit einer
+Stationsbuchung fehlerfrei; sie zeigen nur nichts an, bis Etappe 3 sie umstellt.
+
+Ein Anzeigeort ist seit `5d186eb` **weggefallen**: Die eigenständige Laufzettel-Druckseite
+(`function-sheet.blade.php`, `FunctionSheetController`) gibt es nicht mehr, gedruckt wird
+aus der Ansicht heraus. Eine Stelle weniger, die Etappe 3 anfassen muss.
