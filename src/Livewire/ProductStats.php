@@ -8,6 +8,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Carbon\CarbonImmutable;
 use Platform\Reservation\Models\Booking;
+use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\SalesList;
@@ -26,9 +27,10 @@ use Platform\Reservation\Models\SalesList;
  * verkauft wurde – und darunter steht, wie oft welches Bundle über den Tisch
  * ging.
  *
- * Abgegrenzt wie die Finanzen: bestätigte und abgeschlossene Buchungen.
- * Stünde hier eine andere Menge als dort ein Umsatz, wäre das die erste Frage,
- * die jemand stellt.
+ * Abgegrenzt wie die Finanzen – über dieselbe Stelle
+ * (CheckoutSetting::umsatzStatus), damit auch die Einstellung zu den No-Shows
+ * hier greift. Stünde hier eine andere Menge als dort ein Umsatz, wäre das die
+ * erste Frage, die jemand stellt.
  */
 class ProductStats extends Component
 {
@@ -153,7 +155,7 @@ class ProductStats extends Component
         return DB::table('reservation_booking_items as bi')
             ->join('reservation_bookings as b', 'b.id', '=', 'bi.booking_id')
             ->where('b.team_id', $this->teamId())
-            ->whereIn('b.status', [Booking::STATUS_CONFIRMED, Booking::STATUS_COMPLETED])
+            ->whereIn('b.status', CheckoutSetting::forTeam($this->teamId())->umsatzStatus())
             ->when($this->eventId, fn ($q) => $q->where('b.event_id', $this->eventId))
             ->when($von, fn ($q) => $q->whereDate('b.date', '>=', $von))
             ->when($bis, fn ($q) => $q->whereDate('b.date', '<=', $bis));

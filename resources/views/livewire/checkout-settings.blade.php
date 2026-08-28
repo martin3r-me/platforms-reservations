@@ -86,6 +86,7 @@
             @break
 
         @case('buchhaltung')
+            @include('reservation::partials.settings.umsatz')
             @include('reservation::partials.settings.datev')
             @break
 

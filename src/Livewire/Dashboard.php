@@ -7,6 +7,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\BookingItem;
+use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
 
@@ -25,10 +26,14 @@ class Dashboard extends Component
     {
         $teamId = $this->getTeamId();
 
+        // Abgegrenzt wie in den Finanzen und nicht mehr nach eigener Regel.
+        // Vorher zaehlten hier auch ausstehende Buchungen mit - bestellt, aber
+        // nicht bezahlt -, und die Startseite nannte deshalb einen hoeheren
+        // Monatsumsatz als die Finanzen zwei Klicks weiter.
         $monthRevenue = (float) BookingItem::query()
             ->join('reservation_bookings as b', 'b.id', '=', 'reservation_booking_items.booking_id')
             ->where('b.team_id', $teamId)
-            ->whereNotIn('b.status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
+            ->whereIn('b.status', CheckoutSetting::forTeam($teamId)->umsatzStatus())
             ->whereBetween('b.date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()])
             ->sum(\Illuminate\Support\Facades\DB::raw('reservation_booking_items.quantity * reservation_booking_items.unit_price'));
 

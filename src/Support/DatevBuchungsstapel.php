@@ -45,8 +45,6 @@ class DatevBuchungsstapel
     /** Herkunft: zwei Zeichen, beim Import von DATEV überschrieben. */
     public const HERKUNFT = 'PP';
 
-    /** Status, die Umsatz sind – wie in den Finanzen. */
-    public const UMSATZ_STATUS = [Booking::STATUS_CONFIRMED, Booking::STATUS_COMPLETED];
 
     /**
      * Die komplette Datei als Zeichenkette.
@@ -87,7 +85,13 @@ class DatevBuchungsstapel
      */
     public static function saetze(Collection $bookings, CheckoutSetting $einst): array
     {
-        $relevant = $bookings->filter(fn (Booking $b) => in_array($b->status, self::UMSATZ_STATUS, true));
+        // Abgrenzung aus den Einstellungen (CheckoutSetting::umsatzStatus) und
+        // nicht aus einer eigenen Konstante: Sonst stuende im Stapel eine
+        // andere Summe als in den Finanzen, und die Differenz faende erst die
+        // Kanzlei.
+        $umsatzStatus = $einst->umsatzStatus();
+
+        $relevant = $bookings->filter(fn (Booking $b) => in_array($b->status, $umsatzStatus, true));
 
         $tagessummen = $einst->datev_modus === CheckoutSetting::DATEV_TAGESSUMME;
 

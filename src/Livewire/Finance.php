@@ -8,6 +8,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\BookingItem;
+use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Support\Vat;
 
@@ -15,8 +16,10 @@ use Platform\Reservation\Support\Vat;
  * Finanzen: Umsatz nach Monaten und Terminen mit frei wählbarem Zeitraum.
  *
  * Umsatz = Summe der Bestellpositionen (Menge × eingefrorener Einzelpreis)
- * aller aktiven Buchungen (ohne storniert/No-Show). Bis zur Mollie-Integration
- * ist das der Bestellwert, nicht der bestätigte Zahlungseingang.
+ * der bestätigten und abgeschlossenen Buchungen; No-Shows wahlweise dazu
+ * (Einstellung, siehe CheckoutSetting::umsatzStatus). Bis zur
+ * Mollie-Integration ist das der Bestellwert, nicht der bestätigte
+ * Zahlungseingang.
  */
 class Finance extends Component
 {
@@ -65,17 +68,23 @@ class Finance extends Component
     /**
      * Status, die Umsatz sind.
      *
-     * Ausstehende Buchungen gehören NICHT dazu: Das ist bestellt, aber nicht
+     * Kommt aus den Einstellungen, weil No-Shows dort wahlweise mitzählen.
+     * Ausstehende Buchungen gehören nie dazu: Das ist bestellt, aber nicht
      * bezahlt und nicht bestätigt. Vorher zählte alles außer Storno und
      * No-Show mit, und der Umsatz war damit zu hoch – eine Bestellung, die im
      * Zahlungsvorgang liegen bleibt, sah aus wie Geld.
+     *
+     * @return array<int, string>
      */
-    protected const UMSATZ_STATUS = [Booking::STATUS_CONFIRMED, Booking::STATUS_COMPLETED];
+    protected function umsatzStatus(): array
+    {
+        return CheckoutSetting::forTeam($this->getTeamId())->umsatzStatus();
+    }
 
     /** Basis-Query: Positionen bezahlter/bestätigter Buchungen im Zeitraum. */
     protected function itemsQuery()
     {
-        return $this->zeitraum()->whereIn('b.status', self::UMSATZ_STATUS);
+        return $this->zeitraum()->whereIn('b.status', $this->umsatzStatus());
     }
 
     /** Dieselbe Abgrenzung, aber nur die ausstehenden – zum Ausweisen daneben. */
@@ -145,7 +154,7 @@ class Finance extends Component
         // Gäste, deren Geld nicht mitgezählt ist.
         $guests = Booking::query()
             ->where('team_id', $this->getTeamId())
-            ->whereIn('status', self::UMSATZ_STATUS)
+            ->whereIn('status', $this->umsatzStatus())
             ->when($this->dateFrom, fn ($q) => $q->whereDate('date', '>=', $this->dateFrom))
             ->when($this->dateTo, fn ($q) => $q->whereDate('date', '<=', $this->dateTo))
             ->groupBy('event_id')

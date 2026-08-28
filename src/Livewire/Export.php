@@ -245,7 +245,7 @@ class Export extends Component
             'saetze'    => $saetze,
             'summe'     => collect($saetze)->sum(fn ($s) => (float) str_replace(',', '.', $s['umsatz'])),
             'buchungen' => $bookings->filter(
-                fn ($b) => in_array($b->status, DatevBuchungsstapel::UMSATZ_STATUS, true)
+                fn ($b) => in_array($b->status, $this->settings->umsatzStatus(), true)
             )->count(),
         ];
     }

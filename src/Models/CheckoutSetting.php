@@ -76,6 +76,7 @@ class CheckoutSetting extends Model
         'datev_erloes_19',
         'datev_geldkonto',
         'datev_modus',
+        'revenue_includes_no_show',
     ];
 
     protected $casts = [
@@ -90,6 +91,7 @@ class CheckoutSetting extends Model
         'auto_print_printer_id'          => 'integer',
         'auto_print_printer_group_id'    => 'integer',
         'datev_sachkontenlaenge'         => 'integer',
+        'revenue_includes_no_show'       => 'boolean',
     ];
 
     /** Felder der Aussteller-/Rechnungsangaben. */
@@ -102,6 +104,35 @@ class CheckoutSetting extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(\Platform\Core\Models\Team::class, 'team_id');
+    }
+
+    /**
+     * Buchungsstatus, die als Umsatz gelten.
+     *
+     * Die eine Wahrheit für Finanzen, Artikel-Auswertung, Startseite und den
+     * DATEV-Stapel. Stünde die Liste an vier Stellen, liefe sie beim nächsten
+     * Wunsch auseinander – und niemand fände heraus, welche der vier Zahlen
+     * die richtige ist.
+     *
+     * Ausstehend gehört nicht dazu: bestellt, aber nicht bezahlt und nicht
+     * bestätigt. Storniert ebenso wenig – dort ist Geld zurückgeflossen.
+     *
+     * No-Show hängt an der Einstellung: Wer im Shop bezahlt hat und dann nicht
+     * kommt, bekommt meist nichts zurück; das Geld liegt auf dem Konto und
+     * fehlte bisher in Umsatz und Buchhaltung. Wer immer erstattet oder erst
+     * vor Ort kassiert, hat dagegen keine Einnahme.
+     *
+     * @return array<int, string>
+     */
+    public function umsatzStatus(): array
+    {
+        $status = [Booking::STATUS_CONFIRMED, Booking::STATUS_COMPLETED];
+
+        if ($this->revenue_includes_no_show) {
+            $status[] = Booking::STATUS_NO_SHOW;
+        }
+
+        return $status;
     }
 
     /**

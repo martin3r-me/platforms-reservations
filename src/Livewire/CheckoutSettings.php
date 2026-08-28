@@ -122,6 +122,8 @@ class CheckoutSettings extends Component
         $this->datevGeldkonto        = (string) ($setting->datev_geldkonto ?? '');
         $this->datevModus            = (string) ($setting->datev_modus ?: CheckoutSetting::DATEV_EINZEL);
 
+        $this->revenueIncludesNoShow = (bool) $setting->revenue_includes_no_show;
+
         $this->autoPrintEnabled        = (bool) $setting->auto_print_enabled;
         $this->autoPrintPrinterId      = $setting->auto_print_printer_id;
         $this->autoPrintPrinterGroupId = $setting->auto_print_printer_group_id;
@@ -147,6 +149,9 @@ class CheckoutSettings extends Component
     public string $datevErloes19 = '';
     public string $datevGeldkonto = '';
     public string $datevModus = 'einzel';
+
+    /** Zaehlen No-Shows zum Umsatz? Siehe CheckoutSetting::umsatzStatus(). */
+    public bool $revenueIncludesNoShow = false;
 
     public function save(): void
     {
@@ -196,6 +201,7 @@ class CheckoutSettings extends Component
             'datev_geldkonto'           => trim($this->datevGeldkonto) ?: null,
             'datev_modus'               => in_array($this->datevModus, [CheckoutSetting::DATEV_EINZEL, CheckoutSetting::DATEV_TAGESSUMME], true)
                 ? $this->datevModus : CheckoutSetting::DATEV_EINZEL,
+            'revenue_includes_no_show'  => $this->revenueIncludesNoShow,
             'auto_print_enabled'        => $this->autoPrintEnabled,
             // Immer nur EIN Ziel speichern – sonst bliebe beim Umschalten der
             // alte Wert stehen und es wuerde doppelt gedruckt.

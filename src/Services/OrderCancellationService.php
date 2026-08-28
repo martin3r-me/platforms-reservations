@@ -77,7 +77,16 @@ class OrderCancellationService
     {
         DB::transaction(function () use ($order) {
             foreach ($order->bookings as $booking) {
-                if (in_array($booking->status, [Booking::STATUS_PENDING, Booking::STATUS_CONFIRMED], true)) {
+                // Alles ausser bereits storniert.
+                //
+                // Vorher standen hier nur "ausstehend" und "bestaetigt", und
+                // eine Erstattung nach dem Abend lief ins Leere: Die Buchung
+                // blieb auf No-Show oder Abgeschlossen stehen, waehrend die
+                // Bestellung storniert war. Bei einer abgeschlossenen Buchung
+                // zaehlte das Geld danach weiter in Umsatz und DATEV, obwohl es
+                // zurueckgegangen ist - und bei No-Show genauso, sobald die
+                // Einstellung No-Shows als Umsatz fuehrt.
+                if ($booking->status !== Booking::STATUS_CANCELLED) {
                     $booking->update(['status' => Booking::STATUS_CANCELLED]);
                 }
             }
