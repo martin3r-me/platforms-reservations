@@ -359,26 +359,96 @@ bemerkt, wenn die Zahlen auseinanderlaufen.
 
 ## H. Shop (`pauseplus-culinaria`)
 
-Schritt 2 heißt nicht mehr „Tisch", sondern „Wo?".
+Durchgesehen am 28.08.2026. Laravel 13 / Livewire 4, eigenes Repo, eigener Deploy.
+Der Bestellweg hat sechs Zustände: 0 Personen, 1 Warenkorb, 2 Sitzplatz, 3 Gastdaten,
+4 Zahlung, 5 Bestätigung.
 
-- nur Räume → unverändert
-- nur Stationen → Kartenliste statt Saalplan
-- beides → beides; die Wahl des einen hebt die des anderen auf
+### Was sich nicht ändert
 
-Stationen **mit** Lage im Plan erscheinen zusätzlich als anklickbare Fläche im Saalplan,
-im selben Stil wie im Editor und deutlich anders als ein Tisch. Die Liste bleibt dabei
-die vollständige Auskunft: Jede Station steht dort, ob im Plan platziert oder nicht.
-Sonst gäbe es Stationen, die nur findet, wer den Plan aufklappt.
+`GuestApiClient` braucht **keine neue Methode**: Die Stationen reiten in der
+Tischplan-Antwort mit. `floorPlan(string $event, ?int $party, ?int $pause)` nimmt sogar
+schon eine Pause entgegen – der Wizard übergibt sie nur nie.
 
-Wechselt der Gast die Pause, ändert sich die Stationsliste mit – dieselbe Mechanik, mit
-der Tische heute schon je Pause unterschiedlich frei sind.
+### 1. Der Zustand: ein Ort statt eines Tisches
 
-Status-Seite, Bestätigung und Beleg zeigen „Abholung: Foyer links" und, wenn eingestellt,
-den Code. Stationsnamen kommen übersetzt aus der API.
+`public ?int $selectedTableId` wird zu einem Paar – `placeKind` (`table` | `station`) und
+`placeId`. Ein Paar statt zweier Felder, weil „beides gesetzt" im Shop genauso wenig
+vorkommen darf wie in der Datenbank; mit zwei Feldern wäre dieser Zustand darstellbar.
 
-Erst lokal auf `127.0.0.1:8010` prüfen, dann committen und deployen – wie beim Raumumriss.
+Betroffen sind rund zehn Stellen: `selectTable()`, `selectedTable()`,
+`selectedTableLabel()`, die Prüfung in `next()`, `stepComplete()`, `handleOrderError()`,
+der Aufbau der Nutzlast und die Vorlage.
 
----
+### 2. `FloorPlanMapper`
+
+Bekommt `stations` dazu: Name, Beschreibung, Rest je Pause, Lage im Plan wenn vorhanden.
+
+Und einen ehrlichen Leerzustand: Heute steht dort `$data['rooms'][0] ?? []`. Bei einem
+reinen Abholtermin ist das ein leeres Feld – kein Absturz, aber die Vorlage zeichnet einen
+leeren Planrahmen. Der Mapper muss „kein Raum" sagen können, statt „ein Raum ohne Tische".
+
+### 3. Fehlercodes sind Vertrag
+
+`handleOrderError()` bildet heute `SLOT_NOT_FOUND`, `TABLE_NOT_IN_EVENT` und `TABLE_FULL`
+auf Schritt 2 ab. Dazu kommen die Stations-Gegenstücke, und beide Seiten müssen dieselben
+Namen benutzen:
+
+- `STATION_NOT_IN_EVENT` – Station gehört nicht zum Termin
+- `STATION_NOT_IN_SLOT` – Station ist in dieser Pause nicht offen
+- `STATION_FULL` – Obergrenze erreicht
+
+Beim Konflikt lädt der Shop den Plan neu und leert die Auswahl – das gilt für Stationen
+genauso.
+
+### 4. Tracking: den Zielnamen NICHT umbenennen
+
+Der Trichter meldet `Table Selected`. Wird daraus `Place Selected`, bricht der Vergleich
+mit allen bisherigen Veranstaltungen ab – Plausible kennt das alte Ziel dann nicht mehr.
+Der Name bleibt, die Art des Ortes kommt als Merkmal dazu.
+
+### 5. Texte: zwei sind nicht nur ungenau, sondern falsch
+
+`lang/de` und `lang/en`, je 156 Zeilen. Anzupassen sind `steps.seat`, `seat_title`,
+`seat_intro`, `seat_label`, `plan_orientation`, `err_no_table`, `err_table_unavailable`.
+
+Zwei Sätze führen einen Abholgast aber aktiv in die Irre:
+
+- `done_text` – „In der Pause steht alles an Ihrem Tisch bereit."
+- `status_success_text` – „Vielen Dank! In der Pause steht alles an Ihrem Tisch bereit."
+
+Wer an einer Station bestellt hat, wartet dann an einem Tisch, an den nichts kommt. Beide
+Sätze müssen den Ort kennen.
+
+### 6. Statusseite
+
+`order-status.blade.php` liest `$booking['table']`. Die Antwort des Order-Endpunkts muss
+den Ort liefern (Abschnitt G), die Seite ihn anzeigen – und bei Bedarf den Abholcode.
+
+### 7. Mock-Daten
+
+`PausePlusMockData::floorPlan()` liefert Tische für den Betrieb ohne API. Ohne Stationen
+zeigt der Shop dort nichts – kein Fehler, aber die Vorschau taugt dann nicht mehr zum
+Prüfen.
+
+### 8. Der Schritt „Wann?"
+
+`FloorPlanMapper` nimmt `$slots[0]`, der Wizard ruft ohne Pausen-Filter. Für die
+pausenweise Freigabe muss der Gast die Pause wählen können (Abschnitt L). Die Leitung dafür
+liegt schon: `GuestApiClient::floorPlan()` kennt den Parameter.
+
+### 9. Außerhalb des Bestellwegs: die FAQ verspricht Tischservice
+
+`lang/de/pausen.php` sagt zweimal etwas, das an einer Abholstation nicht stimmt:
+
+> „…suchen sich einen Tisch aus und bezahlen online. In der Pause steht alles an Ihrem
+> Tisch bereit."
+
+> „An dem Tisch, den Sie bei der Bestellung gewählt haben, direkt zu Beginn der Pause.
+> Ganz ohne Anstehen."
+
+„Ganz ohne Anstehen" ist an einer Ausgabestelle das Gegenteil dessen, was passiert. Diese
+Seite gehört mit angefasst, sobald der erste Termin eine Station anbietet – sonst
+widerspricht die Website dem Bestellweg.
 
 ## I. Was dieser Plan NICHT vorsieht
 
