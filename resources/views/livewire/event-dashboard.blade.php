@@ -21,6 +21,16 @@
                     <span>Alle Bons drucken</span>
                 </x-nx-button>
             @endif
+            {{-- Am Ende des Abends: alles Bestätigte auf einen Schlag auf
+                 Abgeschlossen. Nur sichtbar, solange es etwas zu schließen
+                 gibt – bei einem Termin ohne bestätigte Buchungen wäre der
+                 Knopf ein Angebot ins Leere. --}}
+            @if ($this->offeneBestaetigte > 0)
+                <x-nx-button wire:click="openCloseEventModal">
+                    @svg('heroicon-o-check-circle', 'w-4 h-4')
+                    <span>Abend abschließen</span>
+                </x-nx-button>
+            @endif
             <x-nx-button wire:click="openShareModal()">
                 @if ($zugang->shareIsActive())
                     <span class="h-2 w-2 rounded-full" style="background: var(--nx-success)"></span>
@@ -335,5 +345,7 @@
     @include('reservation::partials.booking-print-modal')
 
     @include('reservation::partials.booking-status-modal')
+
+    @include('reservation::partials.event-close-modal')
 
 </x-ui-page>

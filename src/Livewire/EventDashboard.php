@@ -127,10 +127,86 @@ class EventDashboard extends Component
         ];
     }
 
-    /** Nach einem Statuswechsel: Liste und Kennzahlen neu rechnen. */
+    /** Nach einem Statuswechsel: Liste, Kennzahlen und der Abschluss-Zaehler. */
     protected function afterBookingStatusChanged(): void
     {
-        unset($this->bookingsBySlot, $this->stats);
+        unset($this->bookingsBySlot, $this->stats, $this->offeneBestaetigte);
+    }
+
+    /* --- Abend abschliessen --- */
+
+    public bool $showCloseEventModal = false;
+
+    /**
+     * Wie viele Buchungen ein Abschluss noch betrifft.
+     *
+     * Nur die bestaetigten. Ausstehende bleiben liegen: Das ist bestellt und
+     * nicht bezahlt, und "abgeschlossen" wuerde behaupten, der Vorgang sei
+     * erledigt. No-Shows bleiben ebenfalls, wie sie sind - sie sind das
+     * Ergebnis des Abends, nicht ein offener Punkt.
+     */
+    #[Computed]
+    public function offeneBestaetigte(): int
+    {
+        return Booking::where('event_id', $this->eventId)
+            ->where('status', Booking::STATUS_CONFIRMED)
+            ->count();
+    }
+
+    /** Ausstehende des Termins - im Dialog genannt, damit klar ist, was liegen bleibt. */
+    #[Computed]
+    public function offeneAusstehende(): int
+    {
+        return Booking::where('event_id', $this->eventId)
+            ->where('status', Booking::STATUS_PENDING)
+            ->count();
+    }
+
+    public function openCloseEventModal(): void
+    {
+        $this->showCloseEventModal = true;
+
+        unset($this->offeneBestaetigte, $this->offeneAusstehende);
+    }
+
+    public function closeCloseEventModal(): void
+    {
+        $this->showCloseEventModal = false;
+    }
+
+    /**
+     * Alle bestaetigten Buchungen des Termins auf "abgeschlossen".
+     *
+     * Der Griff am Ende des Abends: Die Fehlenden sind einzeln als No-Show
+     * markiert, der Rest war da. Bewusst als ein Schritt und nicht als
+     * naechtlicher Automatismus - "abgeschlossen" soll heissen, dass jemand
+     * den Abend durchgesehen hat, nicht bloss, dass das Datum vorbei ist.
+     *
+     * Team-Grenze doppelt: $this->event laeuft ueber forTeam()->findOrFail()
+     * (404 bei fremdem Termin), und auf Booking liegt der globale Team-Scope
+     * aus BelongsToTeam.
+     *
+     * Massenupdate statt Schleife: "abgeschlossen" loest keinen Bon-Druck aus
+     * (Booking::booted druckt nur bei "bestaetigt"), es geht hier also kein
+     * Modell-Ereignis verloren, auf das etwas hoert.
+     */
+    public function confirmCloseEvent(): void
+    {
+        $this->event; // Team-Scope pruefen, bevor irgendetwas geschrieben wird
+
+        $anzahl = Booking::where('event_id', $this->eventId)
+            ->where('status', Booking::STATUS_CONFIRMED)
+            ->update(['status' => Booking::STATUS_COMPLETED]);
+
+        $this->showCloseEventModal = false;
+        $this->afterBookingStatusChanged();
+        unset($this->offeneAusstehende);
+
+        session()->flash('booking_message', $anzahl === 0
+            ? 'Es war keine bestätigte Buchung mehr offen.'
+            : ($anzahl === 1
+                ? 'Eine Buchung wurde auf Abgeschlossen gesetzt.'
+                : $anzahl . ' Buchungen wurden auf Abgeschlossen gesetzt.'));
     }
 
     /**
