@@ -24,7 +24,7 @@ use Platform\Reservation\Models\Order;
  */
 trait ChangesBookingStatus
 {
-    /** @var 'no_show'|'reopen'|'' */
+    /** @var 'no_show'|'reopen'|'cancel'|'' */
     public string $statusAction = '';
 
     #[Locked]
@@ -46,7 +46,7 @@ trait ChangesBookingStatus
     }
 
     /**
-     * No-Show und Zurücknehmen laufen über eine Rückfrage.
+     * No-Show, Stornieren und Zurücknehmen laufen über eine Rückfrage.
      *
      * No-Show nimmt der Buchung ihr Gewicht in Umsatz, Küche und
      * Platzprüfung; beim Zurücknehmen hängt das Ziel an der Bestellung und
@@ -60,6 +60,15 @@ trait ChangesBookingStatus
     public function askReopen(int $bookingId): void
     {
         $this->oeffneRueckfrage($bookingId, 'reopen');
+    }
+
+    /**
+     * Stornieren – der schwerste der Wechsel und der einzige ohne Rückweg
+     * im Menü.
+     */
+    public function askCancel(int $bookingId): void
+    {
+        $this->oeffneRueckfrage($bookingId, 'cancel');
     }
 
     private function oeffneRueckfrage(int $bookingId, string $aktion): void
@@ -139,6 +148,8 @@ trait ChangesBookingStatus
 
         if ($aktion === 'no_show') {
             $booking->update(['status' => Booking::STATUS_NO_SHOW]);
+        } elseif ($aktion === 'cancel') {
+            $booking->update(['status' => Booking::STATUS_CANCELLED]);
         } elseif ($aktion === 'reopen') {
             $ziel = $this->reopenTargetStatus($booking);
 

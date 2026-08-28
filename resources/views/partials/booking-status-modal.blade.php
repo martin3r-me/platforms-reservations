@@ -11,7 +11,11 @@
 <x-nx-modal size="sm" wire:model="statusModalShow">
     <x-slot name="header">
         <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">
-            {{ $statusAction === 'no_show' ? 'Als No-Show markieren' : 'Status zurücknehmen' }}
+            @switch($statusAction)
+                @case('no_show') Als No-Show markieren @break
+                @case('cancel')  Buchung stornieren @break
+                @default         Status zurücknehmen
+            @endswitch
         </h3>
         @if ($sb)
             <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">
@@ -26,6 +30,15 @@
             Die Buchung zählt danach nicht mehr für <strong>Umsatz</strong>,
             <strong>Küche</strong> und <strong>Platzprüfung</strong>.
             Zurücknehmen geht über dasselbe Menü.
+        </x-nx-callout>
+    @elseif ($statusAction === 'cancel')
+        {{-- Der einzige Wechsel ohne Rückweg im Menü, und der einzige, der
+             den Platz wieder freigibt. Beides gehört vor den Klick. --}}
+        <x-nx-callout variant="danger">
+            Die Buchung fällt aus <strong>Umsatz</strong>, <strong>Küche</strong>
+            und <strong>Platzprüfung</strong>, und der <strong>Platz wird wieder
+            frei</strong> – er kann danach neu gebucht werden. Über das Menü gibt
+            es keinen Weg zurück. Eine Rückzahlung löst das hier nicht aus.
         </x-nx-callout>
     @elseif ($statusAction === 'reopen')
         @if ($reopenZiel === \Platform\Reservation\Models\Booking::STATUS_CONFIRMED)
@@ -48,10 +61,13 @@
 
     <x-slot name="footer">
         <x-nx-button wire:click="closeStatusModal">Abbrechen</x-nx-button>
-        <x-nx-button :variant="$statusAction === 'no_show' ? 'danger' : 'primary'" wire:click="confirmStatusChange">
+        <x-nx-button :variant="in_array($statusAction, ['no_show', 'cancel'], true) ? 'danger' : 'primary'" wire:click="confirmStatusChange">
             @if ($statusAction === 'no_show')
                 @svg('heroicon-o-user-minus', 'w-4 h-4')
                 <span>Als No-Show markieren</span>
+            @elseif ($statusAction === 'cancel')
+                @svg('heroicon-o-x-mark', 'w-4 h-4')
+                <span>Stornieren</span>
             @else
                 @svg('heroicon-o-arrow-uturn-left', 'w-4 h-4')
                 <span>Auf {{ $reopenZiel === \Platform\Reservation\Models\Booking::STATUS_CONFIRMED ? 'Bestätigt' : 'Ausstehend' }} setzen</span>

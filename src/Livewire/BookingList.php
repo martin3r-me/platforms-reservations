@@ -79,12 +79,6 @@ class BookingList extends Component
         unset($this->bookings);
     }
 
-    public function cancelBooking(int $bookingId): void
-    {
-        Booking::findOrFail($bookingId)->update(['status' => Booking::STATUS_CANCELLED]);
-        unset($this->bookings);
-    }
-
     /** Nach einem Statuswechsel: die Liste neu holen. */
     protected function afterBookingStatusChanged(): void
     {

@@ -143,10 +143,28 @@
                                     </x-nx-button>
                                 @endif
 
+                                @if ($booking->status === 'pending')
+                                    <button type="button" wire:click.stop="askCancel({{ $booking->id }})" title="Stornieren"
+                                        class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
+                                        @svg('heroicon-o-x-mark', 'w-4 h-4')
+                                    </button>
+                                @endif
+
+                                @if ($this->printingAvailable)
+                                    <x-nx-button icon variant="ghost" wire:click.stop="openPrintModal({{ $booking->id }})" title="Bon drucken">
+                                        @svg('heroicon-o-printer', 'w-4 h-4')
+                                    </x-nx-button>
+                                @endif
+
                                 {{-- Statuswechsel im Kebab-Menü. Nicht als eigene Knöpfe in der
                                      Zeile: No-Show und Abgeschlossen werden selten geklickt,
                                      Bestätigen und Bon drucken dauernd – fünf Symbole
                                      nebeneinander machen die häufigen schwerer zu treffen.
+
+                                     Steht bewusst GANZ rechts, als letztes Element. Die anderen
+                                     Symbole erscheinen je nach Status; säße das Menü zwischen
+                                     ihnen, wanderte es von Zeile zu Zeile. Als letztes vor dem
+                                     rechten Rand liegt es immer an derselben Stelle.
 
                                      Bei stornierten Buchungen entfällt das Menü: Wer abgesagt
                                      hat, kann weder fehlen noch teilnehmen. --}}
@@ -195,18 +213,6 @@
                                             @endif
                                         </div>
                                     </div>
-                                @endif
-
-                                @if ($this->printingAvailable)
-                                    <x-nx-button icon variant="ghost" wire:click.stop="openPrintModal({{ $booking->id }})" title="Bon drucken">
-                                        @svg('heroicon-o-printer', 'w-4 h-4')
-                                    </x-nx-button>
-                                @endif
-                                @if ($booking->status === 'pending')
-                                    <button type="button" wire:click.stop="cancelBooking({{ $booking->id }})" wire:confirm="Wirklich stornieren?" title="Stornieren"
-                                        class="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-[color:var(--nx-danger)] transition-colors hover:bg-[rgba(224,49,49,.08)]">
-                                        @svg('heroicon-o-x-mark', 'w-4 h-4')
-                                    </button>
                                 @endif
                             </div>
                         </x-nx-table-cell>

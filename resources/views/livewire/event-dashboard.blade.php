@@ -196,7 +196,11 @@
                                             <x-nx-badge :variant="$sv">{{ $sl }}</x-nx-badge>
                                         </x-nx-table-cell>
                                         <x-nx-table-cell compact align="right">
-                                            {{-- Aktionen erscheinen beim Hover über die Zeile (wie in „Alle Buchungen").
+                                            {{-- Aktionen erscheinen beim Hover über die Zeile (wie in „Alle
+                                                 Buchungen"), und in derselben Reihenfolge: Drucker links, das
+                                                 Menü ganz rechts als letztes Element. So liegt es in jeder
+                                                 Zeile an derselben Stelle, egal welche Symbole davor stehen.
+
                                                  Der Alpine-Zustand sitzt am ganzen Block, nicht nur am Menü:
                                                  Solange es offen ist, muss der Block sichtbar bleiben, sonst
                                                  blendet ihn das group-hover aus, sobald der Zeiger auf dem Weg
@@ -221,6 +225,13 @@
                                                      Programm scrollt in einem inneren Kasten, nicht am Fenster. --}}
                                                 @scroll.window.capture="open = false"
                                                 @resize.window="open = false">
+
+                                                @if ($this->printingAvailable)
+                                                    <x-nx-button icon variant="ghost" wire:click="openPrintModal({{ $b->id }})" title="Bon drucken">
+                                                        @svg('heroicon-o-printer', 'w-4 h-4')
+                                                    </x-nx-button>
+                                                @endif
+
                                                 <div @click.stop>
                                                     <x-nx-button icon variant="ghost" type="button" x-ref="kebab"
                                                         @click="open ? open = false : auf()" title="Status ändern">
@@ -257,12 +268,6 @@
                                                         @endif
                                                     </div>
                                                 </div>
-
-                                                @if ($this->printingAvailable)
-                                                    <x-nx-button icon variant="ghost" wire:click="openPrintModal({{ $b->id }})" title="Bon drucken">
-                                                        @svg('heroicon-o-printer', 'w-4 h-4')
-                                                    </x-nx-button>
-                                                @endif
                                             </div>
                                         </x-nx-table-cell>
                                     </x-nx-table-row>
