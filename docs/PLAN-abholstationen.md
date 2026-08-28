@@ -253,9 +253,13 @@ Stapel von Hand, den die Maschine schon richtig hätte legen können.
 „Abholstation" kommt als **neue** Spalte dazu. Wer die Datei automatisiert einliest, merkt
 davon nichts.
 
-Ein Feld dort ist heute schon abgeleitet und muss mit: `venue` kommt über
-`table.floorPlan.venue`. Bei einer Stationsbuchung wäre es leer – es muss aus der Station
-kommen, die ihr Venue selbst kennt.
+Ein Feld dort ist heute schon abgeleitet und falsch abgeleitet: `venue` kommt über
+`table.floorPlan.venue`. Bei einer Stationsbuchung wäre es leer – und bei einer
+Tischbuchung, deren Tisch inzwischen gelöscht wurde, ist es das heute schon.
+
+Die richtige Quelle ist der **Termin**: `Event.venue_id` steht direkt an der Buchung und
+überlebt jedes Löschen im Saalplan. Ein Umweg über zwei Beziehungen weniger, und er ist
+obendrein haltbar.
 
 ---
 
@@ -448,14 +452,8 @@ nur in `events-api.php`; `guest-api.php` bleibt auf dem Stand von heute.
 **Sequentielle Raumfreigabe.** Vertagt (Entscheidung 26.08.2026) – wird angesehen, wenn
 der erste Raum tatsächlich ausgebucht ist. Siehe Abschnitt N.
 
-**Historie beim Löschen.** `pickup_station_id` ist `nullOnDelete`, der Löschschutz greift
-nur für anstehende Termine. Wer eine Station nach der Veranstaltung löscht, nimmt alten
-Laufzetteln und Belegen den Ort – dort steht dann ein Strich statt „Foyer links".
-
-Beim Tisch ist das heute Zeile für Zeile dasselbe: `table_id` ist ebenfalls `nullOnDelete`,
-ein gelöschter Tisch verschwindet rückwirkend aus allen alten Buchungen. Bleibt gleich, bis
-es bei beiden stört; die Alternative wäre, das Label auf der Buchung einzufrieren, so wie
-Preise eingefroren werden.
+**Historie beim Löschen.** Siehe Abschnitt S – dort ausführlich, weil die Nachfrage vom
+28.08.2026 gezeigt hat, dass es heute schon ein Loch gibt.
 
 **Drucker je Station.** Der Bon geht an den Team-Drucker. Ob eine Station einen eigenen
 bekommt, entscheidet der Betrieb nach dem ersten Einsatz – technisch wäre es inzwischen
@@ -616,3 +614,56 @@ Denkbare Antwort, **nicht Teil dieses Plans**: ein eigener Zahlungsweg „eingel
 `onsite`, der in Küche, Laufzettel und Bon voll zählt, in Umsatz und DATEV aber nicht.
 Ob das drängt, hängt daran, wie oft eingeladen wird – und ob der Steuerberater die Zahlen
 schon so bekommen hat.
+
+---
+
+## S. Was ein gelöschter Tisch heute mitnimmt
+
+Nachgeprüft am 28.08.2026, weil die Frage aufkam, ob dabei Verkäufe verlorengehen.
+
+### Die Verkäufe sind sicher
+
+Sie hängen nicht am Tisch:
+
+- `bookings.table_id` ist `nullOnDelete` – die **Buchung bleibt**, nur der Verweis wird leer.
+- `booking_items.menu_item_id` und `payments.booking_id` sind seit `2026_07_18_000002`
+  `restrictOnDelete`. Positionen mit eingefrorenem Preis und der Zahlungsnachweis lassen
+  sich gar nicht wegräumen.
+- Die **Artikel-Auswertung** rechnet über `reservation_booking_items` verbunden mit
+  `reservation_bookings` – kein Tisch beteiligt.
+- Die **Finanzen** summieren Positionen. Ebenfalls unberührt.
+
+Umsatz, Mengen, Steuer, Beleg: alles bleibt. Diese Sorge ist unbegründet.
+
+### Verloren gehen zwei Spalten im Export
+
+`table` wird leer – erwartbar. Und `venue` wird **mit** leer, weil es heute über
+`table.floorPlan.venue` abgeleitet wird; ohne Tisch kein Venue. Das ist die eigentliche
+Überraschung, und sie ist mit dem Wechsel auf `Event.venue_id` (Abschnitt E) erledigt.
+
+### Der schärfere Punkt: das Löschen ist nicht bewacht
+
+`FloorPlanEditor::deleteTableAndCloseModal()` ruft `Table::findOrFail(...)->delete()` – ohne
+jede Prüfung, und `Table` hat keinen `deleting`-Haken. Wer im Editor eine Bestuhlung
+umbaut, löscht damit den Tisch aus **allen** alten Buchungen mit, auch aus vergangenen
+Veranstaltungen. Ohne Rückfrage, ohne Hinweis.
+
+Der Tischplan ist gegen Löschen geschützt (`anstehendeTermine()`), der einzelne Tisch
+darin nicht. Und das Umstellen einzelner Tische ist der häufigere Vorgang.
+
+### Vorschlag: das Label einfrieren
+
+Eine nullable Spalte `zielort_label` an der Buchung, beim Anlegen in `store()` gefüllt.
+Gelesen wird sie **nachrangig**: Existiert der Tisch oder die Station noch, gilt der
+aktuelle Name (ein umbenannter Tisch heißt überall gleich); ist er weg, steht dort weiter
+„Tisch 12" statt einem Strich.
+
+Das ist dieselbe Regel, nach der Preise und Steuersätze eingefroren werden – ein Beleg
+soll zeigen, was galt. Es kostet eine Spalte und eine Zeile in `store()`, es wirkt für
+Tisch **und** Station gleichermaßen, und es macht die Frage „darf man das löschen?"
+harmlos.
+
+Alte Buchungen haben die Spalte leer und verhalten sich wie bisher.
+
+**Noch nicht entschieden.** Gehört sinnvoll in Etappe 1, weil `zielortLabel()` dort ohnehin
+entsteht – aber es ist eine Erweiterung über die Stationen hinaus.
