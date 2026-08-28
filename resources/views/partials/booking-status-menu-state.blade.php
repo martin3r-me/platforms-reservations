@@ -14,6 +14,18 @@ x-data="{
     oben: 0,
     rechts: 0,
     auf() {
+        /* Erst alle anderen zu, dann meins auf.
+
+           Nötig, weil der Klick auf den Knopf am Aktionsblock gestoppt wird -
+           sonst öffnete er die Zeile. Damit erreicht er aber auch nie das
+           Dokument, wo die übrigen Menüs auf "woanders geklickt" horchen: Sie
+           blieben offen und stapelten sich übereinander.
+
+           dispatchEvent arbeitet die Zuhörer sofort ab, nicht später. Mein
+           eigenes Menü hört mit und schließt sich - es steht ohnehin noch auf
+           zu, und die Zeile darunter öffnet es gleich. */
+        window.dispatchEvent(new CustomEvent('pp-zeilenmenue-zu'));
+
         const k = this.$refs.kebab.getBoundingClientRect();
 
         this.rechts = window.innerWidth - k.right;
@@ -45,6 +57,7 @@ x-data="{
 }"
 :style="open ? { opacity: 1 } : {}"
 @keydown.escape.window="open = false"
+@pp-zeilenmenue-zu.window="open = false"
 {{-- .capture, weil Scroll-Ereignisse nicht aufsteigen: Das Programm scrollt in
      einem inneren Kasten, nicht am Fenster. Ohne das bliebe das Menü stehen,
      während die Zeile darunter wegwandert. --}}
