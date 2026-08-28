@@ -15,14 +15,20 @@
         </svg>
     </x-nx-button>
 
-    {{-- "fixed" statt "absolute", anders als bei x-nx-dropdown: Die Tabelle
-         steckt in einem Kasten mit "overflow-x-auto", und der beschneidet nach
-         CSS auch senkrecht – ein Menü in den unteren Zeilen wäre dort
-         abgeschnitten. Der Preis ist die Lage von Hand (auf()) und das
-         Schließen beim Scrollen.
+    {{-- Das Menü hängt am Seitenkörper, nicht in der Zeile.
+
+         Zwei Gründe, beide zwingend: Der Kasten um die Tabelle hat
+         "overflow-x-auto" und beschneidet nach CSS auch senkrecht. Und die
+         Aktionsspalte ist festgepinnt (.pp-pin), was einen eigenen
+         Stapelkontext erzeugt – ein Menü darin verschwände hinter den Zellen
+         der Zeilen darunter.
+
+         Am Körper gilt beides nicht. Der Preis: Die Lage muss von Hand
+         gerechnet werden (auf()), und beim Scrollen wird geschlossen.
 
          Aussehen und der Name "open" bewusst wie in x-nx-dropdown: Nur so
          passen die x-nx-dropdown-item darin, die selbst "open = false" setzen. --}}
+    <template x-teleport="body">
     <div x-ref="menu" x-show="open" style="display:none" x-transition
         @click.outside="open = false"
         :style="{ top: oben + 'px', right: rechts + 'px' }"
@@ -47,4 +53,5 @@
             </x-nx-dropdown-item>
         @endif
     </div>
+    </template>
 </div>

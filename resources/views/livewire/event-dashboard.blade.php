@@ -157,6 +157,8 @@
                     @if ($group['count'] === 0)
                         <div class="px-4 py-4 text-xs text-[color:var(--nx-faint)]">Noch keine Buchungen für diese Pause.</div>
                     @else
+                        @include('reservation::partials.pinned-actions-style')
+
                         <x-nx-table>
                             <x-nx-table-header>
                                 <x-nx-table-header-cell compact>Gast</x-nx-table-header-cell>
@@ -167,7 +169,7 @@
                                 {{-- Nicht mehr an printingAvailable gehaengt: Das Menue fuer
                                      No-Show und Abgeschlossen gehoert auch in Apps ohne
                                      Druckmodul - gerade dort wird von Hand gefuehrt. --}}
-                                <x-nx-table-header-cell compact><span class="sr-only">Aktionen</span></x-nx-table-header-cell>
+                                <x-nx-table-header-cell compact class="pp-pin"><span class="sr-only">Aktionen</span></x-nx-table-header-cell>
                             </x-nx-table-header>
                             <x-nx-table-body>
                                 @foreach ($group['bookings'] as $b)
@@ -195,7 +197,9 @@
                                             ][$b->status] ?? [ucfirst($b->status), 'neutral']; @endphp
                                             <x-nx-badge :variant="$sv">{{ $sl }}</x-nx-badge>
                                         </x-nx-table-cell>
-                                        <x-nx-table-cell compact align="right">
+                                        {{-- pp-pin wie in „Alle Buchungen": bleibt rechts stehen, wenn
+                                             die Tabelle breiter wird als die Karte. --}}
+                                        <x-nx-table-cell compact align="right" class="pp-pin">
                                             {{-- Aktionen erscheinen beim Hover über die Zeile (wie in „Alle
                                                  Buchungen"), und in derselben Reihenfolge: Drucker links, das
                                                  Menü ganz rechts als letztes Element. So liegt es in jeder

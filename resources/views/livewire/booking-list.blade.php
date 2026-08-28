@@ -42,6 +42,8 @@
     </div>
 
     {{-- Tabelle: rahmenlos, Hairlines --}}
+    @include('reservation::partials.pinned-actions-style')
+
     <x-nx-table>
             <x-nx-table-header>
                 <x-nx-table-header-cell>VA-Datum</x-nx-table-header-cell>
@@ -53,7 +55,7 @@
                 <x-nx-table-header-cell align="right">Bestellung</x-nx-table-header-cell>
                 <x-nx-table-header-cell>Status</x-nx-table-header-cell>
                 <x-nx-table-header-cell>Gebucht am</x-nx-table-header-cell>
-                <x-nx-table-header-cell><span class="sr-only">Aktionen</span></x-nx-table-header-cell>
+                <x-nx-table-header-cell class="pp-pin"><span class="sr-only">Aktionen</span></x-nx-table-header-cell>
             </x-nx-table-header>
             <x-nx-table-body>
                 @forelse ($this->bookings as $booking)
@@ -112,7 +114,12 @@
                                 <span class="text-[color:var(--nx-faint)]">–</span>
                             @endif
                         </x-nx-table-cell>
-                        <x-nx-table-cell align="right">
+                        {{-- pp-pin: bleibt am rechten Rand stehen, während der Rest der
+                             Tabelle darunter wegscrollt. Zehn Spalten werden breiter als die
+                             Karte – ein einziges „Abgeschlossen" verbreitert die Status-Spalte
+                             für alle Zeilen –, und ohne das lägen ausgerechnet die Aktionen
+                             jenseits des Randes. Siehe partials/pinned-actions-style. --}}
+                        <x-nx-table-cell align="right" class="pp-pin">
                             {{-- Aktionen erscheinen beim Hover über die Zeile (Notion-Stil) --}}
                             {{-- Klick auf die Zeile öffnet Details; diese Aktionen stoppen daher den Zeilen-Klick --}}
                             <div class="flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"

@@ -31,7 +31,10 @@ x-data="{
            und nicht gleich hier. Das kurze Umsetzen faellt nicht auf, weil
            x-transition ohnehin einblendet. */
         this.$nextTick(() => {
-            const m = this.$refs.menu.getBoundingClientRect();
+            /* Kein Ref? Dann bleibt es unten - lieber unvollkommen als kaputt. */
+            const m = this.$refs.menu?.getBoundingClientRect();
+            if (! m) return;
+
             const platzUnten = window.innerHeight - k.bottom - 12;
 
             if (m.height > platzUnten) {
