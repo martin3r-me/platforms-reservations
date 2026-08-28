@@ -69,8 +69,13 @@
                         <x-nx-table-cell class="text-[color:var(--nx-muted)]">{{ $booking->table?->label }}</x-nx-table-cell>
                         <x-nx-table-cell>
                             <span class="font-medium text-[color:var(--nx-text)]">{{ $booking->guest_name }}</span>
+                            {{-- Gedeckelt, weil eine E-Mail nicht umbricht: Ohne Deckel
+                                 bestimmt die längste Adresse der Seite die Spaltenbreite und
+                                 schiebt die Tabelle über den Kartenrand. Vollständig steht sie
+                                 im Titel und im Detail-Fenster. --}}
                             @if ($booking->guest_email)
-                                <span class="block text-xs text-[color:var(--nx-faint)]">{{ $booking->guest_email }}</span>
+                                <span class="block max-w-[220px] truncate text-xs text-[color:var(--nx-faint)]"
+                                    title="{{ $booking->guest_email }}">{{ $booking->guest_email }}</span>
                             @endif
                         </x-nx-table-cell>
                         <x-nx-table-cell align="center" class="tabular-nums text-[color:var(--nx-muted)]">{{ $booking->guest_count }}</x-nx-table-cell>
@@ -110,33 +115,8 @@
                         <x-nx-table-cell align="right">
                             {{-- Aktionen erscheinen beim Hover über die Zeile (Notion-Stil) --}}
                             {{-- Klick auf die Zeile öffnet Details; diese Aktionen stoppen daher den Zeilen-Klick --}}
-                            {{-- Der Alpine-Zustand sitzt am ganzen Aktionsblock, nicht nur am
-                                 Menü: Solange das Menü offen ist, muss der Block sichtbar
-                                 bleiben. Sonst blendet ihn das group-hover aus, sobald der
-                                 Zeiger auf dem Weg zum Menüeintrag die Zeile verlässt – das
-                                 Menü wäre offen und unsichtbar. --}}
                             <div class="flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
-                                x-data="{
-                                    open: false,
-                                    oben: 0,
-                                    rechts: 0,
-                                    auf() {
-                                        /* Menue haengt frei am Fenster (siehe unten), seine
-                                           Lage kommt daher beim Oeffnen aus dem Knopf. */
-                                        const r = this.$refs.kebab.getBoundingClientRect();
-                                        this.oben = r.bottom + 6;
-                                        this.rechts = window.innerWidth - r.right;
-                                        this.open = true;
-                                    },
-                                }"
-                                :style="open ? { opacity: 1 } : {}"
-                                @keydown.escape.window="open = false"
-                                {{-- .capture, weil Scroll-Ereignisse nicht aufsteigen: Das
-                                     Programm scrollt in einem inneren Kasten, nicht am Fenster.
-                                     Ohne das bliebe das Menü beim Scrollen stehen, während die
-                                     Zeile darunter wegwandert. --}}
-                                @scroll.window.capture="open = false"
-                                @resize.window="open = false">
+                                @include('reservation::partials.booking-status-menu-state')>
                                 @if ($booking->status === 'pending')
                                     <x-nx-button icon variant="ghost" wire:click.stop="confirmBooking({{ $booking->id }})" title="Bestätigen">
                                         @svg('heroicon-o-check', 'w-4 h-4')
@@ -156,63 +136,15 @@
                                     </x-nx-button>
                                 @endif
 
-                                {{-- Statuswechsel im Kebab-Menü. Nicht als eigene Knöpfe in der
-                                     Zeile: No-Show und Abgeschlossen werden selten geklickt,
-                                     Bestätigen und Bon drucken dauernd – fünf Symbole
-                                     nebeneinander machen die häufigen schwerer zu treffen.
+                                {{-- Statuswechsel im Menü statt als eigene Knöpfe: No-Show und
+                                     Abgeschlossen werden selten geklickt, Bestätigen und Bon
+                                     drucken dauernd – fünf Symbole nebeneinander machen die
+                                     häufigen schwerer zu treffen.
 
-                                     Steht bewusst GANZ rechts, als letztes Element. Die anderen
-                                     Symbole erscheinen je nach Status; säße das Menü zwischen
-                                     ihnen, wanderte es von Zeile zu Zeile. Als letztes vor dem
-                                     rechten Rand liegt es immer an derselben Stelle.
-
-                                     Bei stornierten Buchungen entfällt das Menü: Wer abgesagt
-                                     hat, kann weder fehlen noch teilnehmen. --}}
+                                     Bei stornierten Buchungen entfällt es: Wer abgesagt hat,
+                                     kann weder fehlen noch teilnehmen. --}}
                                 @if ($booking->status !== 'cancelled')
-                                    <div @click.stop>
-                                        <x-nx-button icon variant="ghost" type="button" x-ref="kebab"
-                                            @click="open ? open = false : auf()" title="Status ändern">
-                                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                                <circle cx="10" cy="4" r="1.4"/><circle cx="10" cy="10" r="1.4"/><circle cx="10" cy="16" r="1.4"/>
-                                            </svg>
-                                        </x-nx-button>
-
-                                        {{-- "fixed" statt "absolute", anders als bei x-nx-dropdown:
-                                             Die Tabelle steckt in einem Kasten mit
-                                             "overflow-x-auto", und der beschneidet nach CSS auch
-                                             senkrecht. Ein Menü in den unteren Zeilen wäre dort
-                                             abgeschnitten. Frei am Fenster hängend ist es das
-                                             nicht – der Preis ist die Lage von Hand (auf()) und
-                                             das Schließen beim Scrollen.
-
-                                             Aussehen und der Name "open" bewusst wie in
-                                             x-nx-dropdown: Nur so passen die x-nx-dropdown-item
-                                             darin, die selbst "open = false" setzen. --}}
-                                        <div x-show="open" style="display:none" x-transition
-                                            @click.outside="open = false"
-                                            :style="{ top: oben + 'px', right: rechts + 'px' }"
-                                            class="fixed z-50 w-56 rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-surface)] p-1 shadow-[var(--nx-shadow-pop)]">
-                                            @if ($booking->status !== 'no_show')
-                                                <x-nx-dropdown-item wire:click="askNoShow({{ $booking->id }})">
-                                                    @svg('heroicon-o-user-minus', 'w-4 h-4') <span>No-Show</span>
-                                                </x-nx-dropdown-item>
-                                            @endif
-                                            @if ($booking->status !== 'completed')
-                                                <x-nx-dropdown-item wire:click="markCompleted({{ $booking->id }})">
-                                                    @svg('heroicon-o-check-circle', 'w-4 h-4') <span>Abgeschlossen</span>
-                                                </x-nx-dropdown-item>
-                                            @endif
-                                            @if (in_array($booking->status, ['no_show', 'completed'], true))
-                                                <x-nx-dropdown-divider />
-                                                {{-- Nicht "Zurück auf Bestätigt": Wohin es geht, hängt
-                                                     an der Bestellung – bei unbezahlten Shop-Buchungen
-                                                     auf ausstehend. Die Rückfrage sagt es. --}}
-                                                <x-nx-dropdown-item wire:click="askReopen({{ $booking->id }})">
-                                                    @svg('heroicon-o-arrow-uturn-left', 'w-4 h-4') <span>Zurücknehmen</span>
-                                                </x-nx-dropdown-item>
-                                            @endif
-                                        </div>
-                                    </div>
+                                    @include('reservation::partials.booking-status-menu', ['booking' => $booking])
                                 @endif
                             </div>
                         </x-nx-table-cell>
