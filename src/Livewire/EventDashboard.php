@@ -90,16 +90,32 @@ class EventDashboard extends Component
             ->orderBy('guest_name')
             ->get();
 
-        $bySlot = $bookings->groupBy('slot_id');
+        // Das Feld heisst event_slot_id. Hier stand einmal slot_id - das gibt es
+        // am Model nicht, und Eloquent liefert fuer unbekannte Felder still
+        // null statt eines Fehlers. Ergebnis: jede Pause leer, alles unter
+        // "Ohne Pause". Faellt nur auf, wenn man die Zahlen im Gruppenkopf mit
+        // den Kacheln darueber vergleicht.
+        $bySlot = $bookings->groupBy('event_slot_id');
 
         $groups = $this->event->slots
             ->sortBy(fn ($s) => (string) $s->time_start)
             ->map(fn ($slot) => $this->slotGroup($slot->displayLabel(), $bySlot->get($slot->id, collect())))
             ->values();
 
-        $noSlot = $bookings->filter(fn ($b) => $b->slot_id === null);
-        if ($noSlot->isNotEmpty()) {
-            $groups->push($this->slotGroup('Ohne Pause', $noSlot));
+        // Der Rest-Topf faengt alles auf, was keiner Pause DIESES Termins
+        // zugeordnet ist - nicht nur die leeren. Beim Loeschen einer Pause
+        // setzt der Fremdschluessel das Feld zwar auf null (nullOnDelete), es
+        // bleibt also nichts verwaist zurueck; die Liste soll aber auch bei
+        // krummen Daten vollstaendig bleiben. Keine Zeile darf lautlos
+        // herausfallen, am Abend sitzen die Gaeste im Saal.
+        //
+        // contains() vergleicht bewusst locker: Ob die Spalte als Zahl oder
+        // als Text aus der Datenbank kommt, haengt am Treiber.
+        $slotIds = $this->event->slots->pluck('id');
+
+        $ohnePause = $bookings->reject(fn ($b) => $slotIds->contains($b->event_slot_id));
+        if ($ohnePause->isNotEmpty()) {
+            $groups->push($this->slotGroup('Ohne Pause', $ohnePause));
         }
 
         return $groups;
