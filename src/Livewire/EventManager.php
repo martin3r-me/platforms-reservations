@@ -79,6 +79,11 @@ class EventManager extends Component
                 ->whereIn('status', [Event::STATUS_PUBLISHED, Event::STATUS_CLOSED])
                 ->whereHas('bookings', fn ($b) => $b->where('status', Booking::STATUS_CONFIRMED)))
             ->when(!in_array($this->statusFilter, ['all', 'closed', 'nachzubereiten'], true), fn ($q) => $q->where('status', $this->statusFilter))
+            // „Veröffentlicht" heißt: Gäste sehen den Termin und können bestellen.
+            // Nach dem Abend trifft das nicht mehr zu – deshalb trägt ein
+            // vergangener Termin das Badge nicht mehr, und deshalb gehört er auch
+            // nicht in diesen Filter. Zu finden bleibt er über Zeit › Vergangen.
+            ->when($this->statusFilter === 'published', fn ($q) => $q->whereDate('date', '>=', $today))
             ->when($this->timeFilter === 'upcoming', fn ($q) => $q->whereDate('date', '>=', $today))
             ->when($this->timeFilter === 'past', fn ($q) => $q->whereDate('date', '<', $today))
             ->orderBy('date')
