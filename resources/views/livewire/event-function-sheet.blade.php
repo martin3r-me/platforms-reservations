@@ -35,27 +35,12 @@
 
         @php $sheet = $this->sheet; @endphp
 
-        {{-- Kopf wie im Buchungen-Reiter: erst der Termin, dann die Reiter.
-             Die Angaben standen vorher klein und grau UNTER den Reitern und
-             klebten an der ersten Karte - auf der Seite, auf der man am Abend
-             als Erstes nachsieht, zu welcher Veranstaltung der Zettel gehoert.
-
-             Auf Papier bleiben sie weg: Dort stehen sie schon in der
-             Druck-Kopfzeile darueber und wuerden sich sonst doppeln. --}}
-        <div class="pp-no-print">
-            <h1 class="m-0 text-2xl font-bold tracking-tight text-[color:var(--nx-text)]">{{ $this->event->name }}</h1>
-            <p class="m-0 mt-1 text-sm text-[color:var(--nx-muted)]">
-                {{ optional($sheet['event']['date'])->format('d.m.Y') }}
-                @if ($sheet['event']['venue']) · {{ $sheet['event']['venue'] }} @endif
-                @if ($this->event->slots->isNotEmpty()) · {{ $this->event->slots->map(fn ($sl) => $sl->displayLabel())->implode(', ') }} @endif
-            </p>
-            {{-- Der Zettel ist eine Momentaufnahme. Kommt waehrend des Abends
-                 eine Bestellung dazu, steht sie hier nicht drin - deshalb
-                 gehoert die Uhrzeit sichtbar dazu. --}}
-            <p class="m-0 mt-1 text-xs text-[color:var(--nx-faint)]">
-                Stand {{ $sheet['generated_at']->format('d.m.Y H:i') }} Uhr
-            </p>
-        </div>
+        {{-- Stand als dritte Zeile: Der Zettel ist eine Momentaufnahme, und
+             was waehrend des Abends dazukommt, steht nicht drin. --}}
+        @include('reservation::partials.event-header', [
+            'event'   => $this->event,
+            'hinweis' => 'Stand ' . $sheet['generated_at']->format('d.m.Y H:i') . ' Uhr',
+        ])
 
         <div class="pp-no-print">
             @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'function'])

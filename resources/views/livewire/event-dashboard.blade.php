@@ -105,29 +105,11 @@
             ['Umsatz', number_format($s['revenue'], 2, ',', '.') . ' ' . $sym],
             [$s['pauses'] === 1 ? 'Pause' : 'Pausen', $s['pauses']],
         ];
-        $statusColors = ['published' => '#2f9e44', 'draft' => '#868e96', 'closed' => '#e8590c', 'cancelled' => '#e03131'];
-        $statusDot = $statusColors[$this->event->status->value] ?? '#868e96';
     @endphp
 
     <div class="space-y-6">
 
-        {{-- Titel --}}
-        <div>
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <h1 class="m-0 text-2xl font-bold tracking-tight text-[color:var(--nx-text)]">{{ $this->event->name }}</h1>
-                <span class="inline-flex items-center gap-1.5 text-sm text-[color:var(--nx-muted)]">
-                    <span class="h-2 w-2 rounded-full" style="background:{{ $statusDot }}"></span>{{ $this->event->status->label() }}
-                </span>
-                @if ($this->event->date->isToday())
-                    <x-nx-badge variant="success">Heute</x-nx-badge>
-                @endif
-            </div>
-            <p class="m-0 mt-1 text-sm text-[color:var(--nx-muted)]">
-                {{ $this->event->date->format('d.m.Y') }}
-                @if ($this->event->venue) · {{ $this->event->venue->name }} @endif
-                @if ($this->event->slots->isNotEmpty()) · {{ $this->event->slots->map(fn ($sl) => $sl->displayLabel())->implode(', ') }} @endif
-            </p>
-        </div>
+        @include('reservation::partials.event-header', ['event' => $this->event])
 
         @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'dashboard'])
 

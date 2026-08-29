@@ -33,6 +33,8 @@
             </p>
         </div>
 
+        @include('reservation::partials.event-header', ['event' => $this->event])
+
         <div class="pp-no-print">
             @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'kitchen'])
         </div>

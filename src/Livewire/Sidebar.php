@@ -5,6 +5,7 @@ namespace Platform\Reservation\Livewire;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\Order;
 
@@ -40,8 +41,11 @@ class Sidebar extends Component
             return 0;
         }
 
+        // Dieselbe Bedingung wie in der Liste (EventOperations): Stornos und
+        // No-Shows zaehlen nicht. Sonst nennt die Zahl am Menuepunkt mehr
+        // Veranstaltungen, als die Liste danach zeigt.
         return Event::forTeam($this->teamId())
-            ->whereHas('bookings')
+            ->whereHas('bookings', fn ($q) => $q->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW]))
             ->whereDate('date', '>=', now()->toDateString())
             ->count();
     }
