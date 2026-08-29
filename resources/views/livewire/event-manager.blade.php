@@ -85,8 +85,8 @@
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="text-sm font-medium text-[color:var(--nx-text)]">{{ $event->name }}</span>
                                 <x-nx-badge :variant="$eventStatusVariant[$event->status->value] ?? 'neutral'">{{ $event->status->label() }}</x-nx-badge>
-                                @if ($event->istFristAbgelaufen())
-                                    <x-nx-badge variant="warning">Frist abgelaufen</x-nx-badge>
+                                @if ($event->istBestellschlussErreicht())
+                                    <x-nx-badge variant="warning">Bestellschluss erreicht</x-nx-badge>
                                 @endif
                                 @if ($event->istVergangen())
                                     <x-nx-badge>Vergangen</x-nx-badge>

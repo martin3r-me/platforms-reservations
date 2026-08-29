@@ -121,11 +121,11 @@ class Event extends Model
     }
 
     /**
-     * Veröffentlicht, aber die Frist ist durch – der Termin läuft noch, nur
-     * bestellen kann niemand mehr. Von Hand gesperrte Termine (Status closed)
-     * tragen ihren Zustand schon im Status und sind hier bewusst nicht dabei.
+     * Veröffentlicht, aber der Bestellschluss ist erreicht – der Termin läuft
+     * noch, nur bestellen kann niemand mehr. Von Hand gesperrte Termine (Status
+     * closed) tragen ihren Zustand schon im Status und sind hier nicht dabei.
      */
-    public function istFristAbgelaufen(): bool
+    public function istBestellschlussErreicht(): bool
     {
         return $this->status === EventStatus::Published
             && $this->order_deadline_at !== null
