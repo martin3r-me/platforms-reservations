@@ -43,7 +43,7 @@
                                     <span class="text-sm font-medium text-[color:var(--nx-text)]">{{ $event->name }}</span>
                                     @if ($event->date->isToday())
                                         <x-nx-badge variant="success">Heute</x-nx-badge>
-                                    @elseif ($event->date->isPast())
+                                    @elseif ($event->istVergangen())
                                         <x-nx-badge>Vergangen</x-nx-badge>
                                     @endif
                                 </div>

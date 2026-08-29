@@ -362,7 +362,7 @@ class EventManager extends Component
             $this->statusFilter = $status;
         }
 
-        $isPast = $event->date && $event->date->lt(now()->startOfDay());
+        $isPast = $event->istVergangen();
 
         if ($this->timeFilter === 'upcoming' && $isPast) {
             $this->timeFilter = 'all';

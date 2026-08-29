@@ -103,6 +103,24 @@ class Event extends Model
     }
 
     /**
+     * Liegt der Termin vor dem heutigen Tag?
+     *
+     * Verglichen wird gegen den TAGESBEGINN, nicht gegen die Uhrzeit. `date`
+     * ist ein reines Datum und steht als Mitternacht in der Ablage; Carbons
+     * `$event->date->isPast()` meldet einen heutigen Termin deshalb ab 00:01
+     * als vergangen – der Abend hat da noch nicht einmal begonnen.
+     *
+     * Genau das stand in der Terminliste: Der Filter rechnete richtig, das
+     * Abzeichen daneben falsch, und beide standen in derselben Zeile.
+     *
+     * SQL-Zwilling ist scopeUpcoming(); wer den einen ändert, ändert den anderen.
+     */
+    public function istVergangen(): bool
+    {
+        return $this->date !== null && $this->date->lt(now()->startOfDay());
+    }
+
+    /**
      * Aktive Buchungen in Bon-Reihenfolge: nach Pause, darin nach Gastname.
      *
      * Dieselbe Reihenfolge, in der die Buchungen im VA-Dashboard stehen –
