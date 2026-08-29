@@ -153,6 +153,63 @@ class CheckoutSettings extends Component
     /** Zaehlen No-Shows zum Umsatz? Siehe CheckoutSetting::umsatzStatus(). */
     public bool $revenueIncludesNoShow = false;
 
+    /* ---------------------------------------------------------------------
+     | Vier-Augen-Prinzip: keine Formularfelder, sondern Vorgänge.
+     |
+     | Bewusst NICHT am Speichern-Knopf: Ein Häkchen, das mit allen anderen
+     | Einstellungen mitspeichert, wäre genau das, was der Schutz verhindern
+     | soll – ein beiläufiges Umlegen. Jeder Schritt ist eine eigene Handlung.
+     --------------------------------------------------------------------- */
+
+    /** Rückmeldung der Freigabe-Vorgänge – steht im Panel, nicht in der Actionbar. */
+    public string $freigabeMeldung = '';
+
+    public bool $freigabeMeldungIstFehler = false;
+
+    #[\Livewire\Attributes\Computed]
+    public function freigabeSetting(): CheckoutSetting
+    {
+        return CheckoutSetting::forTeam($this->getTeamId());
+    }
+
+    public function requestFourEyesOff(): void
+    {
+        $this->freigabeSetting->requestFourEyesOff(Auth::user());
+        unset($this->freigabeSetting);
+
+        $this->freigabeMeldung = 'Antrag gestellt. Die Freigabepflicht gilt unverändert weiter, bis jemand anderes bestätigt.';
+        $this->freigabeMeldungIstFehler = false;
+    }
+
+    public function withdrawFourEyesOff(): void
+    {
+        $this->freigabeSetting->withdrawFourEyesOff();
+        unset($this->freigabeSetting);
+
+        $this->freigabeMeldung = 'Antrag zurückgezogen. Es bleibt bei der Freigabepflicht.';
+        $this->freigabeMeldungIstFehler = false;
+    }
+
+    public function confirmFourEyesOff(): void
+    {
+        $ok = $this->freigabeSetting->confirmFourEyesOff(Auth::user());
+        unset($this->freigabeSetting);
+
+        $this->freigabeMeldung = $ok
+            ? 'Die Freigabepflicht ist abgeschaltet. Wer sie gelockert hat, steht hier dauerhaft.'
+            : 'Bestätigen muss jemand anderes als die Person, die es beantragt hat.';
+        $this->freigabeMeldungIstFehler = ! $ok;
+    }
+
+    public function enableFourEyes(): void
+    {
+        $this->freigabeSetting->enableFourEyes(Auth::user());
+        unset($this->freigabeSetting);
+
+        $this->freigabeMeldung = 'Die Freigabepflicht gilt wieder. Neue Artikel brauchen zwei Personen.';
+        $this->freigabeMeldungIstFehler = false;
+    }
+
     public function save(): void
     {
         $this->validate([

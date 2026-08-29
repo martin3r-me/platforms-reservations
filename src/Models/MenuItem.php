@@ -50,6 +50,7 @@ class MenuItem extends Model
         'is_caffeinated',
         'caffeine_mg',
         'approval_status',
+        'submitted_at',
         'submitted_by',
         'approved_by',
         'approved_at',
@@ -69,6 +70,7 @@ class MenuItem extends Model
         'is_caffeinated' => 'boolean',
         'caffeine_mg'   => 'decimal:1',
         'approved_at'   => 'datetime',
+        'submitted_at'  => 'datetime',
     ];
 
     public function team(): BelongsTo
@@ -292,6 +294,7 @@ class MenuItem extends Model
         $this->update([
             'approval_status' => self::APPROVAL_REVIEW,
             'submitted_by'    => $user->id,
+            'submitted_at'    => now(),
             'approved_by'     => null,
             'approved_at'     => null,
         ]);
@@ -299,10 +302,26 @@ class MenuItem extends Model
 
     /**
      * Vier-Augen-Schritt 2: Freigabe – verweigert, wenn Prüfer = Einreicher.
+     *
+     * Ob die Pflicht gilt, entscheidet das Team-Setting. Zwei Feinheiten:
+     *
+     * Wurde der Artikel eingereicht, SOLANGE die Pflicht galt, bleibt sie für
+     * ihn bestehen – auch wenn sie inzwischen abgeschaltet wurde. Sonst wäre
+     * das Abschalten der bequeme Umweg um eine Prüfung, die bereits lief.
+     *
+     * Und: Ohne Einreicher (Altbestand ohne submitted_by) greift die Sperre
+     * ohnehin nicht – dann gibt es niemanden, gegen den zu prüfen wäre.
      */
     public function approve(User $user): bool
     {
-        if ($this->submitted_by !== null && (int) $this->submitted_by === (int) $user->id) {
+        $setting = CheckoutSetting::forTeam((int) $this->team_id);
+
+        $pflicht = $setting->fourEyesRequired()
+            || ($this->submitted_at !== null
+                && $setting->four_eyes_changed_at !== null
+                && $this->submitted_at->lt($setting->four_eyes_changed_at));
+
+        if ($pflicht && $this->submitted_by !== null && (int) $this->submitted_by === (int) $user->id) {
             return false;
         }
 
@@ -323,6 +342,7 @@ class MenuItem extends Model
         $this->update([
             'approval_status' => self::APPROVAL_DRAFT,
             'submitted_by'    => null,
+            'submitted_at'    => null,
             'approved_by'     => null,
             'approved_at'     => null,
         ]);

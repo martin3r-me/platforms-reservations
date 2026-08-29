@@ -25,6 +25,7 @@
         ['key' => 'belege',             'label' => 'Belege & Druck',         'icon' => 'heroicon-o-printer'],
         ['key' => 'benachrichtigungen', 'label' => 'Benachrichtigungen',     'icon' => 'heroicon-o-envelope'],
         ['key' => 'buchhaltung',        'label' => 'Buchhaltung',            'icon' => 'heroicon-o-calculator'],
+        ['key' => 'artikel',            'label' => 'Artikel & Freigabe',     'icon' => 'heroicon-o-shield-check'],
     ];
 
     $speisen = [

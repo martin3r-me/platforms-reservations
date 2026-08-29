@@ -4,6 +4,7 @@ namespace Platform\Reservation\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Platform\Core\Models\User;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Platform\Reservation\Models\Concerns\HasContextImage;
 use Platform\Reservation\Models\Concerns\HasTranslations;
@@ -54,6 +55,12 @@ class CheckoutSetting extends Model
         'field_notes',
         'soft_table_capacity',
         'max_group_empty_table',
+        'four_eyes_enabled',
+        'four_eyes_off_requested_by',
+        'four_eyes_off_requested_at',
+        'four_eyes_changed_by',
+        'four_eyes_changed_with',
+        'four_eyes_changed_at',
         'languages',
         'guest_frontend_url',
         'confirmation_channel_id',
@@ -82,6 +89,9 @@ class CheckoutSetting extends Model
     protected $casts = [
         'soft_table_capacity'            => 'boolean',
         'max_group_empty_table'          => 'integer',
+        'four_eyes_enabled'              => 'boolean',
+        'four_eyes_off_requested_at'     => 'datetime',
+        'four_eyes_changed_at'           => 'datetime',
         'languages'                      => 'array',
         'cancellation_enabled'           => 'boolean',
         'cancellation_deadline_hours'    => 'integer',
@@ -143,6 +153,112 @@ class CheckoutSetting extends Model
     public static function forTeam(int $teamId): self
     {
         return static::withoutGlobalScope('team')->firstOrNew(['team_id' => $teamId]);
+    }
+
+    /* ---------------------------------------------------------------------
+     | Vier-Augen-Prinzip bei der Artikelfreigabe
+     |
+     | Der Schalter ist die Kontrolle selbst – wer ihn allein umlegen kann, hat
+     | die Kontrolle nicht. Deshalb ist nur EINE Richtung geschützt: Abschalten
+     | braucht zwei verschiedene Personen, Einschalten wirkt sofort. Strenger
+     | werden darf jeder allein, lockerer werden niemand.
+     --------------------------------------------------------------------- */
+
+    /** Wer das Abschalten beantragt hat (solange der Antrag offen ist). */
+    public function offRequestedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'four_eyes_off_requested_by');
+    }
+
+    /** Wer den letzten Wechsel vollzogen hat. */
+    public function changedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'four_eyes_changed_by');
+    }
+
+    /** Wer ihn beantragt hatte (nur beim Abschalten gesetzt). */
+    public function changedWith(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'four_eyes_changed_with');
+    }
+
+    /** Gilt die Freigabepflicht gerade? Default ist an – wer nichts einstellt, ist streng. */
+    public function fourEyesRequired(): bool
+    {
+        return $this->four_eyes_enabled === null || (bool) $this->four_eyes_enabled;
+    }
+
+    /** Wartet ein Abschalten auf den zweiten Menschen? */
+    public function fourEyesOffPending(): bool
+    {
+        return $this->fourEyesRequired() && $this->four_eyes_off_requested_by !== null;
+    }
+
+    /**
+     * Schritt 1: Abschalten beantragen. Wirkt noch nichts – die Pflicht gilt
+     * unverändert weiter, bis jemand anderes bestätigt.
+     */
+    public function requestFourEyesOff(User $user): void
+    {
+        if (!$this->fourEyesRequired()) {
+            return;
+        }
+
+        $this->forceFill([
+            'four_eyes_off_requested_by' => $user->id,
+            'four_eyes_off_requested_at' => now(),
+        ])->save();
+    }
+
+    /** Antrag zurückziehen – darf jeder, es führt zurück zum strengeren Zustand. */
+    public function withdrawFourEyesOff(): void
+    {
+        $this->forceFill([
+            'four_eyes_off_requested_by' => null,
+            'four_eyes_off_requested_at' => null,
+        ])->save();
+    }
+
+    /**
+     * Schritt 2: Bestätigen – nur durch jemand anderen als den Antragsteller.
+     *
+     * @return bool false, wenn kein Antrag offen ist oder derselbe Mensch bestätigt
+     */
+    public function confirmFourEyesOff(User $user): bool
+    {
+        if (!$this->fourEyesOffPending()) {
+            return false;
+        }
+
+        if ((int) $this->four_eyes_off_requested_by === (int) $user->id) {
+            return false;
+        }
+
+        $this->forceFill([
+            'four_eyes_enabled'          => false,
+            // Beide Beteiligten bleiben stehen: in den Einstellungen soll lesbar
+            // sein, wer die Pflicht gelockert hat.
+            'four_eyes_changed_with'     => $this->four_eyes_off_requested_by,
+            'four_eyes_changed_by'       => $user->id,
+            'four_eyes_changed_at'       => now(),
+            'four_eyes_off_requested_by' => null,
+            'four_eyes_off_requested_at' => null,
+        ])->save();
+
+        return true;
+    }
+
+    /** Wieder einschalten: sofort, allein, ohne Rückfrage. Strenger ist nie heikel. */
+    public function enableFourEyes(User $user): void
+    {
+        $this->forceFill([
+            'four_eyes_enabled'          => true,
+            'four_eyes_changed_by'       => $user->id,
+            'four_eyes_changed_with'     => null,
+            'four_eyes_changed_at'       => now(),
+            'four_eyes_off_requested_by' => null,
+            'four_eyes_off_requested_at' => null,
+        ])->save();
     }
 
     /**

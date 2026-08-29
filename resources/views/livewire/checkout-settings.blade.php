@@ -7,6 +7,7 @@
         'belege'             => 'Belege & Druck',
         'benachrichtigungen' => 'Benachrichtigungen',
         'buchhaltung'        => 'Buchhaltung',
+        'artikel'            => 'Artikel & Freigabe',
     ][$tab] ?? 'Einstellungen';
 @endphp
 <x-ui-page>
@@ -88,6 +89,10 @@
         @case('buchhaltung')
             @include('reservation::partials.settings.umsatz')
             @include('reservation::partials.settings.datev')
+            @break
+
+        @case('artikel')
+            @include('reservation::partials.settings.artikel-freigabe')
             @break
 
         @default
