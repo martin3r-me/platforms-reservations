@@ -75,6 +75,10 @@
         @if ($event->slots->isNotEmpty()) · {{ $event->slots->map(fn ($sl) => $sl->displayLabel())->implode(', ') }} @endif
         @if ($fristText)
             · {{ $kannBestellen ? 'Bestellschluss ' . $fristText : 'Bestellschluss war ' . $fristText }}
+        @else
+            {{-- Schweigen wäre hier falsch: ohne Frist bleibt der Termin bis
+                 Mitternacht offen, und genau das soll auffallen. --}}
+            · <span class="text-[color:var(--nx-faint)]">Kein Bestellschluss gesetzt</span>
         @endif
     </p>
 
