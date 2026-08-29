@@ -43,6 +43,13 @@ class Dashboard extends Component
             'month_revenue'    => $monthRevenue,
             'approved_items'   => MenuItem::forTeam($teamId)->approved()->count(),
             'total_items'      => MenuItem::forTeam($teamId)->count(),
+            // Die Kachel behauptete fest „Vier-Augen-Freigabe" – auch dort, wo
+            // das Team die Pflicht abgeschaltet hat. Was auf MICH wartet, zählt
+            // nach derselben Regel wie der Zähler am Menü.
+            'four_eyes'        => CheckoutSetting::forTeam($teamId)->fourEyesRequired(),
+            'awaiting_me'      => Auth::user()
+                ? MenuItem::forTeam($teamId)->awaitingApprovalBy(Auth::user(), $teamId)->count()
+                : 0,
         ];
     }
 

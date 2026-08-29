@@ -46,6 +46,11 @@
         <x-ui-sidebar-item :href="route('reservation.menu.index')">
             @svg('heroicon-o-rectangle-stack', 'w-4 h-4 text-[color:var(--nx-muted)]')
             <span class="ml-2 text-sm">Artikel</span>
+            {{-- Nur was ICH freigeben kann: die eigene Einreichung wäre eine
+                 Aufgabe, die der Zähler mir stellt und die ich nicht lösen kann. --}}
+            @if ($this->approvalCount > 0)
+                <span class="ml-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[color:var(--nx-accent-soft)] px-1 text-[10px] font-semibold text-[color:var(--nx-muted)]">{{ $this->approvalCount }}</span>
+            @endif
         </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.dropoff.index')">
             @svg('heroicon-o-clock', 'w-4 h-4 text-[color:var(--nx-muted)]')
@@ -105,8 +110,11 @@
             <a href="{{ route('reservation.venues.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]">
                 @svg('heroicon-o-building-storefront', 'w-5 h-5')
             </a>
-            <a href="{{ route('reservation.menu.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]">
+            <a href="{{ route('reservation.menu.index') }}" wire:navigate class="relative flex items-center justify-center p-2 rounded-md text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]">
                 @svg('heroicon-o-rectangle-stack', 'w-5 h-5')
+                @if ($this->approvalCount > 0)
+                    <span class="absolute right-1 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[color:var(--nx-accent)] px-1 text-[9px] font-semibold text-white">{{ $this->approvalCount > 99 ? '99+' : $this->approvalCount }}</span>
+                @endif
             </a>
             <a href="{{ route('reservation.dropoff.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]">
                 @svg('heroicon-o-clock', 'w-5 h-5')

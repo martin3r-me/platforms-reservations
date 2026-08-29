@@ -26,7 +26,10 @@
             icon="heroicon-o-ticket" accent="var(--nx-accent)" :href="route('reservation.events.index')" wire:navigate />
         <x-nx-stat label="Umsatz im Monat" :value="number_format($this->stats->month_revenue, 2, ',', '.') . ' €'" :hint="now()->locale('de')->isoFormat('MMMM Y')"
             icon="heroicon-o-banknotes" accent="var(--nx-success)" :href="route('reservation.finance.index')" wire:navigate />
-        <x-nx-stat label="Freigegebene Artikel" :value="$this->stats->approved_items . ' / ' . $this->stats->total_items" hint="Vier-Augen-Freigabe"
+        <x-nx-stat label="Freigegebene Artikel" :value="$this->stats->approved_items . ' / ' . $this->stats->total_items"
+            :hint="$this->stats->awaiting_me > 0
+                ? ($this->stats->awaiting_me === 1 ? '1 wartet auf Ihre Freigabe' : $this->stats->awaiting_me . ' warten auf Ihre Freigabe')
+                : ($this->stats->four_eyes ? 'Vier-Augen-Freigabe' : 'Freigabe ohne Vier-Augen-Prinzip')"
             icon="heroicon-o-rectangle-stack" accent="var(--nx-info)" :href="route('reservation.menu.index')" wire:navigate />
     </x-nx-stat-grid>
 

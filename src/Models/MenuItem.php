@@ -314,14 +314,7 @@ class MenuItem extends Model
      */
     public function approve(User $user): bool
     {
-        $setting = CheckoutSetting::forTeam((int) $this->team_id);
-
-        $pflicht = $setting->fourEyesRequired()
-            || ($this->submitted_at !== null
-                && $setting->four_eyes_changed_at !== null
-                && $this->submitted_at->lt($setting->four_eyes_changed_at));
-
-        if ($pflicht && $this->submitted_by !== null && (int) $this->submitted_by === (int) $user->id) {
+        if (! $this->canBeApprovedBy($user)) {
             return false;
         }
 
@@ -332,6 +325,64 @@ class MenuItem extends Model
         ]);
 
         return true;
+    }
+
+    /**
+     * Darf dieser Mensch diesen Artikel freigeben?
+     *
+     * Gilt die Pflicht, scheidet der Einreicher aus. Sie gilt, wenn das Team
+     * sie eingeschaltet hat – ODER wenn der Artikel eingereicht wurde, SOLANGE
+     * sie galt: sonst waere das Abschalten ein Umweg um eine laufende Pruefung.
+     *
+     * Zusammen mit scopeAwaitingApprovalBy() unten sind das zwei Ausdrücke
+     * derselben Regel – einmal für einen Artikel, einmal als Filter über viele.
+     * Sie gehören zusammen geändert, sonst zeigt der Zähler am Menü etwas
+     * anderes an, als die Freigabe danach zulässt.
+     */
+    public function canBeApprovedBy(User $user): bool
+    {
+        if ($this->submitted_by === null || (int) $this->submitted_by !== (int) $user->id) {
+            return true;
+        }
+
+        $setting = CheckoutSetting::forTeam((int) $this->team_id);
+
+        if ($setting->fourEyesRequired()) {
+            return false;
+        }
+
+        // Pflicht ist aus: die eigene Einreichung ist frei, sofern sie nach dem
+        // Abschalten entstand.
+        $stichtag = $setting->four_eyes_changed_at;
+
+        return $stichtag === null
+            || ($this->submitted_at !== null && $this->submitted_at->gte($stichtag));
+    }
+
+    /**
+     * Artikel, die auf die Freigabe DURCH DIESEN MENSCHEN warten – die eigenen
+     * Einreichungen also nicht, solange die Pflicht für sie gilt. Siehe
+     * canBeApprovedBy(): dieselbe Regel, hier als Filter.
+     */
+    public function scopeAwaitingApprovalBy($query, User $user, ?int $teamId = null)
+    {
+        $setting  = CheckoutSetting::forTeam((int) ($teamId ?? $user->current_team_id));
+        $stichtag = $setting->four_eyes_changed_at;
+
+        $query->where('approval_status', self::APPROVAL_REVIEW);
+
+        // Pflicht aus und nie eine gewesen: niemand ist ausgeschlossen.
+        if (! $setting->fourEyesRequired() && $stichtag === null) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($user, $setting, $stichtag) {
+            $q->whereNull('submitted_by')->orWhere('submitted_by', '!=', $user->id);
+
+            if (! $setting->fourEyesRequired()) {
+                $q->orWhere(fn ($qq) => $qq->whereNotNull('submitted_at')->where('submitted_at', '>=', $stichtag));
+            }
+        });
     }
 
     /**
