@@ -7,6 +7,7 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\EventRoom;
 use Platform\Reservation\Models\EventSlot;
@@ -22,7 +23,7 @@ class EventManager extends Component
     public ?int $editingEventId = null;
 
     // Übersichts-Filter (Default: veröffentlichte, kommende Termine)
-    public string $statusFilter = 'published'; // draft|published|closed|cancelled|all
+    public string $statusFilter = 'published'; // draft|published|closed|cancelled|nachzubereiten|all
     public string $timeFilter   = 'upcoming';  // upcoming|past|all
 
     // Stammdaten
@@ -59,6 +60,7 @@ class EventManager extends Component
         return Event::forTeam($this->getTeamId())
             ->with(['venue', 'salesList', 'slots'])
             ->withCount(['eventRooms', 'bookings'])
+            ->withCount(['bookings as bestaetigte_count' => fn ($q) => $q->where('status', Booking::STATUS_CONFIRMED)])
             ->when($this->statusFilter === 'closed', fn ($q) => $q->where(
                 // „Bestellschluss" ist zweierlei: von Hand gesperrt (Status) oder
                 // Frist abgelaufen. Nur den Status zu zeigen hieße, den Regelfall
@@ -69,7 +71,14 @@ class EventManager extends Component
                         ->whereNotNull('order_deadline_at')
                         ->where('order_deadline_at', '<', now()))
             ))
-            ->when(!in_array($this->statusFilter, ['all', 'closed'], true), fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->statusFilter === 'nachzubereiten', fn ($q) => $q
+                // Der Abend ist vorbei, aber es stehen noch bestätigte Buchungen –
+                // niemand hat durchgesehen, wer da war und wer nicht. Abgesagte
+                // Termine gehören nicht in diese Arbeitsliste.
+                ->whereDate('date', '<', $today)
+                ->whereIn('status', [Event::STATUS_PUBLISHED, Event::STATUS_CLOSED])
+                ->whereHas('bookings', fn ($b) => $b->where('status', Booking::STATUS_CONFIRMED)))
+            ->when(!in_array($this->statusFilter, ['all', 'closed', 'nachzubereiten'], true), fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->timeFilter === 'upcoming', fn ($q) => $q->whereDate('date', '>=', $today))
             ->when($this->timeFilter === 'past', fn ($q) => $q->whereDate('date', '<', $today))
             ->orderBy('date')
@@ -358,6 +367,24 @@ class EventManager extends Component
     {
         $this->statusFilter = 'all';
         $this->timeFilter   = 'all';
+
+        unset($this->events);
+    }
+
+    /**
+     * Status-Filter setzen.
+     *
+     * „Nachzubereiten" meint ausschließlich Vergangenes. Bliebe die Zeit auf
+     * „Kommend" stehen, wäre die Liste zwangsläufig leer – der Nutzer sähe
+     * einen leeren Bildschirm und keinen Grund dafür.
+     */
+    public function setStatusFilter(string $value): void
+    {
+        $this->statusFilter = $value;
+
+        if ($value === 'nachzubereiten' && $this->timeFilter === 'upcoming') {
+            $this->timeFilter = 'all';
+        }
 
         unset($this->events);
     }

@@ -121,6 +121,29 @@ class Event extends Model
     }
 
     /**
+     * Der Abend ist vorbei, aber es stehen noch bestätigte Buchungen: niemand
+     * hat durchgesehen, wer da war und wer nicht. Erst „Abend abschließen"
+     * setzt sie auf abgeschlossen – bewusst von Hand, nicht per Uhr.
+     *
+     * Nutzt die mitgeladene Zählung (withCount as bestaetigte_count), wenn sie
+     * da ist; sonst wird sie einzeln geholt.
+     */
+    public function istNachzubereiten(): bool
+    {
+        if (!$this->istVergangen() || !in_array($this->status?->value, [self::STATUS_PUBLISHED, self::STATUS_CLOSED], true)) {
+            return false;
+        }
+
+        $offene = $this->getAttribute('bestaetigte_count');
+
+        if ($offene === null) {
+            $offene = $this->bookings()->where('status', Booking::STATUS_CONFIRMED)->count();
+        }
+
+        return (int) $offene > 0;
+    }
+
+    /**
      * Veröffentlicht, aber der Bestellschluss ist erreicht – der Termin läuft
      * noch, nur bestellen kann niemand mehr. Von Hand gesperrte Termine (Status
      * closed) tragen ihren Zustand schon im Status und sind hier nicht dabei.

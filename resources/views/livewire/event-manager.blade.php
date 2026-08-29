@@ -47,8 +47,8 @@
         <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
             <div class="flex flex-wrap items-center gap-1">
                 <span class="mr-1 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--nx-faint)]">Status</span>
-                @foreach (['published' => 'Veröffentlicht', 'draft' => 'Entwurf', 'closed' => 'Bestellschluss', 'cancelled' => 'Abgesagt', 'all' => 'Alle'] as $val => $label)
-                    <button type="button" wire:click="$set('statusFilter', '{{ $val }}')"
+                @foreach (['published' => 'Veröffentlicht', 'draft' => 'Entwurf', 'closed' => 'Bestellschluss', 'nachzubereiten' => 'Nachzubereiten', 'cancelled' => 'Abgesagt', 'all' => 'Alle'] as $val => $label)
+                    <button type="button" wire:click="setStatusFilter('{{ $val }}')"
                         class="rounded-full px-2.5 py-1 transition-colors {{ $statusFilter === $val ? 'bg-[color:var(--nx-active)] font-medium text-[color:var(--nx-text)]' : 'text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]' }}">{{ $label }}</button>
                 @endforeach
             </div>
@@ -87,6 +87,9 @@
                                 <x-nx-badge :variant="$eventStatusVariant[$event->status->value] ?? 'neutral'">{{ $event->status->label() }}</x-nx-badge>
                                 @if ($event->istBestellschlussErreicht())
                                     <x-nx-badge variant="warning">Bestellschluss erreicht</x-nx-badge>
+                                @endif
+                                @if ($event->istNachzubereiten())
+                                    <x-nx-badge variant="warning">Nachzubereiten</x-nx-badge>
                                 @endif
                                 @if ($event->istVergangen())
                                     <x-nx-badge>Vergangen</x-nx-badge>
