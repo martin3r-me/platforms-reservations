@@ -12,6 +12,7 @@ use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\EventSlot;
+use Platform\Reservation\Services\RoomReleaseService;
 use Platform\Reservation\Services\SeatAvailabilityService;
 
 /**
@@ -175,18 +176,63 @@ class EventDashboard extends Component
             return [];
         }
 
-        $seats = app(SeatAvailabilityService::class);
+        $seats  = app(SeatAvailabilityService::class);
+        $freigabe = app(RoomReleaseService::class);
         $result = [];
 
         foreach ($this->event->slots as $slot) {
-            $result[$slot->id] = $raeume
-                ->map(fn ($raum) => $this->raumAuslastung($raum, $slot, $seats))
-                ->filter()
-                ->values()
-                ->all();
+            // Auch die Freigabe haengt an der Pause: Raum 2 kann in der ersten
+            // Pause laengst offen sein und in der zweiten noch zu.
+            $offeneIds = $freigabe->openRooms($this->event, $slot)->pluck('id')->all();
+
+            $zeilen = [];
+
+            foreach ($raeume as $i => $raum) {
+                $zeile = $this->raumAuslastung($raum, $slot, $seats);
+
+                if ($zeile === null) {
+                    continue;
+                }
+
+                $zeile['open']    = in_array($raum->id, $offeneIds, true);
+                $zeile['hinweis'] = $this->freigabeHinweis($raum, $raeume->get($i - 1), $zeile['open']);
+
+                $zeilen[] = $zeile;
+            }
+
+            $result[$slot->id] = $zeilen;
         }
 
         return $result;
+    }
+
+    /**
+     * Warum ein Raum zu ist - oder warum er entgegen der Reihenfolge offen ist.
+     *
+     * Ohne diesen Satz stuende ein geschlossener Raum bei 0 Prozent da, und
+     * niemand wuesste, ob dort nichts gebucht wurde oder ob dort gar nichts
+     * gebucht werden konnte. Das sind zwei sehr verschiedene Abende.
+     *
+     * Gibt null zurueck, wenn es nichts zu sagen gibt - der Normalfall bei
+     * parallelen Raeumen ohne Handeingriff.
+     */
+    private function freigabeHinweis($raum, $vorgaenger, bool $offen): ?string
+    {
+        if (! $offen) {
+            if ($raum->is_open_override === false) {
+                return 'von Hand geschlossen';
+            }
+
+            return $vorgaenger
+                ? 'öffnet, sobald ' . ($vorgaenger->floorPlan?->name ?? 'der Raum davor')
+                    . ' zu ' . (int) $vorgaenger->fill_threshold_percent . " % gefüllt ist"
+                : 'geschlossen';
+        }
+
+        // Offen ist der Normalfall und braucht keine Erklaerung. Ausser jemand
+        // hat von Hand aufgemacht - dann soll klar sein, dass hier nicht die
+        // Reihenfolge greift.
+        return $raum->is_open_override === true ? 'von Hand geöffnet' : null;
     }
 
     /** Ein Raum in einer Pause: Plaetze, Prozent und die Tische einzeln. */

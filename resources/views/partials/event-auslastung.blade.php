@@ -17,9 +17,21 @@
                     : ($raum['percent'] >= 90 ? 'var(--nx-warning)' : 'var(--nx-accent)');
             @endphp
 
-            <div wire:key="auslastung-{{ $loop->index }}">
+            @php
+                // Ein geschlossener Raum wird blasser dargestellt. Er steht
+                // trotzdem da: Dass er zu ist, ist die Information.
+                $zu = ! ($raum['open'] ?? true);
+            @endphp
+
+            <div wire:key="auslastung-{{ $loop->index }}" @class(['opacity-60' => $zu])>
                 <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                     <span class="text-xs font-medium text-[color:var(--nx-text)]">{{ $raum['name'] }}</span>
+                    @if ($zu)
+                        <span class="inline-flex items-center gap-1 rounded-full border border-[color:var(--nx-line)] px-1.5 py-0.5 text-[10px] font-medium text-[color:var(--nx-muted)]">
+                            @svg('heroicon-o-lock-closed', 'w-3 h-3')
+                            <span>noch geschlossen</span>
+                        </span>
+                    @endif
                     <span class="text-xs tabular-nums text-[color:var(--nx-muted)]">
                         {{ $raum['booked'] }} von {{ $raum['seats'] }} Plätzen belegt
                     </span>
@@ -35,6 +47,7 @@
 
                 <p class="m-0 mt-1.5 text-[11px] text-[color:var(--nx-faint)]">
                     {{ $raum['free'] }} {{ $raum['free'] === 1 ? 'Platz' : 'Plätze' }} frei
+                    @if (! empty($raum['hinweis'])) · {{ $raum['hinweis'] }} @endif
                 </p>
 
                 {{-- Tische einzeln. Wer am Abend einen Platz sucht, will nicht
