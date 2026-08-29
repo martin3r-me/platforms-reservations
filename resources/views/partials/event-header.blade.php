@@ -62,7 +62,7 @@
                     <span class="pp-puls" style="background:{{ $statusPunkt }}"></span>
                 @endif
                 <span class="relative h-2 w-2 rounded-full" style="background:{{ $statusPunkt }}"></span>
-            </span>{{ $event->status->label() }}
+            </span>{{ $event->istVergangen() && ! in_array($event->status->value, ['draft', 'cancelled'], true) ? 'Vergangen' : $event->status->label() }}
         </span>
         @if ($event->date?->isToday())
             <x-nx-badge variant="success">Heute</x-nx-badge>

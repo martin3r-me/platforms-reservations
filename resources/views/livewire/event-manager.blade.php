@@ -84,7 +84,13 @@
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="text-sm font-medium text-[color:var(--nx-text)]">{{ $event->name }}</span>
-                                <x-nx-badge :variant="$eventStatusVariant[$event->status->value] ?? 'neutral'">{{ $event->status->label() }}</x-nx-badge>
+                                {{-- „Veröffentlicht" ist ein Zustand für die Zukunft. Ist der Abend
+                                     vorbei, widerspricht er dem „Vergangen" daneben und sagt nichts
+                                     mehr. Entwurf und Abgesagt bleiben stehen – die sagen auch
+                                     rückblickend etwas. --}}
+                                @if (! $event->istVergangen() || in_array($event->status->value, ['draft', 'cancelled'], true))
+                                    <x-nx-badge :variant="$eventStatusVariant[$event->status->value] ?? 'neutral'">{{ $event->status->label() }}</x-nx-badge>
+                                @endif
                                 @if ($event->istBestellschlussErreicht())
                                     <x-nx-badge variant="warning">Bestellschluss erreicht</x-nx-badge>
                                 @endif
