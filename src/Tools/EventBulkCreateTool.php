@@ -23,8 +23,10 @@ class EventBulkCreateTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'POST /reservation/events/bulk - Legt mehrere Termine auf einmal an (Status: draft). '
-            . 'REST-Parameter: events (Array von Objekten mit name, date (YYYY-MM-DD), optional description, '
-            . 'venue_id, sales_list_id, room_release_mode). Bis zu 500 je Aufruf. Liefert eine Ergebnisliste.';
+            . 'REST-Parameter: events (Array von Objekten mit name, date (YYYY-MM-DD), order_deadline_at (Pflicht, '
+            . 'Datum/Zeit), optional description, venue_id, sales_list_id, room_release_mode). Statt je Zeile '
+            . 'kann deadline_time (HH:MM) gesetzt werden – gilt dann am jeweiligen Termindatum. '
+            . 'Bis zu 500 je Aufruf. Liefert eine Ergebnisliste.';
     }
 
     public function getSchema(): array
@@ -39,6 +41,7 @@ class EventBulkCreateTool implements ToolContract, ToolMetadataContract
                         'properties' => [
                             'name'              => ['type' => 'string'],
                             'date'              => ['type' => 'string', 'description' => 'YYYY-MM-DD.'],
+                            'order_deadline_at' => ['type' => 'string', 'description' => 'Bestellschluss (Datum/Zeit). Entfällt, wenn deadline_time gesetzt ist.'],
                             'description'       => ['type' => 'string'],
                             'venue_id'          => ['type' => 'integer'],
                             'sales_list_id'     => ['type' => 'integer'],
@@ -46,6 +49,10 @@ class EventBulkCreateTool implements ToolContract, ToolMetadataContract
                         ],
                         'required'   => ['name', 'date'],
                     ],
+                ],
+                'deadline_time' => [
+                    'type'        => 'string',
+                    'description' => 'HH:MM – Bestellschluss am jeweiligen Termindatum, für alle Zeilen ohne eigenes order_deadline_at.',
                 ],
             ],
             'required'   => ['events'],
@@ -72,6 +79,15 @@ class EventBulkCreateTool implements ToolContract, ToolMetadataContract
             $venueIds = Venue::withoutGlobalScope('team')->where('team_id', $teamId)->pluck('id')->flip();
             $listIds  = SalesList::withoutGlobalScope('team')->where('team_id', $teamId)->pluck('id')->flip();
 
+            // Massenanlage ist genau der Weg, auf dem Termine ohne Frist entstanden
+            // sind. Entweder die Zeile bringt eine mit, oder deadline_time setzt sie
+            // für alle – ohne beides wird die Zeile abgewiesen.
+            $deadlineTime = trim((string) ($arguments['deadline_time'] ?? ''));
+
+            if ($deadlineTime !== '' && !preg_match('/^([01]\\d|2[0-3]):[0-5]\\d$/', $deadlineTime)) {
+                return ToolResult::error('deadline_time muss im Format HH:MM angegeben werden.', 'VALIDATION_ERROR');
+            }
+
             $created = [];
             $failed  = [];
 
@@ -83,6 +99,16 @@ class EventBulkCreateTool implements ToolContract, ToolMetadataContract
                     $failed[] = ['index' => $i, 'error' => 'name/date fehlt oder ungültig'];
                     continue;
                 }
+                $deadline = trim((string) ($row['order_deadline_at'] ?? ''));
+
+                if ($deadline === '' && $deadlineTime !== '') {
+                    $deadline = date('Y-m-d', strtotime($date)) . ' ' . $deadlineTime;
+                }
+                if ($deadline === '' || !strtotime($deadline)) {
+                    $failed[] = ['index' => $i, 'name' => $name, 'error' => 'order_deadline_at fehlt oder ist ungültig (alternativ deadline_time setzen)'];
+                    continue;
+                }
+
                 if (!empty($row['venue_id']) && !$venueIds->has((int) $row['venue_id'])) {
                     $failed[] = ['index' => $i, 'name' => $name, 'error' => 'venue_id gehört nicht zum Team'];
                     continue;
@@ -96,6 +122,7 @@ class EventBulkCreateTool implements ToolContract, ToolMetadataContract
                     'team_id'           => $teamId,
                     'name'              => $name,
                     'date'              => $date,
+                    'order_deadline_at' => $deadline,
                     'description'       => $row['description'] ?? null,
                     'venue_id'          => $row['venue_id'] ?? null,
                     'sales_list_id'     => $row['sales_list_id'] ?? null,

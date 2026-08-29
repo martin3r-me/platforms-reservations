@@ -121,6 +121,18 @@ class Event extends Model
     }
 
     /**
+     * Veröffentlicht, aber die Frist ist durch – der Termin läuft noch, nur
+     * bestellen kann niemand mehr. Von Hand gesperrte Termine (Status closed)
+     * tragen ihren Zustand schon im Status und sind hier bewusst nicht dabei.
+     */
+    public function istFristAbgelaufen(): bool
+    {
+        return $this->status === EventStatus::Published
+            && $this->order_deadline_at !== null
+            && now()->isAfter($this->order_deadline_at);
+    }
+
+    /**
      * Aktive Buchungen in Bon-Reihenfolge: nach Pause, darin nach Gastname.
      *
      * Dieselbe Reihenfolge, in der die Buchungen im VA-Dashboard stehen –
@@ -165,11 +177,14 @@ class Event extends Model
             return false;
         }
 
-        if ($this->order_deadline_at && now()->isAfter($this->order_deadline_at)) {
-            return false;
+        if ($this->order_deadline_at) {
+            return !now()->isAfter($this->order_deadline_at);
         }
 
-        return true;
+        // Eine Frist ist Pflicht – Altbestand aus der Zeit davor hat trotzdem
+        // keine. Dann endet die Vorbestellung mit dem Veranstaltungstag, statt
+        // den Termin ewig offen zu lassen.
+        return !$this->istVergangen();
     }
 
     /** Verkaufsliste für Gäste: Event-Liste, sonst Team-Default. */

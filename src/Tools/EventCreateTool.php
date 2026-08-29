@@ -24,7 +24,7 @@ class EventCreateTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'POST /reservation/events - Legt einen Termin an (Status: draft). REST-Parameter: '
-            . 'name (Pflicht), date (Pflicht, YYYY-MM-DD), description, order_deadline_at (Datum/Zeit), '
+            . 'name (Pflicht), date (Pflicht, YYYY-MM-DD), order_deadline_at (Pflicht, Datum/Zeit), description, '
             . 'venue_id, sales_list_id, room_release_mode (parallel|sequential).';
     }
 
@@ -36,12 +36,12 @@ class EventCreateTool implements ToolContract, ToolMetadataContract
                 'name'              => ['type' => 'string'],
                 'date'              => ['type' => 'string', 'description' => 'YYYY-MM-DD.'],
                 'description'       => ['type' => 'string'],
-                'order_deadline_at' => ['type' => 'string', 'description' => 'Bestellschluss (ISO-Datum/Zeit).'],
+                'order_deadline_at' => ['type' => 'string', 'description' => 'Bestellschluss (ISO-Datum/Zeit). Pflicht – ohne Frist bliebe der Termin ewig bestellbar.'],
                 'venue_id'          => ['type' => 'integer', 'description' => 'Venue des Teams (optional).'],
                 'sales_list_id'     => ['type' => 'integer', 'description' => 'Verkaufsliste des Teams (optional).'],
                 'room_release_mode' => ['type' => 'string', 'enum' => ['parallel', 'sequential']],
             ],
-            'required'   => ['name', 'date'],
+            'required'   => ['name', 'date', 'order_deadline_at'],
         ];
     }
 
@@ -58,7 +58,7 @@ class EventCreateTool implements ToolContract, ToolMetadataContract
                 'name'              => 'required|string|max:255',
                 'date'              => 'required|date',
                 'description'       => 'nullable|string',
-                'order_deadline_at' => 'nullable|date',
+                'order_deadline_at' => 'required|date',
                 'venue_id'          => 'nullable|integer',
                 'sales_list_id'     => 'nullable|integer',
                 'room_release_mode' => 'nullable|in:parallel,sequential',

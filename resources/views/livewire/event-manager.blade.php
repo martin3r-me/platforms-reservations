@@ -85,6 +85,9 @@
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="text-sm font-medium text-[color:var(--nx-text)]">{{ $event->name }}</span>
                                 <x-nx-badge :variant="$eventStatusVariant[$event->status->value] ?? 'neutral'">{{ $event->status->label() }}</x-nx-badge>
+                                @if ($event->istFristAbgelaufen())
+                                    <x-nx-badge variant="warning">Frist abgelaufen</x-nx-badge>
+                                @endif
                                 @if ($event->istVergangen())
                                     <x-nx-badge>Vergangen</x-nx-badge>
                                 @endif
@@ -159,7 +162,7 @@
                     <x-nx-input-text name="eventName" label="Name" wire:model="eventName" placeholder="z.B. Bodo Wartke" required errorKey="eventName" />
                 </div>
                 <x-nx-input-date name="eventDate" label="Datum" wire:model="eventDate" required errorKey="eventDate" />
-                <x-nx-input-datetime name="eventDeadline" label="Bestellschluss" wire:model="eventDeadline" :nullable="true" errorKey="eventDeadline" />
+                <x-nx-input-datetime name="eventDeadline" label="Bestellschluss" wire:model="eventDeadline" required errorKey="eventDeadline" />
                 <div class="sm:col-span-2">
                     <x-nx-input-textarea name="eventDescription" label="Beschreibung" wire:model="eventDescription" rows="2" />
                 </div>

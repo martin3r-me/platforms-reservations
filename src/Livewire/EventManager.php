@@ -59,7 +59,17 @@ class EventManager extends Component
         return Event::forTeam($this->getTeamId())
             ->with(['venue', 'salesList', 'slots'])
             ->withCount(['eventRooms', 'bookings'])
-            ->when($this->statusFilter !== 'all', fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->statusFilter === 'closed', fn ($q) => $q->where(
+                // „Bestellschluss" ist zweierlei: von Hand gesperrt (Status) oder
+                // Frist abgelaufen. Nur den Status zu zeigen hieße, den Regelfall
+                // zu verstecken – abgelaufen ist der übliche Weg, gesperrt die
+                // Ausnahme.
+                fn ($q) => $q->where('status', Event::STATUS_CLOSED)
+                    ->orWhere(fn ($q) => $q->where('status', Event::STATUS_PUBLISHED)
+                        ->whereNotNull('order_deadline_at')
+                        ->where('order_deadline_at', '<', now()))
+            ))
+            ->when(!in_array($this->statusFilter, ['all', 'closed'], true), fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->timeFilter === 'upcoming', fn ($q) => $q->whereDate('date', '>=', $today))
             ->when($this->timeFilter === 'past', fn ($q) => $q->whereDate('date', '<', $today))
             ->orderBy('date')
@@ -257,6 +267,8 @@ class EventManager extends Component
         $this->validate([
             'eventName'          => 'required|string|max:255',
             'eventDate'          => 'required|date',
+            // Ohne Frist bliebe ein Termin ewig bestellbar – auch nach dem Abend.
+            'eventDeadline'      => 'required|date',
             'eventVenueId'       => ['nullable', 'integer', Rule::exists('reservation_venues', 'id')->where('team_id', $this->getTeamId())],
             'eventSalesListId'   => ['nullable', 'integer', Rule::exists('reservation_sales_lists', 'id')->where('team_id', $this->getTeamId())],
             'eventReleaseMode'   => 'required|in:parallel,sequential',
@@ -270,6 +282,7 @@ class EventManager extends Component
             'rooms.*.fill_threshold_percent' => 'required|integer|min:1|max:100',
             'rooms.*.capacity_override' => 'nullable|integer|min:1',
         ], [
+            'eventDeadline.required' => 'Jeder Termin braucht einen Bestellschluss.',
             'slots.*.name.required' => 'Jede Pause braucht einen Namen.',
             'rooms.*.floor_plan_id.required' => 'Jeder Raum braucht einen Tischplan.',
         ]);
@@ -296,7 +309,7 @@ class EventManager extends Component
             'name'               => $this->eventName,
             'description'        => $this->eventDescription ?: null,
             'date'               => $this->eventDate,
-            'order_deadline_at'  => $this->eventDeadline ?: null,
+            'order_deadline_at'  => $this->eventDeadline,
             'venue_id'           => $this->eventVenueId,
             'sales_list_id'      => $this->eventSalesListId,
             'room_release_mode'  => $this->eventReleaseMode,

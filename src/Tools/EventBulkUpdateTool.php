@@ -44,7 +44,7 @@ class EventBulkUpdateTool implements ToolContract, ToolMetadataContract
                 'sales_list_id'     => ['type' => ['integer', 'null']],
                 'venue_id'          => ['type' => ['integer', 'null']],
                 'room_release_mode' => ['type' => 'string', 'enum' => ['parallel', 'sequential']],
-                'order_deadline_at' => ['type' => ['string', 'null'], 'description' => 'Datum/Zeit; null hebt die Frist auf.'],
+                'order_deadline_at' => ['type' => 'string', 'description' => 'Datum/Zeit. Aufheben ist nicht möglich – ohne Frist bliebe der Termin ewig bestellbar.'],
                 'description'       => ['type' => ['string', 'null']],
             ],
             'required'   => ['event_uuids'],
@@ -66,7 +66,7 @@ class EventBulkUpdateTool implements ToolContract, ToolMetadataContract
                 'sales_list_id'     => 'sometimes|nullable|integer',
                 'venue_id'          => 'sometimes|nullable|integer',
                 'room_release_mode' => 'sometimes|in:parallel,sequential',
-                'order_deadline_at' => 'sometimes|nullable|date',
+                'order_deadline_at' => 'sometimes|required|date',
                 'description'       => 'sometimes|nullable|string',
             ]);
 
