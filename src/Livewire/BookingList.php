@@ -9,21 +9,18 @@ use Platform\Reservation\Models\Booking;
 use Illuminate\Support\Facades\Auth;
 use Platform\Reservation\Livewire\Concerns\ChangesBookingStatus;
 use Platform\Reservation\Livewire\Concerns\PrintsBookingReceipt;
-use Platform\Reservation\Support\BookingItemsPresenter;
+use Platform\Reservation\Livewire\Concerns\ShowsBookingDetail;
 
 class BookingList extends Component
 {
     use ChangesBookingStatus;
     use PrintsBookingReceipt;
+    use ShowsBookingDetail;
     use WithPagination;
 
     public string $filterDate = '';
     public string $filterStatus = '';
     public string $search = '';
-
-    // Detail-Modal
-    public bool $showDetail = false;
-    public ?int $detailBookingId = null;
 
     #[Computed]
     public function bookings()
@@ -55,24 +52,6 @@ class BookingList extends Component
         return $query->paginate(25);
     }
 
-    #[Computed]
-    public function detailBooking(): ?Booking
-    {
-        if (!$this->detailBookingId) {
-            return null;
-        }
-
-        return Booking::with(['items.menuItem', 'items.bundleMenuItem', 'table.floorPlan.venue', 'event', 'slot', 'order.payment'])
-            ->where('team_id', Auth::user()?->current_team_id)
-            ->find($this->detailBookingId);
-    }
-
-    public function openDetail(int $bookingId): void
-    {
-        $this->detailBookingId = $bookingId;
-        $this->showDetail = true;
-    }
-
     public function confirmBooking(int $bookingId): void
     {
         Booking::findOrFail($bookingId)->update(['status' => Booking::STATUS_CONFIRMED]);
@@ -83,23 +62,6 @@ class BookingList extends Component
     protected function afterBookingStatusChanged(): void
     {
         unset($this->bookings);
-    }
-
-    /**
-     * Positionen der geöffneten Buchung für die Anzeige.
-     *
-     * Über denselben Presenter wie Beleg und Gast-API: Ein Bundle ist EIN
-     * Posten mit Bundle-Preis, darunter sein Inhalt. Ohne das stünden hier die
-     * internen Aufteilungsbeträge – bei drei Bier etwa "2× BIER à 5,54 €" und
-     * "1× BIER à 5,53 €", was aussieht, als koste dasselbe Bier verschieden viel.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function detailBlocks(): array
-    {
-        $booking = $this->detailBooking;
-
-        return $booking ? BookingItemsPresenter::blocks($booking->items) : [];
     }
 
     public function render()

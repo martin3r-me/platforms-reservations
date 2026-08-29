@@ -8,6 +8,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Platform\Reservation\Livewire\Concerns\ChangesBookingStatus;
 use Platform\Reservation\Livewire\Concerns\PrintsBookingReceipt;
+use Platform\Reservation\Livewire\Concerns\ShowsBookingDetail;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\Event;
@@ -24,6 +25,7 @@ class EventDashboard extends Component
 {
     use ChangesBookingStatus;
     use PrintsBookingReceipt;
+    use ShowsBookingDetail;
 
     #[Locked]
     public int $eventId;

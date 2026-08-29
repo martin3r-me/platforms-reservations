@@ -176,7 +176,8 @@
                                          nirgends mit, und die Zeile soll nicht mit den Gaesten
                                          konkurrieren, die kommen. --}}
                                     <x-nx-table-row compact wire:key="b-{{ $b->id }}"
-                                        class="group {{ $b->status === 'no_show' ? 'opacity-60' : '' }}">
+                                        wire:click="openDetail({{ $b->id }})"
+                                        class="group cursor-pointer {{ $b->status === 'no_show' ? 'opacity-60' : '' }}">
                                         <x-nx-table-cell compact>
                                             <span class="font-medium text-[color:var(--nx-text)]">{{ $b->guest_name }}</span>
                                             @if ($b->guest_email)<span class="block text-xs text-[color:var(--nx-faint)]">{{ $b->guest_email }}</span>@endif
@@ -211,7 +212,7 @@
                                             <div class="flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
                                                 @include('reservation::partials.booking-status-menu-state')>
                                                 @if ($this->printingAvailable)
-                                                    <x-nx-button icon variant="ghost" wire:click="openPrintModal({{ $b->id }})" title="Bon drucken">
+                                                    <x-nx-button icon variant="ghost" wire:click.stop="openPrintModal({{ $b->id }})" title="Bon drucken">
                                                         @svg('heroicon-o-printer', 'w-4 h-4')
                                                     </x-nx-button>
                                                 @endif
@@ -330,6 +331,8 @@
             <x-nx-button wire:click="closeShareModal()">Schließen</x-nx-button>
         </x-slot>
     </x-nx-modal>
+
+    @include('reservation::partials.booking-detail-modal')
 
     @include('reservation::partials.booking-print-modal')
 
