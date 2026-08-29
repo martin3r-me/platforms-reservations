@@ -10,8 +10,8 @@
      Als Stilblock statt als Tailwind-Klassen, weil zwei Dinge nötig sind, die
      sich dort schlecht ausdrücken lassen: eine DECKENDE Fläche (der
      Zeilen-Hover --nx-hover ist durchscheinend, sonst läge der wegscrollende
-     Inhalt sichtbar darunter) und derselbe Hover-Ton wie in der Zeile, ohne ihn
-     als festen Wert zu wiederholen.
+     Inhalt sichtbar darunter) und derselbe Hover-Ton IM SELBEN TAKT wie die
+     Zeile, ohne ihn als festen Wert zu wiederholen.
 
      Inline und @once wie bei den Druckstilen: Das Layout kennt keinen
      Style-Stack.
@@ -32,10 +32,33 @@
             box-shadow: -10px 0 10px -10px rgba(0, 0, 0, .18);
         }
 
-        /* Denselben Ton wie die Zeile, aber ÜBER der deckenden Fläche: als
-           Bild-Ebene, damit die Hintergrundfarbe darunter erhalten bleibt. */
-        tr:hover > .pp-pin {
-            background-image: linear-gradient(var(--nx-hover), var(--nx-hover));
+        /* Der Hover-Ton als eigene Ebene über der deckenden Fläche.
+           Vorher lag er als background-image darauf und sprang ohne Übergang
+           um, während die Zeile ihren Hover in 150 ms einblendet
+           (transition-colors in x-nx-table-row). Bei schneller Mausbewegung
+           lief die gepinnte Spalte der Zeile sichtbar voraus – zwei Grautöne
+           nebeneinander. Ein Farbverlauf ist von "kein Bild" aus nicht
+           animierbar, deshalb eine Fläche, deren Deckkraft im selben Takt
+           läuft. Deckkraft zeichnet außerdem nur neu zusammen, statt die
+           sticky-Ebene komplett neu aufzubauen. */
+        .pp-pin::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-color: var(--nx-hover);
+            opacity: 0;
+            transition: opacity 150ms ease;
+            pointer-events: none;
+        }
+
+        tr:hover > .pp-pin::before {
+            opacity: 1;
+        }
+
+        /* Der Zellinhalt gehört über die Hover-Fläche, nicht darunter. */
+        .pp-pin > * {
+            position: relative;
+            z-index: 1;
         }
     </style>
 @endonce
