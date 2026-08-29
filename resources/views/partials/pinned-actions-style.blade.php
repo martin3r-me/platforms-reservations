@@ -27,9 +27,26 @@
             right: 0;
             /* Deckend: Was darunter wegscrollt, darf nicht durchscheinen. */
             background-color: var(--nx-surface);
-            /* Weicher Schatten nach links – die Kante soll als schwebend
-               lesbar sein, nicht als Spaltentrenner. */
-            box-shadow: -10px 0 10px -10px rgba(0, 0, 0, .18);
+        }
+
+        /* Weicher Schatten nach links – die Kante soll als schwebend lesbar
+           sein, nicht als Spaltentrenner.
+
+           Als eigene Fläche statt als box-shadow: ein Schatten gehört der
+           einzelnen Zelle und endet an ihrer Unterkante, dazwischen liegt die
+           Trennlinie der Zeile. Über viele Zeilen wurde daraus eine Kette von
+           Segmenten – sichtbar als leichte Unterbrechungen hinter "Gebucht am".
+           Diese Fläche ragt oben und unten je einen Pixel hinaus, sodass die
+           Kante von Zeile zu Zeile durchläuft. */
+        .pp-pin::after {
+            content: '';
+            position: absolute;
+            top: -1px;
+            bottom: -1px;
+            right: 100%;
+            width: 10px;
+            background-image: linear-gradient(to left, rgba(0, 0, 0, .10), rgba(0, 0, 0, 0));
+            pointer-events: none;
         }
 
         /* Der Hover-Ton als eigene Ebene über der deckenden Fläche.
