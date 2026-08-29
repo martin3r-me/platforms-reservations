@@ -83,12 +83,35 @@
 
 @endif
 @php
+    // Die Uhrzeit kommt aus der Pause, nicht aus der Buchung.
+    //
+    // In der Buchung steht der Stand vom Bestellzeitpunkt. Wird die Pause
+    // danach verschoben - und das passiert -, druckte der Bon bisher eine
+    // Zeit, zu der niemand mehr am Tisch steht. Ohne Pause bleibt der
+    // eingefrorene Wert die einzige Quelle, dann gilt weiter er.
+    $zeit  = $printable->slot?->time_start ?? $printable->time_start;
     $datum = (string) $printable->date?->format('d.m.Y');
-    if ($printable->time_start) { $datum = trim($datum . ' - ' . substr($printable->time_start, 0, 5) . ' Uhr'); }
+    if ($zeit) { $datum = trim($datum . ' - ' . substr((string) $zeit, 0, 5) . ' Uhr'); }
+
+    // Name plus Zeit, wie im VA-Dashboard. Nur die Trennzeichen sind andere:
+    // displayLabel() setzt einen Mitteldot, time_range einen Gedankenstrich,
+    // und auf beide ist beim Zeichensatz des Bondruckers kein Verlass. Im
+    // Rest dieser Vorlage trennt durchgehend " - ".
+    // Gekuerzt wird der Name, nicht die Zeit: Die Zeit ist der Grund, warum
+    // die Zeile ueberhaupt da steht. Abgeschnitten wird ohne Puenktchen, wie
+    // in $row weiter oben - auf 48 Zeichen ist jedes Zeichen eines zu viel,
+    // und ein Umbruch mitten in der Uhrzeit macht den Bon unlesbar.
+    $pause = null;
+    if ($printable->slot) {
+        $spanne = str_replace("\u{2013}", '-', (string) $printable->slot->time_range);
+        $anhang = $spanne !== '' ? ' - ' . $spanne . ' Uhr' : '';
+        $platz  = $width - 12 - mb_strlen($anhang);
+        $pause  = Str::limit((string) $printable->slot->name, max(1, $platz), '') . $anhang;
+    }
 @endphp
 {{ str_pad('Datum:', 12) }}{{ $datum }}
-@if($printable->slot)
-{{ str_pad('Pause:', 12) }}{{ Str::limit($printable->slot->name, $width - 12) }}
+@if($pause)
+{{ str_pad('Pause:', 12) }}{{ $pause }}
 @endif
 @if($printable->table)
 @php
