@@ -20,8 +20,12 @@
     </div>
 
     <div class="space-y-4 p-5">
+        {{-- Eigene Fläche statt nackter Zeile: als Fließtext klebte die Meldung
+             an der Statuszeile darunter und las sich wie deren erste Zeile. --}}
         @if ($freigabeMeldung !== '')
-            <p class="m-0 text-xs" style="color: var({{ $freigabeMeldungIstFehler ? '--nx-danger' : '--nx-success' }});">
+            <p class="m-0 rounded-md px-3 py-2 text-xs leading-relaxed"
+               style="color: var({{ $freigabeMeldungIstFehler ? '--nx-danger' : '--nx-success' }});
+                      background: {{ $freigabeMeldungIstFehler ? 'rgba(224,49,49,.08)' : 'rgba(47,158,68,.08)' }};">
                 {{ $freigabeMeldung }}
             </p>
         @endif
