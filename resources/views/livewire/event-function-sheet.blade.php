@@ -33,19 +33,33 @@
             </p>
         </div>
 
+        @php $sheet = $this->sheet; @endphp
+
+        {{-- Kopf wie im Buchungen-Reiter: erst der Termin, dann die Reiter.
+             Die Angaben standen vorher klein und grau UNTER den Reitern und
+             klebten an der ersten Karte - auf der Seite, auf der man am Abend
+             als Erstes nachsieht, zu welcher Veranstaltung der Zettel gehoert.
+
+             Auf Papier bleiben sie weg: Dort stehen sie schon in der
+             Druck-Kopfzeile darueber und wuerden sich sonst doppeln. --}}
+        <div class="pp-no-print">
+            <h1 class="m-0 text-2xl font-bold tracking-tight text-[color:var(--nx-text)]">{{ $this->event->name }}</h1>
+            <p class="m-0 mt-1 text-sm text-[color:var(--nx-muted)]">
+                {{ optional($sheet['event']['date'])->format('d.m.Y') }}
+                @if ($sheet['event']['venue']) · {{ $sheet['event']['venue'] }} @endif
+                @if ($this->event->slots->isNotEmpty()) · {{ $this->event->slots->map(fn ($sl) => $sl->displayLabel())->implode(', ') }} @endif
+            </p>
+            {{-- Der Zettel ist eine Momentaufnahme. Kommt waehrend des Abends
+                 eine Bestellung dazu, steht sie hier nicht drin - deshalb
+                 gehoert die Uhrzeit sichtbar dazu. --}}
+            <p class="m-0 mt-1 text-xs text-[color:var(--nx-faint)]">
+                Stand {{ $sheet['generated_at']->format('d.m.Y H:i') }} Uhr
+            </p>
+        </div>
+
         <div class="pp-no-print">
             @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'function'])
         </div>
-
-        @php $sheet = $this->sheet; @endphp
-
-        {{-- Am Schirm die Kopfdaten; auf Papier stehen sie schon in der
-             Druck-Kopfzeile und wuerden sich sonst doppeln. --}}
-        <p class="pp-no-print m-0 text-xs text-[color:var(--nx-muted)]">
-            {{ optional($sheet['event']['date'])->format('d.m.Y') }}
-            @if ($sheet['event']['venue']) · {{ $sheet['event']['venue'] }} @endif
-            · erstellt {{ $sheet['generated_at']->format('d.m.Y H:i') }}
-        </p>
 
         @forelse ($sheet['pauses'] as $pause)
             <x-nx-card flush wire:key="fs-pause-{{ $loop->index }}">
@@ -79,7 +93,9 @@
                                 @foreach ($run['tables'] as $table)
                                     <div class="rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] px-3 py-2">
                                         <div class="mb-1 flex items-baseline gap-2">
-                                            <span class="text-sm font-semibold text-[color:var(--nx-text)]">Tisch {{ $table['table']['label'] ?? '—' }}</span>
+                                            {{-- Kein "Tisch" davor: Die Bezeichnung aus dem Tischplan heisst bereits
+                                             "Tisch 4" bzw. "Stehtisch 12" - sonst steht da "Tisch Stehtisch 12". --}}
+                                        <span class="text-sm font-semibold text-[color:var(--nx-text)]">{{ $table['table']['label'] ?? '—' }}</span>
                                             @if ($table['room'])<span class="text-xs text-[color:var(--nx-faint)]">{{ $table['room'] }}</span>@endif
                                         </div>
                                         @foreach ($table['bookings'] as $booking)
