@@ -126,7 +126,10 @@ class EventBulkCreateTool implements ToolContract, ToolMetadataContract
                     'description'       => $row['description'] ?? null,
                     'venue_id'          => $row['venue_id'] ?? null,
                     'sales_list_id'     => $row['sales_list_id'] ?? null,
-                    'room_release_mode' => $row['room_release_mode'] ?? null,
+                    // Nicht null: die Spalte ist NOT NULL, und ein ausdrücklich
+                    // geschriebenes null hebelt den DB-Default aus – das Massenanlegen
+                    // scheiterte daran mit einem SQL-Fehler.
+                    'room_release_mode' => $row['room_release_mode'] ?? Event::RELEASE_PARALLEL,
                     'status'            => Event::STATUS_DRAFT,
                 ]);
 
