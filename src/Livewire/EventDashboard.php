@@ -11,6 +11,8 @@ use Platform\Reservation\Livewire\Concerns\PrintsBookingReceipt;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\Event;
+use Platform\Reservation\Models\EventSlot;
+use Platform\Reservation\Services\SeatAvailabilityService;
 
 /**
  * VA-Dashboard: operativer Hub einer Veranstaltung. Bündelt Kennzahlen und
@@ -99,7 +101,7 @@ class EventDashboard extends Component
 
         $groups = $this->event->slots
             ->sortBy(fn ($s) => (string) $s->time_start)
-            ->map(fn ($slot) => $this->slotGroup($slot->displayLabel(), $bySlot->get($slot->id, collect())))
+            ->map(fn ($slot) => $this->slotGroup($slot->displayLabel(), $bySlot->get($slot->id, collect()), $slot->id))
             ->values();
 
         // Der Rest-Topf faengt alles auf, was keiner Pause DIESES Termins
@@ -130,11 +132,12 @@ class EventDashboard extends Component
      *
      * @param  \Illuminate\Support\Collection  $bookings
      */
-    private function slotGroup(string $label, $bookings): array
+    private function slotGroup(string $label, $bookings, ?int $slotId = null): array
     {
         $zaehlend = $bookings->where('status', '!=', Booking::STATUS_NO_SHOW);
 
         return [
+            'slot_id'  => $slotId,
             'label'    => $label,
             'bookings' => $bookings->values(),
             'count'    => $zaehlend->count(),
@@ -143,10 +146,105 @@ class EventDashboard extends Component
         ];
     }
 
+    /**
+     * Auslastung je Pause: Raum und Tische.
+     *
+     * Gerechnet wird pro Pause, nicht pro Abend. Die Plaetze zaehlen im
+     * ganzen Modul je Slot - zur naechsten Pause ist der Raum wieder leer.
+     * Eine terminweite Auslastungszahl gaebe es also gar nicht, sie waere
+     * schlicht erfunden.
+     *
+     * Gezaehlt wird ueber SeatAvailabilityService, also mit derselben Regel,
+     * nach der der Shop freie Plaetze anbietet (ohne Stornos, ohne No-Shows).
+     * Eine zweite Rechnung an dieser Stelle liefe frueher oder spaeter
+     * auseinander, und dann stuende im Backoffice etwas anderes als beim Gast.
+     *
+     * Nenner sind die tatsaechlich buchbaren Plaetze: aktive Tische ohne die
+     * fuer diesen Termin gesperrten. capacity_override des Raums bleibt
+     * bewusst aussen vor - er gehoert zur Freigabelogik, waere hier aber
+     * nicht mehr die Summe dessen, was daneben als Tische steht.
+     *
+     * @return array<int, array<int, array<string, mixed>>>  [slot_id => Raeume]
+     */
+    #[Computed]
+    public function auslastung(): array
+    {
+        $raeume = $this->event->eventRooms()->with('floorPlan.tables')->get();
+
+        if ($raeume->isEmpty() || $this->event->slots->isEmpty()) {
+            return [];
+        }
+
+        $seats = app(SeatAvailabilityService::class);
+        $result = [];
+
+        foreach ($this->event->slots as $slot) {
+            $result[$slot->id] = $raeume
+                ->map(fn ($raum) => $this->raumAuslastung($raum, $slot, $seats))
+                ->filter()
+                ->values()
+                ->all();
+        }
+
+        return $result;
+    }
+
+    /** Ein Raum in einer Pause: Plaetze, Prozent und die Tische einzeln. */
+    private function raumAuslastung($raum, EventSlot $slot, SeatAvailabilityService $seats): ?array
+    {
+        $plan = $raum->floorPlan;
+
+        if (! $plan) {
+            return null;
+        }
+
+        $tische = $plan->tables->where('is_active', true)->sortBy('label', SORT_NATURAL);
+
+        if ($tische->isEmpty()) {
+            return null;
+        }
+
+        $belegtJeTisch = $seats->bookedSeatsByTable($plan, $slot);
+
+        $plaetze = 0;
+        $belegt  = 0;
+        $zeilen  = [];
+
+        foreach ($tische as $tisch) {
+            $gesperrt = $this->event->isTableDisabled($tisch->id);
+            $kapa     = (int) $tisch->capacity;
+            $b        = (int) $belegtJeTisch->get($tisch->id, 0);
+
+            if (! $gesperrt) {
+                $plaetze += $kapa;
+                $belegt  += $b;
+            }
+
+            $zeilen[] = [
+                'label'    => $tisch->label,
+                'capacity' => $kapa,
+                'booked'   => $b,
+                // Gesperrt zuerst: Ein gesperrter Tisch ist nicht "frei", auch
+                // wenn niemand daran sitzt - da soll heute Abend keiner hin.
+                'status'   => $gesperrt ? 'gesperrt' : ($b <= 0 ? 'frei' : ($b >= $kapa ? 'voll' : 'teilweise')),
+            ];
+        }
+
+        return [
+            'name'    => $plan->name,
+            'seats'   => $plaetze,
+            'booked'  => $belegt,
+            'percent' => $plaetze > 0 ? (int) round($belegt / $plaetze * 100) : 0,
+            'free'    => max(0, $plaetze - $belegt),
+            'tables'  => $zeilen,
+        ];
+    }
+
     /** Nach einem Statuswechsel: Liste, Kennzahlen und der Abschluss-Zaehler. */
     protected function afterBookingStatusChanged(): void
     {
-        unset($this->bookingsBySlot, $this->stats, $this->offeneBestaetigte);
+        // Auslastung muss mit: Ein No-Show gibt den Platz wieder frei.
+        unset($this->bookingsBySlot, $this->stats, $this->offeneBestaetigte, $this->auslastung);
     }
 
     /* --- Abend abschliessen --- */

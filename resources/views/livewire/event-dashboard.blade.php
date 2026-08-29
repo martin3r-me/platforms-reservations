@@ -164,6 +164,13 @@
                         </span>
                     </div>
 
+                    {{-- Auslastung des Raums in DIESER Pause. Ohne zugewiesenen
+                         Raum und in der Gruppe "Ohne Pause" gibt es nichts zu
+                         zeigen, dann faellt der Block weg. --}}
+                    @if ($group['slot_id'] && ! empty($this->auslastung[$group['slot_id']] ?? []))
+                        @include('reservation::partials.event-auslastung', ['raeume' => $this->auslastung[$group['slot_id']]])
+                    @endif
+
                     @if ($group['count'] === 0)
                         <div class="px-4 py-4 text-xs text-[color:var(--nx-faint)]">Noch keine Buchungen für diese Pause.</div>
                     @else
