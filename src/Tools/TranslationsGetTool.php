@@ -111,8 +111,11 @@ class TranslationsGetTool implements ToolContract, ToolMetadataContract
             'category'      => 'query',
             'tags'          => ['reservation', 'translations', 'i18n'],
             'requires_team' => true,
-            'read_only'     => true,
-            'idempotent'    => true,
+            // NICHT read_only: resolveTarget('checkout-settings') legt lazily eine CheckoutSetting an
+            // ($s->save()) → das Tool MUTIERT. Muss darum für read-only-Token gesperrt sein (Scope-Gate
+            // im MCP-Execute-Pfad prüft dieses Flag). Voll-Token unverändert.
+            'read_only'     => false,
+            'idempotent'    => false,
             'risk_level'    => 'safe',
         ];
     }
