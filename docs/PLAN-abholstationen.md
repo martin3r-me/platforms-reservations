@@ -234,8 +234,14 @@ verwaisen lassen. Wer das will, löscht den Tisch und setzt eine Station.
 **Termin** (`EventManager`) – ein zweiter Block neben den Räumen: Station wählen,
 Reihenfolge, optionale Obergrenze, Häkchen je Pause (beim Anlegen alle gesetzt).
 
-Die Veröffentlichungs-Regel (`EventManager.php:438`) fordert heute mindestens einen
-Raum – künftig mindestens einen Raum **oder** eine Station.
+Die Veröffentlichungs-Regel (`EventManager.php:483`, Stand 31.08.2026) fordert heute
+mindestens einen Raum – künftig mindestens einen Raum **oder** eine Station.
+
+**Sie steht allerdings zweimal, und zwar verschieden.** Die Oberfläche verlangt Pausen
+*und* Raum; `EventPublishTool` verlangt nur Pausen und prüft den Raum gar nicht. Wer über
+MCP veröffentlicht, umgeht die Bedingung also heute schon. Bevor die Station als dritte
+Möglichkeit dazukommt, gehört die Regel an **eine** Stelle – eine Methode am Event, die
+Oberfläche und Werkzeug gemeinsam fragen. Sonst entsteht die dritte Fassung.
 
 Das Duplizieren eines Termins nimmt Stationen samt Pausen-Zuordnung mit.
 
@@ -278,8 +284,15 @@ die Abholliste, ein zusätzlicher Ausdruck ist nicht nötig.
 sobald welche im Spiel sind. Ohne Stationen bleibt die Ansicht Zeile für Zeile die alte.
 
 **Bon, Beleg-PDF, beide Bestätigungsmails, Buchungsliste, Dashboard, VA-Dashboard,
-Statuswechsel-Dialog (`partials/booking-status-modal.blade.php`), `ListBookingsTool`** –
-alle über `zielortLabel()`.
+Statuswechsel-Dialog (`partials/booking-status-modal.blade.php`), Detail-Fenster
+(`partials/booking-detail-modal.blade.php`), `ListBookingsTool`** – alle über
+`zielortLabel()`.
+
+Das Detail-Fenster ist seit `43ee346` dazugekommen und zeigt Tisch **und** Raumname. Sein
+Vorab-Laden steckt im Zug `ShowsBookingDetail`; die Station gehört dort hinein, ebenso in
+`BookingList`, `Export`, `AutoPrintService`, `OrderReceiptController`,
+`FunctionSheetService` und `Event::bonBookings()` – überall dort steht heute
+`table.floorPlan`.
 
 **Nur eine Bon-Vorlage.** Der Sammel-Bon (`printing/reservation-event-bons.blade.php`)
 bindet für jede Buchung dieselbe Einzelvorlage ein; geändert wird also einmal. Aber
@@ -523,6 +536,12 @@ Die Verkaufsliste hängt heute am Termin. Eine Station darf sie **überschreiben
 globaler Modus – ein Modus und eine Liste können auseinanderlaufen, ein einzelnes Feld
 nicht.
 
+Eine eigene Liste an der Station muss durch **denselben** Filter wie die des Termins:
+`EventController::visibleItems()` lässt nur Artikel mit `approval_status = approved` und
+`available = true` durch. Seit der Artikel-Freigabe (`98f14ff`) ist das kein Schönheits-
+punkt mehr – wer für die Station eine eigene Abfrage schreibt, kann einen nicht
+freigegebenen Artikel an den Gast liefern. Also dieselbe Methode benutzen, keine zweite.
+
 **Der Preis steckt nicht im Datenmodell, sondern in der Reihenfolge im Shop.** Heute wird
 erst der Warenkorb gefüllt (Schritt 1) und dann der Ort gewählt (Schritt 2). Das geht nur,
 solange überall dasselbe angeboten wird. Führt eine Station ein eigenes Sortiment, muss
@@ -577,44 +596,42 @@ bekommt, entscheidet der Betrieb nach dem ersten Einsatz – technisch wäre es 
 klein: Die Wahl des Ziels sitzt seit `5641861` an einer Stelle
 (`PrintsBookingReceipt::resetPrintSelection()`).
 
-## N. Fund außerhalb dieses Features
+## N. Raumfreigabe: halb verdrahtet (Stand 31.08.2026)
 
-`RoomReleaseService::openRooms()` **hat keinen Aufrufer.** Der Modus ist am Termin, in den
-Team-Vorgaben und über drei MCP-Tools einstellbar und wird in der Terminliste als
-„sequentiell" angezeigt – angewendet wird er nirgends. Die Gast-API liefert immer alle
-Räume.
+**Die ursprüngliche Fassung dieses Abschnitts ist überholt.** Sie hielt fest, dass
+`RoomReleaseService::openRooms()` keinen Aufrufer hat. Seit `a97d904` hat er einen:
+`EventDashboard` fragt die Freigabe **je Pause** und zeigt in der Auslastung, ob ein Raum
+offen ist, samt Hinweis („öffnet, wenn Raum 1 zu X % voll ist").
 
-Für die Stationen heißt das vor allem: **keine Freigabe-Logik nachbauen**, die es beim
-Vorbild gar nicht gibt.
+Damit ist die Lage nicht besser, sondern unangenehmer:
 
-**Nachgesehen am 28.08.2026:** Culinaria hat `default_room_release_mode` auf `sequential`
-stehen. Die Einstellung ist dort also nicht nur vorhanden, sondern bewusst gesetzt – und
-wirkt trotzdem nirgends. Wer davon ausgeht, dass der zweite Raum erst öffnet, wenn der
-erste voll ist, irrt sich heute.
+- Das **Backoffice** zeigt „Raum 2 ist noch zu".
+- Die **Gast-API** liefert weiterhin alle Räume, ohne die Freigabe zu fragen.
+- **`GuestOrderService::store()`** nimmt eine Buchung auf einen Tisch in diesem Raum an.
 
-**Und sie wird gebraucht** (28.08.2026): Die sequentielle Freigabe soll bald bei vielen
-Terminen eingestellt sein. Damit ist das kein Altlast-Fund mehr, sondern eine Lücke mit
-Termin. Sie gehört **vor** die ersten Termine, die sich darauf verlassen – und sie ist
-nicht Teil dieses Plans, sondern ein eigenes, kleines Stück Arbeit.
+Vorher war eine Einstellung wirkungslos – ärgerlich, aber in sich stimmig. Jetzt
+widersprechen sich zwei Bildschirme: Wer auf die Auslastung schaut, sieht einen
+geschlossenen Raum, in dem Gäste sitzen.
 
-Was dazu fehlt, ist überschaubar, weil die Rechnung schon dasteht:
+Da die sequentielle Freigabe demnächst breit eingestellt sein soll, gehört das **vor** die
+ersten Termine, die sich darauf verlassen. Nicht Teil dieses Plans, aber die vier Schritte
+stehen fest:
 
-1. `EventController::floorPlan` fragt `RoomReleaseService::openRooms()` und markiert jeden
-   Raum je Pause als offen oder geschlossen. **Nicht weglassen** – ein Raum, der einfach
-   verschwindet, sieht aus wie ein Fehler. „Öffnet, sobald Raum X voll ist" erklärt sich
-   selbst.
+1. `EventController::floorPlan` fragt `openRooms()` und markiert jeden Raum je Pause als
+   offen oder geschlossen. **Markieren, nicht weglassen** – ein Raum, der verschwindet,
+   sieht aus wie ein Fehler.
 2. Der Shop zeigt geschlossene Räume gesperrt an.
-3. `GuestOrderService::store()` weist einen Tisch aus einem geschlossenen Raum ab – sonst
-   ist die Freigabe nur Anzeige. Eigener Fehlercode, wie die übrigen.
+3. `store()` weist einen Tisch aus einem geschlossenen Raum ab – sonst ist die Freigabe
+   nur Anzeige. Eigener Fehlercode, wie die übrigen.
 4. Das Backoffice bleibt außen vor: Wer telefonisch bucht, entscheidet selbst.
 
-Offen ist dabei eine fachliche Frage, die der Betrieb beantworten muss: Ob „voll" wirklich
-100 % heißt. `fill_threshold_percent` steht auf 100 – der zweite Raum öffnet also erst,
-wenn im ersten kein einziger Platz mehr frei ist. Ein Rest von zwei Plätzen an einem
-Sechsertisch blockiert dann eine Vierergruppe komplett. Ein Schwellwert von 85 oder 90 ist
-in der Praxis oft das, was gemeint ist.
+Offen bleibt die fachliche Frage: Heißt „voll" wirklich 100 %? `fill_threshold_percent`
+steht auf 100 – der zweite Raum öffnet also erst, wenn im ersten kein Platz mehr frei ist.
+Ein Rest von zwei Plätzen an einem Sechsertisch blockiert dann jede Vierergruppe. 85 oder
+90 ist meist das, was gemeint ist.
 
----
+Für die Stationen ändert sich dadurch nichts: Sie nehmen an der Raumfreigabe nicht teil
+(Abschnitt C), ihre Steuerung sind die Pausen-Häkchen.
 
 ## O. Livebetrieb: Risiken und Reihenfolge
 
@@ -853,8 +870,11 @@ wird. Gehört in Etappe 2, zusammen mit dem Löschschutz der Station selbst.
 **Der Sidebar-Eintrag steht zweimal.** `sidebar.blade.php` führt `reservation.dropoff.index`
 in der ausgeklappten **und** in der eingeklappten Leiste. Beim Umbenennen der Route beide.
 
-**`BookingList` lädt zweimal vor.** `table.floorPlan.venue` steht in der Listen- und in der
-Detailabfrage. Beide brauchen die Station, sonst holt die Liste sie zeilenweise nach.
+**Sieben Stellen laden `table.floorPlan` vor** (Stand 31.08.2026): `BookingList`,
+`ShowsBookingDetail`, `Export`, `AutoPrintService`, `OrderReceiptController`,
+`FunctionSheetService`, `Event::bonBookings()`. Alle brauchen die Station dazu, sonst holt
+jede Liste sie zeilenweise nach. *(Der frühere Hinweis „zweimal in BookingList" ist
+überholt – die Detailabfrage ist seit `43ee346` in einen eigenen Zug gewandert.)*
 
 **Es fehlen MCP-Tools.** Räume haben fünf (`EventRoomList/Create/Update/Delete/BulkCreate`),
 Stationen im Plan keine. Für ein Haus, das 54 Termine über die Tools angelegt hat, ist das
