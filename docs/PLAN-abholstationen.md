@@ -571,6 +571,36 @@ nicht wählen kann.
 Also: **ein Schritt „Wann?" im Shop**, eingeblendet ab zwei Pausen. Er gehört ohnehin
 dorthin und ist die Voraussetzung für Abschnitt A (`reservation_event_station_slots`).
 
+### Beim Kunden angefragt (31.08.2026)
+
+Zwei Fragen sind raus: Wird es überhaupt Termine mit mehreren Pausen geben – und soll ein
+Gast dann in mehreren gleichzeitig bestellen können, mit unterschiedlichen Artikeln je
+Pause?
+
+**Was das Backend heute schon kann**, unabhängig von der Antwort:
+
+- `POST /events/{event}/orders` nimmt `slots` als **Liste** entgegen, jede mit eigener
+  `slot_id`, eigenem Ort und eigenen Artikeln.
+- `GuestOrderService::store()` legt daraus **je Pause eine Buchung** an, Preise je Buchung
+  eingefroren.
+- Plätze zählen je Pause (`SeatAvailabilityService` filtert auf `event_slot_id`) – derselbe
+  Tisch ist in Pause 2 wieder leer.
+- Beleg-PDF und Bestätigungsmail gruppieren bereits nach Pause.
+
+Eine Bestellung über mehrere Pausen ist serverseitig also fertig; nur der Shop schickt
+genau eine (`CheckoutWizard`: „Aktuell eine Pause pro Bestellung"). Ein „Ja" zu Frage 2 ist
+damit billiger, als es klingt – es ist Arbeit im Shop, nicht im Modul.
+
+**Was die Antwort für die Stationen entscheidet:** Bestellt ein Gast künftig für mehrere
+Pausen in einem Vorgang, braucht er einen Ort **je Pause** – nicht mehr einen für die
+ganze Bestellung. Genau dann wird die pausenweise Freigabe einer Station im Bestellweg
+sichtbar: Station in Pause 1 offen, in Pause 2 zu, also zwei verschiedene Orte in einer
+Bestellung. Das Datenmodell trägt das bereits (der Ort hängt an der Buchung, und die hängt
+an der Pause); der Schritt „Wo?" im Shop müsste dann je Pause gestellt werden.
+
+Bleibt es bei einer Pause je Bestellung, bleibt es bei einem Ort je Bestellung – und
+Abschnitt H beschreibt den Shop richtig.
+
 **Geprüft am 28.08.2026:** Alle 54 Termine bei Culinaria haben genau eine Pause
 (`slots_count: 1`, ohne Ausnahme). Es ist also **kein** stiller Fehler im Livebetrieb,
 sondern eine echte Erweiterung – nötig in dem Moment, in dem der erste Termin eine zweite
