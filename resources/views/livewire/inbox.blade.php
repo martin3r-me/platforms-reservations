@@ -65,7 +65,7 @@
                                 {{ number_format((float) $order->total_amount, 2, ',', '.') }} {{ $sym }}
                                 · {{ $order->bookings->count() }} {{ $order->bookings->count() === 1 ? 'Pause' : 'Pausen' }}
                                 @if ($order->payment) · Zahlung: {{ $order->payment->status }} @endif
-                                · {{ $order->updated_at?->diffForHumans() }}
+                                · {{ $order->updated_at?->locale('de')->diffForHumans() }}
                             </p>
                         </div>
 
@@ -90,9 +90,15 @@
         {{-- Zähler links, Blätterung rechts - wie in „Alle Buchungen". Der
              Zähler ist dabei nicht Zierde: Er sagt, wie viel hinter der ersten
              Seite noch liegt. --}}
-        <div class="flex items-center justify-between gap-3 text-xs text-[color:var(--nx-faint)]">
-            <span class="tabular-nums">{{ $this->entries->total() }} {{ $this->entries->total() === 1 ? 'Vorgang' : 'Vorgänge' }}</span>
-            <div>{{ $this->entries->links() }}</div>
+        <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-[color:var(--nx-faint)]">
+            <span class="tabular-nums">
+                @if ($this->entries->hasPages())
+                    {{ $this->entries->firstItem() }}–{{ $this->entries->lastItem() }} von {{ $this->entries->total() }} Vorgängen
+                @else
+                    {{ $this->entries->total() }} {{ $this->entries->total() === 1 ? 'Vorgang' : 'Vorgänge' }}
+                @endif
+            </span>
+            {{ $this->entries->links('reservation::partials.pagination') }}
         </div>
     </div>
     </x-ui-page-container>

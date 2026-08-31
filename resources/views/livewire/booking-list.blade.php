@@ -169,9 +169,15 @@
             </x-nx-table-body>
         </x-nx-table>
 
-    <div class="flex items-center justify-between gap-3 text-xs text-[color:var(--nx-faint)]">
-        <span class="tabular-nums">{{ $this->bookings->total() }} Buchungen</span>
-        <div>{{ $this->bookings->links() }}</div>
+    <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-[color:var(--nx-faint)]">
+        <span class="tabular-nums">
+            @if ($this->bookings->hasPages())
+                {{ $this->bookings->firstItem() }}–{{ $this->bookings->lastItem() }} von {{ $this->bookings->total() }} Buchungen
+            @else
+                {{ $this->bookings->total() }} {{ $this->bookings->total() === 1 ? 'Buchung' : 'Buchungen' }}
+            @endif
+        </span>
+        {{ $this->bookings->links('reservation::partials.pagination') }}
     </div>
 
     @include('reservation::partials.booking-detail-modal')
