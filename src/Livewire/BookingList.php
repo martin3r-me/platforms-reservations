@@ -22,6 +22,32 @@ class BookingList extends Component
     public string $filterStatus = '';
     public string $search = '';
 
+    /**
+     * Jeder Filterwechsel führt zurück auf Seite 1.
+     *
+     * Ohne das bleibt die Seitenzahl stehen: Wer auf Seite 4 filtert und
+     * danach nur noch zwei Seiten übrig hat, sieht eine leere Tabelle - und
+     * das sieht aus, als wären die Buchungen weg.
+     *
+     * Namentlich und nicht über das allgemeine updated(): Die Züge dieser
+     * Komponente bringen eigene updated*-Haken mit, und ein gemeinsamer
+     * Sammelhaken hier würde sich mit ihnen ins Gehege kommen.
+     */
+    public function updatedFilterDate(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterStatus(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
     #[Computed]
     public function bookings()
     {

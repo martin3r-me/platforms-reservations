@@ -5,6 +5,7 @@ namespace Platform\Reservation\Livewire;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithPagination;
 use Platform\Reservation\Models\Order;
 use Platform\Reservation\Services\OrderCancellationService;
 
@@ -15,6 +16,11 @@ use Platform\Reservation\Services\OrderCancellationService;
  */
 class Inbox extends Component
 {
+    use WithPagination;
+
+    /** Einträge je Seite – wie in „Alle Buchungen". */
+    public const JE_SEITE = 25;
+
     public bool $unseenOnly = true;
 
     /** @var array<int,int> ausgewählte Order-IDs für Bulk */
@@ -25,8 +31,20 @@ class Inbox extends Component
         return (int) (Auth::user()?->current_team_id ?? 0);
     }
 
+    /**
+     * Die Vorgänge, seitenweise.
+     *
+     * Vorher stand hier limit(200)->get(). Das schnitt ab einem gewissen Punkt
+     * lautlos ab: Der 201. Vorgang war nicht etwa auf einer zweiten Seite,
+     * sondern weg - ohne Hinweis, ohne Zähler, ohne Weg dorthin. Bei ein paar
+     * Terminen im Jahr dauert das, aber es kommt sicher, und dann sucht jemand
+     * eine Bestellung, die es scheinbar nicht gibt.
+     *
+     * Jetzt dieselbe Blätterung wie in „Alle Buchungen", damit sich beide
+     * Listen gleich verhalten.
+     */
     #[Computed]
-    public function entries(): \Illuminate\Database\Eloquent\Collection
+    public function entries(): \Illuminate\Pagination\LengthAwarePaginator
     {
         $query = Order::where('team_id', $this->teamId())
             ->whereIn('status', Order::INBOX_STATUSES)
@@ -37,7 +55,7 @@ class Inbox extends Component
             $query->whereNull('seen_at');
         }
 
-        return $query->limit(200)->get();
+        return $query->paginate(self::JE_SEITE);
     }
 
     #[Computed]
@@ -81,6 +99,10 @@ class Inbox extends Component
             ->whereNull('seen_at')
             ->update(['seen_at' => now()]);
         $this->selected = [];
+
+        // Nach "alle gesehen" ist die gefilterte Liste leer - dann gehört man
+        // auf Seite 1 und nicht auf eine Seite, die es nicht mehr gibt.
+        $this->resetPage();
         $this->refresh();
     }
 
@@ -116,6 +138,11 @@ class Inbox extends Component
     public function updatedUnseenOnly(): void
     {
         $this->selected = [];
+
+        // Zurück auf Seite 1: Der Filter ändert die Menge, und wer auf Seite 4
+        // stand, sähe sonst eine leere Tabelle einer Liste, die nur noch zwei
+        // Seiten hat - was aussieht, als wären die Daten weg.
+        $this->resetPage();
     }
 
     public function render()

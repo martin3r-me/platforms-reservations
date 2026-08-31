@@ -86,6 +86,14 @@
                 @endforelse
             </div>
         </x-nx-card>
+
+        {{-- Zähler links, Blätterung rechts - wie in „Alle Buchungen". Der
+             Zähler ist dabei nicht Zierde: Er sagt, wie viel hinter der ersten
+             Seite noch liegt. --}}
+        <div class="flex items-center justify-between gap-3 text-xs text-[color:var(--nx-faint)]">
+            <span class="tabular-nums">{{ $this->entries->total() }} {{ $this->entries->total() === 1 ? 'Vorgang' : 'Vorgänge' }}</span>
+            <div>{{ $this->entries->links() }}</div>
+        </div>
     </div>
     </x-ui-page-container>
 </x-ui-page>
