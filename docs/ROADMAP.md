@@ -1,11 +1,70 @@
 # PausePlus – Roadmap / offene Umsetzungspunkte
 
-Stand: 12.06.2026 · Go-live-Ziel: **01.08.2026**, erste Veranstaltung 29.08.2026 (Bodo Wartke).
+Stand: 12.06.2026, Reihenfolge der nächsten Vorhaben ergänzt am 31.08.2026 · Go-live-Ziel: **01.08.2026**, erste Veranstaltung 29.08.2026 (Bodo Wartke).
 
 Meilenstein 1 (Produktmodul + Klick-Dummy bis Mock-Checkout) ist umgesetzt.
 Die folgenden Punkte sind **vereinbart und noch umzusetzen**. Referenz für viele
 Punkte ist das Altsystem des Kunden (Guestofy, WordPress/WooCommerce/Stripe):
 https://historische-stadthalle-wuppertal-culinaria.guestofy.events/#/
+
+## Nächste Vorhaben – Reihenfolge (Stand 31.08.2026)
+
+Vier Vorhaben stehen an. Die Reihenfolge ergibt sich aus ihren Abhängigkeiten,
+nicht aus ihrer Größe.
+
+**1. Sequenzielle Raumfreigabe fertigstellen.** Zuerst, weil es als einziges nicht
+fehlt, sondern falsch ist: `RoomReleaseService::openRooms()` wird seit `a97d904`
+im VA-Dashboard benutzt und zeigt an, ob ein Raum offen ist – die Gast-API fragt
+ihn nicht, und `GuestOrderService::store()` nimmt die Buchung trotzdem an. Zwei
+Bildschirme widersprechen sich. Solange jeder Termin genau einen Raum hat, kann
+es nicht auffallen; beim ersten mit zweien schon. Culinaria hat
+`default_room_release_mode` auf `sequential` stehen, und die Einstellung soll
+breiter genutzt werden. Umfang: API markiert offen/geschlossen (markieren, nicht
+weglassen), Shop zeigt es gesperrt, `store()` weist ab, Backoffice bleibt außen
+vor. Offene Fachfrage: ob „voll" wirklich 100 % heißt – `fill_threshold_percent`
+steht auf 100, damit blockiert ein Rest von zwei Plätzen jede Vierergruppe.
+Details in `PLAN-abholstationen.md`, Abschnitt N.
+
+**2. Abholstationen, Etappe 1** (`PLAN-abholstationen.md`). Migrationen, Modelle,
+Zielort, Guard, Kapazitätsdienst – und die erste **eingecheckte Testbasis** des
+Moduls. Ohne Oberfläche: deploybar, ohne dass sich etwas ändert. Hängt an keiner
+offenen Frage.
+
+**3. Abholstationen, Etappen 2–4.** Pflege samt MCP-Tools, Betrieb (Laufzettel,
+Küche, Bon, Belege), Gast-API und manuelle Buchung. Danach sind Abholstationen im
+Backoffice vollständig benutzbar; nur der Shop fehlt.
+
+**4. Mehrere Pausen** – sobald der Kunde geantwortet hat (siehe Abschnitt
+„Produktentscheidungen"). Schritt „Wann?" im Shop, und ob ein Gast in einem
+Vorgang für mehrere Pausen bestellen kann. Serverseitig ist das Anlegen über
+mehrere Pausen fertig (`slots` als Liste, je Pause eine Buchung); es fehlt nur im
+Shop.
+
+**5. Abholstationen, Etappe 5 – zusammen mit Punkt 4.** Bewusst nicht danach: „Wann?"
+und „Wo?" sind dieselbe Operation am Schritt-Index des Wizards. Der ist hart
+verdrahtet (`match ($this->step)`, `min(4, …)`), und die sieben Plausible-Ziele
+hängen an genau diesen Nummern. Zweimal umnummeriert heißt zweimal einen
+unterbrochenen Trichter.
+
+**6. Live-Sicht auf laufende Checkouts.** Erst wenn der Schritt-Index endgültig
+ist – eine gespeicherte `step`-Spalte bekäme sonst rückwirkend eine andere
+Bedeutung. Entwurf steht: Tabelle `reservation_checkout_sessions`, Ping huckepack
+auf den Livewire-Requests, Aufräum-Job ab ~30 Min, rollenbeschränktes Dashboard.
+Ohne Personenbezug, und als Kennung eine eigene Zufalls-UUID statt der
+Laravel-Session-ID (die ist bei `SESSION_DRIVER=database` ein Login-Token).
+
+**7. Abholstationen, Etappen 6 und 7.** Drop-off-Reste entfernen; Sortiment je
+Station zuletzt, weil es die Reihenfolge im Bestellweg kippt.
+
+**Sagt der Kunde „keine mehreren Pausen"**, schrumpft Punkt 4 auf null: Punkt 6
+wird sofort machbar, Punkt 5 einfacher, und die pausenweise Freigabe einer Station
+bleibt ein Datenmodell ohne sichtbare Wirkung – was in Ordnung ist, sie kostet nichts.
+
+**Nebenbei, jederzeit:** doppelte `CheckoutSetting::forTeam()`-Abfrage in
+`checkoutFields` aufräumen; toten `BookingConfirmationMailer` entfernen; klären, ob
+eingeladene Gäste weiter als Umsatz zählen (`PLAN-abholstationen.md`, Abschnitt R).
+
+---
 
 ## M2 – Zahlung & Härtung (Kern, vor Go-live zwingend)
 
@@ -35,6 +94,9 @@ https://historische-stadthalle-wuppertal-culinaria.guestofy.events/#/
 
 - [ ] **Mehrere Pausen pro Bestellung?** Altsystem erlaubt das („mehrere Pausen auf
       einmal buchen“, Warenkorb je Pause) – wir aktuell eine Pause pro Buchung.
+      **Am 31.08.2026 an den Kunden gestellt**, zusammen mit der Frage, ob es
+      überhaupt Termine mit mehreren Pausen geben wird. Die Antwort entscheidet
+      die Reihenfolge oben (Punkte 4–6).
 - [ ] **Flow-Reihenfolge**: Altsystem Datum/Vorstellung → Personen → Pause → Sitzplatz
       → Produkte; unser Meeting-Flow Gastdaten → Produkte → Sitzplatz. Gäste kennen
       das Altsystem → abnehmen lassen.
