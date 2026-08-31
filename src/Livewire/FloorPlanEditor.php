@@ -8,6 +8,7 @@ use Livewire\Attributes\Locked;
 use Livewire\WithFileUploads;
 use Platform\Core\Models\ContextFile;
 use Platform\Core\Services\ContextFileService;
+use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\Venue;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\Table;
@@ -801,12 +802,45 @@ class FloorPlanEditor extends Component
         unset($this->floorPlan, $this->roomPaths, $this->roomMarkers);
     }
 
+    /**
+     * Buchungen an dem Tisch, der gerade bearbeitet wird.
+     *
+     * Fuer den Hinweis im Loesch-Dialog. Gezaehlt wird ALLES ausser Stornos
+     * und No-Shows - auch vergangene: Wer den Tisch loescht, nimmt auch alten
+     * Laufzetteln und Belegen den Ort, nicht nur den kommenden.
+     */
+    #[Computed]
+    public function tableBookingCount(): int
+    {
+        if (! $this->editingTableId) {
+            return 0;
+        }
+
+        return Booking::where('table_id', $this->editingTableId)
+            ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
+            ->count();
+    }
+
+    /**
+     * Tisch loeschen.
+     *
+     * Vorher wurde hier ohne jede Pruefung geloescht. Das ist einmal teuer
+     * geworden: In der Gartenhalle verschwanden Tisch 10 und 11, und die drei
+     * Buchungen daran standen danach ohne Ort da - table_id ist nullOnDelete,
+     * die Buchung bleibt, der Verweis wird geleert. Welcher Tisch es war, liess
+     * sich nicht mehr feststellen.
+     *
+     * Seitdem gilt: Der Name des Orts wird an der Buchung eingefroren (siehe
+     * Booking::zielort), UND es gibt vorher eine Rueckfrage. Verhindert wird
+     * das Loeschen nicht - eine Bestuhlung aendert sich nun einmal.
+     */
     public function deleteTableAndCloseModal(): void
     {
         if ($this->editingTableId) {
             Table::findOrFail($this->editingTableId)->delete();
         }
 
+        unset($this->tableBookingCount);
         $this->closeTableForm();
         $this->dispatch('floor-plan-saved');
     }

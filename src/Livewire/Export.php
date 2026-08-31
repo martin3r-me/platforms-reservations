@@ -192,7 +192,7 @@ class Export extends Component
 
     protected function buildQuery()
     {
-        $query = Booking::with(['table.floorPlan.venue', 'items', 'order.payment', 'event'])
+        $query = Booking::with(['table.floorPlan', 'items', 'order.payment', 'event.venue'])
             ->where('team_id', $this->getTeamId());
 
         if ($this->dateFrom) {
@@ -336,8 +336,12 @@ class Export extends Component
             'id'      => $b->id,
             'date'    => $b->date?->format('d.m.Y'),
             'time'    => $b->time_start,
-            'table'   => $b->table?->label,
-            'venue'   => $b->table?->floorPlan?->venue?->name,
+            'table'   => $b->zielortLabel(),
+            // Venue aus dem TERMIN, nicht über den Tisch: Der Umweg
+            // table->floorPlan->venue ließ die Spalte leer, sobald der Tisch
+            // gelöscht war - und traf damit ausgerechnet die Zeilen, bei denen
+            // ohnehin schon etwas fehlte.
+            'venue'   => $b->event?->venue?->name,
             'event'   => $b->event?->name,
             'guest'   => $b->guest_name,
             'email'   => $b->guest_email,
@@ -360,8 +364,12 @@ class Export extends Component
             'id'      => $b->id,
             'date'    => $b->date?->toDateString(),
             'time'    => ['start' => $b->time_start, 'end' => $b->time_end],
-            'table'   => $b->table?->label,
-            'venue'   => $b->table?->floorPlan?->venue?->name,
+            'table'   => $b->zielortLabel(),
+            // Venue aus dem TERMIN, nicht über den Tisch: Der Umweg
+            // table->floorPlan->venue ließ die Spalte leer, sobald der Tisch
+            // gelöscht war - und traf damit ausgerechnet die Zeilen, bei denen
+            // ohnehin schon etwas fehlte.
+            'venue'   => $b->event?->venue?->name,
             'event'   => $b->event?->name,
             'guest'   => $b->guest_name,
             'email'   => $b->guest_email,

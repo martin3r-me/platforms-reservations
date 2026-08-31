@@ -554,14 +554,27 @@
                         <div class="shrink-0">
                             {{-- action= wird als Methodenname aufgerufen, nicht als
                                  wire:click-Ausdruck – Argumente in Klammern landen
-                                 als Teil des Namens beim Server. Daher parameterlos. --}}
+                                 als Teil des Namens beim Server. Daher parameterlos.
+
+                                 Die Rückfrage nennt die Zahl der Buchungen: Ein
+                                 gelöschter Tisch nimmt sie nicht mit, aber er nimmt
+                                 ihnen den Ort. Das ist in der Gartenhalle schon
+                                 einmal passiert und war nicht mehr zu reparieren. --}}
+                            @php($haengenDran = $this->tableBookingCount)
                             <x-ui-confirm-button
                                 action="deleteTableAndCloseModal"
                                 text="Löschen"
-                                confirmText="Wirklich löschen?"
+                                :confirmText="$haengenDran > 0
+                                    ? ($haengenDran === 1 ? '1 Buchung hängt daran – trotzdem löschen?' : $haengenDran . ' Buchungen hängen daran – trotzdem löschen?')
+                                    : 'Wirklich löschen?'"
                                 variant="danger-outline"
                                 size="sm"
                             />
+                            @if ($haengenDran > 0)
+                                <p class="m-0 mt-1 text-[11px] text-[color:var(--nx-muted)]">
+                                    Die Buchungen bleiben erhalten und behalten den Namen des Tisches – im Saalplan liegt er danach aber nicht mehr.
+                                </p>
+                            @endif
                         </div>
                     @else
                         <div></div>

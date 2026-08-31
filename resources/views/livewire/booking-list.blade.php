@@ -68,7 +68,7 @@
                             @endif
                         </x-nx-table-cell>
                         <x-nx-table-cell class="tabular-nums text-[color:var(--nx-muted)]">{{ $booking->time_start ? substr($booking->time_start, 0, 5) : '–' }}</x-nx-table-cell>
-                        <x-nx-table-cell class="text-[color:var(--nx-muted)]">{{ $booking->table?->label }}</x-nx-table-cell>
+                        <x-nx-table-cell class="text-[color:var(--nx-muted)]">{{ $booking->zielortLabel() }}@if ($booking->zielortFehlt())<span class="ml-1 text-[11px] text-[color:var(--nx-faint)]">(gelöscht)</span>@endif</x-nx-table-cell>
                         <x-nx-table-cell>
                             <span class="font-medium text-[color:var(--nx-text)]">{{ $booking->guest_name }}</span>
                             {{-- Gedeckelt, weil eine E-Mail nicht umbricht: Ohne Deckel

@@ -14,7 +14,7 @@
         @if ($detail)
             <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">
                 {{ $detail->date->format('d.m.Y') }}@if ($detail->time_start) · {{ substr($detail->time_start, 0, 5) }} Uhr @endif
-                @if ($detail->table) · Tisch {{ $detail->table->label }} @endif
+                @if ($detail->zielortLabel()) · {{ $detail->zielortLabel() }}@if ($detail->zielortFehlt())<span class="ml-1 text-[11px] text-[color:var(--nx-faint)]">(gelöscht)</span>@endif @endif
             </p>
         @endif
     </x-slot>

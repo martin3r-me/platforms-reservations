@@ -517,7 +517,7 @@ class EventController extends ApiController
                 'slot'        => $b->slot?->name,
                 'status'      => $b->status,
                 'guest_count' => $b->guest_count,
-                'table'       => $b->table?->label,
+                'table'       => $b->zielortLabel(),
                 'items'       => $this->formatBookingItems($b->items),
             ])->values()->all(),
             'vat_summary'    => $this->vatSummary($order),

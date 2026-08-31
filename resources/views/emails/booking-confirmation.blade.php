@@ -44,7 +44,7 @@
                                 @if ($booking->table)
                                     <tr>
                                         <td style="padding:6px 0; color:#6b7280;">Tisch</td>
-                                        <td style="padding:6px 0;">{{ $booking->table->label }}</td>
+                                        <td style="padding:6px 0;">{{ $booking->zielortLabel() ?? '–' }}</td>
                                     </tr>
                                 @endif
                                 <tr>

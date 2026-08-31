@@ -58,7 +58,7 @@
                             <td style="padding:8px 32px;">
                                 <div style="font-size:13px; font-weight:bold; color:#285567; border-bottom:2px solid #e5e7eb; padding-bottom:6px; margin-bottom:8px;">
                                     {{ $booking->slot?->displayLabel() ?? 'Pause' }}
-                                    @if ($booking->table)<span style="color:#9ca3af; font-weight:normal;"> · Tisch {{ $booking->table->label }}</span>@endif
+                                    @if ($booking->zielortLabel())<span style="color:#9ca3af; font-weight:normal;"> · {{ $booking->zielortLabel() }}</span>@endif
                                 </div>
                                 @if ($booking->items->isNotEmpty())
                                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">

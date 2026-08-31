@@ -108,7 +108,7 @@ class OrderReceiptController
 
             $groups[] = [
                 'slot'   => $booking->slot?->displayLabel() ?? ($booking->slot?->name ?? 'Pause'),
-                'table'  => $booking->table?->label,
+                'table'  => $booking->zielortLabel(),
                 'room'   => $booking->table?->floorPlan?->name,
                 'blocks' => $blocks,
             ];

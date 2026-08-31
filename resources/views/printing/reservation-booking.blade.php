@@ -113,11 +113,23 @@
 @if($pause)
 {{ str_pad('Pause:', 12) }}{{ $pause }}
 @endif
-@if($printable->table)
 @php
-    $tisch = (string) $printable->table->label;
-    if ($printable->table->floorPlan) { $tisch .= ' - ' . Str::limit($printable->table->floorPlan->name, 24); }
+    // Ort aus der EINEN Auskunft: lebender Tisch, sonst der eingefrorene Name.
+    // Ist der Tisch geloescht, steht statt des Raums der Hinweis - der Service
+    // soll am Bon sehen, dass der Platz neu zugeteilt werden muss.
+    $ort = $printable->zielort();
+    $tisch = null;
+
+    if ($ort['label']) {
+        $tisch = (string) $ort['label'];
+        if ($ort['weg']) {
+            $tisch .= ' - Tisch entfernt';
+        } elseif ($ort['raum']) {
+            $tisch .= ' - ' . Str::limit($ort['raum'], 24);
+        }
+    }
 @endphp
+@if($tisch)
 {{ str_pad('Tisch:', 12) }}{{ $tisch }}
 @endif
 {{ str_pad('Gast:', 12) }}{{ Str::limit($printable->guest_name ?? '-', $width - 12) }}

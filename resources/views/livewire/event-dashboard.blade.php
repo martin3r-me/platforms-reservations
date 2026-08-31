@@ -135,7 +135,7 @@
                                             <span class="font-medium text-[color:var(--nx-text)]">{{ $b->guest_name }}</span>
                                             @if ($b->guest_email)<span class="block text-xs text-[color:var(--nx-faint)]">{{ $b->guest_email }}</span>@endif
                                         </x-nx-table-cell>
-                                        <x-nx-table-cell compact class="text-[color:var(--nx-muted)]">{{ $b->table?->label ?? '–' }}</x-nx-table-cell>
+                                        <x-nx-table-cell compact class="text-[color:var(--nx-muted)]">{{ $b->zielortLabel() ?? '–' }}@if ($b->zielortFehlt())<span class="ml-1 text-[11px] text-[color:var(--nx-faint)]">(gelöscht)</span>@endif</x-nx-table-cell>
                                         <x-nx-table-cell compact align="center" class="tabular-nums text-[color:var(--nx-muted)]">{{ $b->guest_count }}</x-nx-table-cell>
                                         <x-nx-table-cell compact align="right" class="tabular-nums text-[color:var(--nx-text)]">
                                             @if ($b->items_count > 0){{ $b->items_count }} Pos. · {{ number_format($b->total_amount, 2, ',', '.') }} {{ $sym }}@else<span class="text-[color:var(--nx-faint)]">–</span>@endif

@@ -98,7 +98,7 @@
                             <p class="m-0 mt-0.5 text-xs text-[color:var(--nx-muted)]">
                                 {{ $booking->date->format('d.m.Y') }}
                                 @if ($booking->event) · {{ $booking->event->name }} @endif
-                                @if ($booking->table) · Tisch {{ $booking->table->label }} @endif
+                                @if ($booking->zielortLabel()) · {{ $booking->zielortLabel() }}@if ($booking->zielortFehlt())<span class="ml-1 text-[11px] text-[color:var(--nx-faint)]">(gelöscht)</span>@endif @endif
                                 · {{ $booking->guest_count }} P.
                             </p>
                         </div>

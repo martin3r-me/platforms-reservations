@@ -20,7 +20,7 @@
         @if ($sb)
             <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">
                 {{ $sb->guest_name }} · {{ $sb->date->format('d.m.Y') }}@if ($sb->time_start) · {{ substr($sb->time_start, 0, 5) }} Uhr @endif
-                @if ($sb->table) · Tisch {{ $sb->table->label }} @endif
+                @if ($sb->zielortLabel()) · {{ $sb->zielortLabel() }}@if ($sb->zielortFehlt())<span class="ml-1 text-[11px] text-[color:var(--nx-faint)]">(gelöscht)</span>@endif @endif
             </p>
         @endif
     </x-slot>

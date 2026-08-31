@@ -100,7 +100,7 @@ class ListBookingsTool implements ToolContract, ToolMetadataContract
                 'status'       => $booking->status,
                 'event'        => $booking->event?->name,
                 'slot'         => $booking->slot?->name,
-                'table'        => $booking->table?->label,
+                'table'        => $booking->zielortLabel(),
                 'items_count'  => $booking->items->count(),
                 'total_amount' => round((float) $booking->total_amount, 2),
             ]);

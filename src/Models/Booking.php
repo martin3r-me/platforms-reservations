@@ -26,6 +26,8 @@ class Booking extends Model
         'team_id',
         'order_id',
         'table_id',
+        'place_kind',
+        'place_label',
         'event_id',
         'event_slot_id',
         'guest_name',
@@ -155,6 +157,81 @@ class Booking extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'order_id');
+    }
+
+    /* ---------------------------------------------------------------------
+     | Der Ort einer Buchung
+     |
+     | EINE Auskunftsstelle für alle Anzeigen – Bon, Beleg, Mails, Listen,
+     | Laufzettel, Export. Ohne sie stünde dieselbe Fallunterscheidung an
+     | einem Dutzend Stellen, und die erste Abweichung fiele niemandem auf.
+     |
+     | Gelesen wird in dieser Reihenfolge:
+     |   1. der lebende Tisch – ein umbenannter Tisch heißt überall gleich,
+     |      auch auf alten Listen
+     |   2. der eingefrorene Stand, wenn der Tisch gelöscht wurde
+     |   3. nichts, bei Altbestand ohne beides
+     --------------------------------------------------------------------- */
+
+    /** Ort der Buchung: Art, Bezeichnung, Raum und ob er noch existiert. */
+    public function zielort(): array
+    {
+        // getRelationValue statt $this->table - und das ist kein Geschmack:
+        // Eloquent hat eine geschuetzte Eigenschaft $table mit dem Namen der
+        // Datenbanktabelle. Von aussen liefert $booking->table die Beziehung
+        // (ueber __get), INNERHALB des Models aber gewinnt die Eigenschaft, und
+        // $this->table ist die Zeichenkette 'reservation_bookings'.
+        // getRelationValue nimmt die geladene Beziehung, wenn sie da ist, und
+        // laedt sie sonst nach - Eager Loading bleibt also wirksam.
+        $tisch = $this->getRelationValue('table');
+
+        if ($tisch) {
+            return [
+                'art'    => 'table',
+                'label'  => $tisch->label,
+                'raum'   => $tisch->floorPlan?->name,
+                'weg'    => false,
+            ];
+        }
+
+        if ($this->place_label) {
+            return [
+                'art'    => $this->place_kind ?: 'table',
+                'label'  => $this->place_label,
+                'raum'   => null,
+                'weg'    => true,
+            ];
+        }
+
+        return ['art' => null, 'label' => null, 'raum' => null, 'weg' => false];
+    }
+
+    /**
+     * Bezeichnung des Orts, oder null wenn keiner bekannt ist.
+     *
+     * Ohne Zusatz – ob der Ort gelöscht wurde, beantwortet zielortFehlt().
+     * Die Anzeigen entscheiden selbst, wie sie das kennzeichnen: Auf einem
+     * 48 Zeichen breiten Bon ist ein Klammerzusatz teurer als in einer Liste.
+     */
+    public function zielortLabel(): ?string
+    {
+        return $this->zielort()['label'];
+    }
+
+    /** Ist der Ort nur noch eingefroren vorhanden, also gelöscht worden? */
+    public function zielortFehlt(): bool
+    {
+        return $this->zielort()['weg'];
+    }
+
+    /** Gruppierungsschlüssel für Laufzettel und Küche. */
+    public function zielortSchluessel(): string
+    {
+        $ort = $this->zielort();
+
+        return $this->table_id
+            ? 'table-' . $this->table_id
+            : ($ort['label'] ? 'weg-' . $ort['label'] : 'ohne');
     }
 
     /**

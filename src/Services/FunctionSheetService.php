@@ -102,7 +102,9 @@ class FunctionSheetService
                 $tableId = $booking->table_id ?? 0;
                 if (! isset($runs[$key]['tables'][$tableId])) {
                     $runs[$key]['tables'][$tableId] = [
-                        'table'    => $booking->table ? ['id' => $booking->table->id, 'label' => $booking->table->label] : null,
+                        'table'    => $booking->zielortLabel()
+                            ? ['id' => $booking->table_id, 'label' => $booking->zielortLabel(), 'weg' => $booking->zielortFehlt()]
+                            : null,
                         'room'     => $booking->table?->floorPlan?->name,
                         'bookings' => [],
                     ];

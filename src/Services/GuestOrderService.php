@@ -180,6 +180,11 @@ class GuestOrderService
                     'event_id'               => $event->id,
                     'event_slot_id'          => $p['slot']->id,
                     'table_id'               => $p['table']->id,
+                    // Ort einfrieren, wie Preise eingefroren werden. Wird der
+                    // Tisch später gelöscht, bleibt wenigstens sein Name an der
+                    // Buchung - sonst steht auf Bon und Laufzettel gar nichts.
+                    'place_kind'             => 'table',
+                    'place_label'            => $p['table']->label,
                     'guest_name'             => $displayName,
                     'guest_email'            => ($guest['email'] ?? null) ?: null,
                     'guest_phone'            => ($guest['phone'] ?? null) ?: null,

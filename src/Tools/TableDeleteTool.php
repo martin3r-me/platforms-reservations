@@ -6,6 +6,7 @@ use Platform\Core\Contracts\ToolContext;
 use Platform\Core\Contracts\ToolContract;
 use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
+use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\Table;
 
 /**
@@ -20,8 +21,11 @@ class TableDeleteTool implements ToolContract, ToolMetadataContract
 
     public function getDescription(): string
     {
-        return 'DELETE /reservation/tables - Löscht einen Tisch. REST-Parameter: id (Pflicht). '
-            . 'Bestehende Buchungen bleiben (Tischbezug wird gelöst).';
+        return 'DELETE /reservation/tables - Löscht einen Tisch. REST-Parameter: id (Pflicht), '
+            . 'force (bool, Default false). Haengen aktive Buchungen am Tisch, bricht der Aufruf mit '
+            . 'HAS_BOOKINGS ab und nennt die Anzahl; mit force=true wird trotzdem geloescht. Die '
+            . 'Buchungen bleiben in jedem Fall erhalten und behalten den eingefrorenen Namen des '
+            . 'Tisches - im Saalplan liegt er danach aber nicht mehr.';
     }
 
     public function getSchema(): array
@@ -29,7 +33,8 @@ class TableDeleteTool implements ToolContract, ToolMetadataContract
         return [
             'type'       => 'object',
             'properties' => [
-                'id' => ['type' => 'integer', 'description' => 'ID des zu löschenden Tisches.'],
+                'id'    => ['type' => 'integer', 'description' => 'ID des zu löschenden Tisches.'],
+                'force' => ['type' => 'boolean', 'description' => 'Auch loeschen, wenn Buchungen daran haengen.'],
             ],
             'required'   => ['id'],
         ];
@@ -52,9 +57,31 @@ class TableDeleteTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('Tisch nicht gefunden.', 'NOT_FOUND');
             }
 
+            // Erst zaehlen, dann loeschen. Ein geloeschter Tisch nimmt die
+            // Buchungen nicht mit, aber er nimmt ihnen ihren Ort im Saalplan -
+            // und das ist einmal unbemerkt passiert. Wer es trotzdem will,
+            // sagt es ausdruecklich.
+            $buchungen = Booking::withoutGlobalScope('team')
+                ->where('table_id', $table->id)
+                ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
+                ->count();
+
+            if ($buchungen > 0 && ! (bool) ($arguments['force'] ?? false)) {
+                return ToolResult::error(
+                    'Am Tisch "' . $table->label . '" haengen ' . $buchungen . ' aktive Buchung(en). '
+                    . 'Sie bleiben erhalten und behalten den Namen des Tisches, verlieren aber ihren Platz '
+                    . 'im Saalplan. Mit force=true trotzdem loeschen.',
+                    'HAS_BOOKINGS'
+                );
+            }
+
             $table->delete();
 
-            return ToolResult::success(['deleted' => true, 'id' => (int) $arguments['id']]);
+            return ToolResult::success([
+                'deleted'  => true,
+                'id'       => (int) $arguments['id'],
+                'bookings' => $buchungen,
+            ]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Löschen des Tisches: ' . $e->getMessage(), 'EXECUTION_ERROR');
         }
