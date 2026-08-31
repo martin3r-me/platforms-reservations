@@ -495,6 +495,17 @@ class EventManager extends Component
         unset($this->events);
     }
 
+    /**
+     * Ankündigen: Der Termin steht ab jetzt im Shop, bestellen kann noch
+     * niemand. Bewusst ohne die Pausen-/Raum-Prüfung des Veröffentlichens –
+     * angekündigt wird, sobald das Datum steht, die Pausen kommen später.
+     */
+    public function announce(int $id): void
+    {
+        Event::findOrFail($id)->update(['status' => Event::STATUS_ANNOUNCED]);
+        unset($this->events);
+    }
+
     public function close(int $id): void
     {
         Event::findOrFail($id)->update(['status' => Event::STATUS_CLOSED]);

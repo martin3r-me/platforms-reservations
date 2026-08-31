@@ -47,7 +47,7 @@
         <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
             <div class="flex flex-wrap items-center gap-1">
                 <span class="mr-1 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--nx-faint)]">Status</span>
-                @foreach (['published' => 'Veröffentlicht', 'draft' => 'Entwurf', 'closed' => 'Bestellschluss', 'nachzubereiten' => 'Nachzubereiten', 'cancelled' => 'Abgesagt', 'all' => 'Alle'] as $val => $label)
+                @foreach (['published' => 'Veröffentlicht', 'announced' => 'Bald verfügbar', 'draft' => 'Entwurf', 'closed' => 'Bestellschluss', 'nachzubereiten' => 'Nachzubereiten', 'cancelled' => 'Abgesagt', 'all' => 'Alle'] as $val => $label)
                     <button type="button" wire:click="setStatusFilter('{{ $val }}')"
                         class="rounded-full px-2.5 py-1 transition-colors {{ $statusFilter === $val ? 'bg-[color:var(--nx-active)] font-medium text-[color:var(--nx-text)]' : 'text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]' }}">{{ $label }}</button>
                 @endforeach
@@ -78,7 +78,6 @@
         @else
         <x-nx-card flush>
             <div>
-                @php $eventStatusVariant = ['published' => 'success', 'draft' => 'neutral', 'closed' => 'warning', 'cancelled' => 'danger']; @endphp
                 @foreach ($this->events as $event)
                     <div wire:key="event-{{ $event->id }}" class="flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 transition-colors last:border-0 hover:bg-[color:var(--nx-hover)]">
                         <div class="min-w-0">
@@ -89,7 +88,7 @@
                                      mehr. Entwurf und Abgesagt bleiben stehen – die sagen auch
                                      rückblickend etwas. --}}
                                 @if (! $event->istVergangen() || in_array($event->status->value, ['draft', 'cancelled'], true))
-                                    <x-nx-badge :variant="$eventStatusVariant[$event->status->value] ?? 'neutral'">{{ $event->status->label() }}</x-nx-badge>
+                                    <x-nx-badge :variant="$event->status->badgeVariant()">{{ $event->status->label() }}</x-nx-badge>
                                 @endif
                                 @if ($event->istBestellschlussErreicht())
                                     <x-nx-badge variant="warning">Bestellschluss erreicht</x-nx-badge>
@@ -129,15 +128,22 @@
                                 <x-nx-dropdown-item wire:click="duplicate({{ $event->id }})">
                                     @svg('heroicon-o-document-duplicate', 'w-4 h-4') <span>Duplizieren</span>
                                 </x-nx-dropdown-item>
-                                @if ($event->status->value === 'published')
+                                @if ($event->status->value === 'draft')
+                                    <x-nx-dropdown-item wire:click="announce({{ $event->id }})">
+                                        @svg('heroicon-o-megaphone', 'w-4 h-4') <span>Ankündigen</span>
+                                    </x-nx-dropdown-item>
+                                @endif
+                                @if (in_array($event->status->value, ['announced', 'published'], true))
                                     <x-nx-dropdown-item wire:click="unpublish({{ $event->id }})">
                                         @svg('heroicon-o-arrow-uturn-left', 'w-4 h-4') <span>Zurückziehen</span>
                                     </x-nx-dropdown-item>
+                                @endif
+                                @if ($event->status->value === 'published')
                                     <x-nx-dropdown-item wire:click="close({{ $event->id }})">
                                         @svg('heroicon-o-lock-closed', 'w-4 h-4') <span>Bestellschluss</span>
                                     </x-nx-dropdown-item>
                                 @endif
-                                @if (in_array($event->status->value, ['published', 'closed'], true))
+                                @if (in_array($event->status->value, ['announced', 'published', 'closed'], true))
                                     <x-nx-dropdown-item wire:click="cancel({{ $event->id }})">
                                         @svg('heroicon-o-x-circle', 'w-4 h-4') <span>Absagen</span>
                                     </x-nx-dropdown-item>

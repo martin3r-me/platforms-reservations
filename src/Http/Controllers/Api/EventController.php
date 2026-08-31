@@ -27,8 +27,9 @@ use Platform\Reservation\Services\SeatAvailabilityService;
  *
  * Gleiches Grundmuster wie helpdesk/planner (ApiController + Passport api.auth),
  * jedoch ein fachlicher Events-Endpunkt (kein Datawarehouse-Feed). Standardmäßig
- * werden alle zukünftigen und nicht geschlossenen Termine geliefert, inkl. Anzahl
- * Pausen sowie den zu buchenden Räumen mit Kapazitäten.
+ * werden alle zukünftigen öffentlichen Termine geliefert – also alles außer
+ * Entwürfen –, inkl. Anzahl Pausen sowie den zu buchenden Räumen mit
+ * Kapazitäten.
  *
  * Team-Scoping bewusst ohne Auth-Global-Scope (withoutGlobalScope), da im
  * api.auth-Kontext Auth::user()->currentTeam abweichen kann; gefiltert wird
@@ -809,11 +810,17 @@ class EventController extends ApiController
             $query->whereDate('date', '<=', $request->date_to);
         }
 
-        // Status: standardmäßig geschlossene ("closed") ausschließen; per status-Parameter überschreibbar.
+        // Status: standardmäßig alles, was öffentlich ist. Draußen bleibt nur
+        // der Entwurf – ein Arbeitsstand ohne Pausen und Räume hat auf der
+        // Website nichts verloren. „Bestellschluss" und „Abgesagt" gehören
+        // dagegen hinein: der Termin findet statt bzw. eben nicht, und beides
+        // will der Gast sehen, statt den Termin spurlos vermissen zu müssen.
+        // Mit ?include_drafts=1 bekommt ein Backoffice-Konsument auch die
+        // Entwürfe, mit ?status=… gezielt einen einzelnen Zustand.
         if ($request->filled('status')) {
             $query->where('status', $request->status);
-        } elseif (! $request->boolean('include_closed')) {
-            $query->where('status', '!=', EventStatus::Closed->value);
+        } elseif (! $request->boolean('include_drafts')) {
+            $query->whereIn('status', EventStatus::publicValues());
         }
     }
 

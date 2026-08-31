@@ -118,7 +118,7 @@ class BookingCreate extends Component
     {
         return Event::query()
             ->where('team_id', $this->teamId)
-            ->whereIn('status', [Event::STATUS_DRAFT, Event::STATUS_PUBLISHED, Event::STATUS_CLOSED])
+            ->whereIn('status', [Event::STATUS_DRAFT, Event::STATUS_ANNOUNCED, Event::STATUS_PUBLISHED, Event::STATUS_CLOSED])
             ->upcoming()
             ->with(['slots', 'eventRooms.floorPlan.tables'])
             ->orderBy('date')

@@ -25,6 +25,7 @@ class Event extends Model
     use HasContextImage;
 
     public const STATUS_DRAFT     = 'draft';
+    public const STATUS_ANNOUNCED = 'announced';
     public const STATUS_PUBLISHED = 'published';
     public const STATUS_CLOSED    = 'closed';
     public const STATUS_CANCELLED = 'cancelled';
@@ -196,7 +197,7 @@ class Event extends Model
     /** Bestellschluss erreicht? (kein Deadline gesetzt = offen) */
     public function isOrderable(): bool
     {
-        if ($this->status !== EventStatus::Published) {
+        if (!$this->status?->allowsOrders()) {
             return false;
         }
 

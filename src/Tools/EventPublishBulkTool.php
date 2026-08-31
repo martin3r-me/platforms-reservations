@@ -6,6 +6,7 @@ use Platform\Core\Contracts\ToolContext;
 use Platform\Core\Contracts\ToolContract;
 use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
+use Platform\Reservation\Enums\EventStatus;
 use Platform\Reservation\Models\Event;
 
 /**
@@ -21,8 +22,10 @@ class EventPublishBulkTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'POST /reservation/events/publish/bulk - Setzt den Status mehrerer Termine. REST-Parameter: '
-            . 'event_uuids (Array), publish (bool, Default true → published; false → draft). '
-            . 'Veröffentlichen überspringt Termine ohne Pausen-Slot.';
+            . 'event_uuids (Array), status (draft|announced|published|closed|cancelled) ODER publish (bool, '
+            . 'Default true → published; false → draft). status gewinnt, wenn beides kommt. '
+            . 'Veröffentlichen überspringt Termine ohne Pausen-Slot; announced ist der Zustand '
+            . '„steht im Shop, Vorbestellung noch nicht offen".';
     }
 
     public function getSchema(): array
@@ -32,6 +35,7 @@ class EventPublishBulkTool implements ToolContract, ToolMetadataContract
             'properties' => [
                 'event_uuids' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'publish'     => ['type' => 'boolean', 'description' => 'true = veröffentlichen, false = Entwurf.'],
+                'status'      => ['type' => 'string', 'enum' => ['draft', 'announced', 'published', 'closed', 'cancelled'], 'description' => 'Zielstatus; genauer als publish.'],
             ],
             'required'   => ['event_uuids'],
         ];
@@ -51,8 +55,18 @@ class EventPublishBulkTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('Parameter "event_uuids" muss ein nicht-leeres Array sein.', 'VALIDATION_ERROR');
             }
 
-            $publish = (bool) ($arguments['publish'] ?? true);
-            $status  = $publish ? Event::STATUS_PUBLISHED : Event::STATUS_DRAFT;
+            // status ist der genauere Weg; publish bleibt für Bestandsaufrufe.
+            $status = $arguments['status'] ?? null;
+
+            if ($status !== null && !in_array($status, EventStatus::values(), true)) {
+                return ToolResult::error('Unbekannter Status: ' . $status, 'VALIDATION_ERROR');
+            }
+
+            $status ??= ((bool) ($arguments['publish'] ?? true)) ? Event::STATUS_PUBLISHED : Event::STATUS_DRAFT;
+
+            // Die Slot-Prüfung schützt das Veröffentlichen, nicht jeden Statuswechsel:
+            // ankündigen darf man einen Termin, dessen Pausen noch nicht stehen.
+            $publish = $status === Event::STATUS_PUBLISHED;
 
             $changed     = 0;
             $skippedNoSlot = [];
