@@ -102,11 +102,27 @@
                                 · {{ $booking->guest_count }} P.
                             </p>
                         </div>
-                        @if ($booking->items_count > 0)
-                            <span class="shrink-0 whitespace-nowrap text-xs font-semibold tabular-nums text-[color:var(--nx-text)]">
-                                {{ number_format($booking->total_amount, 2, ',', '.') }} €
-                            </span>
-                        @endif
+                        {{-- Betrag und darunter, wann bestellt wurde.
+
+                             Die Karte sortiert nach dem Bestellzeitpunkt (latest()), zeigte
+                             ihn aber nirgends: Links steht das Datum der VERANSTALTUNG, und
+                             wenn alle Zeilen zum selben Abend gehoeren, sieht die Reihenfolge
+                             willkuerlich aus. Jetzt ist der Sortierschluessel sichtbar.
+
+                             Rechts und nicht in der Zeile links, damit die ohnehin lange
+                             Zeile aus Datum, Termin, Ort und Personenzahl nicht umbricht. --}}
+                        <div class="shrink-0 whitespace-nowrap text-right">
+                            @if ($booking->items_count > 0)
+                                <span class="text-xs font-semibold tabular-nums text-[color:var(--nx-text)]">
+                                    {{ number_format($booking->total_amount, 2, ',', '.') }} €
+                                </span>
+                            @endif
+                            @if ($booking->created_at)
+                                <span class="block text-[11px] tabular-nums text-[color:var(--nx-faint)]">
+                                    {{ $booking->created_at->format('d.m.') }} · {{ $booking->created_at->format('H:i') }} Uhr
+                                </span>
+                            @endif
+                        </div>
                     </div>
                 @empty
                     <x-nx-empty icon="heroicon-o-inbox">Noch keine Buchungen</x-nx-empty>
