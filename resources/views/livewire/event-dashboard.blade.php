@@ -150,6 +150,7 @@
                                 <x-nx-table-header-cell compact align="center">Personen</x-nx-table-header-cell>
                                 <x-nx-table-header-cell compact align="right">Bestellung</x-nx-table-header-cell>
                                 <x-nx-table-header-cell compact>Status</x-nx-table-header-cell>
+                                <x-nx-table-header-cell compact>Gebucht am</x-nx-table-header-cell>
                                 {{-- Nicht mehr an printingAvailable gehaengt: Das Menue fuer
                                      No-Show und Abgeschlossen gehoert auch in Apps ohne
                                      Druckmodul - gerade dort wird von Hand gefuehrt. --}}
@@ -181,6 +182,19 @@
                                                 'completed' => ['Abgeschlossen', 'info'],
                                             ][$b->status] ?? [ucfirst($b->status), 'neutral']; @endphp
                                             <x-nx-badge :variant="$sv">{{ $sl }}</x-nx-badge>
+                                        </x-nx-table-cell>
+                                        {{-- Wann bestellt wurde. Gleiche Darstellung wie in „Alle
+                                             Buchungen": Datum, darunter die Uhrzeit. Am Abend ist
+                                             das die Reihenfolge des Eingangs - wer zuerst da war,
+                                             steht zuerst fest, und bei Rueckfragen ist es das
+                                             Erste, wonach gesucht wird. --}}
+                                        <x-nx-table-cell compact class="whitespace-nowrap text-[color:var(--nx-muted)]">
+                                            @if ($b->created_at)
+                                                <span class="tabular-nums">{{ $b->created_at->format('d.m.Y') }}</span>
+                                                <span class="block text-xs tabular-nums text-[color:var(--nx-faint)]">{{ $b->created_at->format('H:i') }} Uhr</span>
+                                            @else
+                                                <span class="text-[color:var(--nx-faint)]">–</span>
+                                            @endif
                                         </x-nx-table-cell>
                                         {{-- pp-pin wie in „Alle Buchungen": bleibt rechts stehen, wenn
                                              die Tabelle breiter wird als die Karte. --}}
