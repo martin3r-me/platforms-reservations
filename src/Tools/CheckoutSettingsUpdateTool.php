@@ -24,7 +24,8 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
         return 'PATCH /reservation/checkout-settings - Aktualisiert die Einstellungen des aktiven Teams. '
             . 'REST-Parameter (alle optional): field_email/field_phone/field_notes (required|optional|hidden), '
             . 'default_room_release_mode (parallel|sequential), soft_table_capacity (bool – Großgruppen auf leere '
-            . 'Tische), max_group_empty_table (int, null = unbegrenzt), age_check_text, legal_text, privacy_url.';
+            . 'Tische), max_group_empty_table (int, null = unbegrenzt), max_guest_count (int – groesste buchbare '
+            . 'Gruppe; NICHT dasselbe wie max_group_empty_table), age_check_text, legal_text, privacy_url.';
     }
 
     public function getSchema(): array
@@ -38,6 +39,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
                 'default_room_release_mode' => ['type' => 'string', 'enum' => ['parallel', 'sequential']],
                 'soft_table_capacity'       => ['type' => 'boolean', 'description' => 'Großgruppen dürfen leere Tische überbelegen.'],
                 'max_group_empty_table'     => ['type' => ['integer', 'null'], 'description' => 'Max. Gruppengröße auf leerem Tisch (null = unbegrenzt).'],
+                'max_guest_count'           => ['type' => 'integer', 'description' => 'Max. Gruppengröße, die ein Gast auf einmal buchen kann.'],
                 'languages'                 => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Angebotene Sprachen (locale-Codes, z.B. ["de","en"]). DE ist immer dabei.'],
                 'guest_frontend_url'        => ['type' => ['string', 'null'], 'description' => 'Basis-URL des Shop-Frontends (Allowlist-Origin für Zahlungs-Rücksprung).'],
                 'confirmation_channel_id'   => ['type' => ['integer', 'null'], 'description' => 'CRM-Comms-Channel-ID (Postmark) für Bestellbestätigungen; null = kein Versand.'],
@@ -69,6 +71,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
                 'default_room_release_mode' => 'sometimes|in:parallel,sequential',
                 'soft_table_capacity'       => 'sometimes|boolean',
                 'max_group_empty_table'     => 'sometimes|nullable|integer|min:1|max:200',
+                'max_guest_count'           => 'sometimes|integer|min:1|max:200',
                 'languages'                 => 'sometimes|array',
                 'languages.*'               => 'string|regex:/^[a-zA-Z]{2}(_[a-zA-Z]{2})?$/',
                 'guest_frontend_url'        => 'sometimes|nullable|url|max:255',
@@ -89,7 +92,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
             $setting = CheckoutSetting::forTeam($teamId);
             $setting->fill(collect($validator->validated())->only([
                 'field_email', 'field_phone', 'field_notes', 'default_room_release_mode',
-                'soft_table_capacity', 'max_group_empty_table', 'languages', 'guest_frontend_url',
+                'soft_table_capacity', 'max_group_empty_table', 'max_guest_count', 'languages', 'guest_frontend_url',
                 'confirmation_channel_id', 'cancellation_enabled', 'cancellation_deadline_hours',
                 'cancellation_requires_approval', 'age_check_text', 'legal_text', 'privacy_url',
             ])->all());
@@ -114,6 +117,7 @@ class CheckoutSettingsUpdateTool implements ToolContract, ToolMetadataContract
                 'default_room_release_mode' => $setting->defaultRoomReleaseMode(),
                 'soft_table_capacity'       => $setting->softTableCapacity(),
                 'max_group_empty_table'     => $setting->maxGroupEmptyTable(),
+                'max_guest_count'           => $setting->maxGuestCount(),
                 'languages'                 => $setting->languages(),
                 'guest_frontend_url'        => $setting->guestFrontendUrl(),
                 'confirmation_channel_id'   => $setting->confirmationChannelId(),

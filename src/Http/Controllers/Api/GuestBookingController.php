@@ -27,7 +27,11 @@ class GuestBookingController extends GuestApiController
             'guest.name'       => ['required', 'string', 'max:255'],
             'guest.email'      => $settings->guestFieldRule('email', ['email', 'max:255']),
             'guest.phone'      => $settings->guestFieldRule('phone', ['string', 'max:30']),
-            'guest.count'      => ['required', 'integer', 'min:1', 'max:20'],
+            // Vorgabe des Teams statt einer Zahl im Code. Der Termin ist hier
+            // noch nicht aufgelöst – eine eigene Grenze am Termin greift auf
+            // diesem Weg deshalb nicht. Betrifft nur die alte Gast-API; der
+            // Shop bestellt über events-api.php und bekommt dort die genaue Zahl.
+            'guest.count'      => ['required', 'integer', 'min:1', 'max:' . $settings->maxGuestCount()],
             'guest.notes'      => $settings->guestFieldRule('notes', ['string']),
             'legal_accepted'   => 'accepted',
             'age_confirmed'    => 'nullable|boolean',

@@ -46,6 +46,7 @@ class Event extends Model
         'venue_id',
         'sales_list_id',
         'room_release_mode',
+        'max_guest_count',
         'disabled_table_ids',
         'image_context_file_id',
         'events_event_id',
@@ -192,6 +193,22 @@ class Event extends Model
     public function scopeUpcoming($query)
     {
         return $query->whereDate('date', '>=', now()->toDateString());
+    }
+
+    /**
+     * Größte Gruppe, die für diesen Termin gebucht werden kann.
+     *
+     * Eigene Zahl schlägt die Vorgabe des Teams; ohne eigene gilt die Vorgabe.
+     * Bewusst nicht beim Anlegen kopiert – ändert das Haus seine Vorgabe,
+     * sollen die Termine folgen, die nie eine eigene bekommen haben.
+     */
+    public function maxGuestCount(): int
+    {
+        $eigen = (int) ($this->max_guest_count ?? 0);
+
+        return $eigen > 0
+            ? $eigen
+            : CheckoutSetting::forTeam((int) $this->team_id)->maxGuestCount();
     }
 
     /** Bestellschluss erreicht? (kein Deadline gesetzt = offen) */

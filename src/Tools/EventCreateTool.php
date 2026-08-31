@@ -25,7 +25,8 @@ class EventCreateTool implements ToolContract, ToolMetadataContract
     {
         return 'POST /reservation/events - Legt einen Termin an (Status: draft). REST-Parameter: '
             . 'name (Pflicht), date (Pflicht, YYYY-MM-DD), order_deadline_at (Pflicht, Datum/Zeit), description, '
-            . 'venue_id, sales_list_id, room_release_mode (parallel|sequential).';
+            . 'venue_id, sales_list_id, room_release_mode (parallel|sequential), max_guest_count '
+            . '(int; null = Vorgabe des Teams).';
     }
 
     public function getSchema(): array
@@ -40,6 +41,7 @@ class EventCreateTool implements ToolContract, ToolMetadataContract
                 'venue_id'          => ['type' => 'integer', 'description' => 'Venue des Teams (optional).'],
                 'sales_list_id'     => ['type' => 'integer', 'description' => 'Verkaufsliste des Teams (optional).'],
                 'room_release_mode' => ['type' => 'string', 'enum' => ['parallel', 'sequential']],
+                'max_guest_count'   => ['type' => ['integer', 'null'], 'description' => 'Groesste buchbare Gruppe; null = Vorgabe des Teams.'],
             ],
             'required'   => ['name', 'date', 'order_deadline_at'],
         ];
@@ -62,6 +64,7 @@ class EventCreateTool implements ToolContract, ToolMetadataContract
                 'venue_id'          => 'nullable|integer',
                 'sales_list_id'     => 'nullable|integer',
                 'room_release_mode' => 'nullable|in:parallel,sequential',
+                'max_guest_count'   => 'nullable|integer|min:1|max:200',
             ]);
 
             if ($validator->fails()) {

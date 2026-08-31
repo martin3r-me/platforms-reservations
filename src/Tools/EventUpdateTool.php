@@ -24,7 +24,8 @@ class EventUpdateTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'PATCH /reservation/events - Aktualisiert einen Termin. REST-Parameter: uuid (Pflicht); '
-            . 'name, date, description, order_deadline_at, venue_id, sales_list_id, room_release_mode (optional). '
+            . 'name, date, description, order_deadline_at, venue_id, sales_list_id, room_release_mode, '
+            . 'max_guest_count (null = Vorgabe des Teams) (optional). '
             . 'Status wird über publish/unpublish gesetzt.';
     }
 
@@ -41,6 +42,7 @@ class EventUpdateTool implements ToolContract, ToolMetadataContract
                 'venue_id'          => ['type' => 'integer'],
                 'sales_list_id'     => ['type' => 'integer'],
                 'room_release_mode' => ['type' => 'string', 'enum' => ['parallel', 'sequential']],
+                'max_guest_count'   => ['type' => ['integer', 'null'], 'description' => 'Groesste buchbare Gruppe; null = Vorgabe des Teams.'],
             ],
             'required'   => ['uuid'],
         ];
@@ -64,6 +66,7 @@ class EventUpdateTool implements ToolContract, ToolMetadataContract
                 'venue_id'          => 'nullable|integer',
                 'sales_list_id'     => 'nullable|integer',
                 'room_release_mode' => 'sometimes|in:parallel,sequential',
+                'max_guest_count'   => 'sometimes|nullable|integer|min:1|max:200',
             ]);
 
             if ($validator->fails()) {
@@ -91,6 +94,7 @@ class EventUpdateTool implements ToolContract, ToolMetadataContract
 
             $event->update(collect($validator->validated())->only([
                 'name', 'date', 'description', 'order_deadline_at', 'venue_id', 'sales_list_id', 'room_release_mode',
+                'max_guest_count',
             ])->all());
 
             return ToolResult::success([

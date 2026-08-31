@@ -201,6 +201,10 @@
                     nullLabel="– Team-Standard –"
                     wire:model="eventSalesListId"
                 />
+                <div>
+                    <x-nx-input-text type="number" name="eventMaxGuestCount" label="Größte buchbare Gruppe" wire:model="eventMaxGuestCount" :placeholder="$this->standardMaxGuestCount . ' (Team-Vorgabe)'" errorKey="eventMaxGuestCount" />
+                    <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Leer = Vorgabe aus den Einstellungen ({{ $this->standardMaxGuestCount }}).</p>
+                </div>
                 <x-nx-input-select
                     name="eventReleaseMode"
                     label="Raumfreigabe"

@@ -34,6 +34,8 @@ class EventManager extends Component
     public ?int $eventVenueId = null;
     public ?int $eventSalesListId = null;
     public string $eventReleaseMode = Event::RELEASE_PARALLEL;
+    /** Leer = Vorgabe des Teams. */
+    public string $eventMaxGuestCount = '';
     public ?int $eventEventsEventId = null;
 
     /** @var array<int, array{id: ?int, name: string, time_start: string, time_end: string}> */
@@ -136,6 +138,13 @@ class EventManager extends Component
      * nach Tischplan gruppiert.
      */
     #[Computed]
+    /** Vorgabe des Teams – als Platzhalter im Formular, damit sichtbar ist, was ohne eigene Zahl gilt. */
+    #[Computed]
+    public function standardMaxGuestCount(): int
+    {
+        return \Platform\Reservation\Models\CheckoutSetting::forTeam($this->getTeamId())->maxGuestCount();
+    }
+
     public function roomTables(): \Illuminate\Database\Eloquent\Collection
     {
         $planIds = collect($this->rooms)->pluck('floor_plan_id')->filter()->unique()->values();
@@ -187,6 +196,7 @@ class EventManager extends Component
             $this->eventVenueId       = $event->venue_id;
             $this->eventSalesListId   = $event->sales_list_id;
             $this->eventReleaseMode   = $event->room_release_mode;
+            $this->eventMaxGuestCount = $event->max_guest_count !== null ? (string) $event->max_guest_count : '';
             $this->eventEventsEventId = $event->events_event_id;
 
             $this->slots = $event->slots->map(fn (EventSlot $slot) => [
@@ -213,6 +223,7 @@ class EventManager extends Component
             $this->eventVenueId       = null;
             $this->eventSalesListId   = null;
             $this->eventEventsEventId = null;
+            $this->eventMaxGuestCount = '';
             // Standard-Raumfreigabe aus den Einstellungen vorbelegen.
             $this->eventReleaseMode = \Platform\Reservation\Models\CheckoutSetting::forTeam($this->getTeamId())->defaultRoomReleaseMode();
             $this->slots = [['id' => null, 'name' => 'Pause', 'time_start' => '', 'time_end' => '']];
@@ -283,6 +294,7 @@ class EventManager extends Component
             'eventDate'          => 'required|date',
             // Ohne Frist bliebe ein Termin ewig bestellbar – auch nach dem Abend.
             'eventDeadline'      => 'required|date',
+            'eventMaxGuestCount' => 'nullable|integer|min:1|max:200',
             'eventVenueId'       => ['nullable', 'integer', Rule::exists('reservation_venues', 'id')->where('team_id', $this->getTeamId())],
             'eventSalesListId'   => ['nullable', 'integer', Rule::exists('reservation_sales_lists', 'id')->where('team_id', $this->getTeamId())],
             'eventReleaseMode'   => 'required|in:parallel,sequential',
@@ -327,6 +339,7 @@ class EventManager extends Component
             'venue_id'           => $this->eventVenueId,
             'sales_list_id'      => $this->eventSalesListId,
             'room_release_mode'  => $this->eventReleaseMode,
+            'max_guest_count'    => $this->eventMaxGuestCount !== '' ? (int) $this->eventMaxGuestCount : null,
             'disabled_table_ids' => $disabledTableIds,
             'events_event_id'    => $this->eventEventsEventId,
             'events_event_uuid'  => $this->resolveEventsEventUuid(),

@@ -184,10 +184,13 @@ class BookingCreate extends Component
     }
 
     /**
-     * Obergrenze für die Personenzahl – als Hinweis, nicht als Prüfung.
+     * Obergrenze für die Personenzahl – dieselbe Zahl, die der Shop zeigt und
+     * gegen die die API prüft: die eigene Grenze des Termins, sonst die
+     * Vorgabe des Teams.
      *
-     * Dieselbe Zahl, die der Shop zeigt: die größte Gruppe, die auf einen
-     * leeren Tisch darf. Ist sie nicht gesetzt, der größte Tisch des Termins.
+     * Vorher rechnete diese Stelle sich ihren eigenen Wert aus der weichen
+     * Tisch-Kapazität und, falls die fehlte, aus dem größten Tisch. Das war
+     * eine dritte Antwort auf eine Frage, die es nur einmal gibt.
      *
      * Verbindlich bleibt die Platzprüfung beim Speichern – die kennt auch die
      * schon belegten Plätze.
@@ -195,17 +198,9 @@ class BookingCreate extends Component
     #[Computed]
     public function maxGuests(): int
     {
-        $grenze = CheckoutSetting::forTeam($this->teamId)->maxGroupEmptyTable();
-
-        if ($grenze) {
-            return (int) $grenze;
-        }
-
-        $groesster = $this->event?->eventRooms
-            ->flatMap(fn ($room) => $room->floorPlan?->tables ?? collect())
-            ->max('capacity');
-
-        return (int) ($groesster ?: 20);
+        return $this->event
+            ? $this->event->maxGuestCount()
+            : CheckoutSetting::forTeam($this->teamId)->maxGuestCount();
     }
 
     /**

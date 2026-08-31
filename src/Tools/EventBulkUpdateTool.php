@@ -29,7 +29,7 @@ class EventBulkUpdateTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'PATCH /reservation/events/bulk - Setzt gemeinsame Felder mehrerer Termine. '
-            . 'REST-Parameter: event_uuids (Array, Pflicht); sales_list_id, venue_id, room_release_mode '
+            . 'REST-Parameter: event_uuids (Array, Pflicht); sales_list_id, venue_id, room_release_mode, max_guest_count '
             . '(parallel|sequential), order_deadline_at, description – mindestens eines davon. '
             . 'name und date gibt es hier absichtlich nicht (für viele Termine nie derselbe Wert); '
             . 'Status über events.publish.bulk.POST. sales_list_id/venue_id dürfen null sein (Zuordnung lösen).';
@@ -44,6 +44,7 @@ class EventBulkUpdateTool implements ToolContract, ToolMetadataContract
                 'sales_list_id'     => ['type' => ['integer', 'null']],
                 'venue_id'          => ['type' => ['integer', 'null']],
                 'room_release_mode' => ['type' => 'string', 'enum' => ['parallel', 'sequential']],
+                'max_guest_count'   => ['type' => ['integer', 'null'], 'description' => 'Groesste buchbare Gruppe; null = Vorgabe des Teams.'],
                 'order_deadline_at' => ['type' => 'string', 'description' => 'Datum/Zeit. Aufheben ist nicht möglich – ohne Frist bliebe der Termin ewig bestellbar.'],
                 'description'       => ['type' => ['string', 'null']],
             ],
@@ -66,6 +67,7 @@ class EventBulkUpdateTool implements ToolContract, ToolMetadataContract
                 'sales_list_id'     => 'sometimes|nullable|integer',
                 'venue_id'          => 'sometimes|nullable|integer',
                 'room_release_mode' => 'sometimes|in:parallel,sequential',
+                'max_guest_count'   => 'sometimes|nullable|integer|min:1|max:200',
                 'order_deadline_at' => 'sometimes|required|date',
                 'description'       => 'sometimes|nullable|string',
             ]);
@@ -75,7 +77,7 @@ class EventBulkUpdateTool implements ToolContract, ToolMetadataContract
             }
 
             $data = collect($validator->validated())
-                ->only(['sales_list_id', 'venue_id', 'room_release_mode', 'order_deadline_at', 'description'])
+                ->only(['sales_list_id', 'venue_id', 'room_release_mode', 'max_guest_count', 'order_deadline_at', 'description'])
                 ->all();
 
             if ($data === []) {

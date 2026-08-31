@@ -46,6 +46,7 @@ class EventBulkCreateTool implements ToolContract, ToolMetadataContract
                             'venue_id'          => ['type' => 'integer'],
                             'sales_list_id'     => ['type' => 'integer'],
                             'room_release_mode' => ['type' => 'string', 'enum' => ['parallel', 'sequential']],
+                            'max_guest_count'   => ['type' => ['integer', 'null'], 'description' => 'Groesste buchbare Gruppe; null = Vorgabe des Teams.'],
                         ],
                         'required'   => ['name', 'date'],
                     ],
@@ -130,6 +131,7 @@ class EventBulkCreateTool implements ToolContract, ToolMetadataContract
                     // geschriebenes null hebelt den DB-Default aus – das Massenanlegen
                     // scheiterte daran mit einem SQL-Fehler.
                     'room_release_mode' => $row['room_release_mode'] ?? Event::RELEASE_PARALLEL,
+                    'max_guest_count'   => $row['max_guest_count'] ?? null,
                     'status'            => Event::STATUS_DRAFT,
                 ]);
 

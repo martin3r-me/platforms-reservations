@@ -55,6 +55,7 @@ class CheckoutSetting extends Model
         'field_notes',
         'soft_table_capacity',
         'max_group_empty_table',
+        'max_guest_count',
         'four_eyes_enabled',
         'four_eyes_off_requested_by',
         'four_eyes_off_requested_at',
@@ -89,6 +90,7 @@ class CheckoutSetting extends Model
     protected $casts = [
         'soft_table_capacity'            => 'boolean',
         'max_group_empty_table'          => 'integer',
+        'max_guest_count'                => 'integer',
         'four_eyes_enabled'              => 'boolean',
         'four_eyes_off_requested_at'     => 'datetime',
         'four_eyes_changed_at'           => 'datetime',
@@ -341,6 +343,24 @@ class CheckoutSetting extends Model
     public function maxGroupEmptyTable(): ?int
     {
         return $this->max_group_empty_table !== null ? (int) $this->max_group_empty_table : null;
+    }
+
+    /** Vorgabe des Teams: die größte Gruppe, die ein Gast buchen kann. */
+    public const MAX_GUEST_COUNT_FALLBACK = 20;
+
+    /**
+     * Größte buchbare Gruppe.
+     *
+     * NICHT zu verwechseln mit maxGroupEmptyTable(): Das ist die weiche
+     * Tisch-Kapazität und sagt, wie viele Personen einen LEEREN Tisch über
+     * seine Platzzahl hinaus belegen dürfen. Diese Zahl hier sagt, wie groß
+     * eine Gruppe überhaupt sein darf – unabhängig davon, wo sie sitzt.
+     */
+    public function maxGuestCount(): int
+    {
+        $wert = (int) ($this->max_guest_count ?? 0);
+
+        return $wert > 0 ? $wert : self::MAX_GUEST_COUNT_FALLBACK;
     }
 
     /**
