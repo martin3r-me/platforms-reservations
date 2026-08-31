@@ -133,11 +133,6 @@ class EventManager extends Component
             ->get();
     }
 
-    /**
-     * Tische der aktuell gewählten Räume (zum Sperren je Termin),
-     * nach Tischplan gruppiert.
-     */
-    #[Computed]
     /** Vorgabe des Teams – als Platzhalter im Formular, damit sichtbar ist, was ohne eigene Zahl gilt. */
     #[Computed]
     public function standardMaxGuestCount(): int
@@ -145,6 +140,11 @@ class EventManager extends Component
         return \Platform\Reservation\Models\CheckoutSetting::forTeam($this->getTeamId())->maxGuestCount();
     }
 
+    /**
+     * Tische der aktuell gewählten Räume (zum Sperren je Termin),
+     * nach Tischplan gruppiert.
+     */
+    #[Computed]
     public function roomTables(): \Illuminate\Database\Eloquent\Collection
     {
         $planIds = collect($this->rooms)->pluck('floor_plan_id')->filter()->unique()->values();
