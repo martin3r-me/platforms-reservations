@@ -625,6 +625,10 @@ stehen fest:
    nur Anzeige. Eigener Fehlercode, wie die übrigen.
 4. Das Backoffice bleibt außen vor: Wer telefonisch bucht, entscheidet selbst.
 
+**Wartet auf eine Rückmeldung (Stand 31.08.2026).** Bis die da ist, wird hier nichts
+gebaut – der Widerspruch bleibt bestehen, ist aber bekannt und betrifft nur Termine mit
+mehr als einem Raum.
+
 Offen bleibt die fachliche Frage: Heißt „voll" wirklich 100 %? `fill_threshold_percent`
 steht auf 100 – der zweite Raum öffnet also erst, wenn im ersten kein Platz mehr frei ist.
 Ein Rest von zwei Plätzen an einem Sechsertisch blockiert dann jede Vierergruppe. 85 oder
