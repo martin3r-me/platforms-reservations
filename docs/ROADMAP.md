@@ -66,6 +66,37 @@ eingeladene Gäste weiter als Umsatz zählen (`PLAN-abholstationen.md`, Abschnit
 
 ---
 
+## Produkt & Vertrieb – offener Punkt (31.08.2026)
+
+**Die Tarifgrenzen sind nirgends hinterlegt.** Die Produkt-Landingpage
+(`pauseplus-produkt-landingpage.dev.bhgdigital.de`) staffelt nach Räumen und
+Artikeln – Basic bis 2 Räume und 25 Artikel, Standard bis 5/100, Premium bis
+15/300. Im Modul gibt es dazu nichts: keine Mengenbegrenzung, keine
+Tarif-Zuordnung, keinen Zähler, nichts, was beim 26. Artikel bremst oder auch nur
+warnt. Jedes Team kann beliebig viele Räume und Artikel anlegen.
+
+Solange von Hand verkauft wird, ist das Vertrauenssache und in Ordnung. Zwei
+Folgen sollte man aber bewusst tragen:
+
+- Beim **Onboarding** muss jemand von Hand nachhalten, welcher Tarif gilt.
+- Beim **Upselling** merkt niemand, wenn ein Basic-Kunde längst 80 Artikel führt –
+  weder der Kunde noch wir.
+
+Drei Wege, in aufsteigender Härte:
+
+1. **Nur zählen.** Eine Übersicht je Team (Räume, Artikel, Termine) im
+   Betreiber-Backoffice. Kein Eingriff, aber man sieht es.
+2. **Weich begrenzen.** Beim Überschreiten ein Hinweis in den Einstellungen
+   („Ihr Tarif sieht 25 Artikel vor, angelegt sind 31") – ohne zu blockieren.
+3. **Hart begrenzen.** Anlegen wird verweigert. Braucht eine Tarif-Zuordnung je
+   Team und einen Weg, sie zu ändern; in `platforms-core` gibt es mit den
+   `billables` des Planner-Moduls bereits ein Muster für nutzungsabhängige Kosten.
+
+Empfehlung: erst (1), weil es nichts kaputtmachen kann und die Frage beantwortet,
+ob (2) oder (3) überhaupt gebraucht wird.
+
+---
+
 ## M2 – Zahlung & Härtung (Kern, vor Go-live zwingend)
 
 - [x] **Mollie-Integration (Fundament)**: Hosted-Redirect-Checkout, Webhook
