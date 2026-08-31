@@ -134,6 +134,16 @@ class EventDashboard extends Component
     {
         $zaehlend = $bookings->where('status', '!=', Booking::STATUS_NO_SHOW);
 
+        // Buchungen ohne Tisch fallen aus der Auslastung heraus - die rechnet
+        // ueber die Tische, und ohne table_id gehoert die Buchung zu keinem.
+        // Genau das ist in der Gartenhalle passiert: Der Raum meldete 37 von 72
+        // Plaetzen, im Kopf standen 45 Gaeste, und die Differenz von 8 war
+        // nirgends zu sehen. Deshalb steht sie jetzt daneben.
+        //
+        // Gerechnet aus derselben Menge wie der Kopf, damit sich Raum plus
+        // "ohne Tisch" auch wirklich zur Kopfzahl addiert.
+        $ohneTisch = $zaehlend->whereNull('table_id');
+
         return [
             'slot_id'  => $slotId,
             'label'    => $label,
@@ -141,6 +151,13 @@ class EventDashboard extends Component
             'count'    => $zaehlend->count(),
             'guests'   => (int) $zaehlend->sum('guest_count'),
             'revenue'  => (float) $zaehlend->sum('total_amount'),
+            'ohne_tisch' => [
+                'count'  => $ohneTisch->count(),
+                'guests' => (int) $ohneTisch->sum('guest_count'),
+                // Die eingefrorenen Namen, sofern vorhanden - sonst weiss
+                // niemand, welcher Tisch fehlt.
+                'orte'   => $ohneTisch->pluck('place_label')->filter()->unique()->sort()->values()->all(),
+            ],
         ];
     }
 

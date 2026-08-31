@@ -106,6 +106,38 @@
                         @include('reservation::partials.event-auslastung', ['raeume' => $this->auslastung[$group['slot_id']]])
                     @endif
 
+                    {{-- Was in keiner Auslastung auftaucht: Buchungen ohne Tisch.
+                         Ohne diese Zeile widerspricht sich die Ansicht - oben
+                         stehen mehr Gäste, als der Raum belegt zeigt, und die
+                         Differenz ist nirgends erklärt. --}}
+                    @if (($group['ohne_tisch']['count'] ?? 0) > 0)
+                        {{-- Bewusst die Block-Fassung der PHP-Direktive, nicht die
+                             einzeilige mit Klammer.
+
+                             Blade schneidet rohe PHP-Bloecke aus der Vorlage, BEVOR die
+                             einzeilige Fassung ueberhaupt drankommt - und zwar von der
+                             oeffnenden Direktive bis zur naechsten schliessenden. In
+                             dieser Datei steht weiter unten eine schliessende; eine
+                             einzeilige Direktive hier oben wuerde also alles dazwischen
+                             verschlucken. Die Vorlage kompiliert dann bis ans Dateiende
+                             durch und stirbt mit "unexpected endif" - an einer Stelle,
+                             die mit der Ursache nichts zu tun hat.
+
+                             (Deshalb stehen die Direktiven hier auch nicht ausgeschrieben:
+                             Der Ausschnitt greift auch in Kommentaren.) --}}
+                        @php
+                            $ot  = $group['ohne_tisch'];
+                            $weg = ! empty($ot['orte'])
+                                ? ' – ' . implode(', ', $ot['orte']) . (count($ot['orte']) === 1 ? ' wurde' : ' wurden') . ' gelöscht'
+                                : '';
+                        @endphp
+                        <div class="border-t border-[color:var(--nx-line)] px-4 py-2.5">
+                            <p class="m-0 text-[11px] text-[color:var(--nx-muted)]">
+                                <span class="font-medium text-[color:var(--nx-text)]">{{ $ot['count'] }} {{ $ot['count'] === 1 ? 'Buchung' : 'Buchungen' }} · {{ $ot['guests'] }} {{ $ot['guests'] === 1 ? 'Gast' : 'Gäste' }} ohne Tisch</span>{{ $weg }} · in der Auslastung oben nicht enthalten
+                            </p>
+                        </div>
+                    @endif
+
                     @if ($group['count'] === 0)
                         <div class="px-4 py-4 text-xs text-[color:var(--nx-faint)]">Noch keine Buchungen für diese Pause.</div>
                     @else
