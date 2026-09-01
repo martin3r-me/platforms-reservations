@@ -287,6 +287,11 @@ class EventController extends ApiController
             'soft_table_capacity'   => $soft,
             'max_group_empty_table' => $maxGroup,
             'party'                 => $party, // Gruppengröße, für die "bookable" berechnet wurde (null = nicht angefragt)
+            // Wem gehört ein Tisch, wenn der Termin mehrere Pausen hat?
+            // 'event' = dem Gast den ganzen Abend, also EINE Tischwahl für alle
+            // Pausen. 'slot' = je Pause neu, dann fragt der Shop je Pause.
+            // Bei einer Pause ohne Bedeutung – beide rechnen dann gleich.
+            'table_binding'         => $model->tableBinding($checkout),
             'slots' => $slots->map(fn ($s) => [
                 'id'         => $s->id,
                 'name'       => $s->name,
