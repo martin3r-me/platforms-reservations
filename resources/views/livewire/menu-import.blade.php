@@ -77,7 +77,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
             <p class="text-sm text-[color:var(--nx-muted)] m-0">
                 <strong class="text-[color:var(--nx-text)]">{{ count($previewRows) }}</strong> Zeilen gelesen –
-                <span class="text-[color:var(--nx-success)]">{{ $okCount }} importierbar</span>@if($warningCount), <span class="text-[color:var(--nx-warning)]">{{ $warningCount }} mit Warnungen</span>@endif@if($errorCount), <span class="text-[color:var(--nx-danger)]">{{ $errorCount }} übersprungen</span>@endif
+                <span class="text-[color:var(--nx-success)]">{{ $okCount }} importierbar</span>{{ $warningCount ? ',' : '' }}@if($warningCount) <span class="text-[color:var(--nx-warning)]">{{ $warningCount }} mit Warnungen</span>@endif{{ $errorCount ? ',' : '' }}@if($errorCount) <span class="text-[color:var(--nx-danger)]">{{ $errorCount }} übersprungen</span>@endif
             </p>
             <div class="flex gap-2">
                 <x-nx-button wire:click="resetImport">Abbrechen</x-nx-button>

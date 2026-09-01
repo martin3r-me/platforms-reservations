@@ -74,7 +74,7 @@
             @foreach ($groups as $g)
                 <tr>
                     <td colspan="5" style="background: #f3f4f6; color: {{ $accent }}; font-weight: bold; padding: 9px 5px;">
-                        {{ $g['slot'] }}@if ($g['table']) · Tisch {{ $g['table'] }}@endif@if ($g['room']) · {{ $g['room'] }}@endif
+                        {{ $g['slot'] }}@if ($g['table']) · Tisch {{ $g['table'] }}@endif @if ($g['room']) · {{ $g['room'] }}@endif
                     </td>
                 </tr>
                 @foreach ($g['blocks'] as $block)
