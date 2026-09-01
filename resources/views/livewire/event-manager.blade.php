@@ -293,10 +293,7 @@
                                         name="rooms.{{ $i }}.floor_plan_id"
                                         label="Tischplan *"
                                         size="sm"
-                                        :options="$this->availableFloorPlans->map(fn ($p) => [
-                                            'value' => $p->id,
-                                            'label' => ($p->venue?->name ? $p->venue->name . ' – ' : '') . $p->name,
-                                        ])->values()->all()"
+                                        :options="$this->floorPlanOptions($i)"
                                         :nullable="true"
                                         nullLabel="– wählen –"
                                         wire:model.live="rooms.{{ $i }}.floor_plan_id"

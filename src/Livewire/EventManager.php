@@ -156,6 +156,36 @@ class EventManager extends Component
             : 'den Plätzen des Raums';
     }
 
+    /**
+     * Auswählbare Tischpläne für EINE Raumzeile.
+     *
+     * Ohne die eigene Auswahl der anderen Zeilen: Derselbe Plan zweimal am
+     * selben Termin geht nicht (eindeutiger Index auf event_id + floor_plan_id),
+     * und was nicht geht, soll man auch nicht anklicken können. Die Regel beim
+     * Speichern bleibt trotzdem – sie fängt den Fall ab, dass zwei leere Zeilen
+     * nacheinander denselben Plan bekommen.
+     *
+     * @return array<int, array{value: int, label: string}>
+     */
+    public function floorPlanOptions(int $index): array
+    {
+        $vergeben = collect($this->rooms)
+            ->except($index)
+            ->pluck('floor_plan_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return $this->availableFloorPlans
+            ->reject(fn ($p) => in_array((int) $p->id, $vergeben, true))
+            ->map(fn ($p) => [
+                'value' => $p->id,
+                'label' => ($p->venue?->name ? $p->venue->name . ' – ' : '') . $p->name,
+            ])
+            ->values()
+            ->all();
+    }
+
     /** Name eines Tischplans – für den Hinweis „gibt X frei" in der Raumliste. */
     public function planName(?int $floorPlanId): string
     {
@@ -440,13 +470,17 @@ class EventManager extends Component
             'slots.*.name'       => 'required|string|max:255',
             'slots.*.time_start' => 'nullable|date_format:H:i',
             'slots.*.time_end'   => 'nullable|date_format:H:i',
-            'rooms.*.floor_plan_id' => ['required', 'integer', Rule::exists('reservation_floor_plans', 'id')->where('team_id', $this->getTeamId())],
+            // distinct: Auf event_id + floor_plan_id liegt ein eindeutiger Index.
+            // Ohne diese Regel endet ein zweimal gewählter Raum nicht in einer
+            // Meldung, sondern in einem Serverfehler beim Speichern.
+            'rooms.*.floor_plan_id' => ['required', 'integer', 'distinct', Rule::exists('reservation_floor_plans', 'id')->where('team_id', $this->getTeamId())],
             'rooms.*.fill_threshold_percent' => 'required|integer|min:1|max:100',
             'rooms.*.capacity_override' => 'nullable|integer|min:1',
         ], [
             'eventDeadline.required' => 'Jeder Termin braucht einen Bestellschluss.',
             'slots.*.name.required' => 'Jede Pause braucht einen Namen.',
             'rooms.*.floor_plan_id.required' => 'Jeder Raum braucht einen Tischplan.',
+            'rooms.*.floor_plan_id.distinct' => 'Dieser Tischplan ist schon als Raum eingetragen.',
         ]);
 
         // #518: Wenn beide Zeiten gesetzt sind, muss das Ende nach dem Beginn liegen.
