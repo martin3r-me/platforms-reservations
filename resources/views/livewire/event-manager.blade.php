@@ -439,6 +439,57 @@
         </x-slot>
     </x-nx-modal>
 
+    {{-- Rückfrage vor dem Entfernen eines Raums, an dem Buchungen hängen.
+
+         Als eigenes Modal und nicht über wire:confirm: Der Browser-Dialog kann
+         nichts erklären. Hier steht die Zahl – und die Alternative, die
+         meistens gemeint ist.
+
+         DIESE REIHENFOLGE IST ABSICHT: Das Terminformular darüber ist selbst
+         ein Modal, und beide bringen dieselbe Ebene mit (z-[100]/z-[101]).
+         Bei gleicher Ebene gewinnt, was später im Dokument steht – deshalb
+         liegt die Rückfrage über dem Formular und nicht dahinter. Wer diesen
+         Block nach oben verschiebt, macht sie unsichtbar.
+
+         Escape schließt beide zugleich (die Komponente lauscht am Fenster).
+         Das ist verkraftbar: Die Rückfrage tut von sich aus nichts, entfernt
+         wird nur über den Knopf. --}}
+    <x-nx-modal size="sm" wire:model="showRoomRemoveConfirm">
+        <x-slot name="header">
+            <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">Raum entfernen?</h3>
+            <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">{{ $this->roomRemoveName() }}</p>
+        </x-slot>
+
+        <div class="space-y-3">
+            <x-nx-callout variant="warning">
+                An diesem Raum {{ $roomRemoveBookings === 1 ? 'hängt' : 'hängen' }}
+                <strong>{{ $roomRemoveBookings }}</strong>
+                {{ $roomRemoveBookings === 1 ? 'aktive Buchung' : 'aktive Buchungen' }}.
+            </x-nx-callout>
+
+            <p class="m-0 text-sm text-[color:var(--nx-muted)]">
+                Die Buchungen bleiben bestehen – sie verlieren aber ihren Bezug zum Termin
+                und tauchen in der Auslastung nicht mehr auf. Der Gast sitzt am Abend
+                trotzdem dort.
+            </p>
+
+            <p class="m-0 text-sm text-[color:var(--nx-muted)]">
+                Meist ist <strong>Geschlossen</strong> gemeint: Der Raum nimmt keine neuen
+                Buchungen mehr an, die bestehenden bleiben sichtbar.
+            </p>
+        </div>
+
+        <x-slot name="footer">
+            <div class="flex items-center justify-between gap-2">
+                <x-nx-button variant="secondary-outline" wire:click="closeRoomRemoveModal">Abbrechen</x-nx-button>
+                <div class="flex items-center gap-2">
+                    <x-nx-button variant="primary" wire:click="closeRoomInsteadAndCloseModal">Stattdessen schließen</x-nx-button>
+                    <x-nx-button variant="danger-outline" wire:click="removeRoomAndCloseModal">Trotzdem entfernen</x-nx-button>
+                </div>
+            </div>
+        </x-slot>
+    </x-nx-modal>
+
     </div>
     </x-ui-page-container>
 </x-ui-page>

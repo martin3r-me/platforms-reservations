@@ -8,6 +8,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Platform\Reservation\Models\Booking;
+use Platform\Reservation\Models\Table;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\EventRoom;
 use Platform\Reservation\Models\EventSlot;
@@ -300,10 +301,113 @@ class EventManager extends Component
         ];
     }
 
+    /* ---------------------------------------------------------------------
+     | Raum aus dem Termin nehmen
+     |
+     | Ein Raum ohne Buchungen fliegt sofort raus - da gibt es nichts zu fragen.
+     | Liegen dort schon Buchungen, wird gefragt, und zwar mit Zahlen: Die
+     | Buchungen bleiben zwar bestehen, fallen aber aus der Auslastung heraus,
+     | weil sie auf einen Raum zeigen, der nicht mehr zum Termin gehört. Dieselbe
+     | Art Loch wie bei einem gelöschten Tisch.
+     |
+     | Als eigenes Modal und nicht über wire:confirm: Der Browser-Dialog sieht
+     | fremd aus und kann vor allem nichts erklären - hier steht die Zahl, und
+     | hier steht die Alternative. Denn meistens ist "Geschlossen" gemeint:
+     | keine neuen Buchungen, bestehende behalten.
+     --------------------------------------------------------------------- */
+
+    public bool $showRoomRemoveConfirm = false;
+
+    /** Index der Zeile, um die es in der Rückfrage geht. */
+    public ?int $roomRemoveIndex = null;
+
+    /** Wie viele aktive Buchungen an diesem Raum hängen. */
+    public int $roomRemoveBookings = 0;
+
     public function removeRoom(int $index): void
+    {
+        $anzahl = $this->raumBuchungen($index);
+
+        if ($anzahl < 1) {
+            $this->raumZeileEntfernen($index);
+
+            return;
+        }
+
+        $this->roomRemoveIndex    = $index;
+        $this->roomRemoveBookings = $anzahl;
+        $this->showRoomRemoveConfirm = true;
+    }
+
+    /** Trotzdem entfernen. */
+    public function removeRoomAndCloseModal(): void
+    {
+        if ($this->roomRemoveIndex !== null) {
+            $this->raumZeileEntfernen($this->roomRemoveIndex);
+        }
+
+        $this->closeRoomRemoveModal();
+    }
+
+    /** Der übliche Fall: nicht entfernen, sondern schließen. */
+    public function closeRoomInsteadAndCloseModal(): void
+    {
+        if ($this->roomRemoveIndex !== null && isset($this->rooms[$this->roomRemoveIndex])) {
+            $this->rooms[$this->roomRemoveIndex]['open_mode'] = 'closed';
+        }
+
+        $this->closeRoomRemoveModal();
+    }
+
+    public function closeRoomRemoveModal(): void
+    {
+        $this->showRoomRemoveConfirm = false;
+        $this->roomRemoveIndex    = null;
+        $this->roomRemoveBookings = 0;
+    }
+
+    /**
+     * Name des Raums in der Rückfrage.
+     *
+     * Direkt am Tischplan nachgeschlagen und nicht über planName(): Das liest
+     * aus der Auswahlliste des Formulars und hat einen Ersatztext, der zum
+     * Prozentsatz gehört („den nächsten Raum") – in einer Überschrift steht das
+     * schief.
+     */
+    public function roomRemoveName(): string
+    {
+        $planId = $this->roomRemoveIndex !== null
+            ? (int) ($this->rooms[$this->roomRemoveIndex]['floor_plan_id'] ?? 0)
+            : 0;
+
+        return ($planId ? FloorPlan::find($planId)?->name : null) ?? 'Dieser Raum';
+    }
+
+    protected function raumZeileEntfernen(int $index): void
     {
         unset($this->rooms[$index]);
         $this->rooms = array_values($this->rooms);
+    }
+
+    /**
+     * Aktive Buchungen dieses Termins auf Tischen des Raums.
+     *
+     * Stornos und No-Shows zählen nicht mit - die halten niemanden auf.
+     * Ohne gespeicherten Termin gibt es noch keine Buchungen; eine gerade erst
+     * hinzugefügte Zeile hat auch keine.
+     */
+    protected function raumBuchungen(int $index): int
+    {
+        $planId = (int) ($this->rooms[$index]['floor_plan_id'] ?? 0);
+
+        if (! $this->editingEventId || ! $planId) {
+            return 0;
+        }
+
+        return Booking::where('event_id', $this->editingEventId)
+            ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
+            ->whereIn('table_id', Table::where('floor_plan_id', $planId)->pluck('id'))
+            ->count();
     }
 
     /** Raum-Default-Liste als Vorbelegung ziehen, wenn noch keine Liste gewählt. */
