@@ -41,7 +41,7 @@ offenen Frage.
 Küche, Bon, Belege), Gast-API und manuelle Buchung. Danach sind Abholstationen im
 Backoffice vollständig benutzbar; nur der Shop fehlt.
 
-**4. Mehrere Pausen – der Kunde hat am 01.09.2026 geantwortet.** Mehrere Pausen
+**4. ~~Mehrere Pausen.~~ Erledigt am 01.09.2026** (im Shop; noch nicht ausgerollt). Der Kunde hat am selben Tag geantwortet: Mehrere Pausen
 bleiben die Ausnahme (letzte Saison: eine Veranstaltung mit zwei Pausen), aber es
 soll sie geben; der Gast soll die Pause wählen und in beiden reservieren können.
 Backoffice und Server sind fertig – Pausen lassen sich im Terminformular schon
@@ -71,7 +71,7 @@ dann kann derselbe Raum in Pause 1 offen und in Pause 2 zu sein. Ausgearbeitet i
 nach Parteien gezählt, nicht summiert, sonst macht die eigene zweite Bestellung
 den eigenen Tisch voll).
 
-**5. Der Schritt-Index verschwindet, bevor „Wann?" kommt.** Dieser Punkt hieß
+**5. ~~Der Schritt-Index verschwindet.~~ Erledigt am 01.09.2026.** Dieser Punkt hieß
 vorher „Abholstationen, Etappe 5 – zusammen mit Punkt 4", damit der Wizard nur ein
 einziges Mal umnummeriert wird. Die Stationen sind zurückgestellt; warten hieße
 inzwischen unbegrenzt warten. Also fällt nicht der Umbau, sondern seine Ursache:
@@ -85,6 +85,15 @@ verschiebt. Die Plausible-Ziele hängen danach an Namen statt an Zahlen, der
 Trichter bleibt über beide Umbauten hinweg vergleichbar. Das ist mehr Arbeit als
 ein weiterer Zweig im `match`, aber die einzige Fassung, die den zweiten Umbau
 nicht ein zweites Mal bezahlt.
+
+**Stand der Umsetzung (01.09.2026).** Alle fünf Etappen aus
+`PLAN-mehrere-pausen.md` sind gebaut und an zwei Testterminen auf demo geprüft –
+einer je Betriebsart. Im Modul ist alles ausgerollt; **der Shop nicht**, dort
+hängen vier Commits (Schritt-Namen, Pausen und Warenkorb je Pause,
+Schnittmengen-Regel, Tisch je Pause). Beim Ausrollen zu beachten: `$step` wechselt
+von int auf string, laufende Bestellwege verlieren ihre Sitzung – also außerhalb
+der Bestellzeiten. Und das Plausible-Ziel `Pause Selected` muss dort einmal von
+Hand angelegt werden.
 
 **6. Live-Sicht auf laufende Checkouts.** Wartet ab jetzt nur noch auf Punkt 5,
 nicht mehr auf eine Kundenantwort: Sobald die Schritte eine Liste mit Namen sind,
