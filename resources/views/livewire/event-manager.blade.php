@@ -296,8 +296,24 @@
                                 />
                             </div>
                             @if ($eventReleaseMode === 'sequential')
-                                <div class="w-24">
-                                    <x-nx-input-number name="rooms.{{ $i }}.fill_threshold_percent" label="Voll ab %" size="sm" min="1" max="100" wire:model="rooms.{{ $i }}.fill_threshold_percent" />
+                                {{-- Der Schwellwert eines Raums entscheidet über den NÄCHSTEN.
+                                     Die alte Beschriftung „Voll ab %" stand neben dem Raum und
+                                     las sich, als ginge es um ihn selbst - dabei sagt sie, ab
+                                     wann der Raum darunter aufmacht. Beim letzten wirkt sie
+                                     gar nicht, weil keiner mehr folgt. --}}
+                                <div class="w-32">
+                                    <x-nx-input-number
+                                        name="rooms.{{ $i }}.fill_threshold_percent"
+                                        :label="$i + 1 < count($rooms) ? 'Öffnet nächsten ab %' : 'Öffnet nächsten ab %'"
+                                        size="sm" min="1" max="100"
+                                        wire:model="rooms.{{ $i }}.fill_threshold_percent"
+                                        :disabled="$i + 1 >= count($rooms)"
+                                    />
+                                    @if ($i + 1 >= count($rooms))
+                                        <p class="m-0 mt-1 text-[10px] leading-tight text-[color:var(--nx-faint)]">letzter Raum – ohne Wirkung</p>
+                                    @else
+                                        <p class="m-0 mt-1 text-[10px] leading-tight text-[color:var(--nx-faint)]">gibt „{{ $this->planName($rooms[$i + 1]['floor_plan_id'] ?? null) }}" frei</p>
+                                    @endif
                                 </div>
                             @endif
                             <div class="w-28">
@@ -313,8 +329,22 @@
                                         ['value' => 'open', 'label' => 'Immer offen'],
                                         ['value' => 'closed', 'label' => 'Geschlossen'],
                                     ]"
-                                    wire:model="rooms.{{ $i }}.open_mode"
+                                    wire:model.live="rooms.{{ $i }}.open_mode"
                                 />
+                                {{-- Ein Wort zu jedem Zustand: „Automatisch" ist bei
+                                     paralleler Freigabe schlicht offen, bei sequentieller
+                                     hängt es an der Reihenfolge. --}}
+                                <p class="m-0 mt-1 text-[10px] leading-tight text-[color:var(--nx-faint)]">
+                                    @if (($rooms[$i]['open_mode'] ?? 'auto') === 'open')
+                                        immer buchbar, unabhängig von der Reihenfolge
+                                    @elseif (($rooms[$i]['open_mode'] ?? 'auto') === 'closed')
+                                        nie buchbar; der nächste Raum wird übersprungen
+                                    @elseif ($eventReleaseMode === 'sequential')
+                                        {{ $i === 0 ? 'erster Raum – von Beginn an offen' : 'öffnet nach dem Raum darüber' }}
+                                    @else
+                                        offen, wie alle bei paralleler Freigabe
+                                    @endif
+                                </p>
                             </div>
                             <x-nx-button icon variant="ghost" wire:click="removeRoom({{ $i }})" type="button" title="Entfernen">
                                 @svg('heroicon-o-x-mark', 'w-4 h-4')

@@ -240,11 +240,32 @@ class EventController extends ApiController
 
         $seats = app(SeatAvailabilityService::class);
 
+        // Raumfreigabe je Pause: Bei sequentieller Freigabe ist Raum 2 erst
+        // offen, wenn Raum 1 seinen Schwellwert erreicht hat. Der Shop bekommt
+        // beides - welche Räume es gibt UND ob sie gerade offen sind. Ein
+        // geschlossener Raum verschwindet also nicht, er ist gesperrt und sagt
+        // warum. Verschwundene Räume sehen für den Gast aus wie ein Fehler.
+        $freigabe = app(\Platform\Reservation\Services\RoomReleaseService::class);
+        $alleRaeume = $model->eventRooms->values();
+        $offenJeSlot = [];
+
+        foreach ($slots as $slot) {
+            $offenJeSlot[$slot->id] = $freigabe->openRooms($model, $slot)->pluck('id')->all();
+        }
+
         $rooms = $model->eventRooms
             ->when($roomFilter, fn ($c) => $c->filter(
                 fn ($room) => $room->id === $roomFilter || $room->floor_plan_id === $roomFilter
             ))
-            ->map(fn ($room) => $this->formatRoomAvailability($room, $model, $slots, $seats, $soft, $maxGroup, $party))
+            ->map(function ($room) use ($model, $slots, $seats, $soft, $maxGroup, $party, $offenJeSlot, $alleRaeume, $freigabe) {
+                $stelle     = $alleRaeume->search(fn ($r) => $r->id === $room->id);
+                $vorgaenger = $stelle > 0 ? $alleRaeume->get($stelle - 1) : null;
+
+                return $this->formatRoomAvailability(
+                    $room, $model, $slots, $seats, $soft, $maxGroup, $party,
+                    $offenJeSlot, $vorgaenger, $freigabe
+                );
+            })
             ->filter()
             ->values();
 
@@ -583,7 +604,7 @@ class EventController extends ApiController
      * die Buchung (freie Plätze ODER leerer Tisch bei weicher Kapazität bis
      * $maxGroupEmptyTable). So muss das Frontend die Logik nicht nachbauen.
      */
-    protected function formatRoomAvailability($room, Event $event, $slots, SeatAvailabilityService $seats, bool $softCapacity = false, ?int $maxGroupEmptyTable = null, ?int $party = null): ?array
+    protected function formatRoomAvailability($room, Event $event, $slots, SeatAvailabilityService $seats, bool $softCapacity = false, ?int $maxGroupEmptyTable = null, ?int $party = null, array $offenJeSlot = [], $vorgaenger = null, $freigabe = null): ?array
     {
         $floorPlan = $room->floorPlan;
 
@@ -614,6 +635,20 @@ class EventController extends ApiController
             }
         }
 
+        // Offen/zu je Pause samt Begründung - beides aus derselben Quelle wie
+        // das VA-Dashboard, damit Haus und Gast dasselbe lesen.
+        $offen    = [];
+        $hinweise = [];
+
+        foreach ($slots as $slot) {
+            $istOffen = $offenJeSlot === []
+                ? true
+                : in_array($room->id, $offenJeSlot[$slot->id] ?? [], true);
+
+            $offen[$slot->id]    = $istOffen;
+            $hinweise[$slot->id] = $freigabe?->hinweis($room, $vorgaenger, $istOffen);
+        }
+
         $result = [
             'event_room_id' => $room->id,
             'floor_plan_id' => $room->floor_plan_id,
@@ -642,6 +677,11 @@ class EventController extends ApiController
                 'is_disabled' => $event->isTableDisabled($t->id),
             ])->values()->all(),
             'availability' => $availability, // { slot_id: { table_id: remaining } }
+            // Je Pause: Ist dieser Raum offen, und wenn nicht - warum?
+            // { slot_id: bool } bzw. { slot_id: "öffnet, sobald …" | null }
+            'open'         => $offen,
+            'release_hint' => $hinweise,
+            'sort_order'   => (int) $room->sort_order,
         ];
 
         if ($party !== null) {

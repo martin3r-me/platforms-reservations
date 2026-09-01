@@ -9,6 +9,7 @@ use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\Order;
 use Platform\Reservation\Models\Table;
+use Platform\Reservation\Services\RoomReleaseService;
 
 /**
  * Autoritative Erstellung einer Gast-Bestellung (Order + N Slot-Buchungen) aus
@@ -23,6 +24,7 @@ class GuestOrderService
         protected CartCalculator $calc,
         protected SeatAvailabilityService $seats,
         protected MolliePaymentService $payments,
+        protected RoomReleaseService $freigabe,
     ) {
     }
 
@@ -80,7 +82,21 @@ class GuestOrderService
             Order::STATUS_CONFIRMED,
             Booking::STATUS_CONFIRMED,
             'onsite',
+            false,   // Raumfreigabe gilt für den Gast, nicht fürs Backoffice
         );
+    }
+
+    /**
+     * Liegt der Tisch in einem Raum, der für diese Pause freigegeben ist?
+     *
+     * Räume ohne Bezug zum Tisch interessieren nicht: Gehört der Tisch zu
+     * keinem der Räume des Termins, greift ohnehin schon TABLE_NOT_IN_EVENT.
+     */
+    protected function raumIstOffen(Event $event, $slot, Table $table): bool
+    {
+        $offene = $this->freigabe->openRooms($event, $slot);
+
+        return $offene->contains(fn ($raum) => (int) $raum->floor_plan_id === (int) $table->floor_plan_id);
     }
 
     /**
@@ -102,6 +118,7 @@ class GuestOrderService
         string $orderStatus = Order::STATUS_PENDING,
         string $bookingStatus = Booking::STATUS_PENDING,
         ?string $paymentMethod = null,
+        bool $pruefeFreigabe = true,
     ): Order {
         // Der Backoffice-Weg kommt aus einer Livewire-Komponente und hat die
         // Beziehungen nicht zwingend geladen.
@@ -136,6 +153,21 @@ class GuestOrderService
             $table = Table::withoutGlobalScope('team')->find((int) ($slotOrder['table_id'] ?? 0));
             if (!$table || !in_array($table->floor_plan_id, $allowedFloorPlanIds, true)) {
                 throw new GuestOrderException('Der gewählte Tisch gehört nicht zu diesem Termin.', 'TABLE_NOT_IN_EVENT');
+            }
+
+            // Raumfreigabe: Bei sequentieller Reihenfolge ist Raum 2 erst offen,
+            // wenn Raum 1 voll genug ist. Das stand bisher nur im VA-Dashboard -
+            // der Bestellweg fragte gar nicht, und der Shop nahm Buchungen in
+            // Räumen an, die das Haus als geschlossen sah. Zwei Bildschirme,
+            // zwei Wahrheiten.
+            //
+            // Nur der GAST-Weg prüft das. Wer telefonisch bucht, entscheidet
+            // selbst - das ist der Sinn eines Backoffice-Wegs.
+            if ($pruefeFreigabe && ! $this->raumIstOffen($event, $slot, $table)) {
+                throw new GuestOrderException(
+                    'Dieser Raum ist für die gewählte Pause noch nicht freigegeben.',
+                    'ROOM_CLOSED'
+                );
             }
 
             if (! $this->seats->canSeat($table, $slot, (int) $guest['count'], $softCapacity, $maxGroup)) {

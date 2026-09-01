@@ -209,7 +209,7 @@ class EventDashboard extends Component
                 }
 
                 $zeile['open']    = in_array($raum->id, $offeneIds, true);
-                $zeile['hinweis'] = $this->freigabeHinweis($raum, $raeume->get($i - 1), $zeile['open']);
+                $zeile['hinweis'] = $freigabe->hinweis($raum, $raeume->get($i - 1), $zeile['open']);
 
                 $zeilen[] = $zeile;
             }
@@ -218,35 +218,6 @@ class EventDashboard extends Component
         }
 
         return $result;
-    }
-
-    /**
-     * Warum ein Raum zu ist - oder warum er entgegen der Reihenfolge offen ist.
-     *
-     * Ohne diesen Satz stuende ein geschlossener Raum bei 0 Prozent da, und
-     * niemand wuesste, ob dort nichts gebucht wurde oder ob dort gar nichts
-     * gebucht werden konnte. Das sind zwei sehr verschiedene Abende.
-     *
-     * Gibt null zurueck, wenn es nichts zu sagen gibt - der Normalfall bei
-     * parallelen Raeumen ohne Handeingriff.
-     */
-    private function freigabeHinweis($raum, $vorgaenger, bool $offen): ?string
-    {
-        if (! $offen) {
-            if ($raum->is_open_override === false) {
-                return 'von Hand geschlossen';
-            }
-
-            return $vorgaenger
-                ? 'öffnet, sobald ' . ($vorgaenger->floorPlan?->name ?? 'der Raum davor')
-                    . ' zu ' . (int) $vorgaenger->fill_threshold_percent . " % gefüllt ist"
-                : 'geschlossen';
-        }
-
-        // Offen ist der Normalfall und braucht keine Erklaerung. Ausser jemand
-        // hat von Hand aufgemacht - dann soll klar sein, dass hier nicht die
-        // Reihenfolge greift.
-        return $raum->is_open_override === true ? 'von Hand geöffnet' : null;
     }
 
     /** Ein Raum in einer Pause: Plaetze, Prozent und die Tische einzeln. */

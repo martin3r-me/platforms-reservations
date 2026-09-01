@@ -133,6 +133,16 @@ class EventManager extends Component
             ->get();
     }
 
+    /** Name eines Tischplans – für den Hinweis „gibt X frei" in der Raumliste. */
+    public function planName(?int $floorPlanId): string
+    {
+        if (! $floorPlanId) {
+            return 'den nächsten Raum';
+        }
+
+        return $this->availableFloorPlans->firstWhere('id', $floorPlanId)?->name ?? 'den nächsten Raum';
+    }
+
     /** Vorgabe des Teams – als Platzhalter im Formular, damit sichtbar ist, was ohne eigene Zahl gilt. */
     #[Computed]
     public function standardMaxGuestCount(): int
