@@ -1,6 +1,6 @@
 # PausePlus – Roadmap / offene Umsetzungspunkte
 
-Stand: 12.06.2026, Reihenfolge der nächsten Vorhaben ergänzt am 31.08.2026 · Go-live-Ziel: **01.08.2026**, erste Veranstaltung 29.08.2026 (Bodo Wartke).
+Stand: 12.06.2026, Reihenfolge der nächsten Vorhaben ergänzt am 31.08.2026, Pausenfrage beantwortet am 01.09.2026 · Go-live-Ziel: **01.08.2026**, erste Veranstaltung 29.08.2026 (Bodo Wartke).
 
 Meilenstein 1 (Produktmodul + Klick-Dummy bis Mock-Checkout) ist umgesetzt.
 Die folgenden Punkte sind **vereinbart und noch umzusetzen**. Referenz für viele
@@ -41,31 +41,55 @@ offenen Frage.
 Küche, Bon, Belege), Gast-API und manuelle Buchung. Danach sind Abholstationen im
 Backoffice vollständig benutzbar; nur der Shop fehlt.
 
-**4. Mehrere Pausen** – sobald der Kunde geantwortet hat (siehe Abschnitt
-„Produktentscheidungen"). Schritt „Wann?" im Shop, und ob ein Gast in einem
-Vorgang für mehrere Pausen bestellen kann. Serverseitig ist das Anlegen über
-mehrere Pausen fertig (`slots` als Liste, je Pause eine Buchung); es fehlt nur im
-Shop.
+**4. Mehrere Pausen – der Kunde hat am 01.09.2026 geantwortet.** Mehrere Pausen
+bleiben die Ausnahme (letzte Saison: eine Veranstaltung mit zwei Pausen), aber es
+soll sie geben; der Gast soll die Pause wählen und in beiden reservieren können.
+Backoffice und Server sind fertig – Pausen lassen sich im Terminformular schon
+beliebig anlegen, `slots` ist eine Liste, je Pause entsteht eine Buchung unter
+einer gemeinsamen Bestellung und einer Zahlung. Es fehlt allein der Shop, der bis
+heute genau eine Pause verschickt (`$slots = [[…]]`).
 
-**5. Abholstationen, Etappe 5 – zusammen mit Punkt 4.** Bewusst nicht danach: „Wann?"
-und „Wo?" sind dieselbe Operation am Schritt-Index des Wizards. Der ist hart
-verdrahtet (`match ($this->step)`, `min(4, …)`), und die sieben Plausible-Ziele
-hängen an genau diesen Nummern. Zweimal umnummeriert heißt zweimal einen
-unterbrochenen Trichter.
+Zwei Punkte deckt die Antwort nicht ab; sie werden hier entschieden:
 
-**6. Live-Sicht auf laufende Checkouts.** Erst wenn der Schritt-Index endgültig
-ist – eine gespeicherte `step`-Spalte bekäme sonst rückwirkend eine andere
-Bedeutung. Entwurf steht: Tabelle `reservation_checkout_sessions`, Ping huckepack
-auf den Livewire-Requests, Aufräum-Job ab ~30 Min, rollenbeschränktes Dashboard.
-Ohne Personenbezug, und als Kennung eine eigene Zufalls-UUID statt der
-Laravel-Session-ID (die ist bei `SESSION_DRIVER=database` ein Login-Token).
+*Warenkorb je Pause.* Gefragt war „unterschiedliche Artikel je Pause?", geantwortet
+wurde nur zur Reservierung. Wir bauen es je Pause: Der Server kann es ohnehin
+(`items` hängen am Slot), das Altsystem macht es so, und alles andere wäre eine
+erfundene Einschränkung – Sekt zur ersten Pause und Kaffee zur zweiten ist der
+Normalfall, nicht der Sonderfall.
 
-**7. Abholstationen, Etappen 6 und 7.** Drop-off-Reste entfernen; Sortiment je
-Station zuletzt, weil es die Reihenfolge im Bestellweg kippt.
+*Der Tisch wird einmal gewählt.* Auch hier ließe der Server je Pause einen anderen
+zu. Gefragt wird trotzdem nur einmal, und die Wahl gilt für alle Pausen; erneut
+gefragt wird nur, wenn der Tisch in der zweiten Pause nicht mehr reicht. Sonst
+verdoppelt sich der aufwendigste Schritt des Bestellwegs für einen Fall, der
+einmal pro Saison eintritt.
 
-**Sagt der Kunde „keine mehreren Pausen"**, schrumpft Punkt 4 auf null: Punkt 6
-wird sofort machbar, Punkt 5 einfacher, und die pausenweise Freigabe einer Station
-bleibt ein Datenmodell ohne sichtbare Wirkung – was in Ordnung ist, sie kostet nichts.
+**5. Der Schritt-Index verschwindet, bevor „Wann?" kommt.** Dieser Punkt hieß
+vorher „Abholstationen, Etappe 5 – zusammen mit Punkt 4", damit der Wizard nur ein
+einziges Mal umnummeriert wird. Die Stationen sind zurückgestellt; warten hieße
+inzwischen unbegrenzt warten. Also fällt nicht der Umbau, sondern seine Ursache:
+Statt `match ($this->step)` und `min(4, …)` baut der Wizard seine Schritte zur
+Laufzeit als Liste, in der Schritte fehlen dürfen.
+
+Damit ist „Wann?" bei einer einzigen Pause gar nicht vorhanden – 53 von 54
+Terminen sehen weiter genau vier Schritte, niemand klickt durch einen Schritt ohne
+Auswahl –, und „Wo?" lässt sich später einhängen, ohne dass sich eine Nummer
+verschiebt. Die Plausible-Ziele hängen danach an Namen statt an Zahlen, der
+Trichter bleibt über beide Umbauten hinweg vergleichbar. Das ist mehr Arbeit als
+ein weiterer Zweig im `match`, aber die einzige Fassung, die den zweiten Umbau
+nicht ein zweites Mal bezahlt.
+
+**6. Live-Sicht auf laufende Checkouts.** Wartet ab jetzt nur noch auf Punkt 5,
+nicht mehr auf eine Kundenantwort: Sobald die Schritte eine Liste mit Namen sind,
+hat ein gespeicherter Schritt eine Bedeutung, die ein späterer Umbau nicht
+rückwirkend verschiebt. Entwurf steht: Tabelle `reservation_checkout_sessions`,
+Ping huckepack auf den Livewire-Requests, Aufräum-Job ab ~30 Min,
+rollenbeschränktes Dashboard. Ohne Personenbezug, und als Kennung eine eigene
+Zufalls-UUID statt der Laravel-Session-ID (die ist bei `SESSION_DRIVER=database`
+ein Login-Token).
+
+**7. Abholstationen, Etappen 5–7** *(zurückgestellt)*. Der Schritt „Wo?" hängt
+sich nach Punkt 5 ohne Umnummerierung ein. Danach Drop-off-Reste entfernen;
+Sortiment je Station zuletzt, weil es die Reihenfolge im Bestellweg kippt.
 
 **Nebenbei, jederzeit:** doppelte `CheckoutSetting::forTeam()`-Abfrage in
 `checkoutFields` aufräumen; toten `BookingConfirmationMailer` entfernen; klären, ob
@@ -132,11 +156,9 @@ ob (2) oder (3) überhaupt gebraucht wird.
 
 ## Produktentscheidungen – beim nächsten Kundentermin klären
 
-- [ ] **Mehrere Pausen pro Bestellung?** Altsystem erlaubt das („mehrere Pausen auf
-      einmal buchen“, Warenkorb je Pause) – wir aktuell eine Pause pro Buchung.
-      **Am 31.08.2026 an den Kunden gestellt**, zusammen mit der Frage, ob es
-      überhaupt Termine mit mehreren Pausen geben wird. Die Antwort entscheidet
-      die Reihenfolge oben (Punkte 4–6).
+- [x] **Mehrere Pausen pro Bestellung?** **Am 01.09.2026 beantwortet:** Termine mit
+      mehreren Pausen sind selten (letzte Saison eine), soll es aber geben; der Gast
+      wählt die Pause und darf in beiden reservieren. Umsetzung siehe Punkte 4–5 oben.
 - [ ] **Flow-Reihenfolge**: Altsystem Datum/Vorstellung → Personen → Pause → Sitzplatz
       → Produkte; unser Meeting-Flow Gastdaten → Produkte → Sitzplatz. Gäste kennen
       das Altsystem → abnehmen lassen.
