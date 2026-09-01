@@ -26,7 +26,9 @@ class EventRoomBulkCreateTool implements ToolContract, ToolMetadataContract
     {
         return 'POST /reservation/event-rooms/bulk - Weist Tischpläne mehreren Terminen als Räume zu. '
             . 'REST-Parameter: event_uuids (Array, Pflicht); floor_plan_id (einzeln) ODER floor_plan_ids (Array, '
-            . 'Reihenfolge = sort_order); fill_threshold_percent (Default 100), capacity_override, sort_order; '
+            . 'Reihenfolge = sort_order); fill_threshold_percent (Default 100 - oeffnet den NAECHSTEN Raum), '
+            . 'capacity_override (Nenner der Prozentrechnung, begrenzt nichts), sort_order - beide Zahlen '
+            . 'wirken nur bei sequentieller Raumfreigabe; '
             . 'replace (bool, Default false), force (bool, Default false). '
             . 'Ohne replace additiv und idempotent. MIT replace=true hat jeder Termin danach GENAU die '
             . 'angegebenen Räume – ein Raumwechsel über viele Termine ist damit ein einziger Call statt '
@@ -47,8 +49,8 @@ class EventRoomBulkCreateTool implements ToolContract, ToolMetadataContract
                     'items'       => ['type' => 'integer'],
                     'description' => 'Mehrere Tischpläne; Reihenfolge bestimmt sort_order, sofern sort_order nicht gesetzt ist.',
                 ],
-                'fill_threshold_percent' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100],
-                'capacity_override'      => ['type' => 'integer', 'minimum' => 1],
+                'fill_threshold_percent' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'description' => 'Prozentsatz, ab dem der NAECHSTE Raum in der Reihenfolge oeffnet (1..100, Default 100). Wirkt nur bei sequentieller Raumfreigabe; am letzten Raum ohne Wirkung.'],
+                'capacity_override'      => ['type' => 'integer', 'minimum' => 1, 'description' => 'Nenner der Prozentrechnung fuer die Freigabe; null = Summe der aktiven Tischkapazitaeten. Begrenzt NICHTS - die Platzpruefung laeuft je Tisch. Wirkt nur bei sequentieller Freigabe; wird zusaetzlich als capacity/total_capacity in der Gast-API gemeldet.'],
                 'sort_order'             => ['type' => 'integer', 'description' => 'Gilt für alle; sonst 0,1,2… nach Reihenfolge.'],
                 'replace'                => ['type' => 'boolean', 'description' => 'true = vorhandene Raumzuordnungen des Termins ersetzen.'],
                 'force'                  => ['type' => 'boolean', 'description' => 'true = auch Räume mit Buchungen entfernen.'],

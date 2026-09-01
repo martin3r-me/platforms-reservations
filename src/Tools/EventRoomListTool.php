@@ -20,7 +20,11 @@ class EventRoomListTool implements ToolContract, ToolMetadataContract
 
     public function getDescription(): string
     {
-        return 'GET /reservation/event-rooms - Listet die zugewiesenen Räume (Tischpläne) eines Termins. '
+        return 'GET /reservation/event-rooms - Listet die zugewiesenen Räume (Tischpläne) eines Termins mit '
+            . 'ihrer Freigabe-Einstellung: fill_threshold_percent (oeffnet den NAECHSTEN Raum), '
+            . 'capacity_override und seats (Nenner der Prozentrechnung), is_open_override '
+            . '(true = immer offen, false = geschlossen, null = der Reihenfolge folgen). Dazu '
+            . 'room_release_mode des Termins - bei parallel wirken die Zahlen nicht. '
             . 'REST-Parameter: event_uuid (Pflicht).';
     }
 
@@ -54,15 +58,26 @@ class EventRoomListTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('Termin nicht gefunden.', 'NOT_FOUND');
             }
 
+            // Die Freigabe-Felder gehören mit in die Antwort: Setzen ließen sie
+            // sich über Create/Update längst, lesen aber nicht - wer den Zustand
+            // prüfen wollte, musste raten.
             $rooms = $event->eventRooms->map(fn ($r) => [
-                'id'            => $r->id,
-                'floor_plan_id' => $r->floor_plan_id,
-                'floor_plan'    => $r->floorPlan?->name,
-                'sort_order'    => $r->sort_order,
+                'id'                     => $r->id,
+                'floor_plan_id'          => $r->floor_plan_id,
+                'floor_plan'             => $r->floorPlan?->name,
+                'sort_order'             => $r->sort_order,
+                'fill_threshold_percent' => (int) $r->fill_threshold_percent,
+                'capacity_override'      => $r->capacity_override,
+                'seats'                  => $r->totalSeats(),
+                'is_open_override'       => $r->is_open_override,
             ]);
 
             return ToolResult::success([
                 'event_uuid' => $event->uuid,
+                // Ohne die Freigabe-Art sind die Zahlen nicht zu deuten: Bei
+                // 'parallel' wirken fill_threshold_percent und capacity_override
+                // gar nicht.
+                'room_release_mode' => $event->room_release_mode,
                 'count'      => $rooms->count(),
                 'rooms'      => $rooms->all(),
             ]);

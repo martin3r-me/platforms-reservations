@@ -27,8 +27,10 @@ class EventRoomUpdateTool implements ToolContract, ToolMetadataContract
     {
         return 'PATCH /reservation/event-rooms - Aktualisiert eine Raum-Zuordnung. '
             . 'REST-Parameter: id (Pflicht, aus event-rooms.GET) ODER event_uuid + floor_plan_id; '
-            . 'sort_order, fill_threshold_percent (1..100), capacity_override (null = Summe der Tischkapazitäten), '
+            . 'sort_order, fill_threshold_percent (1..100 - oeffnet den NAECHSTEN Raum), capacity_override '
+            . '(null = Summe der Tischkapazitäten; Nenner der Prozentrechnung, begrenzt nichts), '
             . 'is_open_override (bool, überstimmt die sequentielle Freigabe) – alle optional. '
+            . 'fill_threshold_percent und capacity_override wirken nur bei sequentieller Raumfreigabe. '
             . 'Der zugewiesene Tischplan selbst wird nicht getauscht; dafür event-rooms.bulk.POST mit replace=true.';
     }
 
@@ -41,9 +43,9 @@ class EventRoomUpdateTool implements ToolContract, ToolMetadataContract
                 'event_uuid'             => ['type' => 'string', 'description' => 'Alternativ zu id, zusammen mit floor_plan_id.'],
                 'floor_plan_id'          => ['type' => 'integer', 'description' => 'Alternativ zu id, zusammen mit event_uuid.'],
                 'sort_order'             => ['type' => 'integer'],
-                'fill_threshold_percent' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100],
-                'capacity_override'      => ['type' => ['integer', 'null'], 'minimum' => 1],
-                'is_open_override'       => ['type' => ['boolean', 'null']],
+                'fill_threshold_percent' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'description' => 'Prozentsatz, ab dem der NAECHSTE Raum in der Reihenfolge oeffnet (1..100, Default 100). Wirkt nur bei sequentieller Raumfreigabe; am letzten Raum ohne Wirkung.'],
+                'capacity_override'      => ['type' => ['integer', 'null'], 'minimum' => 1, 'description' => 'Nenner der Prozentrechnung fuer die Freigabe; null = Summe der aktiven Tischkapazitaeten. Begrenzt NICHTS - die Platzpruefung laeuft je Tisch. Wirkt nur bei sequentieller Freigabe; wird zusaetzlich als capacity/total_capacity in der Gast-API gemeldet.'],
+                'is_open_override'       => ['type' => ['boolean', 'null'], 'description' => 'true = immer offen, false = geschlossen (nimmt keine neuen Buchungen an, bestehende bleiben; wird in der Reihenfolge uebersprungen), null = der Reihenfolge folgen.'],
             ],
         ];
     }
