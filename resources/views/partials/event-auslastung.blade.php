@@ -1,8 +1,11 @@
 {{-- Auslastung eines Raums in EINER Pause: Balken, Zahlen, Tische.
 
      Steht bewusst in der Pausen-Karte und nicht oben bei den Kennzahlen:
-     Die Plaetze zaehlen je Pause, zur naechsten ist der Raum wieder leer.
-     Eine Zahl ueber den ganzen Abend gaebe es nicht. --}}
+     Gezeigt wird je Pause, eine Zahl ueber den ganzen Abend gaebe es nicht.
+
+     Ob der Raum zur naechsten Pause wieder leer ist, entscheidet die
+     Tischbindung des Termins. Gehoert der Tisch dem Gast den ganzen Abend,
+     steht unter dem Balken eine zweite Zahl. --}}
 @props(['raeume' => []])
 
 @if (! empty($raeume))
@@ -50,6 +53,23 @@
                     @if (! empty($raum['hinweis'])) · {{ $raum['hinweis'] }} @endif
                 </p>
 
+                {{-- Zweite Zahl, aber nur wenn sie eine andere ist.
+
+                     Gehört der Tisch dem Gast den ganzen Abend, kann ein Platz
+                     belegt sein, ohne dass in DIESER Pause etwas bestellt wurde.
+                     Für die Kapazität zählt „belegt", für die Küche „bestellt" –
+                     ohne diesen Satz leitet jemand aus der Auslastung eine
+                     Menge ab, die es nicht gibt.
+
+                     Bei einer Pause und bei Bindung an die Pause sind beide
+                     Zahlen gleich; dann steht hier nichts. --}}
+                @if (($raum['ordered'] ?? $raum['booked']) !== $raum['booked'])
+                    <p class="m-0 mt-1 text-[11px] text-[color:var(--nx-muted)]">
+                        Davon {{ $raum['ordered'] }} mit Bestellung in dieser Pause – die übrigen
+                        {{ $raum['booked'] - $raum['ordered'] }} halten Gäste, die in einer anderen Pause bestellt haben.
+                    </p>
+                @endif
+
                 {{-- Tische einzeln. Wer am Abend einen Platz sucht, will nicht
                      die Prozentzahl, sondern welcher Tisch noch etwas hergibt. --}}
                 <div class="mt-2.5 flex flex-wrap gap-1.5">
@@ -64,7 +84,7 @@
                         @endphp
                         <span class="inline-flex items-center gap-1 rounded-[6px] border px-1.5 py-0.5 text-[11px] tabular-nums"
                             style="{{ $stil }}"
-                            title="{{ $tisch['label'] }} · {{ $tisch['status'] === 'gesperrt' ? 'für diesen Termin gesperrt' : $tisch['booked'] . ' von ' . $tisch['capacity'] . ' Plätzen belegt' }}">
+                            title="{{ $tisch['label'] }} · {{ $tisch['status'] === 'gesperrt' ? 'für diesen Termin gesperrt' : $tisch['booked'] . ' von ' . $tisch['capacity'] . ' Plätzen belegt' . (($tisch['ordered'] ?? $tisch['booked']) !== $tisch['booked'] ? ', davon ' . $tisch['ordered'] . ' mit Bestellung in dieser Pause' : '') }}">
                             <span>{{ $tisch['label'] }}</span>
                             @if ($tisch['status'] === 'gesperrt')
                                 <span class="opacity-70">gesperrt</span>

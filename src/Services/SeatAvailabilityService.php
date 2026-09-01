@@ -157,6 +157,32 @@ class SeatAvailabilityService
         return $this->belegungJeTisch($tableIds, $this->pausenMenge($slot));
     }
 
+    /**
+     * Belegte Plätze je Tisch NUR aus Buchungen dieser einen Pause.
+     *
+     * Gegenstück zu bookedSeatsByTable(): Das rechnet nach der Betriebsart des
+     * Termins, dies hier ignoriert sie mit Absicht.
+     *
+     * Bei Bindung an den Termin gehen die beiden Zahlen auseinander, und der
+     * Unterschied ist keine Ungenauigkeit, sondern die Sache selbst: Ein Tisch
+     * kann belegt sein, ohne dass in dieser Pause jemand etwas bestellt hat –
+     * die Gäste halten ihn vom Abend. Für die KAPAZITÄT zählt die erste Zahl,
+     * für die KÜCHE die zweite. Wer sie verwechselt, kocht für Leute, die in
+     * dieser Pause nichts bestellt haben.
+     *
+     * @return Collection<int, int> table_id => Plätze mit Bestellung in dieser Pause
+     */
+    public function orderedSeatsByTable(FloorPlan $floorPlan, EventSlot $slot): Collection
+    {
+        $tableIds = $floorPlan->tables()
+            ->withoutGlobalScope('team')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return $this->belegungJeTisch($tableIds, [(int) $slot->id]);
+    }
+
     /** Bereits belegte Plätze eines Tisches in diesem Slot. */
     public function bookedSeatsForTable(Table $table, EventSlot $slot): int
     {
@@ -205,6 +231,50 @@ class SeatAvailabilityService
         }
 
         return $bookedSeats >= $table->capacity ? self::STATUS_FULL : self::STATUS_PARTIAL;
+    }
+
+    /**
+     * Tische, die bei Bindung an den Termin überbelegt WÄREN.
+     *
+     * Für die Warnung vor dem Umstellen. Von „je Pause" auf „ganzer Abend"
+     * können Tische entstehen, an denen Partei A in Pause 1 und Partei B in
+     * Pause 2 saß – zusammen passen sie nicht auf den Tisch. Nichts davon wird
+     * gelöscht oder verschoben; das Haus soll nur wissen, was es tut, bevor es
+     * das tut.
+     *
+     * Die Gegenrichtung braucht das nicht: Sie gibt ausschließlich Kapazität
+     * frei. Die beiden Richtungen sind nicht gleich gefährlich.
+     *
+     * Hier und nicht in der Livewire-Komponente, weil die Antwort dieselbe
+     * Zählung braucht wie der Rest – eine zweite Fassung würde eine andere Zahl
+     * nennen als die, nach der hinterher gerechnet wird.
+     *
+     * @return array<int, string> Label je überbelegtem Tisch
+     */
+    public function ueberbelegtBeiTerminbindung(Event $event): array
+    {
+        $pausen = $event->slots()->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        if (count($pausen) < 2) {
+            return [];
+        }
+
+        $tische = $event->eventRooms()
+            ->with('floorPlan.tables')
+            ->get()
+            ->flatMap(fn ($raum) => $raum->floorPlan?->tables ?? collect());
+
+        if ($tische->isEmpty()) {
+            return [];
+        }
+
+        $belegung = $this->belegungJeTisch($tische->pluck('id')->map(fn ($id) => (int) $id)->all(), $pausen);
+
+        return $tische
+            ->filter(fn ($tisch) => $belegung->get((int) $tisch->id, 0) > $tisch->capacity)
+            ->pluck('label')
+            ->values()
+            ->all();
     }
 
     /** Gebuchte Plätze im gesamten Raum für einen Slot. */

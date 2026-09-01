@@ -170,6 +170,59 @@ class SitzplatzZaehlungTest extends TestCase
     }
 
     #[Test]
+    public function belegt_und_bestellt_gehen_bei_bindung_an_den_termin_auseinander(): void
+    {
+        $termin = $this->termin(pausen: 2, attribute: ['table_binding' => Event::BINDING_EVENT]);
+        $plan   = $this->raum('Terrasse', [4]);
+        $tisch  = $this->tisch($plan);
+
+        // Bestellt wird nur in der ERSTEN Pause.
+        $this->buchung($this->pause($termin, 1), $tisch, 2, $this->bestellung($termin));
+
+        $zweite = $this->pause($termin, 2);
+
+        // Der Tisch ist in Pause 2 belegt - die Gäste halten ihn vom Abend.
+        $this->assertSame(2, $this->dienst()->bookedSeatsForTable($tisch, $zweite));
+
+        // Aber bestellt hat dort niemand. Wer für diese Zahl kocht, kocht für
+        // Leute, die nichts bestellt haben.
+        $this->assertSame(0, (int) $this->dienst()->orderedSeatsByTable($plan, $zweite)->get($tisch->id, 0));
+    }
+
+    #[Test]
+    public function die_warnung_nennt_die_tische_die_beim_umstellen_ueberbelegt_waeren(): void
+    {
+        // Der Termin läuft je Pause: Partei A sitzt in Pause 1 am Tisch,
+        // Partei B in Pause 2 am selben Tisch. Getrennt gezählt passt beides.
+        $termin = $this->termin(pausen: 2, attribute: ['table_binding' => Event::BINDING_SLOT]);
+        $plan   = $this->raum('Terrasse', [2, 4]);
+        $this->haengeRaumAn($termin, $plan);
+
+        $this->buchung($this->pause($termin, 1), $this->tisch($plan, 1), 2, $this->bestellung($termin));
+        $this->buchung($this->pause($termin, 2), $this->tisch($plan, 1), 2, $this->bestellung($termin));
+
+        // Am zweiten Tisch sitzt nur eine Partei – der bleibt unauffällig.
+        $this->buchung($this->pause($termin, 1), $this->tisch($plan, 2), 2, $this->bestellung($termin));
+
+        $this->assertSame(
+            ['Terrasse 1'],
+            $this->dienst()->ueberbelegtBeiTerminbindung($termin->fresh())
+        );
+    }
+
+    #[Test]
+    public function bei_einer_einzigen_pause_gibt_es_beim_umstellen_nichts_zu_warnen(): void
+    {
+        $termin = $this->termin(pausen: 1, attribute: ['table_binding' => Event::BINDING_SLOT]);
+        $plan   = $this->raum('Terrasse', [2]);
+        $this->haengeRaumAn($termin, $plan);
+
+        $this->buchung($this->pause($termin, 1), $this->tisch($plan), 2, $this->bestellung($termin));
+
+        $this->assertSame([], $this->dienst()->ueberbelegtBeiTerminbindung($termin->fresh()));
+    }
+
+    #[Test]
     public function ein_teilbelegter_tisch_bleibt_fuer_grossgruppen_gesperrt(): void
     {
         $termin = $this->termin(pausen: 2, attribute: ['table_binding' => Event::BINDING_EVENT]);

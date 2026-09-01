@@ -254,6 +254,39 @@
                             </x-nx-button>
                         </div>
                     @endforeach
+
+                    {{-- Tischbindung: erscheint mit der ZWEITEN Pause.
+
+                         Bei einer Pause rechnen beide Betriebsarten gleich – das Feld
+                         wäre eine Frage ohne Wirkung. Dieselbe Disziplin wie beim
+                         Freigabe-Schwellwert, der nur steht, wenn ein Raum folgt. --}}
+                    @if (count($slots) > 1)
+                        <div class="mt-3 border-t border-[color:var(--nx-line)] pt-3">
+                            <x-nx-input-select
+                                name="eventTableBinding"
+                                label="Tisch bei mehreren Pausen"
+                                :options="[
+                                    ['value' => 'event', 'label' => 'Der Tisch gehört dem Gast den ganzen Abend'],
+                                    ['value' => 'slot', 'label' => 'Jede Pause wird einzeln vergeben'],
+                                ]"
+                                :nullable="true"
+                                :nullLabel="'– Team-Vorgabe (' . $this->standardTableBindingLabel . ') –'"
+                                wire:model.live="eventTableBinding"
+                                errorKey="eventTableBinding"
+                            />
+                            <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">
+                                Den ganzen Abend heißt: Wer in der ersten Pause an einem Tisch sitzt, hält ihn auch in der zweiten – selbst wenn er dort nichts bestellt. Einzeln vergeben heißt: Der Saal wird zwischen den Pausen geräumt und neu verkauft, der Gast sitzt in der zweiten Pause womöglich woanders.
+                            </p>
+
+                            @if (! empty($this->ueberbelegteTische))
+                                <div class="mt-2 rounded-[6px] border border-[rgba(240,140,0,.3)] bg-[rgba(240,140,0,.08)] p-2.5 text-[11px] text-[color:var(--nx-text)]">
+                                    <span class="font-semibold">{{ count($this->ueberbelegteTische) }} {{ count($this->ueberbelegteTische) === 1 ? 'Tisch ist' : 'Tische sind' }} damit überbelegt:</span>
+                                    {{ implode(', ', $this->ueberbelegteTische) }}.
+                                    <span class="block text-[color:var(--nx-muted)]">An {{ count($this->ueberbelegteTische) === 1 ? 'ihm' : 'ihnen' }} sitzen in verschiedenen Pausen verschiedene Parteien, die zusammen nicht daraufpassen. Die Buchungen bleiben bestehen – niemand wird umgesetzt oder abgesagt.</span>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
                 </div>
             </section>
 

@@ -21,6 +21,21 @@
             <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Für wie viele Personen ein Gast höchstens auf einmal bestellen kann. Der Shop zeigt genau diese Zahl in seiner Auswahl. Je Termin überschreibbar.</p>
         </div>
 
+        <div class="mt-4 max-w-lg">
+            <x-nx-input-select
+                name="tableBinding"
+                label="Tisch bei mehreren Pausen"
+                size="sm"
+                :options="[
+                    ['value' => 'event', 'label' => 'Der Tisch gehört dem Gast den ganzen Abend'],
+                    ['value' => 'slot', 'label' => 'Jede Pause wird einzeln vergeben'],
+                ]"
+                wire:model="tableBinding"
+                errorKey="tableBinding"
+            />
+            <p class="mt-1 text-[11px] text-[color:var(--nx-muted)]">Gilt nur für Termine mit mehr als einer Pause – bei einer Pause macht es keinen Unterschied. Den ganzen Abend heißt: Wer in der ersten Pause an einem Tisch sitzt, hält ihn auch in der zweiten, selbst wenn er dort nichts bestellt. Einzeln vergeben heißt: Der Saal wird zwischen den Pausen geräumt und neu verkauft. Je Termin überschreibbar.</p>
+        </div>
+
         <label class="mt-4 flex items-start gap-2 text-sm text-[color:var(--nx-text)] cursor-pointer">
             <input wire:model="showClosedRooms" type="checkbox" class="mt-0.5 rounded-[4px] accent-[var(--nx-accent)]" />
             <span>

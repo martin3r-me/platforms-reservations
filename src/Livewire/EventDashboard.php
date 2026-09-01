@@ -164,10 +164,15 @@ class EventDashboard extends Component
     /**
      * Auslastung je Pause: Raum und Tische.
      *
-     * Gerechnet wird pro Pause, nicht pro Abend. Die Plaetze zaehlen im
-     * ganzen Modul je Slot - zur naechsten Pause ist der Raum wieder leer.
-     * Eine terminweite Auslastungszahl gaebe es also gar nicht, sie waere
-     * schlicht erfunden.
+     * Gezeigt wird je Pause, nicht je Abend - eine terminweite Zahl gaebe es
+     * nicht, sie waere erfunden.
+     *
+     * WIE ueber die Pausen gezaehlt wird, entscheidet seit der Tischbindung der
+     * Termin: Bei "je Pause" ist der Raum zur naechsten Pause wieder leer, bei
+     * "ganzer Abend" halten die Gaeste ihre Tische durch. Im zweiten Fall
+     * stehen hier ZWEI Zahlen, weil belegt dann nicht mehr bestellt heisst -
+     * ein Tisch kann belegt sein, ohne dass in dieser Pause jemand etwas
+     * bestellt hat. Die Kueche braucht die zweite.
      *
      * Gezaehlt wird ueber SeatAvailabilityService, also mit derselben Regel,
      * nach der der Shop freie Plaetze anbietet (ohne Stornos, ohne No-Shows).
@@ -235,26 +240,31 @@ class EventDashboard extends Component
             return null;
         }
 
-        $belegtJeTisch = $seats->bookedSeatsByTable($plan, $slot);
+        $belegtJeTisch    = $seats->bookedSeatsByTable($plan, $slot);
+        $bestelltJeTisch  = $seats->orderedSeatsByTable($plan, $slot);
 
-        $plaetze = 0;
-        $belegt  = 0;
-        $zeilen  = [];
+        $plaetze  = 0;
+        $belegt   = 0;
+        $bestellt = 0;
+        $zeilen   = [];
 
         foreach ($tische as $tisch) {
             $gesperrt = $this->event->isTableDisabled($tisch->id);
             $kapa     = (int) $tisch->capacity;
             $b        = (int) $belegtJeTisch->get($tisch->id, 0);
+            $best     = (int) $bestelltJeTisch->get($tisch->id, 0);
 
             if (! $gesperrt) {
-                $plaetze += $kapa;
-                $belegt  += $b;
+                $plaetze  += $kapa;
+                $belegt   += $b;
+                $bestellt += $best;
             }
 
             $zeilen[] = [
                 'label'    => $tisch->label,
                 'capacity' => $kapa,
                 'booked'   => $b,
+                'ordered'  => $best,
                 // Gesperrt zuerst: Ein gesperrter Tisch ist nicht "frei", auch
                 // wenn niemand daran sitzt - da soll heute Abend keiner hin.
                 'status'   => $gesperrt ? 'gesperrt' : ($b <= 0 ? 'frei' : ($b >= $kapa ? 'voll' : 'teilweise')),
@@ -265,6 +275,7 @@ class EventDashboard extends Component
             'name'    => $plan->name,
             'seats'   => $plaetze,
             'booked'  => $belegt,
+            'ordered' => $bestellt,
             'percent' => $plaetze > 0 ? (int) round($belegt / $plaetze * 100) : 0,
             'free'    => max(0, $plaetze - $belegt),
             'tables'  => $zeilen,

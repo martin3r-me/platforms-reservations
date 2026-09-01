@@ -37,6 +37,8 @@ class EventManager extends Component
     public string $eventReleaseMode = Event::RELEASE_PARALLEL;
     /** Leer = Vorgabe des Teams. */
     public string $eventMaxGuestCount = '';
+    /** Tischbindung: '' = Vorgabe des Teams, sonst event|slot. */
+    public string $eventTableBinding = '';
     public ?int $eventEventsEventId = null;
 
     /** @var array<int, array{id: ?int, name: string, time_start: string, time_end: string}> */
@@ -203,6 +205,53 @@ class EventManager extends Component
         return \Platform\Reservation\Models\CheckoutSetting::forTeam($this->getTeamId())->maxGuestCount();
     }
 
+    /** Vorgabe des Teams für die Tischbindung – damit sichtbar ist, was ohne eigene Wahl gilt. */
+    #[Computed]
+    public function standardTableBinding(): string
+    {
+        return \Platform\Reservation\Models\CheckoutSetting::forTeam($this->getTeamId())->tableBinding();
+    }
+
+    /** Die Vorgabe des Teams als Satzteil, wie er im Formular steht. */
+    #[Computed]
+    public function standardTableBindingLabel(): string
+    {
+        return $this->standardTableBinding === Event::BINDING_SLOT
+            ? 'Jede Pause wird einzeln vergeben'
+            : 'Der Tisch gehört dem Gast den ganzen Abend';
+    }
+
+    /**
+     * Tische, die mit der gerade gewählten Bindung überbelegt wären.
+     *
+     * Bewusst als Hinweis unter dem Feld statt als Rückfrage beim Speichern:
+     * Die Umstellung löscht und verschiebt nichts, sie ändert nur, wie gerechnet
+     * wird. Wer die Zahl im Moment der Entscheidung sieht, entscheidet
+     * informiert; eine Rückfrage beim Speichern käme, wenn der Kopf schon
+     * weiter ist, und würde weggeklickt.
+     *
+     * @return array<int, string>
+     */
+    #[Computed]
+    public function ueberbelegteTische(): array
+    {
+        if (! $this->editingEventId) {
+            return [];
+        }
+
+        $gewaehlt = $this->eventTableBinding !== '' ? $this->eventTableBinding : $this->standardTableBinding;
+
+        if ($gewaehlt !== Event::BINDING_EVENT) {
+            return [];
+        }
+
+        $event = Event::with(['slots', 'eventRooms'])->find($this->editingEventId);
+
+        return $event
+            ? app(\Platform\Reservation\Services\SeatAvailabilityService::class)->ueberbelegtBeiTerminbindung($event)
+            : [];
+    }
+
     /**
      * Tische der aktuell gewählten Räume (zum Sperren je Termin),
      * nach Tischplan gruppiert.
@@ -260,6 +309,7 @@ class EventManager extends Component
             $this->eventSalesListId   = $event->sales_list_id;
             $this->eventReleaseMode   = $event->room_release_mode;
             $this->eventMaxGuestCount = $event->max_guest_count !== null ? (string) $event->max_guest_count : '';
+            $this->eventTableBinding  = $event->table_binding ?? '';
             $this->eventEventsEventId = $event->events_event_id;
 
             $this->slots = $event->slots->map(fn (EventSlot $slot) => [
@@ -287,6 +337,7 @@ class EventManager extends Component
             $this->eventSalesListId   = null;
             $this->eventEventsEventId = null;
             $this->eventMaxGuestCount = '';
+            $this->eventTableBinding  = '';
             // Standard-Raumfreigabe aus den Einstellungen vorbelegen.
             $this->eventReleaseMode = \Platform\Reservation\Models\CheckoutSetting::forTeam($this->getTeamId())->defaultRoomReleaseMode();
             $this->slots = [['id' => null, 'name' => 'Pause', 'time_start' => '', 'time_end' => '']];
@@ -461,6 +512,7 @@ class EventManager extends Component
             // Ohne Frist bliebe ein Termin ewig bestellbar – auch nach dem Abend.
             'eventDeadline'      => 'required|date',
             'eventMaxGuestCount' => 'nullable|integer|min:1|max:200',
+            'eventTableBinding'  => ['nullable', Rule::in(['', Event::BINDING_EVENT, Event::BINDING_SLOT])],
             'eventVenueId'       => ['nullable', 'integer', Rule::exists('reservation_venues', 'id')->where('team_id', $this->getTeamId())],
             'eventSalesListId'   => ['nullable', 'integer', Rule::exists('reservation_sales_lists', 'id')->where('team_id', $this->getTeamId())],
             'eventReleaseMode'   => 'required|in:parallel,sequential',
@@ -510,6 +562,7 @@ class EventManager extends Component
             'sales_list_id'      => $this->eventSalesListId,
             'room_release_mode'  => $this->eventReleaseMode,
             'max_guest_count'    => $this->eventMaxGuestCount !== '' ? (int) $this->eventMaxGuestCount : null,
+            'table_binding'      => $this->eventTableBinding !== '' ? $this->eventTableBinding : null,
             'disabled_table_ids' => $disabledTableIds,
             'events_event_id'    => $this->eventEventsEventId,
             'events_event_uuid'  => $this->resolveEventsEventUuid(),
