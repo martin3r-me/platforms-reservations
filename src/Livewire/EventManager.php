@@ -205,6 +205,27 @@ class EventManager extends Component
         return \Platform\Reservation\Models\CheckoutSetting::forTeam($this->getTeamId())->maxGuestCount();
     }
 
+    /**
+     * Der Schwellwert, wie ihn der erklärende Satz nennen soll.
+     *
+     * Ein LEERES Feld ist keine Zahl – der Nutzer hat gerade alles gelöscht,
+     * und bis er etwas tippt, gilt die Vorgabe. Eine 0 dagegen IST eine Zahl,
+     * und der Satz muss sie zeigen.
+     *
+     * Vorher stand dort `?: 100`, was beides gleich behandelte: Im Feld stand 0,
+     * im Satz darunter „Ab 100 %". Zwei Aussagen auf einem Bildschirm, und die
+     * erklärende war die falsche. Speichern ließ sich die 0 ohnehin nie – das
+     * Formular und alle drei MCP-Werkzeuge verlangen min:1 – der Widerspruch
+     * stand nur da, bis jemand speicherte, und ließ an der falschen Stelle
+     * zweifeln.
+     */
+    public function schwelle(int $index): int
+    {
+        $wert = $this->rooms[$index]['fill_threshold_percent'] ?? null;
+
+        return $wert === null || $wert === '' ? 100 : (int) $wert;
+    }
+
     /** Vorgabe des Teams für die Tischbindung – damit sichtbar ist, was ohne eigene Wahl gilt. */
     #[Computed]
     public function standardTableBinding(): string

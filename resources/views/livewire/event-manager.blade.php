@@ -397,7 +397,7 @@
                                 @endif
 
                                 @if ($eventReleaseMode === 'sequential' && $i + 1 < count($rooms))
-                                    Ab {{ (int) ($rooms[$i]['fill_threshold_percent'] ?: 100) }} % von
+                                    Ab {{ $this->schwelle($i) }} % von
                                     {{ $this->plaetzeText($rooms[$i]['floor_plan_id'] ?? null, $rooms[$i]['capacity_override'] ?? null) }}
                                     öffnet „{{ $this->planName($rooms[$i + 1]['floor_plan_id'] ?? null) }}".
                                 @endif
