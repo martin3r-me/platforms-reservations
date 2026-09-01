@@ -23,10 +23,14 @@ Räumen sah der Gast den zweiten nie. Dazu eine Einstellung, ob gesperrte Räume
 überhaupt sichtbar sind, und eine Rückfrage vor dem Entfernen eines Raums mit
 Buchungen.
 
-**Weiterhin offen ist die Fachfrage:** ob „voll" wirklich 100 % heißt.
-`fill_threshold_percent` steht auf 100, damit blockiert ein Rest von zwei Plätzen
-jede Vierergruppe. Der Wert ist je Raum einstellbar; die Antwort liegt beim
-Kunden.
+Die Frage „heißt voll wirklich 100 %?" hat sich damit erledigt: Der Wert steht
+je Raum im Terminformular, ist beschriftet („Freigabe ab %") und erklärt sich
+darunter im Satz („Ab 100 % von 16 Plätzen öffnet ROSSINI"). Das Haus entscheidet
+es selbst und sieht dabei, was es entscheidet.
+
+Der Vorgabewert bleibt bewusst 100 – die strengste Auslegung. Sie öffnet einen
+Raum nie zu früh; wer die letzten Restplätze nicht abwarten will, setzt 85 oder
+90. Ein niedrigerer Vorgabewert würde für alle raten, was nur das Haus weiß.
 
 **2. Abholstationen, Etappe 1** *(auf Wunsch zurückgestellt – großes Feature, 01.09.2026)* (`PLAN-abholstationen.md`). Migrationen, Modelle,
 Zielort, Guard, Kapazitätsdienst – und die erste **eingecheckte Testbasis** des
