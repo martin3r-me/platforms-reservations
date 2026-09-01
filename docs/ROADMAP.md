@@ -57,11 +57,19 @@ wurde nur zur Reservierung. Wir bauen es je Pause: Der Server kann es ohnehin
 erfundene Einschränkung – Sekt zur ersten Pause und Kaffee zur zweiten ist der
 Normalfall, nicht der Sonderfall.
 
-*Der Tisch wird einmal gewählt.* Auch hier ließe der Server je Pause einen anderen
-zu. Gefragt wird trotzdem nur einmal, und die Wahl gilt für alle Pausen; erneut
-gefragt wird nur, wenn der Tisch in der zweiten Pause nicht mehr reicht. Sonst
-verdoppelt sich der aufwendigste Schritt des Bestellwegs für einen Fall, der
-einmal pro Saison eintritt.
+*Die Tischbindung wird eingestellt, nicht festgelegt.* Hier lag ich zuerst falsch:
+„einmal wählen" ist keine Regel, sondern eine von zwei Betriebsarten. Entweder
+gehört der Tisch dem Gast den ganzen Abend, oder jede Pause wird einzeln vergeben
+und der Saal zwischen den Pausen neu verkauft. Beides ist vertretbar, nur das Haus
+weiß welches – also je Termin einstellbar mit Team-Standard, Vorgabe „ganzer
+Abend" (die strengere Lesart, sie verkauft nie einen Platz zu viel).
+
+Der Modus entscheidet zugleich, wie sich **mehrere Räume** verhalten: bei Bindung
+an den Termin öffnen die Räume für den Abend, bei Bindung an die Pause je Pause –
+dann kann derselbe Raum in Pause 1 offen und in Pause 2 zu sein. Ausgearbeitet in
+**`PLAN-mehrere-pausen.md`** (dort auch die Zählfalle: über Pausen hinweg wird
+nach Parteien gezählt, nicht summiert, sonst macht die eigene zweite Bestellung
+den eigenen Tisch voll).
 
 **5. Der Schritt-Index verschwindet, bevor „Wann?" kommt.** Dieser Punkt hieß
 vorher „Abholstationen, Etappe 5 – zusammen mit Punkt 4", damit der Wizard nur ein
