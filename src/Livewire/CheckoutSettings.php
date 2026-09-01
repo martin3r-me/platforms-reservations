@@ -54,6 +54,7 @@ class CheckoutSettings extends Component
     public bool $softTableCapacity = false;
     public ?int $maxGroupEmptyTable = null;
     public ?int $maxGuestCount = null;
+    public bool $showClosedRooms = true;
 
     // #522: zusätzlich angebotene Sprachen (kommagetrennt, DE ist immer dabei)
     public string $languagesCsv = '';
@@ -102,6 +103,7 @@ class CheckoutSettings extends Component
         $this->softTableCapacity      = $setting->softTableCapacity();
         $this->maxGroupEmptyTable     = $setting->maxGroupEmptyTable();
         $this->maxGuestCount          = $setting->maxGuestCount();
+        $this->showClosedRooms        = $setting->showClosedRooms();
         $this->languagesCsv           = implode(', ', array_filter($setting->languages(), fn ($l) => $l !== 'de'));
         $this->guestFrontendUrl       = (string) ($setting->guest_frontend_url ?? '');
         $this->confirmationChannelId  = $setting->confirmationChannelId();
@@ -225,6 +227,7 @@ class CheckoutSettings extends Component
             'autoPrintPrinterGroupId'=> 'nullable|integer',
             'maxGroupEmptyTable'     => 'nullable|integer|min:1|max:200',
             'maxGuestCount'          => 'required|integer|min:1|max:200',
+            'showClosedRooms'        => 'boolean',
             'guestFrontendUrl'       => 'nullable|url|max:255',
             'confirmationChannelId'  => 'nullable|integer',
             'issuer.email'           => 'nullable|email|max:255',
@@ -271,6 +274,7 @@ class CheckoutSettings extends Component
                 ? $this->autoPrintPrinterGroupId : null,
             'max_group_empty_table'     => $this->softTableCapacity ? $this->maxGroupEmptyTable : null,
             'max_guest_count'           => $this->maxGuestCount,
+            'show_closed_rooms'         => $this->showClosedRooms,
             'languages'                 => collect(explode(',', $this->languagesCsv))
                 ->map(fn ($l) => strtolower(trim($l)))
                 ->filter()

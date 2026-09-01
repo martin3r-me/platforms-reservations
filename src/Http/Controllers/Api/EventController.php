@@ -279,6 +279,11 @@ class EventController extends ApiController
             // Weiche Kapazität: Großgruppe darf einen leeren Tisch (remaining == capacity)
             // über die Platzzahl hinaus belegen (bis max_group_empty_table, null = unbegrenzt);
             // sonst muss die Gruppe in remaining passen.
+            // Sollen gesperrte Räume beim Gast auftauchen? Die Antwort nennt
+            // sie in jedem Fall - der Shop entscheidet über die Anzeige. So
+            // bleibt die API bei dem, was IST, und die Darstellung dort, wo sie
+            // hingehört.
+            'show_closed_rooms'     => $checkout->showClosedRooms(),
             'soft_table_capacity'   => $soft,
             'max_group_empty_table' => $maxGroup,
             'party'                 => $party, // Gruppengröße, für die "bookable" berechnet wurde (null = nicht angefragt)

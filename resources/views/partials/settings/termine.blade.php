@@ -22,6 +22,14 @@
         </div>
 
         <label class="mt-4 flex items-start gap-2 text-sm text-[color:var(--nx-text)] cursor-pointer">
+            <input wire:model="showClosedRooms" type="checkbox" class="mt-0.5 rounded-[4px] accent-[var(--nx-accent)]" />
+            <span>
+                Gesperrte Räume im Shop zeigen
+                <span class="block text-[11px] text-[color:var(--nx-muted)]">Bei sequentieller Freigabe ist ein Raum zu, bis der davor voll genug ist. Angehakt sieht der Gast ihn gesperrt samt Grund („öffnet, sobald … voll ist") – das nimmt einem vollen ersten Raum den Beigeschmack von ausverkauft. Ohne Haken taucht er erst auf, wenn er dran ist.</span>
+            </span>
+        </label>
+
+        <label class="mt-4 flex items-start gap-2 text-sm text-[color:var(--nx-text)] cursor-pointer">
             <input wire:model.live="softTableCapacity" type="checkbox" class="mt-0.5 rounded-[4px] accent-[var(--nx-accent)]" />
             <span>
                 Weiche Tisch-Kapazität (Großgruppen)

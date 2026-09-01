@@ -56,6 +56,7 @@ class CheckoutSetting extends Model
         'soft_table_capacity',
         'max_group_empty_table',
         'max_guest_count',
+        'show_closed_rooms',
         'four_eyes_enabled',
         'four_eyes_off_requested_by',
         'four_eyes_off_requested_at',
@@ -91,6 +92,7 @@ class CheckoutSetting extends Model
         'soft_table_capacity'            => 'boolean',
         'max_group_empty_table'          => 'integer',
         'max_guest_count'                => 'integer',
+        'show_closed_rooms'              => 'boolean',
         'four_eyes_enabled'              => 'boolean',
         'four_eyes_off_requested_at'     => 'datetime',
         'four_eyes_changed_at'           => 'datetime',
@@ -347,6 +349,19 @@ class CheckoutSetting extends Model
 
     /** Vorgabe des Teams: die größte Gruppe, die ein Gast buchen kann. */
     public const MAX_GUEST_COUNT_FALLBACK = 20;
+
+    /**
+     * Sieht der Gast Räume, die noch nicht freigegeben sind?
+     *
+     * true (Vorgabe): gesperrt mit Begründung – „öffnet, sobald … voll ist".
+     * false: der Raum taucht im Shop gar nicht auf, bis er dran ist.
+     *
+     * Alte Zeilen ohne Wert gelten als true, damit sich nichts still ändert.
+     */
+    public function showClosedRooms(): bool
+    {
+        return (bool) ($this->show_closed_rooms ?? true);
+    }
 
     /**
      * Größte buchbare Gruppe.

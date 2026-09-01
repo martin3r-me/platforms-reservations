@@ -279,6 +279,115 @@
                     @endif
 
                     @foreach ($rooms as $i => $room)
+                        {{-- Eine Zeile je Raum, darunter EIN Satz statt Hinweisen
+                             unter einzelnen Feldern. Die hingen vorher verschieden
+                             tief und machten die Zeilen ausgefranst; die Beschriftung
+                             „Öffnet nächsten ab %" brach zudem um. --}}
+                        <div wire:key="room-row-{{ $i }}" class="rounded-md border border-[color:var(--nx-line)] p-3">
+                            <div class="flex flex-wrap items-end gap-2">
+                                <div class="min-w-[180px] flex-1">
+                                    <x-nx-input-select
+                                        name="rooms.{{ $i }}.floor_plan_id"
+                                        label="Tischplan *"
+                                        size="sm"
+                                        :options="$this->availableFloorPlans->map(fn ($p) => [
+                                            'value' => $p->id,
+                                            'label' => ($p->venue?->name ? $p->venue->name . ' – ' : '') . $p->name,
+                                        ])->values()->all()"
+                                        :nullable="true"
+                                        nullLabel="– wählen –"
+                                        wire:model.live="rooms.{{ $i }}.floor_plan_id"
+                                        errorKey="rooms.{{ $i }}.floor_plan_id"
+                                    />
+                                </div>
+                                @if ($eventReleaseMode === 'sequential')
+                                    <div class="w-28">
+                                        <x-nx-input-number
+                                            name="rooms.{{ $i }}.fill_threshold_percent"
+                                            label="Freigabe ab %"
+                                            size="sm" min="1" max="100"
+                                            wire:model.live="rooms.{{ $i }}.fill_threshold_percent"
+                                            :disabled="$i + 1 >= count($rooms)"
+                                        />
+                                    </div>
+                                @endif
+                                <div class="w-24">
+                                    <x-nx-input-number name="rooms.{{ $i }}.capacity_override" label="Plätze" size="sm" min="1" placeholder="auto" wire:model="rooms.{{ $i }}.capacity_override" />
+                                </div>
+                                <div class="w-36">
+                                    <x-nx-input-select
+                                        name="rooms.{{ $i }}.open_mode"
+                                        label="Status"
+                                        size="sm"
+                                        :options="[
+                                            ['value' => 'auto', 'label' => 'Automatisch'],
+                                            ['value' => 'open', 'label' => 'Immer offen'],
+                                            ['value' => 'closed', 'label' => 'Geschlossen'],
+                                        ]"
+                                        wire:model.live="rooms.{{ $i }}.open_mode"
+                                    />
+                                </div>
+                                <x-nx-button icon variant="ghost" wire:click="removeRoom({{ $i }})" type="button" title="Entfernen">
+                                    @svg('heroicon-o-x-mark', 'w-4 h-4')
+                                </x-nx-button>
+                            </div>
+
+                            {{-- Ein Satz, der beides erklärt: wann der nächste Raum
+                                 aufgeht und was der Status hier bedeutet. --}}
+                            <p class="m-0 mt-2 text-[11px] leading-snug text-[color:var(--nx-muted)]">
+                                {{-- Ohne Zwischenvariable: Die einzeilige PHP-Direktive
+                                     mit Klammer ist hier unbrauchbar, weil weiter unten
+                                     in dieser Datei ein schliessender Block steht. Blade
+                                     schneidet rohe PHP-Bloecke von der oeffnenden bis zur
+                                     naechsten schliessenden Direktive aus - alles
+                                     dazwischen waere verschluckt. --}}
+                                @if (($rooms[$i]['open_mode'] ?? 'auto') === 'open')
+                                    Immer buchbar, unabhängig von der Reihenfolge.
+                                @elseif (($rooms[$i]['open_mode'] ?? 'auto') === 'closed')
+                                    Nie buchbar – der Raum wird in der Reihenfolge übersprungen.
+                                @elseif ($eventReleaseMode !== 'sequential')
+                                    Buchbar, wie alle Räume bei paralleler Freigabe.
+                                @elseif ($i === 0)
+                                    Erster Raum – von Beginn an buchbar.
+                                @else
+                                    Buchbar, sobald der Raum darüber seinen Wert erreicht.
+                                @endif
+
+                                @if ($eventReleaseMode === 'sequential')
+                                    @if ($i + 1 < count($rooms))
+                                        Ab {{ (int) ($rooms[$i]['fill_threshold_percent'] ?: 100) }} % Auslastung öffnet „{{ $this->planName($rooms[$i + 1]['floor_plan_id'] ?? null) }}".
+                                    @else
+                                        Letzter Raum – der Prozentwert wirkt hier nicht.
+                                    @endif
+                                @endif
+                            </p>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+
+            {{-- Räume --}}
+            <section class="overflow-hidden rounded-[8px] border border-[color:var(--nx-line)]">
+                <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] px-3 py-2">
+                    @svg('heroicon-o-building-storefront', 'w-4 h-4 text-[color:var(--nx-muted)]')
+                    <h4 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">
+                        Räume{{ $eventReleaseMode === 'sequential' ? ' · Reihenfolge = Freigabe-Reihenfolge' : '' }}
+                    </h4>
+                    <div class="ml-auto">
+                        <x-nx-button variant="ghost" wire:click="addRoom" type="button">+ Raum</x-nx-button>
+                    </div>
+                </div>
+                <div class="space-y-2 p-3">
+                    @if ($this->availableFloorPlans->isEmpty())
+                        <p class="m-0 text-xs text-[color:var(--nx-muted)]">
+                            Noch keine Tischpläne vorhanden –
+                            <a href="{{ route('reservation.venues.index') }}" wire:navigate class="underline">zuerst unter „Venues &amp; Tischpläne“ anlegen</a>.
+                        </p>
+                    @elseif (empty($rooms))
+                        <p class="m-0 text-xs text-[color:var(--nx-muted)]">Noch kein Raum zugeordnet – über „+ Raum“ einen Tischplan hinzufügen.</p>
+                    @endif
+
+                    @foreach ($rooms as $i => $room)
                         <div wire:key="room-row-{{ $i }}" class="flex flex-wrap items-end gap-2">
                             <div class="min-w-[180px] flex-1">
                                 <x-nx-input-select
