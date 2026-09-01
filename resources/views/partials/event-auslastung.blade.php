@@ -65,8 +65,14 @@
                      Zahlen gleich; dann steht hier nichts. --}}
                 @if (($raum['ordered'] ?? $raum['booked']) !== $raum['booked'])
                     <p class="m-0 mt-1 text-[11px] text-[color:var(--nx-muted)]">
-                        Davon {{ $raum['ordered'] }} mit Bestellung in dieser Pause – die übrigen
-                        {{ $raum['booked'] - $raum['ordered'] }} halten Gäste, die in einer anderen Pause bestellt haben.
+                        @if ($raum['ordered'] > 0)
+                            Davon {{ $raum['ordered'] }} mit Bestellung in dieser Pause.
+                            {{ $raum['booked'] - $raum['ordered'] === 1 ? 'Der andere Platz ist' : 'Die anderen ' . ($raum['booked'] - $raum['ordered']) . ' Plätze sind' }}
+                            belegt, weil die Gäste ihren Tisch den ganzen Abend behalten.
+                        @else
+                            In dieser Pause hat niemand bestellt – die Plätze sind belegt,
+                            weil die Gäste ihren Tisch den ganzen Abend behalten.
+                        @endif
                     </p>
                 @endif
 
