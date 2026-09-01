@@ -358,7 +358,7 @@ toter Bestätigungs-Block („Step 5") und die unbenutzte Eigenschaft
 wechselt von int auf string, laufende Bestellwege verlieren dabei ihre Sitzung –
 also außerhalb der Bestellzeiten.
 
-**4 – Wann und Warenkorb.** Pausen-Schritt, Warenkorb je Pause, Übersicht und
+**4 – Wann und Warenkorb.** *(erledigt 01.09.2026, im Shop – noch nicht ausgerollt)* Pausen-Schritt, Warenkorb je Pause, Übersicht und
 Bestätigung je Pause. Danach ist Modus `event` vollständig verkaufbar.
 
 **5 – Tisch je Pause.** Modus `slot` im Shop, Raumliste je Pause, Ortsangabe je
