@@ -75,6 +75,35 @@ class RaumfreigabeMehrerePausenTest extends TestCase
     }
 
     #[Test]
+    public function der_naechste_nicht_offene_raum_ist_der_von_hand_geschlossene(): void
+    {
+        $termin = $this->terminMitZweiRaeumen(Event::BINDING_EVENT);
+
+        $zweiter = $termin->eventRooms()->orderBy('sort_order')->get()[1];
+        $zweiter->update(['is_open_override' => false]);
+
+        $naechster = $this->freigabe()->naechsterNichtOffenerRaum($termin->fresh(), $this->pause($termin, 1));
+
+        $this->assertNotNull($naechster);
+        $this->assertSame($zweiter->id, $naechster->id);
+        $this->assertSame('ROSSINI', $naechster->floorPlan->name);
+    }
+
+    #[Test]
+    public function sind_alle_raeume_offen_gibt_es_nichts_mehr_zu_oeffnen(): void
+    {
+        $termin = $this->terminMitZweiRaeumen(Event::BINDING_EVENT);
+
+        foreach ($termin->eventRooms as $raum) {
+            $raum->update(['is_open_override' => true]);
+        }
+
+        $this->assertNull(
+            $this->freigabe()->naechsterNichtOffenerRaum($termin->fresh(), $this->pause($termin, 1))
+        );
+    }
+
+    #[Test]
     public function bei_einer_einzigen_pause_aendert_die_bindung_an_der_freigabe_nichts(): void
     {
         foreach ([Event::BINDING_EVENT, Event::BINDING_SLOT] as $bindung) {

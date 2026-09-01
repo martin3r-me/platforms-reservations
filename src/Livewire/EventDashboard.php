@@ -12,7 +12,9 @@ use Platform\Reservation\Livewire\Concerns\ShowsBookingDetail;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\Event;
+use Platform\Reservation\Models\EventRoom;
 use Platform\Reservation\Models\EventSlot;
+use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Services\RoomReleaseService;
 use Platform\Reservation\Services\SeatAvailabilityService;
 
@@ -29,6 +31,10 @@ class EventDashboard extends Component
 
     #[Locked]
     public int $eventId;
+
+    /** Dialog „weiteren Raum öffnen“. */
+    public bool $showRaumModal = false;
+    public ?int $neuerTischplanId = null;
 
     public function mount(int $eventId): void
     {
@@ -316,6 +322,176 @@ class EventDashboard extends Component
         return Booking::where('event_id', $this->eventId)
             ->where('status', Booking::STATUS_PENDING)
             ->count();
+    }
+
+    /**
+     * Betriebshinweis je Pause: Wird es eng, und was kann man tun?
+     *
+     * Gerechnet über die Zahlen, die DANEBEN STEHEN - die Zeilen aus
+     * auslastung(). Eine eigene Abfrage hier wäre eine zweite Wahrheit: Es
+     * stünde 87 % im Balken und der Hinweis käme bei einer anderen Zahl,
+     * und niemand wüsste, welche gilt.
+     *
+     * Zusammengezählt werden nur die OFFENEN Räume. Ein geschlossener Raum
+     * gehört nicht in den Nenner - seine Plätze sind nicht buchbar, und mit
+     * ihnen darin sähe ein voller Saal nach halb leer aus.
+     *
+     * @return array<int, array<string, mixed>> [slot_id => Hinweis]
+     */
+    #[Computed]
+    public function raumEmpfehlung(): array
+    {
+        $freigabe = app(RoomReleaseService::class);
+        $ergebnis = [];
+
+        foreach ($this->auslastung as $slotId => $zeilen) {
+            $offene = array_filter($zeilen, fn ($z) => $z['open'] ?? true);
+
+            if ($offene === []) {
+                continue;
+            }
+
+            $plaetze = array_sum(array_column($offene, 'seats'));
+            $belegt  = array_sum(array_column($offene, 'booked'));
+            $prozent = $plaetze > 0 ? (int) round($belegt / $plaetze * 100) : 0;
+
+            if ($prozent < RoomReleaseService::HINWEIS_AB_PROZENT) {
+                continue;
+            }
+
+            $slot = $this->event->slots->firstWhere('id', $slotId);
+
+            if (! $slot) {
+                continue;
+            }
+
+            $naechster = $freigabe->naechsterNichtOffenerRaum($this->event, $slot);
+
+            if ($naechster) {
+                $ergebnis[$slotId] = [
+                    'art'     => 'open',
+                    'prozent' => $prozent,
+                    'frei'    => max(0, $plaetze - $belegt),
+                    'room_id' => $naechster->id,
+                    'name'    => $naechster->floorPlan?->name ?? 'der nächste Raum',
+                ];
+
+                continue;
+            }
+
+            // Kein weiterer Raum am Termin - dann nur vorschlagen, wenn es
+            // überhaupt einen gibt, den man hinzufügen könnte. Ein Hinweis auf
+            // eine Handlung, die nicht geht, ist schlimmer als keiner.
+            if ($this->freieTischplaene->isNotEmpty()) {
+                $ergebnis[$slotId] = [
+                    'art'     => 'add',
+                    'prozent' => $prozent,
+                    'frei'    => max(0, $plaetze - $belegt),
+                ];
+            }
+        }
+
+        return $ergebnis;
+    }
+
+    /**
+     * Tischpläne des Teams, die diesem Termin noch nicht zugewiesen sind.
+     *
+     * Gefiltert, weil (event_id, floor_plan_id) eindeutig ist - ein zweites Mal
+     * derselbe Plan wäre ein Datenbankfehler statt einer Fehlermeldung.
+     */
+    #[Computed]
+    public function freieTischplaene(): \Illuminate\Database\Eloquent\Collection
+    {
+        $vergeben = $this->event->eventRooms()->pluck('floor_plan_id')->all();
+
+        return FloorPlan::with('venue')
+            ->whereHas('venue', fn ($q) => $q->where('team_id', (int) $this->event->team_id))
+            ->active()
+            ->whereNotIn('id', $vergeben ?: [0])
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * Einen bereits zugewiesenen Raum von Hand öffnen.
+     *
+     * Setzt den Handschalter, nicht den Schwellwert: Der Raum bleibt danach
+     * offen, auch wenn die Auslastung des Raums davor wieder sinkt (Storno).
+     * Wer am Abend einen Saal aufmacht, macht ihn nicht versehentlich wieder zu.
+     */
+    public function raumOeffnen(int $eventRoomId): void
+    {
+        // Ueber $this->event, nicht ueber EventRoom direkt: Der Zugriff laeuft
+        // damit durch denselben Team-Scope wie der Rest der Ansicht. EventRoom
+        // selbst hat keinen - es erbt die Trennung von seinem Termin.
+        $raum = $this->event->eventRooms()->with('floorPlan')->find($eventRoomId);
+
+        if (! $raum) {
+            return;
+        }
+
+        $raum->update(['is_open_override' => true]);
+
+        $this->zahlenNeuLaden();
+
+        session()->flash('booking_message', ($raum->floorPlan?->name ?? 'Der Raum') . ' ist jetzt offen.');
+    }
+
+    public function openRaumModal(): void
+    {
+        $this->neuerTischplanId = null;
+        $this->showRaumModal    = true;
+
+        unset($this->freieTischplaene);
+    }
+
+    public function closeRaumModal(): void
+    {
+        $this->showRaumModal = false;
+    }
+
+    /**
+     * Einen weiteren Raum anhängen - und zwar sofort offen.
+     *
+     * Der Schwellwert bleibt auf 100: Er entscheidet über den Raum DANACH, den
+     * es hier noch nicht gibt. Und offen von Hand, weil der Sinn dieses Knopfes
+     * ist, jetzt Plätze zu haben - nicht, eine Bedingung zu stellen.
+     */
+    public function raumHinzufuegen(): void
+    {
+        $this->validate(
+            ['neuerTischplanId' => 'required|integer'],
+            ['neuerTischplanId.required' => 'Bitte einen Tischplan wählen.']
+        );
+
+        if (! $this->freieTischplaene->contains('id', (int) $this->neuerTischplanId)) {
+            $this->addError('neuerTischplanId', 'Dieser Tischplan gehört nicht zu diesem Haus oder ist schon zugewiesen.');
+
+            return;
+        }
+
+        $letzte = (int) $this->event->eventRooms()->max('sort_order');
+
+        EventRoom::create([
+            'event_id'               => $this->eventId,
+            'floor_plan_id'          => (int) $this->neuerTischplanId,
+            'sort_order'             => $letzte + 1,
+            'fill_threshold_percent' => 100,
+            'is_open_override'       => true,
+        ]);
+
+        $this->showRaumModal = false;
+
+        $this->zahlenNeuLaden();
+
+        session()->flash('booking_message', 'Der Raum ist hinzugefügt und offen.');
+    }
+
+    /** Alles, was von den Räumen abhängt, neu rechnen lassen. */
+    protected function zahlenNeuLaden(): void
+    {
+        unset($this->event, $this->auslastung, $this->raumEmpfehlung, $this->freieTischplaene);
     }
 
     public function openCloseEventModal(): void

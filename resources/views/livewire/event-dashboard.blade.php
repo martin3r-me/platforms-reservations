@@ -106,6 +106,41 @@
                         @include('reservation::partials.event-auslastung', ['raeume' => $this->auslastung[$group['slot_id']]])
                     @endif
 
+                    {{-- Wird es eng, steht hier die Handlung - nicht nur die Zahl.
+
+                         Der Balken darüber sagt schon, dass es voll wird. Was
+                         daraus folgt, stand bisher nirgends: Wer weitere Plätze
+                         braucht, musste den Termin bearbeiten, den Raum-Status
+                         umstellen und speichern - ein Formular mitten im Service.
+
+                         Deshalb ist "öffnen" hier EIN Klick und kein Dialog: Der
+                         Satz daneben sagt vollständig, was passiert, und
+                         rückgängig ist es über denselben Weg. Nur das Hinzufügen
+                         eines Raums fragt nach, weil es eine Wahl braucht. --}}
+                    @if ($group['slot_id'] && ! empty($this->raumEmpfehlung[$group['slot_id']] ?? []))
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[color:var(--nx-line)] bg-[rgba(240,140,0,.07)] px-4 py-3">
+                            @svg('heroicon-o-exclamation-triangle', 'w-4 h-4 shrink-0 text-[color:var(--nx-warning)]')
+                            <span class="text-xs text-[color:var(--nx-text)]">
+                                <strong class="tabular-nums">{{ $this->raumEmpfehlung[$group['slot_id']]['prozent'] }} %</strong> belegt –
+                                noch {{ $this->raumEmpfehlung[$group['slot_id']]['frei'] }} {{ $this->raumEmpfehlung[$group['slot_id']]['frei'] === 1 ? 'Platz' : 'Plätze' }} frei.
+                                @if ($this->raumEmpfehlung[$group['slot_id']]['art'] === 'open')
+                                    „{{ $this->raumEmpfehlung[$group['slot_id']]['name'] }}" ist noch geschlossen.
+                                @else
+                                    Diesem Termin ist kein weiterer Raum zugewiesen.
+                                @endif
+                            </span>
+                            <div class="ml-auto">
+                                @if ($this->raumEmpfehlung[$group['slot_id']]['art'] === 'open')
+                                    <x-nx-button variant="primary" wire:click="raumOeffnen({{ $this->raumEmpfehlung[$group['slot_id']]['room_id'] }})">
+                                        {{ $this->raumEmpfehlung[$group['slot_id']]['name'] }} öffnen
+                                    </x-nx-button>
+                                @else
+                                    <x-nx-button variant="primary" wire:click="openRaumModal()">Raum hinzufügen</x-nx-button>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- Was in keiner Auslastung auftaucht: Buchungen ohne Tisch.
                          Ohne diese Zeile widerspricht sich die Ansicht - oben
                          stehen mehr Gäste, als der Raum belegt zeigt, und die
@@ -328,6 +363,39 @@
                 {{ $event->share_token ? 'Neu erzeugen' : 'Zugang erstellen' }}
             </x-nx-button>
             <x-nx-button wire:click="closeShareModal()">Schließen</x-nx-button>
+        </x-slot>
+    </x-nx-modal>
+
+    <x-nx-modal size="sm" wire:model="showRaumModal">
+        <x-slot name="header">Weiteren Raum öffnen</x-slot>
+
+        <div class="text-sm">
+            <p class="m-0 text-[color:var(--nx-muted)]">
+                Der Raum wird dem Termin hinzugefügt und ist <strong>sofort buchbar</strong> –
+                beide Räume nehmen dann Buchungen an.
+            </p>
+
+            <div class="mt-4">
+                <x-nx-input-select
+                    name="neuerTischplanId"
+                    label="Tischplan"
+                    :options="$this->freieTischplaene->map(fn ($p) => ['value' => $p->id, 'label' => ($p->venue?->name ? $p->venue->name . ' – ' : '') . $p->name])->all()"
+                    :nullable="true"
+                    nullLabel="– bitte wählen –"
+                    wire:model="neuerTischplanId"
+                    errorKey="neuerTischplanId"
+                />
+            </div>
+
+            <p class="m-0 mt-3 text-[11px] text-[color:var(--nx-muted)]">
+                Er wird ans Ende der Freigabe-Reihenfolge gehängt und von Hand geöffnet –
+                er fällt also nicht wieder zu, wenn im Raum davor jemand storniert.
+            </p>
+        </div>
+
+        <x-slot name="footer">
+            <x-nx-button variant="primary" wire:click="raumHinzufuegen()">Hinzufügen und öffnen</x-nx-button>
+            <x-nx-button wire:click="closeRaumModal()">Abbrechen</x-nx-button>
         </x-slot>
     </x-nx-modal>
 

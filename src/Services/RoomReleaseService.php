@@ -25,6 +25,43 @@ class RoomReleaseService
     ) {
     }
 
+    /**
+     * Ab welcher Füllung das Dashboard vorschlägt, einen weiteren Raum zu öffnen.
+     *
+     * 85 und nicht 100, weil der Hinweis Zeit lassen soll: Bei 80 Plätzen sind
+     * das zwölf freie – genug, um jemanden loszuschicken, bevor der erste Gast
+     * vor einem vollen Saal steht.
+     *
+     * Bewusst eine Konstante und noch keine Einstellung. Es ist eine Zahl, die
+     * niemand kennt, bevor er einen Abend damit erlebt hat; einen Regler dafür
+     * anzubieten hiesse, das Haus etwas entscheiden zu lassen, wozu es noch
+     * keine Erfahrung hat. Wird sie je verschieden gebraucht, ist der Weg zur
+     * Einstellung kurz - das Muster steht daneben (fill_threshold_percent).
+     */
+    public const HINWEIS_AB_PROZENT = 85;
+
+    /**
+     * Der nächste Raum, der NICHT offen ist – oder null, wenn alle offen sind.
+     *
+     * Für den Betriebshinweis im VA-Dashboard: Wer bei 85 % erfährt, dass es
+     * weitergeht, will wissen WOMIT. Die Reihenfolge ist die der Freigabekette,
+     * es ist also der Raum, der ohnehin als nächster dran wäre.
+     *
+     * Es spielt keine Rolle, WARUM er zu ist - von Hand geschlossen oder noch
+     * unter seinem Schwellwert. Beides Mal ist "jetzt öffnen" die Handlung, und
+     * beides Mal ist es dieselbe Schaltung.
+     */
+    public function naechsterNichtOffenerRaum(Event $event, EventSlot $slot): ?EventRoom
+    {
+        $offeneIds = $this->openRooms($event, $slot)->pluck('id')->all();
+
+        return $event->eventRooms()
+            ->with('floorPlan')
+            ->orderBy('sort_order')
+            ->get()
+            ->first(fn (EventRoom $raum) => ! in_array($raum->id, $offeneIds, true));
+    }
+
     /** @return Collection<int, EventRoom> offene Räume in sort_order-Reihenfolge */
     public function openRooms(Event $event, EventSlot $slot): Collection
     {
