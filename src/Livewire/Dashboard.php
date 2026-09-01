@@ -10,6 +10,7 @@ use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
+use Platform\Reservation\Models\Order;
 
 /**
  * PausePlus-Startseite: Kennzahlen, nächste Termine, neueste Buchungen.
@@ -38,7 +39,16 @@ class Dashboard extends Component
             ->sum(\Illuminate\Support\Facades\DB::raw('reservation_booking_items.quantity * reservation_booking_items.unit_price'));
 
         return (object) [
-            'pending_bookings' => Booking::forTeam($teamId)->where('status', Booking::STATUS_PENDING)->count(),
+            // Vorher stand hier die Zahl der ausstehenden Buchungen unter der
+            // Überschrift „warten auf Bestätigung". Das versprach eine Aufgabe,
+            // die es nicht gibt: Eine ausstehende Buchung wird von Mollie
+            // bestätigt oder gar nicht - von Hand bestätigt sie niemand, es gibt
+            // im ganzen Modul keinen solchen Weg. Die Zahl war ein abgebrochener
+            // Bestellvorgang, kein Posteingang.
+            //
+            // Was dort hingehört, ist etwas, das jemand tun kann: die
+            // ungesehenen Vorgänge.
+            'unseen_inbox'     => Order::ungeseheneImPosteingang($teamId),
             'upcoming_events'  => Event::forTeam($teamId)->upcoming()->count(),
             'month_revenue'    => $monthRevenue,
             'approved_items'   => MenuItem::forTeam($teamId)->approved()->count(),

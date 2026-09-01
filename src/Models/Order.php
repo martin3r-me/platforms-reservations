@@ -48,6 +48,23 @@ class Order extends Model
         'seen_at'                   => 'datetime',
     ];
 
+    /**
+     * Ungesehene Vorgänge eines Teams – die Zahl, die im Posteingang oben steht
+     * und auf der Startseite als Kachel.
+     *
+     * Am Modell, weil zwei Ansichten sie brauchen. Zweimal geschrieben liefe
+     * sie irgendwann auseinander, und dann nennt die Startseite eine andere
+     * Zahl als die Seite, auf die sie verweist.
+     */
+    public static function ungeseheneImPosteingang(int $teamId): int
+    {
+        return static::query()
+            ->where('team_id', $teamId)
+            ->whereIn('status', self::INBOX_STATUSES)
+            ->whereNull('seen_at')
+            ->count();
+    }
+
     /** Für den Posteingang relevante Order-Status. */
     public const INBOX_STATUSES = [
         self::STATUS_CONFIRMED,

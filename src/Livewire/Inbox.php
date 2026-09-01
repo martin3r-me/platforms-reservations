@@ -61,10 +61,7 @@ class Inbox extends Component
     #[Computed]
     public function unseenCount(): int
     {
-        return Order::where('team_id', $this->teamId())
-            ->whereIn('status', Order::INBOX_STATUSES)
-            ->whereNull('seen_at')
-            ->count();
+        return Order::ungeseheneImPosteingang($this->teamId());
     }
 
     protected function order(int $id): ?Order

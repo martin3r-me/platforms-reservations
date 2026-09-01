@@ -20,8 +20,20 @@
 
     {{-- Kennzahlen --}}
     <x-nx-stat-grid>
-        <x-nx-stat label="Offene Buchungen" :value="(string) $this->stats->pending_bookings" hint="warten auf Bestätigung"
-            icon="heroicon-o-inbox" accent="var(--nx-warning)" :href="route('reservation.bookings.index')" wire:navigate />
+        {{-- Posteingang statt „Offene Buchungen": Die alte Kachel zählte
+             ausstehende Buchungen und schrieb „warten auf Bestätigung" darunter -
+             eine Aufgabe, die es nicht gibt. Bestätigt wird durch Mollie oder gar
+             nicht. Hier steht jetzt etwas, das man tun kann.
+
+             Der Akzent zieht nur an, wenn wirklich etwas liegt; bei null bleibt
+             die Kachel ruhig, statt mit Warnfarbe Aufmerksamkeit zu fordern. --}}
+        <x-nx-stat label="Posteingang" :value="(string) $this->stats->unseen_inbox"
+            :hint="$this->stats->unseen_inbox === 0
+                ? 'alles gesehen'
+                : ($this->stats->unseen_inbox === 1 ? 'Vorgang ungesehen' : 'Vorgänge ungesehen')"
+            icon="heroicon-o-inbox"
+            :accent="$this->stats->unseen_inbox > 0 ? 'var(--nx-warning)' : 'var(--nx-muted)'"
+            :href="route('reservation.inbox.index')" wire:navigate />
         <x-nx-stat label="Kommende Termine" :value="(string) $this->stats->upcoming_events"
             icon="heroicon-o-ticket" accent="var(--nx-accent)" :href="route('reservation.events.index')" wire:navigate />
         <x-nx-stat label="Umsatz im Monat" :value="number_format($this->stats->month_revenue, 2, ',', '.') . ' €'" :hint="now()->locale('de')->isoFormat('MMMM Y')"
