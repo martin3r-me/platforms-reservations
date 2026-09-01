@@ -57,6 +57,7 @@ class CheckoutSetting extends Model
         'max_group_empty_table',
         'max_guest_count',
         'show_closed_rooms',
+        'table_binding',
         'four_eyes_enabled',
         'four_eyes_off_requested_by',
         'four_eyes_off_requested_at',
@@ -361,6 +362,23 @@ class CheckoutSetting extends Model
     public function showClosedRooms(): bool
     {
         return (bool) ($this->show_closed_rooms ?? true);
+    }
+
+    /**
+     * Vorgabe des Teams: Wem gehört ein Tisch bei mehreren Pausen?
+     *
+     * 'event' – dem Gast den ganzen Abend. 'slot' – je Pause neu vergeben.
+     * Siehe Event::tableBinding(); dort steht auch, warum die Frage bei einem
+     * Termin mit nur einer Pause keine ist.
+     *
+     * Alte Zeilen ohne Wert gelten als 'event', damit die strengere Lesart gilt,
+     * solange niemand das Gegenteil gesagt hat.
+     */
+    public function tableBinding(): string
+    {
+        return $this->table_binding === Event::BINDING_SLOT
+            ? Event::BINDING_SLOT
+            : Event::BINDING_EVENT;
     }
 
     /**

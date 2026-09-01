@@ -33,6 +33,12 @@ class Event extends Model
     public const RELEASE_PARALLEL   = 'parallel';
     public const RELEASE_SEQUENTIAL = 'sequential';
 
+    /** Tischbindung: Der Tisch gehört dem Gast für den ganzen Termin. */
+    public const BINDING_EVENT = 'event';
+
+    /** Tischbindung: Jede Pause wird einzeln vergeben. */
+    public const BINDING_SLOT = 'slot';
+
     protected $table = 'reservation_events';
 
     protected $fillable = [
@@ -46,6 +52,7 @@ class Event extends Model
         'venue_id',
         'sales_list_id',
         'room_release_mode',
+        'table_binding',
         'max_guest_count',
         'disabled_table_ids',
         'image_context_file_id',
@@ -215,6 +222,38 @@ class Event extends Model
         // firstOrNew ohne Zwischenspeicher - ohne diesen Weg fragt allein die
         // Checkout-Antwort zweimal dieselbe Zeile ab.
         return ($einstellungen ?? CheckoutSetting::forTeam((int) $this->team_id))->maxGuestCount();
+    }
+
+    /**
+     * Wem gehört ein Tisch – dem Gast für den ganzen Termin oder nur für eine
+     * Pause?
+     *
+     * 'event': Ein Raum, ein Tisch, alle Pausen. Wer in Pause 1 sitzt, hält den
+     * Tisch auch in Pause 2 – selbst wenn er dort nichts bestellt.
+     * 'slot': Jede Pause wird einzeln vergeben, der Saal zwischen den Pausen neu
+     * verkauft.
+     *
+     * Bei einem Termin mit nur EINER Pause ist die Frage keine: Beide
+     * Betriebsarten liefern dieselben Zahlen. Deshalb zeigt das Terminformular
+     * das Feld auch erst ab der zweiten Pause – eine Frage ohne Wirkung ist eine
+     * Frage zu viel.
+     *
+     * Eigener Wert schlägt die Vorgabe des Teams; null heißt „der Vorgabe
+     * folgen". Wie bei maxGuestCount() bewusst nicht beim Anlegen kopiert.
+     */
+    public function tableBinding(?CheckoutSetting $einstellungen = null): string
+    {
+        if ($this->table_binding === self::BINDING_SLOT || $this->table_binding === self::BINDING_EVENT) {
+            return $this->table_binding;
+        }
+
+        return ($einstellungen ?? CheckoutSetting::forTeam((int) $this->team_id))->tableBinding();
+    }
+
+    /** Gilt ein Tisch hier für den ganzen Termin statt nur für eine Pause? */
+    public function tischGiltGanzenTermin(?CheckoutSetting $einstellungen = null): bool
+    {
+        return $this->tableBinding($einstellungen) === self::BINDING_EVENT;
     }
 
     /**
