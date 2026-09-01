@@ -683,8 +683,23 @@ class EventManager extends Component
             ->findOrFail($id);
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($original) {
+            // Der Freigabe-Link darf NICHT mitkopiert werden - aus zwei Gründen.
+            //
+            // Der harmlosere: share_token ist eindeutig, die Kopie lief mit
+            // einer Verletzung der Eindeutigkeit auf die Nase.
+            //
+            // Der ernste: Wäre die Spalte nicht eindeutig, hätte die Kopie
+            // denselben Link wie das Original. Wer den alten Link hat - ein
+            // Veranstaltungsleiter von letztem Jahr, jemand, an den er
+            // weitergereicht wurde -, sähe Küche und Laufzettel des neuen
+            // Termins mit. Ein Link, den man einmal ausgegeben hat, soll nicht
+            // durch das Kopieren eines Termins neue Türen aufbekommen.
+            //
+            // Die Kopie startet ohne Freigabe; wer sie braucht, erzeugt sie
+            // dort neu.
             $copy = $original->replicate([
                 'uuid', 'status', 'image_context_file_id', 'events_event_id', 'events_event_uuid',
+                'share_token', 'share_pin_hash', 'share_created_at',
             ]);
             $copy->name = $original->name . ' (Kopie)';
             $copy->status = Event::STATUS_DRAFT;
