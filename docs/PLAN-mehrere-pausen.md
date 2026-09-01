@@ -157,10 +157,34 @@ Daraus folgen zwei Pflichten für den Shop:
 
 1. Er darf nie so tun, als gäbe es eine Raumwahl „für den Abend". Je Pause eigene
    Liste, eigener Grund für gesperrte Räume.
-2. Die Übersicht und die Bestätigung müssen den Ort **je Pause** nennen:
-   „1. Pause: Terrasse, Tisch 5 · 2. Pause: ROSSINI, Tisch 12". Steht dort nur ein
-   Tisch, steht der Gast in der zweiten Pause im falschen Saal. Die Daten sind
-   bereits je Buchung vorhanden (`zielortLabel()`), nur die Betonung fehlt.
+2. Die Übersicht muss den Ort **je Pause** nennen – steht dort nur ein Tisch,
+   steht der Gast in der zweiten Pause im falschen Saal. Aber **ohne Aufzählung
+   und ohne Fallunterscheidung**, siehe die Regel gleich darunter.
+
+### Die Regel für alle Ausgaben: keine Unterscheidung, die nichts unterscheidet
+
+Eine Schreibweise wie „1. Pause: Terrasse, Tisch 5 · 2. Pause: ROSSINI, Tisch 12"
+wäre der Fehler. Sie führt eine Nummerierung ein, und wer bei einem einpausigen
+Termin „1. Pause" liest, sucht nach der zweiten. Die Pause **benannt** werden darf
+(sie sagt dem Gast, wann er kommen soll) – **aufgezählt** wird sie nicht.
+
+Nachgesehen, statt es anzunehmen: Die vorhandenen Ausgaben machen es bereits
+richtig, weil sie je **Buchung** gliedern und eine Buchung genau eine Pause ist.
+
+| Ausgabe | heute | bei zwei Pausen |
+|---|---|---|
+| Bestätigungsmail | Abschnittskopf „Pause · 20:15–20:35 Uhr · Tisch 5", dann die Positionen | zwei Abschnitte, jeder mit eigenem Ort |
+| Beleg-PDF | dieselbe Zeile über der Positionsgruppe | zwei Gruppen |
+| Bon | einer je Buchung, mit Pause und Ort im Kopf | zwei Bons |
+| Statusseite im Shop | Zeile je Buchung | zwei Zeilen |
+
+Sie fallen bei einer Pause auf genau den heutigen Wortlaut zusammen, ohne dass
+irgendwo ein `if` steht. Das ist die bessere Form: Nicht „bei mehreren Pausen
+anders schreiben", sondern eine Form, die bei einer Pause von selbst still ist.
+
+Zu ändern bleibt damit **eine** Stelle: die Übersicht im Wizard
+(`checkout-wizard.blade.php` zeigt `selectedTableLabel()` als eine einzelne Zeile).
+Sie wird ein Abschnitt je Pause – und ist bei einer Pause eine Zeile wie heute.
 
 ### Was das VA-Dashboard dazulernen muss
 
