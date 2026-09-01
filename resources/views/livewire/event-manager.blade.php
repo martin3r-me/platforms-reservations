@@ -317,9 +317,16 @@
                                         />
                                     </div>
                                 @endif
-                                <div class="w-24">
-                                    <x-nx-input-number name="rooms.{{ $i }}.capacity_override" label="Plätze" size="sm" min="1" placeholder="auto" wire:model="rooms.{{ $i }}.capacity_override" />
-                                </div>
+                                {{-- „Plätze" wirkt AUSSCHLIESSLICH als Nenner der
+                                     Prozentrechnung (EventRoom::totalSeats, nur von
+                                     RoomReleaseService benutzt). Ohne sequentielle
+                                     Freigabe und am letzten Raum tut das Feld also
+                                     nichts - dieselbe Bedingung wie beim Prozentwert. --}}
+                                @if ($eventReleaseMode === 'sequential' && $i + 1 < count($rooms))
+                                    <div class="w-24">
+                                        <x-nx-input-number name="rooms.{{ $i }}.capacity_override" label="Plätze" size="sm" min="1" placeholder="auto" wire:model.live="rooms.{{ $i }}.capacity_override" />
+                                    </div>
+                                @endif
                                 <div class="w-36">
                                     <x-nx-input-select
                                         name="rooms.{{ $i }}.open_mode"
@@ -350,7 +357,7 @@
                                 @if (($rooms[$i]['open_mode'] ?? 'auto') === 'open')
                                     Immer buchbar, unabhängig von der Reihenfolge.
                                 @elseif (($rooms[$i]['open_mode'] ?? 'auto') === 'closed')
-                                    Nie buchbar – der Raum wird in der Reihenfolge übersprungen.
+                                    Nimmt keine neuen Buchungen an; bestehende bleiben. In der Reihenfolge übersprungen.
                                 @elseif ($eventReleaseMode !== 'sequential')
                                     Buchbar, wie alle Räume bei paralleler Freigabe.
                                 @elseif ($i === 0)
@@ -360,7 +367,9 @@
                                 @endif
 
                                 @if ($eventReleaseMode === 'sequential' && $i + 1 < count($rooms))
-                                    Ab {{ (int) ($rooms[$i]['fill_threshold_percent'] ?: 100) }} % Auslastung öffnet „{{ $this->planName($rooms[$i + 1]['floor_plan_id'] ?? null) }}".
+                                    Ab {{ (int) ($rooms[$i]['fill_threshold_percent'] ?: 100) }} % von
+                                    {{ $this->plaetzeText($rooms[$i]['floor_plan_id'] ?? null, $rooms[$i]['capacity_override'] ?? null) }}
+                                    öffnet „{{ $this->planName($rooms[$i + 1]['floor_plan_id'] ?? null) }}".
                                 @endif
                             </p>
                         </div>

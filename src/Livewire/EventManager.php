@@ -133,6 +133,28 @@ class EventManager extends Component
             ->get();
     }
 
+    /**
+     * Wie viele Plätze für die Prozentrechnung gelten – und woher die Zahl kommt.
+     *
+     * Fertiger Satzteil statt zweier Werte, weil in der Vorlage keine
+     * Zwischenvariable gesetzt werden kann: Die einzeilige PHP-Direktive ist
+     * dort unbrauchbar, solange weiter unten ein schliessender Block steht.
+     */
+    public function plaetzeText(?int $floorPlanId, $override): string
+    {
+        $eigen = (int) ($override ?: 0);
+
+        if ($eigen > 0) {
+            return $eigen . ' Plätzen (eingestellt)';
+        }
+
+        $summe = (int) ($this->roomTables->firstWhere('id', $floorPlanId)?->tables->sum('capacity') ?? 0);
+
+        return $summe > 0
+            ? $summe . ' Plätzen (Summe der Tische)'
+            : 'den Plätzen des Raums';
+    }
+
     /** Name eines Tischplans – für den Hinweis „gibt X frei" in der Raumliste. */
     public function planName(?int $floorPlanId): string
     {
