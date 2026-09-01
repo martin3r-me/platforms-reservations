@@ -361,8 +361,19 @@ also außerhalb der Bestellzeiten.
 **4 – Wann und Warenkorb.** *(erledigt 01.09.2026, im Shop – noch nicht ausgerollt)* Pausen-Schritt, Warenkorb je Pause, Übersicht und
 Bestätigung je Pause. Danach ist Modus `event` vollständig verkaufbar.
 
-**5 – Tisch je Pause.** Modus `slot` im Shop, Raumliste je Pause, Ortsangabe je
+**5 – Tisch je Pause.** *(erledigt 01.09.2026, im Shop – noch nicht ausgerollt)* Modus `slot` im Shop, Raumliste je Pause, Ortsangabe je
 Pause in Übersicht, Mail und Bon.
+
+Zu den Etappen 4 und 5 nachgetragen: Der Sitzplatz-Schritt bekam unterwegs eine
+Regel, die im Plan fehlte – **ein Tisch muss in JEDER gewählten Pause frei sein**,
+solange er dem Gast den ganzen Abend gehört. Ohne sie wählt der Gast einen Tisch,
+der in der zweiten Pause belegt ist, und erfährt es erst beim Bezahlen. Bei
+Bindung an die Pause gilt sie nicht – dort darf er umziehen –, bleibt aber als
+Vorschlag: derselbe Tisch, wo er frei ist.
+
+Dazu ein Fall, den es vorher nicht gab: Die Schnittmenge kann leer sein, obwohl
+in jeder Pause einzeln Platz wäre. Der Shop sagt das und schickt zurück zur
+Pausenwahl.
 
 **6 – Live-Sicht auf laufende Checkouts.** Erst jetzt: Ein gespeicherter Schritt
 hat ab Etappe 3 einen Namen, den ein späterer Umbau (Abholstationen, Schritt
