@@ -192,7 +192,7 @@ class EventController extends ApiController
             // Der Shop soll seine Personen-Auswahl daran ausrichten und nicht
             // an max_group_empty_table – das ist die weiche Tisch-Kapazität
             // und bedeutet etwas anderes.
-            'max_guest_count' => $model->maxGuestCount(),
+            'max_guest_count' => $model->maxGuestCount($settings),
             'texts' => [
                 'age_check'   => $ageText,
                 'legal'       => $legalText,
@@ -297,7 +297,7 @@ class EventController extends ApiController
             'guest.company'         => ['nullable', 'string', 'max:255'],
             'guest.email'           => $settings->guestFieldRule('email', ['email', 'max:255']),
             'guest.phone'           => $settings->guestFieldRule('phone', ['string', 'max:40']),
-            'guest.count'           => ['required', 'integer', 'min:1', 'max:' . $model->maxGuestCount()],
+            'guest.count'           => ['required', 'integer', 'min:1', 'max:' . $model->maxGuestCount($settings)],
             'guest.notes'           => $settings->guestFieldRule('notes', ['string']),
             'guest.billing'         => ['nullable', 'array'],
             'guest.billing.street'  => ['nullable', 'string', 'max:255'],

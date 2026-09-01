@@ -741,11 +741,12 @@ die nichts mit Stationen zu tun hat.
 Beim Prüfen gefunden, alle ohne Bezug zu diesem Feature:
 
 1. `RoomReleaseService::openRooms()` – kein Aufrufer (Abschnitt N).
-2. `BookingConfirmationMailer` – kein Aufrufer. Verschickt wird ausschließlich der
-   `OrderConfirmationMailer` aus dem Mollie-Webhook. Sein Template enthält als **einzige**
-   Stelle im ganzen Modul einen ungeschützten `$booking->table->label`
-   (`emails/booking-confirmation.blade.php:47`) – tot und damit harmlos, aber genau die
-   Zeile, die eine Stationsbuchung zerlegen würde, falls jemand den Mailer wiederbelebt.
+2. `BookingConfirmationMailer` – **am 01.09.2026 entfernt.** Er hatte keinen Aufrufer,
+   weder im Modul noch in einer der Office-Apps; verschickt wird ausschließlich der
+   `OrderConfirmationMailer` aus dem Mollie-Webhook. Sein Template enthielt als einzige
+   Stelle im Modul einen ungeschützten `$booking->table->label` – tot und damit harmlos,
+   aber genau die Zeile, die eine Stationsbuchung zerlegt hätte, wenn ihn jemand
+   wiederbelebt hätte.
 3. `DropoffSlot` samt Tabelle und Maske – geht in Etappe 6.
 
 Alle übrigen Stellen mit `->table->` ohne `?->` sind durch ein `@if` gedeckt – geprüft

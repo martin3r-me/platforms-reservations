@@ -23,7 +23,8 @@ class EventPublishTool implements ToolContract, ToolMetadataContract
     {
         return 'POST /reservation/events/publish - Setzt den Termin-Status. REST-Parameter: uuid (Pflicht), '
             . 'status (draft|announced|published|closed|cancelled) ODER publish (bool, Default true → published; '
-            . 'false → draft). status gewinnt, wenn beides kommt. Veröffentlichen erfordert mindestens einen Pausen-Slot; '
+            . 'false → draft). status gewinnt, wenn beides kommt. Veröffentlichen erfordert mindestens einen '
+            . 'Pausen-Slot UND einen zugewiesenen Raum (sonst NOT_PUBLISHABLE mit Angabe, was fehlt); '
             . 'announced ist der Zustand „steht im Shop, Vorbestellung noch nicht offen".';
     }
 
@@ -68,8 +69,18 @@ class EventPublishTool implements ToolContract, ToolMetadataContract
 
             $target ??= ((bool) ($arguments['publish'] ?? true)) ? Event::STATUS_PUBLISHED : Event::STATUS_DRAFT;
 
-            if ($target === Event::STATUS_PUBLISHED && $event->slots_count < 1) {
-                return ToolResult::error('Zum Veröffentlichen wird mindestens ein Pausen-Slot benötigt.', 'NO_SLOTS');
+            // Dieselbe Regel wie in der Oberfläche - vorher prüfte dieses
+            // Werkzeug nur die Pause und liess Termine ohne Raum durch. Die
+            // standen dann im Shop, ohne dass jemand etwas buchen konnte.
+            if ($target === Event::STATUS_PUBLISHED) {
+                $fehlt = $event->fehltZumVeroeffentlichen();
+
+                if ($fehlt !== []) {
+                    return ToolResult::error(
+                        'Zum Veröffentlichen fehlt dem Termin noch: ' . implode(' und ', $fehlt) . '.',
+                        'NOT_PUBLISHABLE'
+                    );
+                }
             }
 
             $event->update(['status' => $target]);

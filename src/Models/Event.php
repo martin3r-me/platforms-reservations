@@ -202,13 +202,49 @@ class Event extends Model
      * Bewusst nicht beim Anlegen kopiert – ändert das Haus seine Vorgabe,
      * sollen die Termine folgen, die nie eine eigene bekommen haben.
      */
-    public function maxGuestCount(): int
+    public function maxGuestCount(?CheckoutSetting $einstellungen = null): int
     {
         $eigen = (int) ($this->max_guest_count ?? 0);
 
-        return $eigen > 0
-            ? $eigen
-            : CheckoutSetting::forTeam((int) $this->team_id)->maxGuestCount();
+        if ($eigen > 0) {
+            return $eigen;
+        }
+
+        // Die Einstellungen dürfen mitgegeben werden, wo der Aufrufer sie
+        // ohnehin schon geladen hat. CheckoutSetting::forTeam() ist ein
+        // firstOrNew ohne Zwischenspeicher - ohne diesen Weg fragt allein die
+        // Checkout-Antwort zweimal dieselbe Zeile ab.
+        return ($einstellungen ?? CheckoutSetting::forTeam((int) $this->team_id))->maxGuestCount();
+    }
+
+    /**
+     * Was dem Termin zum Veröffentlichen fehlt – leer heißt: nichts.
+     *
+     * DIE Regel, nicht eine von mehreren. Sie stand vorher zweimal und
+     * verschieden: Die Oberfläche verlangte Pause UND Raum, das MCP-Werkzeug nur
+     * eine Pause. Wer über MCP veröffentlichte, umging die Bedingung also – und
+     * ein Termin ohne Raum steht im Shop, ohne dass jemand etwas buchen kann.
+     * Es gibt dort schlicht keinen Tisch.
+     *
+     * Gibt Klartext zurück statt true/false, weil beide Aufrufer dem Nutzer
+     * sagen sollen, WAS fehlt – die Oberfläche in einer Meldung, das Werkzeug in
+     * seiner Antwort.
+     *
+     * @return array<int, string>
+     */
+    public function fehltZumVeroeffentlichen(): array
+    {
+        $fehlt = [];
+
+        if ($this->slots()->count() < 1) {
+            $fehlt[] = 'ein Pausen-Slot';
+        }
+
+        if (! $this->eventRooms()->exists()) {
+            $fehlt[] = 'ein Raum';
+        }
+
+        return $fehlt;
     }
 
     /** Bestellschluss erreicht? (kein Deadline gesetzt = offen) */

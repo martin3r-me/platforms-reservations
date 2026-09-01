@@ -493,8 +493,12 @@ class EventManager extends Component
     {
         $event = Event::with('slots')->findOrFail($id);
 
-        if ($event->slots->isEmpty() || !$event->eventRooms()->exists()) {
-            session()->flash('event_error', 'Zum Veröffentlichen braucht der Termin mindestens einen Pausen-Slot und einen Raum.');
+        // Die Regel steht am Modell, damit Oberfläche und MCP-Werkzeug dieselbe
+        // benutzen – siehe Event::fehltZumVeroeffentlichen().
+        $fehlt = $event->fehltZumVeroeffentlichen();
+
+        if ($fehlt !== []) {
+            session()->flash('event_error', 'Zum Veröffentlichen fehlt dem Termin noch: ' . implode(' und ', $fehlt) . '.');
             return;
         }
 

@@ -24,7 +24,9 @@ class EventPublishBulkTool implements ToolContract, ToolMetadataContract
         return 'POST /reservation/events/publish/bulk - Setzt den Status mehrerer Termine. REST-Parameter: '
             . 'event_uuids (Array), status (draft|announced|published|closed|cancelled) ODER publish (bool, '
             . 'Default true → published; false → draft). status gewinnt, wenn beides kommt. '
-            . 'Veröffentlichen überspringt Termine ohne Pausen-Slot; announced ist der Zustand '
+            . 'Veröffentlichen überspringt Termine ohne Pausen-Slot (skipped_no_slot) und ohne '
+            . 'zugewiesenen Raum (skipped_no_room) - beide werden gemeldet, der Stapel läuft weiter; '
+            . 'announced ist der Zustand '
             . '„steht im Shop, Vorbestellung noch nicht offen".';
     }
 
@@ -68,9 +70,10 @@ class EventPublishBulkTool implements ToolContract, ToolMetadataContract
             // ankündigen darf man einen Termin, dessen Pausen noch nicht stehen.
             $publish = $status === Event::STATUS_PUBLISHED;
 
-            $changed     = 0;
+            $changed       = 0;
             $skippedNoSlot = [];
-            $notFound    = [];
+            $skippedNoRoom = [];
+            $notFound      = [];
 
             foreach ($uuids as $uuid) {
                 $event = Event::withoutGlobalScope('team')
@@ -84,9 +87,22 @@ class EventPublishBulkTool implements ToolContract, ToolMetadataContract
                     continue;
                 }
 
-                if ($publish && $event->slots_count < 1) {
-                    $skippedNoSlot[] = (string) $uuid;
-                    continue;
+                // Nicht abbrechen, sondern überspringen und zurückmelden: Ein
+                // Stapel von fünfzig Terminen soll nicht an einem scheitern.
+                // Was fehlt, steht getrennt in der Antwort - so sieht der
+                // Aufrufer, ob eine Pause fehlt oder ein Raum.
+                if ($publish) {
+                    $fehlt = $event->fehltZumVeroeffentlichen();
+
+                    if (in_array('ein Pausen-Slot', $fehlt, true)) {
+                        $skippedNoSlot[] = (string) $uuid;
+                        continue;
+                    }
+
+                    if ($fehlt !== []) {
+                        $skippedNoRoom[] = (string) $uuid;
+                        continue;
+                    }
                 }
 
                 $event->update(['status' => $status]);
@@ -97,6 +113,8 @@ class EventPublishBulkTool implements ToolContract, ToolMetadataContract
                 'changed_count'        => $changed,
                 'skipped_no_slot_count'=> count($skippedNoSlot),
                 'skipped_no_slot'      => $skippedNoSlot,
+                'skipped_no_room_count'=> count($skippedNoRoom),
+                'skipped_no_room'      => $skippedNoRoom,
                 'not_found_count'      => count($notFound),
                 'not_found'            => $notFound,
                 'status'               => $status,
