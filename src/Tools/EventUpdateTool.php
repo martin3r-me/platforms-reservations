@@ -25,7 +25,7 @@ class EventUpdateTool implements ToolContract, ToolMetadataContract
     {
         return 'PATCH /reservation/events - Aktualisiert einen Termin. REST-Parameter: uuid (Pflicht); '
             . 'name, date, description, order_deadline_at, venue_id, sales_list_id, room_release_mode, '
-            . 'max_guest_count (null = Vorgabe des Teams) (optional). '
+            . 'max_guest_count (null = Vorgabe des Teams), table_binding (event|slot|null) (optional). '
             . 'Status wird über publish/unpublish gesetzt.';
     }
 
@@ -43,6 +43,7 @@ class EventUpdateTool implements ToolContract, ToolMetadataContract
                 'sales_list_id'     => ['type' => 'integer'],
                 'room_release_mode' => ['type' => 'string', 'enum' => ['parallel', 'sequential']],
                 'max_guest_count'   => ['type' => ['integer', 'null'], 'description' => 'Groesste buchbare Gruppe; null = Vorgabe des Teams.'],
+                'table_binding'     => ['type' => ['string', 'null'], 'enum' => ['event', 'slot', null], 'description' => 'Wem gehoert ein Tisch bei mehreren Pausen: event = dem Gast den ganzen Abend (eine Tischwahl fuer alle Pausen), slot = jede Pause wird einzeln vergeben. Bei Terminen mit nur EINER Pause ohne Wirkung - beide rechnen dann gleich. null = Vorgabe des Teams.'],
             ],
             'required'   => ['uuid'],
         ];
@@ -67,6 +68,7 @@ class EventUpdateTool implements ToolContract, ToolMetadataContract
                 'sales_list_id'     => 'nullable|integer',
                 'room_release_mode' => 'sometimes|in:parallel,sequential',
                 'max_guest_count'   => 'sometimes|nullable|integer|min:1|max:200',
+                'table_binding'     => 'sometimes|nullable|in:event,slot',
             ]);
 
             if ($validator->fails()) {
@@ -94,7 +96,7 @@ class EventUpdateTool implements ToolContract, ToolMetadataContract
 
             $event->update(collect($validator->validated())->only([
                 'name', 'date', 'description', 'order_deadline_at', 'venue_id', 'sales_list_id', 'room_release_mode',
-                'max_guest_count',
+                'max_guest_count', 'table_binding',
             ])->all());
 
             return ToolResult::success([
