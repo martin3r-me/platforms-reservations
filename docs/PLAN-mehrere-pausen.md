@@ -337,18 +337,26 @@ Das wäre die erste eingecheckte Testbasis des Moduls (vgl.
 
 ## K. Etappen
 
-**1 – Rechnen.** Spalten, Modelle (`Event::tableBinding()`), Parteien-Zählung im
+**1 – Rechnen.** *(erledigt 01.09.2026)* Spalten, Modelle (`Event::tableBinding()`), Parteien-Zählung im
 `SeatAvailabilityService`, Testbasis. Ohne Oberfläche. Bei einer Pause ändert sich
 nichts – deploybar, ohne dass irgendwer etwas merkt.
 
-**2 – Einstellen.** Terminformular, Team-Standard, Umstell-Rückfrage, zweite Zahl
+**2 – Einstellen.** *(erledigt 01.09.2026)* Terminformular, Team-Standard, Umstell-Rückfrage, zweite Zahl
 im VA-Dashboard. Ab hier kann das Haus mehrpausige Termine korrekt anlegen; der
 Shop kann sie noch nicht verkaufen.
 
-**3 – Schritt-Liste.** Der Wizard bekommt benannte Schritte statt Nummern, die
+**3 – Schritt-Liste.** *(erledigt 01.09.2026, im Shop – noch nicht ausgerollt)* Der Wizard bekommt benannte Schritte statt Nummern, die
 Plausible-Ziele hängen an Namen. **Ohne sichtbare Änderung** – derselbe Ablauf,
 andere Mechanik. Eigener Schritt, damit ein Fehler hier nicht mit einem Fehler in
 der Pausenlogik zusammenfällt.
+
+Zu Etappe 3 nachgetragen: Die Schritte heißen `party`, `products`, `seat`,
+`guest`, `pay` – dieselben Werte wie die Übersetzungsschlüssel
+(`checkout.steps.*`), damit es keine zweite Liste gibt. Beim Benennen fielen ein
+toter Bestätigungs-Block („Step 5") und die unbenutzte Eigenschaft
+`bookingReference` auf; beide sind weg. **Beim Ausrollen zu beachten:** `$step`
+wechselt von int auf string, laufende Bestellwege verlieren dabei ihre Sitzung –
+also außerhalb der Bestellzeiten.
 
 **4 – Wann und Warenkorb.** Pausen-Schritt, Warenkorb je Pause, Übersicht und
 Bestätigung je Pause. Danach ist Modus `event` vollständig verkaufbar.
