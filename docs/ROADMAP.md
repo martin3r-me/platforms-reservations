@@ -12,20 +12,23 @@ https://historische-stadthalle-wuppertal-culinaria.guestofy.events/#/
 Vier Vorhaben stehen an. Die Reihenfolge ergibt sich aus ihren Abhängigkeiten,
 nicht aus ihrer Größe.
 
-**1. Sequenzielle Raumfreigabe fertigstellen.** Zuerst, weil es als einziges nicht
-fehlt, sondern falsch ist: `RoomReleaseService::openRooms()` wird seit `a97d904`
-im VA-Dashboard benutzt und zeigt an, ob ein Raum offen ist – die Gast-API fragt
-ihn nicht, und `GuestOrderService::store()` nimmt die Buchung trotzdem an. Zwei
-Bildschirme widersprechen sich. Solange jeder Termin genau einen Raum hat, kann
-es nicht auffallen; beim ersten mit zweien schon. Culinaria hat
-`default_room_release_mode` auf `sequential` stehen, und die Einstellung soll
-breiter genutzt werden. Umfang: API markiert offen/geschlossen (markieren, nicht
-weglassen), Shop zeigt es gesperrt, `store()` weist ab, Backoffice bleibt außen
-vor. Offene Fachfrage: ob „voll" wirklich 100 % heißt – `fill_threshold_percent`
-steht auf 100, damit blockiert ein Rest von zwei Plätzen jede Vierergruppe.
-Details in `PLAN-abholstationen.md`, Abschnitt N.
+**1. ~~Sequenzielle Raumfreigabe fertigstellen.~~ Erledigt am 01.09.2026.**
+Sie wurde nur im VA-Dashboard angezeigt, im Bestellweg aber nicht gefragt – zwei
+Bildschirme widersprachen sich. Jetzt liefert die Gast-API je Raum und Pause
+offen/zu samt Begründung, der Shop zeigt gesperrte Räume mit dem Grund statt sie
+wegzulassen, und `store()` weist mit `ROOM_CLOSED` ab (nur auf dem Gast-Weg).
+Dabei mitgenommen: Ein von Hand geschlossener Raum hielt die Kette an; er wird
+jetzt übersprungen. Der Shop kannte zuvor ohnehin nur `rooms[0]` – bei zwei
+Räumen sah der Gast den zweiten nie. Dazu eine Einstellung, ob gesperrte Räume
+überhaupt sichtbar sind, und eine Rückfrage vor dem Entfernen eines Raums mit
+Buchungen.
 
-**2. Abholstationen, Etappe 1** (`PLAN-abholstationen.md`). Migrationen, Modelle,
+**Weiterhin offen ist die Fachfrage:** ob „voll" wirklich 100 % heißt.
+`fill_threshold_percent` steht auf 100, damit blockiert ein Rest von zwei Plätzen
+jede Vierergruppe. Der Wert ist je Raum einstellbar; die Antwort liegt beim
+Kunden.
+
+**2. Abholstationen, Etappe 1** *(auf Wunsch zurückgestellt – großes Feature, 01.09.2026)* (`PLAN-abholstationen.md`). Migrationen, Modelle,
 Zielort, Guard, Kapazitätsdienst – und die erste **eingecheckte Testbasis** des
 Moduls. Ohne Oberfläche: deploybar, ohne dass sich etwas ändert. Hängt an keiner
 offenen Frage.
