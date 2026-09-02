@@ -155,24 +155,9 @@ class GuestOrderService
                 throw new GuestOrderException('Der gewählte Tisch gehört nicht zu diesem Termin.', 'TABLE_NOT_IN_EVENT');
             }
 
-            // Raumfreigabe: Bei sequentieller Reihenfolge ist Raum 2 erst offen,
-            // wenn Raum 1 voll genug ist. Das stand bisher nur im VA-Dashboard -
-            // der Bestellweg fragte gar nicht, und der Shop nahm Buchungen in
-            // Räumen an, die das Haus als geschlossen sah. Zwei Bildschirme,
-            // zwei Wahrheiten.
-            //
-            // Nur der GAST-Weg prüft das. Wer telefonisch bucht, entscheidet
-            // selbst - das ist der Sinn eines Backoffice-Wegs.
-            if ($pruefeFreigabe && ! $this->raumIstOffen($event, $slot, $table)) {
-                throw new GuestOrderException(
-                    'Dieser Raum ist für die gewählte Pause noch nicht freigegeben.',
-                    'ROOM_CLOSED'
-                );
-            }
-
-            if (! $this->seats->canSeat($table, $slot, (int) $guest['count'], $softCapacity, $maxGroup)) {
-                throw new GuestOrderException('Ein gewählter Tisch hat nicht genügend freie Plätze.', 'TABLE_FULL');
-            }
+            // Belegung und Raumfreigabe werden hier NICHT geprüft - beide
+            // hängen davon ab, was andere Gäste in derselben Sekunde tun.
+            // Sie stehen in der Transaktion weiter unten.
 
             $prepared[] = ['slot' => $slot, 'table' => $table, 'lines' => $lines];
             $allLines    = $allLines->merge($lines);
@@ -182,7 +167,20 @@ class GuestOrderService
             throw new GuestOrderException('Die Bestellung enthält alkoholische Getränke – Altersbestätigung erforderlich.', 'AGE_REQUIRED');
         }
 
-        $order = DB::transaction(function () use ($event, $guest, $prepared, $allLines, $orderStatus, $bookingStatus, $paymentMethod) {
+        $order = DB::transaction(function () use ($event, $guest, $prepared, $allLines, $orderStatus, $bookingStatus, $paymentMethod, $pruefeFreigabe, $softCapacity, $maxGroup) {
+            // ERSTE Anweisung der Transaktion, und das ist kein Zufall:
+            //
+            // Die Tische werden gesperrt, BEVOR irgendetwas gelesen wird. Eine
+            // sperrende Abfrage liest immer den zuletzt festgeschriebenen
+            // Stand; eine gewöhnliche legt in MySQL dagegen den Schnappschuss
+            // der Transaktion fest. Stünde vor dieser Zeile ein einfaches
+            // SELECT, arbeitete die Platzprüfung danach mit einem Stand von
+            // VOR dem Warten auf die Sperre - und wäre damit genau so blind
+            // wie vorher.
+            $this->tischeSperren($prepared);
+
+            $this->platzPruefen($event, $prepared, (int) $guest['count'], $pruefeFreigabe, $softCapacity, $maxGroup);
+
             $billing = (array) ($guest['billing'] ?? []);
 
             $order = Order::create([
@@ -243,5 +241,96 @@ class GuestOrderService
         $order->load(['bookings' => fn ($q) => $q->withoutGlobalScope('team')->with('items')]);
 
         return $order;
+    }
+
+    /**
+     * Die betroffenen Tische für die Dauer der Transaktion sperren.
+     *
+     * Der Tisch ist die Einheit, um die zwei Gäste streiten können, also wird
+     * er zum Engpass gemacht: Wer als Zweiter kommt, wartet, liest danach die
+     * echte Belegung und bekommt sein TABLE_FULL. Gesperrt wird die
+     * TISCH-Zeile, nicht die Buchungen - die es ja noch nicht gibt. Genau
+     * deshalb hilft eine Sperre auf den vorhandenen Buchungen nicht: Das
+     * Problem ist die Zeile, die beide gleich anlegen wollen.
+     *
+     * Nach Id sortiert, und das ist wichtig: Zwei Bestellungen über dieselben
+     * zwei Tische in verschiedener Reihenfolge könnten sich sonst gegenseitig
+     * blockieren. Eine feste Reihenfolge schließt das aus.
+     *
+     * Nicht gesperrt wird der ganze Termin. Das wäre einfacher und würde einen
+     * Vorverkaufsansturm zu einer Warteschlange machen - für ein Problem, das
+     * nur zwischen Gästen AM SELBEN TISCH auftreten kann.
+     *
+     * @param  array<int, array{slot: mixed, table: Table, lines: Collection}>  $prepared
+     */
+    protected function tischeSperren(array $prepared): void
+    {
+        $ids = collect($prepared)
+            ->map(fn ($p) => (int) $p['table']->id)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        Table::withoutGlobalScope('team')
+            ->whereIn('id', $ids)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+    }
+
+    /**
+     * Platz und Raumfreigabe prüfen – innerhalb der Transaktion, nach der Sperre.
+     *
+     * Beides stand früher in der Vorbereitung, also VOR der Transaktion. Damit
+     * lag zwischen „ist noch Platz?" und „Buchung anlegen" ein Zeitfenster, in
+     * dem ein zweiter Gast dasselbe tun konnte. Beide sahen freie Plätze, beide
+     * schrieben - und am Abend standen mehr Gäste am Tisch, als daran passen.
+     * Auffallen würde das niemandem am Bildschirm; die Zahlen sind hinterher
+     * stimmig, nur der Tisch ist zu klein.
+     *
+     * Die Fehlermeldungen bleiben dieselben. Dass sie jetzt aus einer
+     * Transaktion kommen, ist folgenlos: Eine Ausnahme rollt sie vollständig
+     * zurück, es bleibt weder eine halbe Bestellung noch eine Buchung stehen.
+     *
+     * Was diese Sperre NICHT abdeckt: die sequentielle Raumfreigabe. Sie liest
+     * die Belegung des vorherigen Raums, also fremde Tische. Zwei gleichzeitige
+     * Bestellungen können dort zu unterschiedlichen Antworten kommen - dann
+     * öffnet der nächste Raum eine Buchung später. Das ist eine Verzögerung,
+     * kein überbelegter Tisch, und den ganzen Termin dafür zu sperren wäre
+     * teurer als der Fehler.
+     *
+     * @param  array<int, array{slot: mixed, table: Table, lines: Collection}>  $prepared
+     *
+     * @throws GuestOrderException
+     */
+    protected function platzPruefen(
+        Event $event,
+        array $prepared,
+        int $partySize,
+        bool $pruefeFreigabe,
+        bool $softCapacity,
+        ?int $maxGroup,
+    ): void {
+        foreach ($prepared as $p) {
+            // Raumfreigabe: Bei sequentieller Reihenfolge ist Raum 2 erst offen,
+            // wenn Raum 1 voll genug ist. Das stand bisher nur im VA-Dashboard -
+            // der Bestellweg fragte gar nicht, und der Shop nahm Buchungen in
+            // Räumen an, die das Haus als geschlossen sah. Zwei Bildschirme,
+            // zwei Wahrheiten.
+            //
+            // Nur der GAST-Weg prüft das. Wer telefonisch bucht, entscheidet
+            // selbst - das ist der Sinn eines Backoffice-Wegs.
+            if ($pruefeFreigabe && ! $this->raumIstOffen($event, $p['slot'], $p['table'])) {
+                throw new GuestOrderException(
+                    'Dieser Raum ist für die gewählte Pause noch nicht freigegeben.',
+                    'ROOM_CLOSED'
+                );
+            }
+
+            if (! $this->seats->canSeat($p['table'], $p['slot'], $partySize, $softCapacity, $maxGroup)) {
+                throw new GuestOrderException('Ein gewählter Tisch hat nicht genügend freie Plätze.', 'TABLE_FULL');
+            }
+        }
     }
 }

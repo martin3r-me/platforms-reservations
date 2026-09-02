@@ -8,7 +8,10 @@ use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\EventRoom;
 use Platform\Reservation\Models\EventSlot;
 use Platform\Reservation\Models\FloorPlan;
+use Platform\Reservation\Models\MenuCategory;
+use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Order;
+use Platform\Reservation\Models\SalesList;
 use Platform\Reservation\Models\Table;
 use Platform\Reservation\Models\Venue;
 
@@ -121,6 +124,39 @@ trait ErzeugtTermine
         $einstellungen->save();
 
         return $einstellungen;
+    }
+
+    /**
+     * Ein freigegebener Artikel in der Standard-Verkaufsliste des Teams.
+     *
+     * Weniger geht nicht: Ohne Verkaufsliste liefert der CartCalculator eine
+     * leere Menge, und jede Bestellung scheitert an INVALID_ITEMS statt an dem,
+     * was der Test eigentlich prüft.
+     */
+    protected function artikel(float $preis = 5.0): MenuItem
+    {
+        $liste = SalesList::firstOrCreate(
+            ['team_id' => $this->teamId, 'is_default' => true],
+            ['name' => 'Standard'],
+        );
+
+        $kategorie = MenuCategory::firstOrCreate(
+            ['team_id' => $this->teamId, 'name' => 'Test'],
+        );
+
+        $artikel = MenuItem::create([
+            'team_id'         => $this->teamId,
+            'category_id'     => $kategorie->id,
+            'name'            => 'Testartikel',
+            'price'           => $preis,
+            'tax_rate'        => 19,
+            'available'       => true,
+            'approval_status' => MenuItem::APPROVAL_APPROVED,
+        ]);
+
+        $liste->menuItems()->attach($artikel->id);
+
+        return $artikel;
     }
 
     protected function pause(Event $event, int $nummer): EventSlot
