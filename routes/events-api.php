@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Platform\Reservation\Http\Controllers\Api\CheckoutSessionController;
 use Platform\Reservation\Http\Controllers\Api\EventController;
 
 /**
@@ -43,3 +44,10 @@ Route::get('/orders/{order}', [EventController::class, 'orderByUuid'])
 // Signierte PDF-URL eines Belegs (?type=confirmation|bewirtungsbeleg).
 Route::get('/orders/{order}/receipt', [EventController::class, 'orderReceipt'])
     ->name('reservation.api.orders.receipt');
+
+// Laufende Bestellwege: Der Shop meldet, wo ein Gast gerade steht, und loescht
+// den Eintrag nach der Bestellung. Nur schreibend - gelesen wird im Office.
+Route::post('/events/{event}/checkout-sessions', [CheckoutSessionController::class, 'store'])
+    ->name('reservation.api.events.checkout-sessions.store');
+Route::delete('/events/{event}/checkout-sessions/{ref}', [CheckoutSessionController::class, 'destroy'])
+    ->name('reservation.api.events.checkout-sessions.destroy');

@@ -1,0 +1,133 @@
+<?php
+
+namespace Platform\Reservation\Services;
+
+use Illuminate\Support\Collection;
+use Platform\Reservation\Models\CheckoutSession;
+use Platform\Reservation\Models\Event;
+
+/**
+ * Laufende Bestellwege: melden, beenden, abfragen, aufräumen.
+ *
+ * Die einzige Stelle, die reservation_checkout_sessions schreibt. Alle Abfragen
+ * laufen mit ausdrücklichem Team statt über den globalen Scope – auf dem
+ * API-Weg ist ein User eingeloggt (Passport-Token), dessen aktives Team nicht
+ * das des Termins sein muss. Gleiches Muster wie im EventController.
+ */
+class LiveCheckoutService
+{
+    /**
+     * Stand eines Bestellwegs melden. Legt an oder überschreibt.
+     *
+     * Das Team kommt aus dem TERMIN, nie aus der Anfrage: Wer den Endpunkt
+     * aufruft, bestimmt damit nicht, in wessen Haus die Zeile landet.
+     *
+     * @param  array<string, mixed>  $daten
+     */
+    public function merken(Event $event, string $ref, array $daten): CheckoutSession
+    {
+        $this->vielleichtAufraeumen();
+
+        return CheckoutSession::withoutGlobalScope('team')->updateOrCreate(
+            [
+                'team_id'      => (int) $event->team_id,
+                'checkout_ref' => $ref,
+            ],
+            [
+                'event_id'      => $event->id,
+                'event_slot_id' => $this->eigenePause($event, $daten['event_slot_id'] ?? null),
+                'step'          => (string) $daten['step'],
+                'party_size'    => isset($daten['party_size']) ? max(0, (int) $daten['party_size']) : null,
+                'items_count'   => max(0, (int) ($daten['items_count'] ?? 0)),
+                'cart_total'    => round(max(0, (float) ($daten['cart_total'] ?? 0)), 2),
+                'last_seen_at'  => now(),
+            ],
+        );
+    }
+
+    /** Bestellweg abgeschlossen oder abgebrochen – Zeile weg. */
+    public function beenden(Event $event, string $ref): void
+    {
+        CheckoutSession::withoutGlobalScope('team')
+            ->where('team_id', (int) $event->team_id)
+            ->where('checkout_ref', $ref)
+            ->delete();
+    }
+
+    /**
+     * Was gerade läuft, neueste zuerst.
+     *
+     * @return Collection<int, CheckoutSession>
+     */
+    public function laufende(Event $event): Collection
+    {
+        return CheckoutSession::withoutGlobalScope('team')
+            ->where('team_id', (int) $event->team_id)
+            ->forEvent($event->id)
+            ->lebendig()
+            ->with(['slot' => fn ($q) => $q->withoutGlobalScope('team')])
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
+    /**
+     * Die drei Zahlen über der Liste.
+     *
+     * `cart_total` ist ausdrücklich KEIN erwarteter Umsatz – in jedem dieser
+     * Warenkörbe kann noch alles passieren. Die Zahl beantwortet nur, ob dort
+     * gerade etwas Nennenswertes hängt.
+     *
+     * @return array{anzahl: int, gaeste: int, warenkorb: float}
+     */
+    public function zusammenfassung(Collection $laufende): array
+    {
+        return [
+            'anzahl'    => $laufende->count(),
+            'gaeste'    => (int) $laufende->sum('party_size'),
+            'warenkorb' => round((float) $laufende->sum(fn (CheckoutSession $s) => (float) $s->cart_total), 2),
+        ];
+    }
+
+    /** Alles, was lange nichts mehr von sich hören ließ. */
+    public function aufraeumen(): int
+    {
+        return CheckoutSession::withoutGlobalScope('team')
+            ->where('last_seen_at', '<', now()->subMinutes(CheckoutSession::AUFRAEUMEN_NACH_MINUTEN))
+            ->delete();
+    }
+
+    /**
+     * Die gemeldete Pause muss zu DIESEM Termin gehören.
+     *
+     * Sonst stünde in der Ansicht eines Termins die Pause eines anderen – und
+     * bei fremdem Team wäre es ein Datenleck über die Beschriftung.
+     */
+    protected function eigenePause(Event $event, mixed $slotId): ?int
+    {
+        $slotId = (int) $slotId;
+
+        if ($slotId < 1) {
+            return null;
+        }
+
+        $event->loadMissing('slots');
+
+        return $event->slots->contains('id', $slotId) ? $slotId : null;
+    }
+
+    /**
+     * Aufräumen per Los, 2 von 100 Schreibvorgängen.
+     *
+     * Ohne Zeitplaner mit Absicht: Ein Cronjob wäre eine Abhängigkeit zur
+     * Wirtsanwendung, die das Modul sonst nirgends hat – und ein nicht
+     * eingerichteter Zeitplaner fiele niemandem auf, weil die Ansicht ja
+     * ohnehin nach last_seen_at filtert. Dasselbe Muster benutzt Laravel für
+     * seine Sessions.
+     */
+    protected function vielleichtAufraeumen(): void
+    {
+        if (random_int(1, 100) <= 2) {
+            $this->aufraeumen();
+        }
+    }
+}
