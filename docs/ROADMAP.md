@@ -19,10 +19,13 @@ Frage mehr, seit der Schritt „Wo?" sich ohne Umnummerierung einhängen lässt.
 
 Das heißt aber nicht, dass sonst nichts offen wäre. Was außerhalb dieser Liste
 noch aussteht, steht weiter unten und ist teils dringender als die Stationen –
-insbesondere die **Concurrency-Härtung der Platzvergabe** und das
-**Bestellschluss-Enforcement** unter M2, beide als „vor Go-live zwingend"
-geführt und beide noch offen. Wer nach dem nächsten Schritt sucht, sollte diese
-zwei zuerst ansehen.
+und ist teils dringender als die Stationen.
+
+*(Nachtrag 02.09.2026: An dieser Stelle standen die Concurrency-Härtung und das
+Bestellschluss-Enforcement als „beide noch offen". Die Härtung ist inzwischen
+gebaut; das Enforcement war beim Nachsehen längst vollständig — die Zeile unter
+M2 war veraltet. Übrig aus diesem Punkt ist nur der Storno-Fall der
+sequenziellen Raumfreigabe.)*
 
 Die Reihenfolge der Vorhaben ergibt sich aus ihren Abhängigkeiten, nicht aus
 ihrer Größe.
@@ -211,9 +214,26 @@ ob (2) oder (3) überhaupt gebraucht wird.
       *(Der ursprünglich hier genannte `BookingConfirmationMailer` – eine Bestätigung je
       Buchung statt je Bestellung – ist am 01.09.2026 entfernt worden: Seit der
       Order-Klammer hatte er keinen Aufrufer mehr.)*
-- [ ] **Bestellschluss-Enforcement** härten (Altsystem: Uhrzeit am Veranstaltungstag, 20:00).
-- [ ] **Concurrency-Härtung** Platzvergabe (zwei Gäste buchen gleichzeitig die letzten Plätze)
-      + Sequential-Release bei Stornos.
+- [x] **Bestellschluss-Enforcement** — beim Nachsehen am 02.09.2026 bereits
+      vollständig, die Zeile war veraltet. `Event::isOrderable()` prüft Status UND
+      `order_deadline_at`; `GuestOrderService::place()` wirft `ORDER_CLOSED`, und
+      zwar an der einzigen Stelle, die Gast-Buchungen anlegt. Beide APIs melden
+      `orderable` mit, der Shop lässt danach gar nicht erst in den Bestellweg –
+      und wenn die Frist mitten im Bestellweg abläuft, fängt er den Fehlercode ab.
+      Termine ohne Frist (Altbestand) enden mit dem Veranstaltungstag statt ewig
+      offen zu bleiben.
+      *Bewusst ausgenommen:* der Backoffice-Weg (`placeForStaff`). Genau deshalb
+      ruft jemand an – der Shop ist dann schon zu.
+- [x] **Concurrency-Härtung Platzvergabe** — erledigt am 02.09.2026. Die Prüfung
+      „ist an diesem Tisch noch Platz?" stand vor der Transaktion, das Schreiben
+      darin; zwei gleichzeitige Bestellungen konnten denselben letzten Platz
+      bekommen. Jetzt sperrt die Transaktion zuerst die betroffenen Tische
+      (nach Id sortiert, als erste Anweisung) und prüft danach.
+- [ ] **Sequential-Release bei Stornos.** Stand mit im Punkt darüber, ist aber
+      eine andere Frage und noch offen: Storniert jemand im ersten Raum, ist der
+      nicht mehr voll – der zweite müsste dann eigentlich wieder zufallen. Was
+      passiert mit Buchungen, die dort schon liegen? Vermutlich: nichts, und der
+      Raum bleibt offen. Aber entschieden ist es nicht.
 - [x] **Termin duplizieren** im Admin (Saisonpflege: dutzende ähnliche Konzerte).
 - [x] **Tische pro Termin sperren** (Altsystem: `disabled_table_ids`).
 - [~] Import der echten **37 Artikel**: CSV-Beispielvorlage im Import-Dialog
