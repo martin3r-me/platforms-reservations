@@ -47,6 +47,7 @@ class LiveCheckoutService
                 'party_size'    => isset($daten['party_size']) ? max(0, (int) $daten['party_size']) : null,
                 'items_count'   => max(0, (int) ($daten['items_count'] ?? 0)),
                 'items'         => $this->warenkorb($event, $daten['items'] ?? null),
+                'tables'        => $this->tische($event, $daten['tables'] ?? null),
                 'cart_total'    => round(max(0, (float) ($daten['cart_total'] ?? 0)), 2),
                 'last_seen_at'  => now(),
             ],
@@ -146,6 +147,38 @@ class LiveCheckoutService
 
                 $sauber[(string) (int) $slotId][(string) $artikelId] = min($menge, 999);
             }
+        }
+
+        return $sauber === [] ? null : $sauber;
+    }
+
+    /**
+     * Die angeklickten Tische, { pause_id: tisch_id }.
+     *
+     * Geprueft wird hier nur die Pause. OB der Tisch zu diesem Termin gehoert,
+     * entscheidet die Ansicht beim Nachschlagen - ein fremder loest sich dort
+     * nicht auf. Das spart auf diesem Weg eine Abfrage ueber Tischplaene und
+     * Tische, und der laeuft bei JEDER Meldung.
+     *
+     * @return array<string, int>|null
+     */
+    protected function tische(Event $event, mixed $roh): ?array
+    {
+        if (! is_array($roh) || $roh === []) {
+            return null;
+        }
+
+        $event->loadMissing('slots');
+        $eigene = $event->slots->pluck('id')->all();
+
+        $sauber = [];
+
+        foreach ($roh as $slotId => $tischId) {
+            if (! in_array((int) $slotId, $eigene, true) || (int) $tischId < 1) {
+                continue;
+            }
+
+            $sauber[(string) (int) $slotId] = (int) $tischId;
         }
 
         return $sauber === [] ? null : $sauber;

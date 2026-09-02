@@ -41,7 +41,7 @@
                  sieht auch so aus. w-full und text-left, weil ein <button>
                  sonst weder die Breite noch die Ausrichtung der Zeile erbt. --}}
             @foreach ($this->laufende as $vorgang)
-                @php($hatKorb = $vorgang->hatWarenkorb())
+                @php($hatKorb = $vorgang->hatDetails())
                 <button type="button" wire:key="live-{{ $vorgang->id }}"
                     @if ($hatKorb) wire:click="warenkorbZeigen({{ $vorgang->id }})" @else disabled @endif
                     @class([
@@ -137,8 +137,16 @@
 
                 @foreach ($this->warenkorb as $abschnitt)
                     <div wire:key="korb-{{ $loop->index }}" class="mt-4">
-                        @if ($abschnitt['pause'])
-                            <p class="m-0 mb-1.5 text-xs font-semibold text-[color:var(--nx-muted)]">{{ $abschnitt['pause'] }}</p>
+                        {{-- Pause und Tisch in einer Zeile darüber. Bei einer
+                             einzigen Pause steht dort nur der Tisch – ihr Name
+                             wäre über der einzigen Liste ein Wort ohne Aussage. --}}
+                        @if ($abschnitt['pause'] || $abschnitt['tisch'])
+                            <p class="m-0 mb-1.5 text-xs font-semibold text-[color:var(--nx-muted)]">
+                                {{ $abschnitt['pause'] }}@if ($abschnitt['pause'] && $abschnitt['tisch']) · @endif{{ $abschnitt['tisch'] }}
+                            </p>
+                        @endif
+                        @if ($abschnitt['zeilen'] === [])
+                            <p class="m-0 text-[color:var(--nx-faint)]">Noch nichts im Warenkorb.</p>
                         @endif
                         @foreach ($abschnitt['zeilen'] as $zeile)
                             <div class="flex items-baseline gap-2 border-b border-[color:var(--nx-line)] py-1.5 last:border-0">
@@ -161,7 +169,9 @@
                      Bundles in ihre Bestandteile auf und kann davon abweichen. --}}
                 <p class="m-0 mt-2 text-[11px] text-[color:var(--nx-faint)]">
                     Nichts davon ist bestellt – der Gast steht noch im Bestellweg
-                    und kann alles ändern.
+                    und kann alles ändern. Auch der Tisch ist nur angeklickt: Er
+                    ist nicht reserviert, und ein zweiter Gast kann ihn im selben
+                    Moment im Blick haben.
                 </p>
             </div>
         @else

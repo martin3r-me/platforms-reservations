@@ -257,6 +257,42 @@ class LaufendeBestellwegeTest extends TestCase
         );
     }
 
+    public function test_der_angeklickte_tisch_wird_je_pause_gemerkt(): void
+    {
+        $termin = $this->termin(2);
+        $eins   = $this->pause($termin, 1);
+        $zwei   = $this->pause($termin, 2);
+
+        $this->dienst->merken($termin, $this->ref(), [
+            'step'   => 'seat',
+            'tables' => [$eins->id => 12, $zwei->id => 34],
+        ]);
+
+        $zeile = CheckoutSession::first();
+
+        // Je Pause ein eigener: Wird jede Pause einzeln vergeben, sitzt
+        // derselbe Gast spaeter woanders.
+        $this->assertSame([(string) $eins->id => 12, (string) $zwei->id => 34], $zeile->tables);
+
+        // Ein Tisch allein reicht fuers Fenster - beim Sitzplatz-Schritt kann
+        // er an einer Pause haengen, in der noch nichts im Korb liegt.
+        $this->assertTrue($zeile->hatDetails());
+        $this->assertFalse($zeile->hatWarenkorb());
+    }
+
+    public function test_ein_tisch_an_einer_fremden_pause_wird_verworfen(): void
+    {
+        $termin  = $this->termin(1);
+        $fremder = $this->termin(1);
+
+        $this->dienst->merken($termin, $this->ref(), [
+            'step'   => 'seat',
+            'tables' => [$this->pause($fremder, 1)->id => 12],
+        ]);
+
+        $this->assertNull(CheckoutSession::first()->tables);
+    }
+
     public function test_unbekannte_schritte_zeigen_ihren_rohnamen(): void
     {
         $zeile = new CheckoutSession(['step' => 'products']);

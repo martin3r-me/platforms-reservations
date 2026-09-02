@@ -50,6 +50,7 @@ class CheckoutSession extends Model
         'party_size',
         'items_count',
         'items',
+        'tables',
         'cart_total',
         'last_seen_at',
     ];
@@ -60,6 +61,7 @@ class CheckoutSession extends Model
         'party_size'   => 'integer',
         'items_count'  => 'integer',
         'items'        => 'array',
+        'tables'       => 'array',
         'cart_total'   => 'decimal:2',
         'last_seen_at' => 'datetime',
     ];
@@ -146,6 +148,17 @@ class CheckoutSession extends Model
     public function hatWarenkorb(): bool
     {
         return ! empty($this->items);
+    }
+
+    /**
+     * Gibt es etwas zu zeigen – Artikel ODER einen angeklickten Tisch?
+     *
+     * Der Tisch zählt mit: Beim Sitzplatz-Schritt kann er an einer Pause
+     * hängen, in der noch nichts im Korb liegt.
+     */
+    public function hatDetails(): bool
+    {
+        return ! empty($this->items) || ! empty($this->tables);
     }
 
     /** Steht der Gast am letzten Schritt, also unmittelbar vor der Zahlung? */

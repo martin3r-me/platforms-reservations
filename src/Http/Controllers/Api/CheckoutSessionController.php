@@ -47,6 +47,8 @@ class CheckoutSessionController extends ApiController
             // { pause_id: { artikel_id: menge } }. Was darin nicht stimmt,
             // sortiert der Dienst aus - hier steht nur, dass es eine Liste ist.
             'items'         => ['nullable', 'array'],
+            // { pause_id: tisch_id } - der angeklickte Tisch, keine Reservierung.
+            'tables'        => ['nullable', 'array'],
         ]);
 
         $service->merken($model, $data['ref'], $data);
