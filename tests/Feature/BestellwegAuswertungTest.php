@@ -77,6 +77,27 @@ class BestellwegAuswertungTest extends TestCase
         $this->assertSame('seat', $zeile->last_step);
     }
 
+    public function test_der_abbruch_traegt_das_datum_des_letzten_lebenszeichens(): void
+    {
+        $termin = $this->termin(1);
+        $still  = now()->subDays(40);
+
+        $this->live->merken($termin, $this->ref(), ['step' => 'seat']);
+
+        CheckoutSession::query()->update(['last_seen_at' => $still]);
+
+        $this->live->aufraeumen();
+
+        // NICHT der Zeitpunkt des Aufraeumens: Das laeuft per Los beim
+        // Schreiben und kann auf einer ruhigen Seite lange auf sich warten
+        // lassen. Stuende hier "jetzt", landete ein Abbruch von vor sechs
+        // Wochen in der Auswertung fuer diesen Monat.
+        $this->assertSame(
+            $still->toDateTimeString(),
+            CheckoutStat::first()->ended_at->toDateTimeString(),
+        );
+    }
+
     public function test_was_noch_laeuft_wird_nicht_verbucht(): void
     {
         $termin = $this->termin(1);

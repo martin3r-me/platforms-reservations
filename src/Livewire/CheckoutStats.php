@@ -7,6 +7,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Platform\Reservation\Models\CheckoutStat;
 use Platform\Reservation\Services\CheckoutStatsService;
+use Platform\Reservation\Services\LiveCheckoutService;
 
 /**
  * Wo Bestellwege enden – über alle Termine hinweg.
@@ -27,6 +28,18 @@ class CheckoutStats extends Component
 
     public function mount(): void
     {
+        // Wer hier hersieht, soll den aktuellen Stand sehen.
+        //
+        // Verbucht wird ein Abbruch beim Aufraeumen, und das laeuft sonst nur
+        // per Los beim Schreiben - also nur, wenn gerade jemand ANDERES
+        // bestellt. Auf einer ruhigen Seite koennte diese Auswertung damit
+        // beliebig lange hinterherhinken: Wer als Einziger einen Bestellweg
+        // abbricht, loest nie das Los aus, das ihn verbuchen wuerde.
+        //
+        // Hier ohne Los, weil diese Seite selten geoeffnet wird und genau
+        // deshalb geoeffnet wird.
+        app(LiveCheckoutService::class)->aufraeumen();
+
         $this->setPreset('month');
     }
 

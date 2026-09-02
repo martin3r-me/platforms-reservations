@@ -158,6 +158,12 @@ class LiveCheckoutService
      * Die Dauer ab dem ERSTEN Lebenszeichen: „wie lange hat der gebraucht,
      * bevor er aufgab" - nicht der Abstand zur letzten Regung.
      *
+     * `ended_at` ist das LETZTE LEBENSZEICHEN, nicht der Zeitpunkt des
+     * Verbuchens. Das ist kein Detail: Aufgeraeumt wird per Los beim Schreiben,
+     * und auf einer ruhigen Seite kann das lange dauern. Stuende hier now(),
+     * landete ein Abbruch vom Maerz in der Auswertung fuer den Juni - sichtbar
+     * waere das nicht, die Zahl saehe nur falsch aus.
+     *
      * @param  iterable<CheckoutSession>  $zeilen
      */
     protected function verbuchen(iterable $zeilen, string $ausgang): void
@@ -182,7 +188,7 @@ class LiveCheckoutService
                 'duration_seconds' => $zeile->created_at
                     ? max(0, $zeile->created_at->diffInSeconds($zeile->last_seen_at ?? $jetzt))
                     : 0,
-                'ended_at'         => $jetzt,
+                'ended_at'         => $zeile->last_seen_at ?? $jetzt,
             ];
         }
 
