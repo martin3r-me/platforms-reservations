@@ -47,28 +47,30 @@
 
     {{-- Die beiden Karten stehen nebeneinander und sollen gleich hoch sein.
 
-         Gleich viele Zeilen genuegt dafuer nicht: Eine Status-Marke ist hoeher
-         als der Text daneben und zieht ihre Zeile mit hoch. Rechts hat JEDE
-         Buchung eine, links nur der seltene abgesagte Termin - acht kleine
-         Unterschiede ergeben einen sichtbaren.
+         Sie waren es nicht, und zwar um rund zwei Pixel JE ZEILE - genug, dass
+         die Trennstriche sichtbar auseinanderlaufen und das Raster die kuerzere
+         Karte auf die Hoehe der laengeren dehnt, mit leerem Rest unter der
+         letzten Zeile.
 
-         Eine Mindesthoehe allein reicht dagegen nicht: Sie hebt die kurzen
-         Zeilen an, laesst die hohen aber hoch. Also bekommt die ERSTE ZEILE
-         eine feste Hoehe. Die Marke wird darin mittig gesetzt und waechst nicht
-         mehr in die Zeilenhoehe hinein; beide Kartenzeilen sind damit gleich
-         hoch, unabhaengig davon, ob eine Marke darin steht. Die Mindesthoehe
-         bleibt als Boden fuer Zeilen ohne zweite Textzeile.
+         Nachgemessen liegt es NICHT an den Status-Marken, wie es aussieht: Eine
+         Marke ist text-xs (16px Zeile) plus py-0.5, also genau 20px hoch - so
+         hoch wie der Name daneben (text-sm hat 20px Zeilenhoehe). Sie kann die
+         Zeile gar nicht dehnen.
 
-         Nebenbei springt die linke Karte nicht mehr, sobald ein Termin
-         abgesagt wird.
+         Es liegt an der Betrags-Spalte rechts. Der Betrag stand als INLINE-Span
+         in einem Container ohne eigene Zeilenhoehe. Der erbt Tailwinds
+         line-height 1.5 bei 16px Grundschrift, die Zeilenbox ist damit 24px
+         hoch statt 16 - die text-xs-Klasse am Span selbst aendert daran nichts,
+         weil der Strut des Containers zaehlt. Zusammen mit der Uhrzeit ergab
+         das 40,5px gegen 38px auf der linken Seite.
 
-         Als style-Attribut und NICHT als Tailwind-Klasse: Die App erzeugt ihr
-         CSS beim Bauen und liest dafuer auch die Ansichten der Module
-         (@source in resources/css/app.css). Ein Modul-Bump tauscht aber nur
-         PHP - eine Klasse, die es im gebauten Stylesheet noch nicht gibt,
-         bleibt bis zum naechsten CSS-Build wirkungslos. Genau das ist beim
-         ersten Anlauf passiert. Vorhandene Klassen sind unbedenklich, neue
-         nicht; im Zweifel steht die Regel direkt am Element. --}}
+         Jetzt ist der Betrag ein Block und der Container hat eine feste
+         Zeilenhoehe. Beide Spalten sind damit gleich hoch, und die Zeilen auch.
+
+         Als style-Attribut, nicht als neue Tailwind-Klasse: Die App baut ihr CSS
+         aus den Ansichten (@source in resources/css/app.css), aber ein
+         Modul-Bump tauscht nur PHP. Eine Klasse, die im gebauten Stylesheet noch
+         nicht vorkommt, bliebe bis zum naechsten CSS-Build wirkungslos. --}}
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {{-- Nächste Termine --}}
         <x-nx-card flush>
@@ -80,10 +82,9 @@
             <div>
                 @forelse ($this->upcomingEvents as $event)
                     <a href="{{ route('reservation.events.dashboard', $event->id) }}" wire:navigate wire:key="dash-event-{{ $event->id }}"
-                        style="min-height:3.5rem"
                         class="flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 transition-colors last:border-0 hover:bg-[color:var(--nx-hover)]">
                         <div class="min-w-0">
-                            <div class="flex items-center gap-2" style="height:1.25rem">
+                            <div class="flex items-center gap-2">
                                 <span class="truncate text-sm font-medium text-[color:var(--nx-text)]">{{ $event->name }}</span>
                                 {{-- Der Status, wie er heisst - nicht "alles ausser
                                      veroeffentlicht ist ein Entwurf".
@@ -135,10 +136,9 @@
             </div>
             <div>
                 @forelse ($this->recentBookings as $booking)
-                    <div wire:key="dash-booking-{{ $booking->id }}" style="min-height:3.5rem"
-                        class="flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 last:border-0">
+                    <div wire:key="dash-booking-{{ $booking->id }}" class="flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 last:border-0">
                         <div class="min-w-0">
-                            <div class="flex items-center gap-2" style="height:1.25rem">
+                            <div class="flex items-center gap-2">
                                 <span class="truncate text-sm font-medium text-[color:var(--nx-text)]">{{ $booking->guest_name }}</span>
                                 @php
                                     [$statusLabel, $statusVariant] = [
@@ -167,9 +167,9 @@
 
                              Rechts und nicht in der Zeile links, damit die ohnehin lange
                              Zeile aus Datum, Termin, Ort und Personenzahl nicht umbricht. --}}
-                        <div class="shrink-0 whitespace-nowrap text-right">
+                        <div class="shrink-0 whitespace-nowrap text-right" style="line-height:1rem">
                             @if ($booking->items_count > 0)
-                                <span class="text-xs font-semibold tabular-nums text-[color:var(--nx-text)]">
+                                <span class="block text-xs font-semibold tabular-nums text-[color:var(--nx-text)]">
                                     {{ number_format($booking->total_amount, 2, ',', '.') }} €
                                 </span>
                             @endif
