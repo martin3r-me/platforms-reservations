@@ -35,6 +35,11 @@ class CheckoutSessionController extends ApiController
             // Bestellkennung ähnelt. Der Shop erzeugt sie je Bestellweg neu.
             'ref'           => ['required', 'uuid'],
             'step'          => ['required', 'string', 'max:20', 'regex:/^[a-z_]+$/'],
+            // Der wievielte Schritt von wie vielen - beides so, wie der Shop
+            // es zaehlt. Das Office rechnet es nicht nach: Welche Schritte es
+            // gibt, entscheidet der Bestellweg zur Laufzeit.
+            'step_no'       => ['nullable', 'integer', 'min:1', 'max:255'],
+            'step_count'    => ['nullable', 'integer', 'min:1', 'max:255'],
             'event_slot_id' => ['nullable', 'integer'],
             'party_size'    => ['nullable', 'integer', 'min:0', 'max:9999'],
             'items_count'   => ['nullable', 'integer', 'min:0', 'max:9999'],

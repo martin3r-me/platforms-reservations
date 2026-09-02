@@ -149,6 +149,40 @@ class LaufendeBestellwegeTest extends TestCase
         $this->assertSame(60.0, $summe['warenkorb']);
     }
 
+    public function test_der_fortschritt_kommt_vom_shop_und_wird_nicht_geraten(): void
+    {
+        $termin = $this->termin(2);
+        $ref    = $this->ref();
+
+        $this->dienst->merken($termin, $ref, ['step' => 'seat', 'step_no' => 3, 'step_count' => 5]);
+
+        $this->assertSame('Schritt 3 von 5', CheckoutSession::first()->fortschritt());
+
+        // Meldet ein aelterer Shop die Zahlen nicht, steht dort nichts - statt
+        // einer aus der Pausenzahl geratenen Angabe, die auf dem Bildschirm des
+        // Gastes nirgends steht.
+        $this->dienst->merken($termin, $ref, ['step' => 'seat']);
+
+        $this->assertNull(CheckoutSession::first()->fortschritt());
+    }
+
+    public function test_unsinnige_schrittzahlen_werden_verworfen(): void
+    {
+        $termin = $this->termin(1);
+
+        $this->dienst->merken($termin, $this->ref(), [
+            'step'       => 'seat',
+            'step_no'    => 0,
+            'step_count' => -4,
+        ]);
+
+        $zeile = CheckoutSession::first();
+
+        $this->assertNull($zeile->step_no);
+        $this->assertNull($zeile->step_count);
+        $this->assertNull($zeile->fortschritt());
+    }
+
     public function test_unbekannte_schritte_zeigen_ihren_rohnamen(): void
     {
         $zeile = new CheckoutSession(['step' => 'products']);

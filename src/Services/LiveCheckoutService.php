@@ -37,6 +37,10 @@ class LiveCheckoutService
                 'event_id'      => $event->id,
                 'event_slot_id' => $this->eigenePause($event, $daten['event_slot_id'] ?? null),
                 'step'          => (string) $daten['step'],
+                // Beide Zahlen unveraendert vom Shop. Sie hier nachzurechnen
+                // waere eine zweite Fassung der Schritt-Liste - siehe Migration.
+                'step_no'       => $this->zahlOderNull($daten['step_no'] ?? null),
+                'step_count'    => $this->zahlOderNull($daten['step_count'] ?? null),
                 'party_size'    => isset($daten['party_size']) ? max(0, (int) $daten['party_size']) : null,
                 'items_count'   => max(0, (int) ($daten['items_count'] ?? 0)),
                 'cart_total'    => round(max(0, (float) ($daten['cart_total'] ?? 0)), 2),
@@ -94,6 +98,14 @@ class LiveCheckoutService
         return CheckoutSession::withoutGlobalScope('team')
             ->where('last_seen_at', '<', now()->subMinutes(CheckoutSession::AUFRAEUMEN_NACH_MINUTEN))
             ->delete();
+    }
+
+    /** Kleine positive Zahl oder null - alles andere sagt nichts. */
+    protected function zahlOderNull(mixed $wert): ?int
+    {
+        $zahl = (int) $wert;
+
+        return $zahl > 0 ? min($zahl, 255) : null;
     }
 
     /**

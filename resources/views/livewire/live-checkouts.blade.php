@@ -62,14 +62,27 @@
                         </p>
                     </div>
 
-                    {{-- Wie lange schon – ab dem ersten Lebenszeichen, nicht ab dem
-                         letzten. Die Frage lautet „wie lange hängt der schon?".
+                    {{-- Wie weit, und wie lange schon.
+
+                         „Sitzplatz" allein sagt nicht, ob jemand fast fertig
+                         ist: Bei einem Termin mit einer Pause ist das der
+                         zweite von vier Schritten, bei zweien der dritte von
+                         fünf. Beide Zahlen kommen vom Shop – hier wird nichts
+                         nachgerechnet, sonst liefen zwei Fassungen derselben
+                         Schritt-Liste auseinander.
+
+                         Die Dauer zählt ab dem ERSTEN Lebenszeichen, nicht ab
+                         dem letzten: Die Frage lautet „wie lange hängt der
+                         schon?".
 
                          Feste Zeilenhöhe und block, wie in den Karten der
                          Startseite: Ein inline-Element erbt hier sonst eine 24px
                          hohe Zeilenbox und schiebt die Zeile auseinander. --}}
                     <div class="shrink-0 whitespace-nowrap text-right" style="line-height:1rem">
-                        <span class="block text-xs tabular-nums text-[color:var(--nx-faint)]">
+                        @if ($vorgang->fortschritt())
+                            <span class="block text-xs tabular-nums text-[color:var(--nx-muted)]">{{ $vorgang->fortschritt() }}</span>
+                        @endif
+                        <span class="block text-[11px] tabular-nums text-[color:var(--nx-faint)]">
                             @if ($vorgang->dauerMinuten() < 1)
                                 gerade eben
                             @else

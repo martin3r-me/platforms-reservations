@@ -45,6 +45,8 @@ class CheckoutSession extends Model
         'event_slot_id',
         'checkout_ref',
         'step',
+        'step_no',
+        'step_count',
         'party_size',
         'items_count',
         'cart_total',
@@ -52,6 +54,8 @@ class CheckoutSession extends Model
     ];
 
     protected $casts = [
+        'step_no'      => 'integer',
+        'step_count'   => 'integer',
         'party_size'   => 'integer',
         'items_count'  => 'integer',
         'cart_total'   => 'decimal:2',
@@ -103,6 +107,26 @@ class CheckoutSession extends Model
             'pay'      => 'Bezahlung',
             default    => $this->step,
         };
+    }
+
+    /**
+     * „Schritt 3 von 5" – oder null, wenn der Shop es nicht mitgeteilt hat.
+     *
+     * Beide Zahlen kommen vom Shop, weil nur er weiß, aus wie vielen Schritten
+     * DIESER Bestellweg besteht (siehe Migration). Fehlen sie, steht hier
+     * nichts, statt eine Zahl zu raten: Ein Termin mit einer Pause hat einen
+     * Schritt weniger, und eine falsche Angabe wäre schlimmer als keine.
+     *
+     * Der Intro-Schritt bekommt keine Nummer, weil er beim Gast keinen
+     * Stepper-Kreis hat.
+     */
+    public function fortschritt(): ?string
+    {
+        if (! $this->step_no || ! $this->step_count) {
+            return null;
+        }
+
+        return 'Schritt ' . $this->step_no . ' von ' . $this->step_count;
     }
 
     /**
