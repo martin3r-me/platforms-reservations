@@ -45,6 +45,14 @@
             icon="heroicon-o-rectangle-stack" accent="var(--nx-info)" :href="route('reservation.menu.index')" wire:navigate />
     </x-nx-stat-grid>
 
+    {{-- Die beiden Karten stehen nebeneinander und sollen gleich hoch sein.
+
+         Gleich viele Zeilen genuegt dafuer nicht: Eine Status-Marke macht ihre
+         Zeile ein paar Pixel hoeher, und rechts hat JEDE Buchung eine, links
+         nur der seltene abgesagte Termin. Also bekommen beide Zeilenarten
+         dieselbe Mindesthoehe - dann haengt die Hoehe der Karte an der Zahl der
+         Zeilen und nicht mehr am Inhalt. Nebenbei springt die linke Karte nicht
+         mehr, sobald ein Termin abgesagt wird. --}}
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {{-- Nächste Termine --}}
         <x-nx-card flush>
@@ -56,7 +64,7 @@
             <div>
                 @forelse ($this->upcomingEvents as $event)
                     <a href="{{ route('reservation.events.dashboard', $event->id) }}" wire:navigate wire:key="dash-event-{{ $event->id }}"
-                        class="flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 transition-colors last:border-0 hover:bg-[color:var(--nx-hover)]">
+                        class="flex min-h-[3.75rem] items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 transition-colors last:border-0 hover:bg-[color:var(--nx-hover)]">
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
                                 <span class="truncate text-sm font-medium text-[color:var(--nx-text)]">{{ $event->name }}</span>
@@ -110,7 +118,7 @@
             </div>
             <div>
                 @forelse ($this->recentBookings as $booking)
-                    <div wire:key="dash-booking-{{ $booking->id }}" class="flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 last:border-0">
+                    <div wire:key="dash-booking-{{ $booking->id }}" class="flex min-h-[3.75rem] items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 last:border-0">
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
                                 <span class="truncate text-sm font-medium text-[color:var(--nx-text)]">{{ $booking->guest_name }}</span>
