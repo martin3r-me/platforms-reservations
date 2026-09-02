@@ -63,6 +63,14 @@ class Dashboard extends Component
         ];
     }
 
+    /**
+     * Die naechsten Termine.
+     *
+     * Acht, weil daneben acht Buchungen stehen: Die beiden Karten liegen
+     * nebeneinander, und mit fuenf Zeilen links blieb rechts der halbe Kasten
+     * leer. Wer diese Zahl aendert, sollte recentBookings() gleich mitnehmen -
+     * sonst franst es wieder aus.
+     */
     #[Computed]
     public function upcomingEvents(): \Illuminate\Database\Eloquent\Collection
     {
@@ -71,7 +79,7 @@ class Dashboard extends Component
             ->with(['venue', 'slots'])
             ->withCount('bookings')
             ->orderBy('date')
-            ->limit(5)
+            ->limit(8)
             ->get();
     }
 
