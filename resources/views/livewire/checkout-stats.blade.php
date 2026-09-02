@@ -98,7 +98,16 @@
                         @if ($schritt['warenkorb'] > 0)
                             {{ number_format($schritt['warenkorb'], 2, ',', '.') }} {{ $sym }} lagen im Korb ·
                         @endif
-                        im Schnitt {{ $schritt['dauer'] < 60 ? $schritt['dauer'] . ' Sek.' : round($schritt['dauer'] / 60) . ' Min.' }} bis zum Abbruch
+                        {{-- „0 Sek." las sich wie ein Messfehler. Es ist keiner:
+                             So sieht ein Bestellweg aus, der sich genau einmal
+                             gemeldet hat und nie wieder – die Dauer zählt vom
+                             ersten bis zum letzten Lebenszeichen. Der Satz sagt
+                             das jetzt, statt eine Null hinzustellen. --}}
+                        @if ($schritt['dauer'] < 60)
+                            sofort weg – im Schnitt keine Minute bis zum Abbruch
+                        @else
+                            im Schnitt {{ round($schritt['dauer'] / 60) }} Min. bis zum Abbruch
+                        @endif
                     </p>
                 </div>
             @endforeach
