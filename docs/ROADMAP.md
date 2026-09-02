@@ -7,6 +7,40 @@ Die folgenden Punkte sind **vereinbart und noch umzusetzen**. Referenz für viel
 Punkte ist das Altsystem des Kunden (Guestofy, WordPress/WooCommerce/Stripe):
 https://historische-stadthalle-wuppertal-culinaria.guestofy.events/#/
 
+## Was ist offen? (nachgeprüft am 02.09.2026)
+
+Die Liste unten war an mehreren Stellen veraltet – Erledigtes stand als offen,
+und ein Punkt beschrieb sogar einen Import, den es seit Juli nicht mehr gibt.
+Alles hier ist gegen den Code geprüft, nicht gegen die eigene Erinnerung.
+
+**Vor Go-live zwingend (M2): nichts mehr offen** außer einer Klärung –
+was mit der sequenziellen Raumfreigabe passieren soll, wenn jemand storniert.
+Das ist eine Frage fürs Haus, keine Programmieraufgabe.
+
+**Beim Kunden hängend, nicht bei uns:**
+- Plausible-Ziel `Pause Selected` anlegen (beim Kollegen)
+- Bleibt Culinarias Tischbindung auf „jede Pause einzeln"?
+- Finaler Wortlaut Altersnachweis/Datenschutz
+- Die echten 37 Artikel (Vorlage steht bereit)
+- Reihenfolge im Bestellweg und Platz- statt Tischwahl – beides Fragen ans Haus
+
+**Zu bauen, nach Größe:**
+1. **Abholstationen** (`PLAN-abholstationen.md`) – das große Stück, in sieben
+   Etappen. Hängt an keiner offenen Frage mehr.
+2. **Upselling/Cross-Selling** inkl. A/B-Tests. Bundles selbst sind fertig.
+3. **Datums-/Vorstellungssuche** in der Gäste-Terminübersicht.
+4. **Servicegebühr** (optional, kennt das Altsystem).
+5. **Tarifgrenzen zählen** – heute begrenzt nichts, und niemand merkt, wenn ein
+   Basic-Kunde 80 Artikel führt.
+
+**Nicht mehr auf der Liste, weil nachgeprüft erledigt:** Bestellschluss-
+Enforcement, Concurrency-Härtung der Platzvergabe, Mollie-SDK, Bundles, der tote
+`BookingConfirmationMailer` und die doppelte `CheckoutSetting`-Abfrage.
+
+**Fraglich, ob überhaupt noch gewollt:** der Guestofy-Import (siehe M3).
+
+---
+
 ## Nächste Vorhaben – Reihenfolge (Stand 02.09.2026)
 
 Von den ursprünglich vier Vorhaben sind drei erledigt und ausgerollt: die
@@ -204,8 +238,12 @@ ob (2) oder (3) überhaupt gebraucht wird.
       bzw. `→ cancelled`. Key als verschlüsselte Team-Einstellung hinter
       Resolver-Seam (`MollieCredentialResolver`, später auf platforms-integrations
       umstellbar). Bleibt inert ohne Key (Checkout läuft dann als Demo-Mock).
-      **Offen:** echter Mollie-(Test-)Key + End-to-End-Test auf öffentlichem Host;
-      SDK via `composer update` ziehen (`mollie/mollie-api-php`).
+      *(02.09.2026 nachgeprüft: Das SDK `mollie/mollie-api-php` steht in der
+      composer.json – der Punkt war erledigt. Bei Culinaria sind seit August 20
+      Buchungen mit 393,50 € verbucht; auf dem Gast-Weg wird „bestätigt" erst
+      durch den Mollie-Webhook gesetzt, die Zahlung läuft also produktiv. Ein
+      ausdrücklicher, protokollierter Test-Durchlauf mit Testkey ist nirgends
+      dokumentiert – wer einen braucht, muss ihn noch machen.)*
 - [x] **E-Mail-Bestätigungen** an Gäste — `OrderConfirmationMailer` versendet über den
       CRM-Comms-Dienst (`PostmarkEmailService` + team-scoped `CommsChannel`, wie das
       Events-Modul) mit eigenem HTML-Template; ausgelöst beim Mollie-„bezahlt"-Übergang
@@ -256,14 +294,22 @@ ob (2) oder (3) überhaupt gebraucht wird.
 
 ## M3 – Komfort, Sortiment, Migration
 
-- [ ] **Bundles/Upselling/Cross-Selling** inkl. A/B-Tests (MwSt-Mischsatz-Thema:
-      sortenrein oder Bundle mit höherem Satz).
+- [x] **Bundles** – gebaut. Ein Artikel kann Bestandteile haben (`is_bundle`,
+      `components`), zerfällt beim Bestellen in sie, und die MwSt-Mischung wird
+      cent-genau je Bestandteil verteilt (`CartCalculator`). Auswertung und Beleg
+      rechnen mit den Bestandteilen, nicht mit dem Paket.
+- [ ] **Upselling/Cross-Selling inkl. A/B-Tests** – nicht gebaut. Hing in derselben
+      Zeile wie die Bundles und wäre beim Abhaken lautlos verschwunden.
 - [ ] **Datums-/Vorstellungssuche** in der Gast-Terminübersicht (viele Termine pro
       Saison, teils mehrere pro Tag; „Keine Vorstellung für …“-Zustand).
-- [~] **Migration der Saisondaten aus Guestofy**: Räume inkl. Tischpositionen/
-      -kapazitäten werden über die offene AJAX-API übernommen (Venues & Tischpläne →
-      „Aus Alt-System“, `GuestofyImporter`). **Offen:** Events/Pausen-Import (saisonal;
-      Pausen haben im Altsystem keine Uhrzeiten) – bewusst manuell gelassen.
+- [ ] **Migration der Saisondaten aus Guestofy** – *diese Zeile war falsch.*
+      Sie beschrieb einen Import, den es nicht mehr gibt: `GuestofyImporter`,
+      die Livewire-Komponente, die Route und der Knopf „Aus Alt-System" wurden am
+      **15.07.2026 entfernt** (Commit `4eb08fa`). Im Modul ist heute kein
+      Alt-System-Import vorhanden – weder für Räume noch für Termine.
+      Wer migrieren will, macht es von Hand oder baut den Import neu. Ob das
+      überhaupt noch gebraucht wird, ist die eigentliche Frage: Die Räume stehen
+      längst gepflegt im System, und Termine werden ohnehin je Saison neu angelegt.
 - [x] **Konfigurierbare Checkout-Consents** (Datenschutz-/18+-Texte pflegbar statt
       hartkodiert) – siehe Einstellungen → Checkout-Texte.
 - [ ] **Servicegebühr** (optional, Altsystem: `service_charge`).
