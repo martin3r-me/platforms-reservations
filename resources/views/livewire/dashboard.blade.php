@@ -47,12 +47,20 @@
 
     {{-- Die beiden Karten stehen nebeneinander und sollen gleich hoch sein.
 
-         Gleich viele Zeilen genuegt dafuer nicht: Eine Status-Marke macht ihre
-         Zeile ein paar Pixel hoeher, und rechts hat JEDE Buchung eine, links
-         nur der seltene abgesagte Termin. Also bekommen beide Zeilenarten
-         dieselbe Mindesthoehe - dann haengt die Hoehe der Karte an der Zahl der
-         Zeilen und nicht mehr am Inhalt. Nebenbei springt die linke Karte nicht
-         mehr, sobald ein Termin abgesagt wird.
+         Gleich viele Zeilen genuegt dafuer nicht: Eine Status-Marke ist hoeher
+         als der Text daneben und zieht ihre Zeile mit hoch. Rechts hat JEDE
+         Buchung eine, links nur der seltene abgesagte Termin - acht kleine
+         Unterschiede ergeben einen sichtbaren.
+
+         Eine Mindesthoehe allein reicht dagegen nicht: Sie hebt die kurzen
+         Zeilen an, laesst die hohen aber hoch. Also bekommt die ERSTE ZEILE
+         eine feste Hoehe. Die Marke wird darin mittig gesetzt und waechst nicht
+         mehr in die Zeilenhoehe hinein; beide Kartenzeilen sind damit gleich
+         hoch, unabhaengig davon, ob eine Marke darin steht. Die Mindesthoehe
+         bleibt als Boden fuer Zeilen ohne zweite Textzeile.
+
+         Nebenbei springt die linke Karte nicht mehr, sobald ein Termin
+         abgesagt wird.
 
          Als style-Attribut und NICHT als Tailwind-Klasse: Die App erzeugt ihr
          CSS beim Bauen und liest dafuer auch die Ansichten der Module
@@ -75,7 +83,7 @@
                         style="min-height:3.5rem"
                         class="flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 transition-colors last:border-0 hover:bg-[color:var(--nx-hover)]">
                         <div class="min-w-0">
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2" style="height:1.25rem">
                                 <span class="truncate text-sm font-medium text-[color:var(--nx-text)]">{{ $event->name }}</span>
                                 {{-- Der Status, wie er heisst - nicht "alles ausser
                                      veroeffentlicht ist ein Entwurf".
@@ -130,7 +138,7 @@
                     <div wire:key="dash-booking-{{ $booking->id }}" style="min-height:3.5rem"
                         class="flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 last:border-0">
                         <div class="min-w-0">
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2" style="height:1.25rem">
                                 <span class="truncate text-sm font-medium text-[color:var(--nx-text)]">{{ $booking->guest_name }}</span>
                                 @php
                                     [$statusLabel, $statusVariant] = [
