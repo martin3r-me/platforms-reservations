@@ -45,6 +45,16 @@
             icon="heroicon-o-rectangle-stack" accent="var(--nx-info)" :href="route('reservation.menu.index')" wire:navigate />
     </x-nx-stat-grid>
 
+    {{-- Was gerade passiert, VOR dem, was passiert ist.
+
+         Terminuebergreifend: Wer nicht weiss, fuer welche Veranstaltung gerade
+         jemand bestellt, findet es im VA-Dashboard nicht - er muesste jeden
+         Termin einzeln aufmachen. Genau dafuer ist die Startseite da.
+
+         Ohne :event-id, das ist der Schalter. Die Karte zeigt sich nur, wenn
+         wirklich jemand im Bestellweg steht. --}}
+    <livewire:reservation.live-checkouts :key="'live-team'" />
+
     {{-- Die beiden Karten stehen nebeneinander und sollen gleich hoch sein.
 
          Sie waren es nicht, und zwar um rund zwei Pixel JE ZEILE - genug, dass

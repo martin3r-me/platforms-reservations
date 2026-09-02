@@ -100,7 +100,32 @@ class LiveCheckoutService
             ->where('team_id', (int) $event->team_id)
             ->forEvent($event->id)
             ->lebendig()
-            ->with(['slot' => fn ($q) => $q->withoutGlobalScope('team')])
+            ->with([
+                'slot'  => fn ($q) => $q->withoutGlobalScope('team'),
+                'event' => fn ($q) => $q->withoutGlobalScope('team'),
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
+    /**
+     * Was im ganzen Haus läuft, über alle Termine hinweg.
+     *
+     * Für die Startseite: Wer nicht weiß, für welche Veranstaltung gerade
+     * jemand bestellt, kann es im VA-Dashboard nicht finden - er müsste jeden
+     * Termin einzeln aufmachen.
+     *
+     * @return Collection<int, CheckoutSession>
+     */
+    public function laufendeFuerTeam(int $teamId): Collection
+    {
+        return CheckoutSession::withoutGlobalScope('team')
+            ->where('team_id', $teamId)
+            ->lebendig()
+            ->with([
+                'slot'  => fn ($q) => $q->withoutGlobalScope('team'),
+                'event' => fn ($q) => $q->withoutGlobalScope('team'),
+            ])
             ->orderByDesc('created_at')
             ->get();
     }

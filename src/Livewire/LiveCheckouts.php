@@ -9,31 +9,51 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Platform\Reservation\Models\CheckoutSession;
 use Platform\Reservation\Models\Event;
+use Platform\Reservation\Models\EventRoom;
+use Platform\Reservation\Models\EventSlot;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Table;
 use Platform\Reservation\Services\LiveCheckoutService;
 
 /**
- * Wer gerade im Bestellweg steht – als eigene Komponente im VA-Dashboard.
+ * Wer gerade im Bestellweg steht.
  *
  * Eigene Komponente mit Absicht: Die Karte lädt sich alle 15 Sekunden selbst
  * nach. Hinge das `wire:poll` am VA-Dashboard, rechnete es dabei jedes Mal
  * Buchungen, Auslastung und Raumempfehlung mit – vier Mal pro Minute, obwohl
  * sich davon nichts geändert hat. So bleibt das Nachladen eine Abfrage.
  *
+ * Zwei Einsatzorte, eine Komponente: MIT `eventId` zeigt sie einen Termin (im
+ * VA-Dashboard), OHNE alles, was im Haus läuft (auf der Startseite). Die zweite
+ * Fassung ist die wichtigere: Wer nicht weiß, für welche Veranstaltung gerade
+ * jemand bestellt, findet es im VA-Dashboard nicht – er müsste jeden Termin
+ * einzeln aufmachen.
+ *
  * Nur lesend. Es gibt hier nichts zu tun: Ein laufender Bestellweg gehört dem
  * Gast, das Haus schaut zu.
  */
 class LiveCheckouts extends Component
 {
+    /** Ein Termin – oder null für alles, was im Haus läuft. */
     #[Locked]
-    public int $eventId;
+    public ?int $eventId = null;
 
     /** Der Vorgang, dessen Warenkorb gerade offen liegt. */
     public ?int $offenerVorgang = null;
 
     /** Getrennt vom Vorgang, weil x-nx-modal einen Schalter erwartet. */
     public bool $showWarenkorb = false;
+
+    protected function teamId(): int
+    {
+        return (int) (Auth::user()?->current_team_id ?? 0);
+    }
+
+    /** Zeigt die Karte einen Termin oder das ganze Haus? */
+    public function uebergreifend(): bool
+    {
+        return $this->eventId === null;
+    }
 
     /**
      * Der Termin im Team des Anwenders – oder null.
@@ -45,16 +65,22 @@ class LiveCheckouts extends Component
     #[Computed]
     public function event(): ?Event
     {
-        return Event::forTeam(Auth::user()?->current_team_id ?? 0)->find($this->eventId);
+        return $this->eventId
+            ? Event::forTeam($this->teamId())->find($this->eventId)
+            : null;
     }
 
     /** @return Collection<int, \Platform\Reservation\Models\CheckoutSession> */
     #[Computed]
     public function laufende(): Collection
     {
-        $event = $this->event;
+        $dienst = app(LiveCheckoutService::class);
 
-        return $event ? app(LiveCheckoutService::class)->laufende($event) : collect();
+        if ($this->uebergreifend()) {
+            return $dienst->laufendeFuerTeam($this->teamId());
+        }
+
+        return $this->event ? $dienst->laufende($this->event) : collect();
     }
 
     /** @return array{anzahl: int, gaeste: int, warenkorb: float} */
@@ -111,8 +137,11 @@ class LiveCheckouts extends Component
             return [];
         }
 
-        $namen  = $this->artikelnamen($vorgang, $korb);
-        $pausen = $this->event?->slots->keyBy('id') ?? collect();
+        $namen = $this->artikelnamen($vorgang, $korb);
+
+        // Die Pausen des Termins DIESES Vorgangs - auf der Startseite gehoert
+        // jede Zeile zu einem anderen.
+        $pausen = EventSlot::where('event_id', $vorgang->event_id)->get()->keyBy('id');
 
         // Mehrere Pausen bekommen eine Ueberschrift, eine einzelne nicht: Dort
         // waere "1. Pause" ueber der einzigen Liste nur ein Wort mehr.
@@ -170,7 +199,7 @@ class LiveCheckouts extends Component
     /**
      * Beschriftung jedes angeklickten Tischs - und HIER faellt ein fremder heraus.
      *
-     * Gesucht wird nur in den Tischplaenen DIESES Termins. Eine Meldung mit
+     * Gesucht wird nur in den Tischplaenen der beteiligten Termine. Eine Meldung mit
      * einer beliebigen Tisch-Id loest sich damit nicht auf, und es steht
      * nichts da statt eines fremden Tischs. Deshalb prueft der Schreibweg das
      * nicht - er laeuft bei jeder Meldung, das Nachschlagen nur beim Hinsehen.
@@ -188,11 +217,16 @@ class LiveCheckouts extends Component
             ->map('intval')
             ->unique();
 
-        if ($ids->isEmpty() || ! $this->event) {
+        if ($ids->isEmpty()) {
             return collect();
         }
 
-        $plaene = $this->event->eventRooms()->pluck('floor_plan_id');
+        // Die Tischplaene der beteiligten TERMINE, nicht die eines festen:
+        // Auf der Startseite stehen mehrere nebeneinander. Die Termine stammen
+        // aus der bereits team-gefilterten Liste, die Einschraenkung bleibt
+        // also dieselbe.
+        $plaene = EventRoom::whereIn('event_id', $this->laufende->pluck('event_id')->unique())
+            ->pluck('floor_plan_id');
 
         return Table::whereIn('floor_plan_id', $plaene)
             ->whereIn('id', $ids)

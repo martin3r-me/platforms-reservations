@@ -11,6 +11,10 @@
         $currency = strtoupper((string) config('reservation.currency', 'EUR'));
         $sym      = $currency === 'EUR' ? '€' : $currency;
         $summe    = $this->summe;
+        // Auf der Startseite gehoert jede Zeile zu einem anderen Termin, im
+        // VA-Dashboard alle zum selben. Das entscheidet, was in der Zeile
+        // vorne steht.
+        $uebergreifend = $this->uebergreifend();
     @endphp
 
     @if ($this->laufende->isNotEmpty())
@@ -57,11 +61,20 @@
                                  vorletzten Schritt erfragt und bewusst nicht
                                  gespeichert. --}}
                             <x-nx-badge :variant="$vorgang->fastFertig() ? 'success' : 'neutral'">{{ $vorgang->schrittLabel() }}</x-nx-badge>
-                            @if ($vorgang->slot)
+                            {{-- Vorne steht, was die Zeile unterscheidet: auf der
+                                 Startseite der Termin, im VA-Dashboard die Pause.
+                                 Dort ist der Termin schon die Ueberschrift der
+                                 Seite - ihn zu wiederholen sagte nichts. --}}
+                            @if ($uebergreifend)
+                                <span class="truncate text-sm font-medium text-[color:var(--nx-text)]">{{ $vorgang->event?->name ?? 'Termin gelöscht' }}</span>
+                            @elseif ($vorgang->slot)
                                 <span class="truncate text-sm text-[color:var(--nx-text)]">{{ $vorgang->slot->displayLabel() }}</span>
                             @endif
                         </div>
                         <p class="m-0 mt-0.5 text-xs text-[color:var(--nx-muted)]">
+                            @if ($uebergreifend && $vorgang->slot)
+                                {{ $vorgang->slot->displayLabel() }} ·
+                            @endif
                             @if ($vorgang->party_size)
                                 {{ $vorgang->party_size }} {{ $vorgang->party_size === 1 ? 'Gast' : 'Gäste' }} ·
                             @endif
@@ -145,6 +158,18 @@
 
         @if ($this->offener)
             <div class="text-sm">
+                {{-- Von der Startseite aus fuehrt hier der einzige Weg zum
+                     Termin: Die Zeile selbst oeffnet das Fenster, ein zweiter
+                     Link darin waere ein Link im Knopf. --}}
+                @if ($uebergreifend && $this->offener->event)
+                    <p class="m-0 mb-2">
+                        <a href="{{ route('reservation.events.dashboard', $this->offener->event->id) }}" wire:navigate
+                            class="text-sm font-medium text-[color:var(--nx-text)] hover:underline">
+                            {{ $this->offener->event->name }}
+                        </a>
+                    </p>
+                @endif
+
                 <p class="m-0 text-[color:var(--nx-muted)]">
                     {{ $this->offener->schrittLabel() }}
                     @if ($this->offener->fortschritt()) · {{ $this->offener->fortschritt() }} @endif

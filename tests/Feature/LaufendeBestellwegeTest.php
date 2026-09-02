@@ -125,6 +125,32 @@ class LaufendeBestellwegeTest extends TestCase
         $this->assertSame(0, CheckoutSession::count());
     }
 
+    public function test_die_hausweite_sicht_zeigt_alle_termine(): void
+    {
+        $eins = $this->termin(1);
+        $zwei = $this->termin(1);
+
+        $this->dienst->merken($eins, $this->ref(), ['step' => 'seat', 'party_size' => 2]);
+        $this->dienst->merken($zwei, $this->ref(), ['step' => 'products', 'party_size' => 3]);
+
+        $alle = $this->dienst->laufendeFuerTeam($this->teamId);
+
+        $this->assertCount(2, $alle);
+        $this->assertSame(5, $this->dienst->zusammenfassung($alle)['gaeste']);
+
+        // Die Termin-Sicht bleibt daneben, was sie war.
+        $this->assertCount(1, $this->dienst->laufende($eins));
+    }
+
+    public function test_die_hausweite_sicht_bleibt_beim_eigenen_team(): void
+    {
+        $termin = $this->termin(1);
+
+        $this->dienst->merken($termin, $this->ref(), ['step' => 'seat']);
+
+        $this->assertCount(0, $this->dienst->laufendeFuerTeam($this->teamId + 99));
+    }
+
     public function test_ein_fremder_termin_sieht_die_zeile_nicht(): void
     {
         $termin  = $this->termin(1);
