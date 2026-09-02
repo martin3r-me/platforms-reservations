@@ -60,8 +60,26 @@
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
                                 <span class="truncate text-sm font-medium text-[color:var(--nx-text)]">{{ $event->name }}</span>
+                                {{-- Der Status, wie er heisst - nicht "alles ausser
+                                     veroeffentlicht ist ein Entwurf".
+
+                                     Hier stand fest "Entwurf", und damit trug ein
+                                     ABGESAGTER Termin dieselbe Marke wie ein
+                                     unfertiger. Wer die Kachel las, sah einen
+                                     Termin, der noch kommt und nur noch
+                                     veroeffentlicht werden muss - dabei findet er
+                                     gar nicht statt. Dasselbe galt fuer "Bald
+                                     verfuegbar" und "Bestellschluss".
+
+                                     Beschriftung und Farbe kommen aus EventStatus,
+                                     wo sie ohnehin fuer die Terminliste stehen. Eine
+                                     zweite Zuordnung hier liefe wieder auseinander.
+
+                                     Veroeffentlicht bleibt ohne Marke: Das ist der
+                                     Normalfall, und fuenf gruene Marken untereinander
+                                     sagen weniger als eine rote dazwischen. --}}
                                 @if ($event->status->value !== 'published')
-                                    <x-nx-badge>Entwurf</x-nx-badge>
+                                    <x-nx-badge :variant="$event->status->badgeVariant()">{{ $event->status->label() }}</x-nx-badge>
                                 @endif
                             </div>
                             <p class="m-0 mt-0.5 text-xs text-[color:var(--nx-muted)]">
