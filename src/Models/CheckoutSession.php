@@ -144,7 +144,7 @@ class CheckoutSession extends Model
      */
     public function hatDetails(): bool
     {
-        return ! empty($this->items) || ! empty($this->tables);
+        return $this->hatWarenkorb() || ! empty($this->tables);
     }
 
     /** Steht der Gast am letzten Schritt, also unmittelbar vor der Zahlung? */

@@ -98,6 +98,37 @@ class BestellwegAuswertungTest extends TestCase
         );
     }
 
+    public function test_zweimal_aufraeumen_zaehlt_nicht_zweimal(): void
+    {
+        $termin = $this->termin(1);
+
+        $this->live->merken($termin, $this->ref(), ['step' => 'seat']);
+
+        CheckoutSession::query()->update([
+            'last_seen_at' => now()->subMinutes(CheckoutSession::AUFRAEUMEN_NACH_MINUTEN + 1),
+        ]);
+
+        $this->live->aufraeumen();
+        $this->live->aufraeumen();
+
+        // Ein doppelt gezaehlter Abbruch sieht nicht nach einem Fehler aus - er
+        // sieht nach einem Abbruch aus. Deshalb steht diese Zusicherung hier.
+        $this->assertSame(1, CheckoutStat::count());
+    }
+
+    public function test_zweimal_beenden_zaehlt_nicht_zweimal(): void
+    {
+        $termin = $this->termin(1);
+        $ref    = $this->ref();
+
+        $this->live->merken($termin, $ref, ['step' => 'pay']);
+
+        $this->live->beenden($termin, $ref);
+        $this->live->beenden($termin, $ref);
+
+        $this->assertSame(1, CheckoutStat::count());
+    }
+
     public function test_was_noch_laeuft_wird_nicht_verbucht(): void
     {
         $termin = $this->termin(1);

@@ -65,21 +65,28 @@ class LiveCheckoutService
      */
     public function beenden(Event $event, string $ref): void
     {
-        $zeile = CheckoutSession::withoutGlobalScope('team')
-            ->where('team_id', (int) $event->team_id)
-            ->where('checkout_ref', $ref)
-            ->first();
+        // Gesperrt gelesen, aus demselben Grund wie im Aufraeumen: Der Shop
+        // ruft das einmal auf, aber ein Wiederholungsversuch nach einer
+        // Zeitueberschreitung waere ein zweiter Aufruf - und der duerfte keine
+        // zweite Bestellung in die Statistik schreiben.
+        DB::transaction(function () use ($event, $ref) {
+            $zeile = CheckoutSession::withoutGlobalScope('team')
+                ->where('team_id', (int) $event->team_id)
+                ->where('checkout_ref', $ref)
+                ->lockForUpdate()
+                ->first();
 
-        // Der Termin steht schon hier - kein zweiter Zugriff darauf.
-        $zeile?->setRelation('event', $event);
+            if (! $zeile) {
+                return;
+            }
 
-        if (! $zeile) {
-            return;
-        }
+            // Der Termin steht schon hier - kein zweiter Zugriff darauf.
+            $zeile->setRelation('event', $event);
 
-        $this->verbuchen([$zeile], CheckoutStat::AUSGANG_BESTELLT);
+            $this->verbuchen([$zeile], CheckoutStat::AUSGANG_BESTELLT);
 
-        $zeile->delete();
+            $zeile->delete();
+        });
     }
 
     /**
@@ -126,20 +133,29 @@ class LiveCheckoutService
      *
      * Erst schreiben, dann loeschen, und beides in einer Transaktion: Sonst
      * kann genau hier ein Vorgang spurlos verschwinden.
+     *
+     * Gelesen wird INNERHALB der Transaktion und mit lockForUpdate. Das ist
+     * kein Uebereifer: Aufgeraeumt wird per Los beim Schreiben UND beim
+     * Oeffnen der Auswertung, also von mehreren Anfragen gleichzeitig. Laege
+     * das Lesen davor, koennten zwei dieselben toten Zeilen sehen und beide
+     * eine Statistikzeile schreiben - das Loeschen ist danach folgenlos, die
+     * doppelte Zahl bleibt. Ein doppelt gezaehlter Abbruch sieht nicht nach
+     * einem Fehler aus, er sieht nach einem Abbruch aus.
      */
     public function aufraeumen(): int
     {
-        // Mit dem Termin, sonst holt verbuchen() ihn je Zeile einzeln.
-        $tot = CheckoutSession::withoutGlobalScope('team')
-            ->with(['event' => fn ($q) => $q->withoutGlobalScope('team')])
-            ->where('last_seen_at', '<', now()->subMinutes(CheckoutSession::AUFRAEUMEN_NACH_MINUTEN))
-            ->get();
+        return DB::transaction(function () {
+            // Mit dem Termin, sonst holt verbuchen() ihn je Zeile einzeln.
+            $tot = CheckoutSession::withoutGlobalScope('team')
+                ->with(['event' => fn ($q) => $q->withoutGlobalScope('team')])
+                ->where('last_seen_at', '<', now()->subMinutes(CheckoutSession::AUFRAEUMEN_NACH_MINUTEN))
+                ->lockForUpdate()
+                ->get();
 
-        if ($tot->isEmpty()) {
-            return 0;
-        }
+            if ($tot->isEmpty()) {
+                return 0;
+            }
 
-        return DB::transaction(function () use ($tot) {
             $this->verbuchen($tot, CheckoutStat::AUSGANG_ABGEBROCHEN);
 
             return CheckoutSession::withoutGlobalScope('team')

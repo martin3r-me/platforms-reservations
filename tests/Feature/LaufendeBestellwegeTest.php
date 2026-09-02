@@ -206,6 +206,28 @@ class LaufendeBestellwegeTest extends TestCase
         $this->assertTrue($zeile->hatWarenkorb());
     }
 
+    public function test_warenkorb_und_tisch_sind_ueber_die_pausen_id_erreichbar(): void
+    {
+        $termin = $this->termin(1);
+        $pause  = $this->pause($termin, 1);
+
+        $this->dienst->merken($termin, $this->ref(), [
+            'step'   => 'seat',
+            'items'  => [$pause->id => [7 => 2]],
+            'tables' => [$pause->id => 12],
+        ]);
+
+        $zeile = CheckoutSession::first();
+
+        // Die Ansicht greift mit der Pausen-Id als ZAHL zu
+        // ($vorgang->tables[$vorgang->event_slot_id]). Ueber JSON gehen die
+        // Schluessel als Text - dass PHP sie beim Dekodieren wieder zu Zahlen
+        // macht, ist die Annahme, an der die ganze Anzeige haengt. Sie steht
+        // nirgends im Code, deshalb steht sie hier.
+        $this->assertSame(12, $zeile->tables[$pause->id]);
+        $this->assertSame(2, $zeile->items[$pause->id][7]);
+    }
+
     public function test_ein_warenkorb_zu_einer_fremden_pause_wird_verworfen(): void
     {
         $termin  = $this->termin(1);
