@@ -91,3 +91,64 @@ Keine eigene Seite: Die Sicht ist nur zusammen mit der Auslastung nützlich.
 3. **Shop.** UUID in der Sitzung, Meldung huckepack, Herzschlag-Komponente,
    Löschen nach der Bestellung.
 4. **Abschluss.** Datenschutz-Absatz im Shop, Roadmap, Tests.
+
+## G. Etappe 5 (vorgeschlagen): Wo wird abgebrochen?
+
+Die Live-Sicht beantwortet „was passiert gerade", nicht „was passiert
+üblicherweise". Für die zweite Frage braucht es Zahlen, die den Abend
+überleben – und die gibt es hier bewusst nicht: `reservation_checkout_sessions`
+ist nach 30 Minuten leer.
+
+### Der Trick: das Ende einer Sitzung ist das Ereignis
+
+Statt einer zweiten Meldekette vom Shop wird die vorhandene Zeile beim
+**Verschwinden** zu einer Statistikzeile. Das sind genau zwei Stellen, und
+beide gibt es schon:
+
+- `beenden()` – der Gast hat bestellt. Ausgang `ordered`.
+- `aufraeumen()` – 30 Minuten nichts mehr gehört. Ausgang `abandoned`.
+
+Es kommt also kein einziger Aufruf hinzu, und die Zahlen können nicht von der
+Live-Sicht abweichen: Sie sind dieselbe Zeile, einen Moment später.
+
+### Was übrig bleibt
+
+Eine Zeile je beendetem Bestellweg in `reservation_checkout_stats`:
+`team_id`, `event_id`, `date`, `last_step`, `step_no`, `step_count`,
+`outcome`, `party_size`, `items_count`, `cart_total`, `duration_seconds`,
+`ended_at`.
+
+Ohne `checkout_ref`, ohne Warenkorb-Inhalt, ohne Tisch – das ist eine
+Statistik, keine Vorgangsakte. Damit ist sie auch nicht mehr auf eine Person
+beziehbar und darf bleiben; die 30-Minuten-Frist der Live-Tabelle gilt für sie
+nicht.
+
+### Der Nenner
+
+„40 % brechen beim Sitzplatz ab" braucht alle, die den Schritt erreicht haben.
+Eine Zeile je Sitzung mit ihrem LETZTEN Schritt genügt dafür: Wer bei Schritt 5
+aufhörte, hat 1 bis 4 durchlaufen. Der Trichter ist eine Summe über
+`step_no >= n`.
+
+Der Trichter beginnt bei „Personenzahl gewählt", nicht beim Seitenaufruf – vor
+dieser Wahl meldet der Shop nichts (siehe Abschnitt C). Wie viele die Seite nur
+angeschaut haben, weiß Plausible, nicht das Office.
+
+### Verhältnis zu Plausible
+
+`docs/tracking-pauseplus.md` beschreibt denselben Trichter als Ziele im Browser.
+Das ist keine Doppelung, sondern eine andere Frage:
+
+- **Plausible** zählt Browser. Es kennt Herkunft und Gerät, verliert aber alles,
+  was einen Blocker hat, und weiß nichts über den Termin.
+- **Das Office** zählt Vorgänge. Es kennt Termin, Datum, Gruppengröße und
+  Warenkorbwert – und wird nicht geblockt.
+
+Wo beide dieselbe Stufe zählen, werden sie verschiedene Zahlen nennen. Das ist
+kein Fehler, und es gehört in die Beschriftung der Auswertung.
+
+### Ansicht
+
+Eine eigene Seite, terminübergreifend, mit Zeitraum-Filter: der Trichter als
+Stufen mit Abbruchquote, darunter die Termine mit den meisten Abbrüchen. Nicht
+im VA-Dashboard – dort geht es um einen Abend, hier um ein Muster.

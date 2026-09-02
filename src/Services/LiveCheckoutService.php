@@ -3,7 +3,9 @@
 namespace Platform\Reservation\Services;
 
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Platform\Reservation\Models\CheckoutSession;
+use Platform\Reservation\Models\CheckoutStat;
 use Platform\Reservation\Models\Event;
 
 /**
@@ -54,13 +56,30 @@ class LiveCheckoutService
         );
     }
 
-    /** Bestellweg abgeschlossen oder abgebrochen – Zeile weg. */
+    /**
+     * Bestellweg abgeschlossen – Zeile weg, Statistikzeile bleibt.
+     *
+     * Aufgerufen vom Shop nach erfolgreicher Bestellung. Der Ausgang ist
+     * deshalb „bestellt": Nur dieser eine Weg fuehrt hierher, alles andere
+     * laeuft irgendwann im Aufraeumen aus.
+     */
     public function beenden(Event $event, string $ref): void
     {
-        CheckoutSession::withoutGlobalScope('team')
+        $zeile = CheckoutSession::withoutGlobalScope('team')
             ->where('team_id', (int) $event->team_id)
             ->where('checkout_ref', $ref)
-            ->delete();
+            ->first();
+
+        // Der Termin steht schon hier - kein zweiter Zugriff darauf.
+        $zeile?->setRelation('event', $event);
+
+        if (! $zeile) {
+            return;
+        }
+
+        $this->verbuchen([$zeile], CheckoutStat::AUSGANG_BESTELLT);
+
+        $zeile->delete();
     }
 
     /**
@@ -97,12 +116,79 @@ class LiveCheckoutService
         ];
     }
 
-    /** Alles, was lange nichts mehr von sich hören ließ. */
+    /**
+     * Alles, was lange nichts mehr von sich hören ließ.
+     *
+     * Hier entsteht die Zahl, die spaeter jemanden interessiert: Wer bis zum
+     * Ende nichts mehr gemeldet hat, hat abgebrochen. Ein anderer Weg, das
+     * festzustellen, waere schwer zu finden - der Gast schliesst den Tab, er
+     * sagt nicht Bescheid.
+     *
+     * Erst schreiben, dann loeschen, und beides in einer Transaktion: Sonst
+     * kann genau hier ein Vorgang spurlos verschwinden.
+     */
     public function aufraeumen(): int
     {
-        return CheckoutSession::withoutGlobalScope('team')
+        // Mit dem Termin, sonst holt verbuchen() ihn je Zeile einzeln.
+        $tot = CheckoutSession::withoutGlobalScope('team')
+            ->with(['event' => fn ($q) => $q->withoutGlobalScope('team')])
             ->where('last_seen_at', '<', now()->subMinutes(CheckoutSession::AUFRAEUMEN_NACH_MINUTEN))
-            ->delete();
+            ->get();
+
+        if ($tot->isEmpty()) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($tot) {
+            $this->verbuchen($tot, CheckoutStat::AUSGANG_ABGEBROCHEN);
+
+            return CheckoutSession::withoutGlobalScope('team')
+                ->whereIn('id', $tot->pluck('id'))
+                ->delete();
+        });
+    }
+
+    /**
+     * Aus beendeten Bestellwegen Statistikzeilen machen.
+     *
+     * Was hier NICHT mitkommt, ist der Punkt: keine Kennung, kein
+     * Warenkorb-Inhalt, kein Tisch. Damit ist die Zeile auf keinen Besuch mehr
+     * beziehbar und darf bleiben, waehrend die Live-Zeile geht.
+     *
+     * Die Dauer ab dem ERSTEN Lebenszeichen: „wie lange hat der gebraucht,
+     * bevor er aufgab" - nicht der Abstand zur letzten Regung.
+     *
+     * @param  iterable<CheckoutSession>  $zeilen
+     */
+    protected function verbuchen(iterable $zeilen, string $ausgang): void
+    {
+        $jetzt = now();
+        $reihen = [];
+
+        foreach ($zeilen as $zeile) {
+            $reihen[] = [
+                'team_id'          => (int) $zeile->team_id,
+                'event_id'         => $zeile->event_id,
+                // Mitgeschrieben statt nachgeschlagen: Es soll den Termin
+                // ueberleben, der spaeter geloescht werden darf.
+                'event_date'       => $zeile->event?->date?->toDateString(),
+                'last_step'        => $zeile->step,
+                'step_no'          => $zeile->step_no,
+                'step_count'       => $zeile->step_count,
+                'outcome'          => $ausgang,
+                'party_size'       => $zeile->party_size,
+                'items_count'      => $zeile->items_count,
+                'cart_total'       => $zeile->cart_total,
+                'duration_seconds' => $zeile->created_at
+                    ? max(0, $zeile->created_at->diffInSeconds($zeile->last_seen_at ?? $jetzt))
+                    : 0,
+                'ended_at'         => $jetzt,
+            ];
+        }
+
+        if ($reihen !== []) {
+            CheckoutStat::insert($reihen);
+        }
     }
 
     /**

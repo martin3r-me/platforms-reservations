@@ -22,6 +22,27 @@ use Orchestra\Testbench\TestCase as BaseTestCase;
  */
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * Fremdschlüssel wirklich durchsetzen.
+     *
+     * SQLite prüft sie nur, wenn man es verlangt – ohne dieses PRAGMA laufen
+     * cascadeOnDelete und nullOnDelete ins Leere, und ein Test, der genau das
+     * prüft, ist grün, während es im Betrieb (MySQL) anders aussähe. Das ist
+     * die schlimmste Sorte Test: einer, der eine Zusage gibt, die er nicht
+     * einlöst.
+     */
+    protected function defineEnvironment($app): void
+    {
+        $app['config']->set('database.connections.testing.foreign_key_constraints', true);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        DB::statement('PRAGMA foreign_keys = ON');
+    }
+
     protected function defineDatabaseMigrations(): void
     {
         $this->plattformStubs();

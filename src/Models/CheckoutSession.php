@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
+use Platform\Reservation\Support\CheckoutSteps;
 
 /**
  * Ein laufender Bestellweg im Shop – noch keine Buchung.
@@ -92,25 +93,10 @@ class CheckoutSession extends Model
         return $query->where('event_id', $eventId);
     }
 
-    /**
-     * Der Schritt, wie er im Shop heißt.
-     *
-     * Bewusst hier und nicht in der Ansicht: Der Name kommt vom Shop, und wenn
-     * dort ein Schritt hinzukommt, den das Modul nicht kennt, soll die Ansicht
-     * den Rohnamen zeigen statt eine Lücke. „Personenzahl" fehlt in der Liste
-     * des Shops, weil dieser Schritt dort kein Stepper-Kreis ist.
-     */
+    /** Der Schritt, wie er im Shop heißt – benannt in CheckoutSteps. */
     public function schrittLabel(): string
     {
-        return match ($this->step) {
-            'party'    => 'Personenzahl',
-            'when'     => 'Pause',
-            'products' => 'Produkte',
-            'seat'     => 'Sitzplatz',
-            'guest'    => 'Gastdaten',
-            'pay'      => 'Bezahlung',
-            default    => $this->step,
-        };
+        return CheckoutSteps::label((string) $this->step);
     }
 
     /**
@@ -164,6 +150,6 @@ class CheckoutSession extends Model
     /** Steht der Gast am letzten Schritt, also unmittelbar vor der Zahlung? */
     public function fastFertig(): bool
     {
-        return in_array($this->step, ['guest', 'pay'], true);
+        return in_array($this->step, CheckoutSteps::FAST_FERTIG, true);
     }
 }

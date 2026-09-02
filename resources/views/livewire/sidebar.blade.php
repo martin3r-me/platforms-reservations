@@ -70,6 +70,10 @@
             @svg('heroicon-o-chart-bar', 'w-4 h-4 text-[color:var(--nx-muted)]')
             <span class="ml-2 text-sm">Artikel</span>
         </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('reservation.checkouts.stats')">
+            @svg('heroicon-o-arrow-trending-down', 'w-4 h-4 text-[color:var(--nx-muted)]')
+            <span class="ml-2 text-sm">Bestellwege</span>
+        </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.export')">
             @svg('heroicon-o-arrow-down-tray', 'w-4 h-4 text-[color:var(--nx-muted)]')
             <span class="ml-2 text-sm">Export</span>
