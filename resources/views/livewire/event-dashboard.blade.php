@@ -86,6 +86,13 @@
             @endforeach
         </div>
 
+        {{-- Was gerade passiert, VOR dem, was passiert ist.
+
+             Eigene Komponente, damit ihr wire:poll nicht alle 15 Sekunden
+             Buchungen, Auslastung und Raumempfehlung mitrechnet. Sie zeigt sich
+             nur, wenn wirklich jemand im Bestellweg steht. --}}
+        <livewire:reservation.live-checkouts :event-id="$this->event->id" :key="'live-'.$this->event->id" />
+
         {{-- Buchungen nach Pause (eine VA kann mehrere Pausen haben) --}}
         <div class="space-y-5">
             @forelse ($this->bookingsBySlot as $group)
