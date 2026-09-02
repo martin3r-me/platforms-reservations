@@ -26,6 +26,7 @@ class Booking extends Model
         'team_id',
         'order_id',
         'table_id',
+        'pickup_station_id',
         'place_kind',
         'place_label',
         'event_id',
@@ -88,6 +89,20 @@ class Booking extends Model
             if (empty($model->uuid)) {
                 $model->uuid = (string) UuidV7::generate();
             }
+
+            $model->pruefeZielort();
+        });
+
+        // Beim Aktualisieren nur „nicht beides", nicht „genau eines".
+        //
+        // nullOnDelete entzieht einer bestehenden Buchung ihren Tisch, wenn der
+        // gelöscht wird - solche Datensätze gibt es heute schon, und sie müssen
+        // speicherbar bleiben. Sie jetzt zu blockieren hieße, dass sich eine
+        // alte Buchung nicht einmal mehr stornieren lässt.
+        static::updating(function (self $model) {
+            if ($model->table_id && $model->pickup_station_id) {
+                throw new \LogicException('Eine Buchung kann nicht an einem Tisch UND an einer Abholstation liegen.');
+            }
         });
 
         // Automatischer Bon-Druck beim Wechsel auf "bestätigt".
@@ -139,6 +154,12 @@ class Booking extends Model
         return $this->belongsTo(Table::class, 'table_id');
     }
 
+    /** Der zweite mögliche Zielort – statt eines Tisches, nie zusätzlich. */
+    public function pickupStation(): BelongsTo
+    {
+        return $this->belongsTo(PickupStation::class, 'pickup_station_id');
+    }
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class, 'event_id');
@@ -174,6 +195,30 @@ class Booking extends Model
      --------------------------------------------------------------------- */
 
     /** Ort der Buchung: Art, Bezeichnung, Raum und ob er noch existiert. */
+    /**
+     * Genau ein Zielort – beim Anlegen.
+     *
+     * Keiner wäre eine Buchung ins Nichts, beides eine Buchung an zwei Orte.
+     * Beides ist ein Programmfehler, kein Eingabefehler: Es gibt genau einen
+     * Erzeuger von Buchungen (GuestOrderService::store), und der weiß, was er
+     * tut. Deshalb eine Ausnahme und keine Validierungsmeldung.
+     *
+     * Ausdrücklich NUR beim Anlegen. Ein Hook auf jedem Speichern liefe im
+     * Livebetrieb auch beim Statuswechsel mit, an dem der automatische Bondruck
+     * hängt - wirft er dort zu Unrecht, steht die Bestellstrecke.
+     */
+    protected function pruefeZielort(): void
+    {
+        $tisch   = (bool) $this->table_id;
+        $station = (bool) $this->pickup_station_id;
+
+        if ($tisch === $station) {
+            throw new \LogicException($tisch
+                ? 'Eine Buchung kann nicht an einem Tisch UND an einer Abholstation liegen.'
+                : 'Eine Buchung braucht einen Zielort: einen Tisch oder eine Abholstation.');
+        }
+    }
+
     public function zielort(): array
     {
         // getRelationValue statt $this->table - und das ist kein Geschmack:
@@ -190,6 +235,21 @@ class Booking extends Model
                 'art'    => 'table',
                 'label'  => $tisch->label,
                 'raum'   => $tisch->floorPlan?->name,
+                'weg'    => false,
+            ];
+        }
+
+        // Die Station wird NACH dem Tisch gefragt, obwohl beides nie zugleich
+        // gesetzt ist: Der Tisch ist der haeufigere Fall, und die Reihenfolge
+        // spart im Regelbetrieb eine Beziehung.
+        $station = $this->getRelationValue('pickupStation');
+
+        if ($station) {
+            return [
+                'art'    => 'station',
+                'label'  => $station->name,
+                // Der Raum, IN dem sie liegt - viele Stationen liegen in keinem.
+                'raum'   => $station->floorPlan?->name,
                 'weg'    => false,
             ];
         }
@@ -229,9 +289,15 @@ class Booking extends Model
     {
         $ort = $this->zielort();
 
-        return $this->table_id
-            ? 'table-' . $this->table_id
-            : ($ort['label'] ? 'weg-' . $ort['label'] : 'ohne');
+        if ($this->table_id) {
+            return 'table-' . $this->table_id;
+        }
+
+        if ($this->pickup_station_id) {
+            return 'station-' . $this->pickup_station_id;
+        }
+
+        return $ort['label'] ? 'weg-' . $ort['label'] : 'ohne';
     }
 
     /**

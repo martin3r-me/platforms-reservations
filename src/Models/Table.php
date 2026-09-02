@@ -6,10 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
+use Platform\Reservation\Models\Concerns\HasPlanPosition;
 
 class Table extends Model
 {
     use BelongsToTeam;
+    // Lage im Plan - dieselbe Rechnung wie bei der Abholstation.
+    use HasPlanPosition;
 
     protected $table = 'reservation_tables';
 
@@ -51,31 +54,6 @@ class Table extends Model
      * Editor UND Gast-Viewer, damit die Tische überall gleich liegen.
      * x_pct/y_pct = Mittelpunkt; daher links/oben um die halbe Größe versetzt.
      */
-    /**
-     * Ausrichtung auf 0…315 in 45°-Schritten bringen – auch für negative Werte.
-     * Die Spalte ist unsigned, -45 muss also als 315 landen.
-     */
-    public static function normalizeRotation(int $degrees): int
-    {
-        $step = (int) round($degrees / 45) * 45;
-
-        return (($step % 360) + 360) % 360;
-    }
-
-    public function surfaceStyle(): string
-    {
-        $left = ($this->x_pct - $this->w_pct / 2) * 100;
-        $top  = ($this->y_pct - $this->h_pct / 2) * 100;
-
-        return sprintf(
-            'left:%.4f%%; top:%.4f%%; width:%.4f%%; height:%.4f%%;',
-            $left,
-            $top,
-            $this->w_pct * 100,
-            $this->h_pct * 100,
-        );
-    }
-
     protected static function booted(): void
     {
         // team_id autoritativ aus dem Tischplan ableiten (auch ohne Auth),

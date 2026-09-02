@@ -10,7 +10,9 @@ use Platform\Reservation\Models\EventSlot;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
+use Platform\Reservation\Models\EventStation;
 use Platform\Reservation\Models\Order;
+use Platform\Reservation\Models\PickupStation;
 use Platform\Reservation\Models\SalesList;
 use Platform\Reservation\Models\Table;
 use Platform\Reservation\Models\Venue;
@@ -157,6 +159,58 @@ trait ErzeugtTermine
         $liste->menuItems()->attach($artikel->id);
 
         return $artikel;
+    }
+
+    /** Abholstation an einem Venue – ohne Lage im Plan, das ist der Normalfall. */
+    protected function station(string $name = 'Foyer links', ?int $grenze = null): PickupStation
+    {
+        $venue = Venue::firstOrCreate(
+            ['team_id' => $this->teamId, 'name' => 'Stationen-Haus'],
+        );
+
+        return PickupStation::create([
+            'team_id'           => $this->teamId,
+            'venue_id'          => $venue->id,
+            'name'              => $name,
+            'capacity_per_slot' => $grenze,
+        ]);
+    }
+
+    /**
+     * Station an einen Termin haengen – in den angegebenen Pausen.
+     *
+     * Die Pausen sind Pflicht, wie im Betrieb: „keine Zeile" haette sonst zwei
+     * Bedeutungen.
+     *
+     * @param  array<int, EventSlot>  $pausen
+     */
+    protected function haengeStationAn(Event $event, PickupStation $station, array $pausen, ?int $grenze = null): EventStation
+    {
+        $zuordnung = EventStation::create([
+            'event_id'          => $event->id,
+            'pickup_station_id' => $station->id,
+            'capacity_override' => $grenze,
+        ]);
+
+        $zuordnung->slots()->sync(collect($pausen)->pluck('id')->all());
+
+        return $zuordnung->fresh(['slots', 'station']);
+    }
+
+    /** Buchung an eine Abholstation statt an einen Tisch. */
+    protected function abholung(EventSlot $pause, PickupStation $station, int $personen, string $status = Booking::STATUS_PENDING): Booking
+    {
+        return Booking::create([
+            'team_id'           => $this->teamId,
+            'event_id'          => $pause->event_id,
+            'event_slot_id'     => $pause->id,
+            'pickup_station_id' => $station->id,
+            'guest_name'        => 'Testgast',
+            'guest_count'       => $personen,
+            'date'              => '2026-10-01',
+            'time_start'        => $pause->time_start,
+            'status'            => $status,
+        ]);
     }
 
     protected function pause(Event $event, int $nummer): EventSlot

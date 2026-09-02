@@ -502,11 +502,21 @@ widerspricht die Website dem Bestellweg.
 
 ## J. Etappen
 
-0. **Maximale Gruppengröße** (Abschnitt Q) – unabhängig von den Stationen und vorweg,
-   weil der Shop heute die falsche Einstellung als Obergrenze liest.
-1. **Fundament** – Migrationen, Modelle (`PickupStation`, `EventStation`),
-   `zielort()` samt eingefrorenem Ort und Nachfüllung (Abschnitt S), Guard,
-   `PickupCapacityService`, dazu die eingecheckte Testbasis (Abschnitt O).
+0. ~~**Maximale Gruppengröße**~~ (Abschnitt Q) – erledigt am 31.08.2026.
+1. ~~**Fundament**~~ – erledigt am 02.09.2026. Migrationen
+   (`reservation_pickup_stations`, `…_event_stations`, `…_event_station_slots`,
+   `pickup_station_id` an den Buchungen), Modelle `PickupStation` und
+   `EventStation`, `zielort()` um die Station erweitert, Guard beim Anlegen,
+   `PickupCapacityService`, 13 Tests.
+
+   Zwei Teile waren schon da: Der eingefrorene Ort (`place_kind`/`place_label`,
+   Abschnitt S) kam am 31.08.2026 mit, und die eingecheckte Testbasis
+   (Abschnitt O) entstand am 01.09.2026 mit den mehreren Pausen.
+
+   Beim Bauen mitgenommen: `Table::surfaceStyle()` liegt jetzt in
+   `HasPlanPosition` und wird von Tisch und Station geteilt. Und das `down()`
+   von `2026_01_01_000012` ist leer – es wollte `table_id` wieder auf NOT NULL
+   setzen, was nicht mehr geht, sobald eine Buchung ohne Tisch existiert.
 2. **Pflege** – Stationen-CRUD, Werkzeug im Tischplan-Editor, Zuordnung am Termin samt
    Pausen-Häkchen, Veröffentlichungs-Regel, Löschschutz (Station **und** Venue),
    MCP-Tools samt Bulk-Zuordnung, Duplizieren, Einstellung `pickup_identification`.
