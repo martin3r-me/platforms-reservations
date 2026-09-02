@@ -44,6 +44,9 @@ class CheckoutSessionController extends ApiController
             'party_size'    => ['nullable', 'integer', 'min:0', 'max:9999'],
             'items_count'   => ['nullable', 'integer', 'min:0', 'max:9999'],
             'cart_total'    => ['nullable', 'numeric', 'min:0'],
+            // { pause_id: { artikel_id: menge } }. Was darin nicht stimmt,
+            // sortiert der Dienst aus - hier steht nur, dass es eine Liste ist.
+            'items'         => ['nullable', 'array'],
         ]);
 
         $service->merken($model, $data['ref'], $data);

@@ -49,6 +49,7 @@ class CheckoutSession extends Model
         'step_count',
         'party_size',
         'items_count',
+        'items',
         'cart_total',
         'last_seen_at',
     ];
@@ -58,6 +59,7 @@ class CheckoutSession extends Model
         'step_count'   => 'integer',
         'party_size'   => 'integer',
         'items_count'  => 'integer',
+        'items'        => 'array',
         'cart_total'   => 'decimal:2',
         'last_seen_at' => 'datetime',
     ];
@@ -138,6 +140,12 @@ class CheckoutSession extends Model
     public function dauerMinuten(): int
     {
         return $this->created_at ? (int) $this->created_at->diffInMinutes(now()) : 0;
+    }
+
+    /** Liegt überhaupt etwas im Korb, das man sich ansehen könnte? */
+    public function hatWarenkorb(): bool
+    {
+        return ! empty($this->items);
     }
 
     /** Steht der Gast am letzten Schritt, also unmittelbar vor der Zahlung? */

@@ -16,6 +16,9 @@ use Platform\Reservation\Models\Event;
  */
 class LiveCheckoutService
 {
+    /** So viele verschiedene Positionen merkt sich eine Zeile hoechstens. */
+    public const GRENZE_POSITIONEN = 100;
+
     /**
      * Stand eines Bestellwegs melden. Legt an oder überschreibt.
      *
@@ -43,6 +46,7 @@ class LiveCheckoutService
                 'step_count'    => $this->zahlOderNull($daten['step_count'] ?? null),
                 'party_size'    => isset($daten['party_size']) ? max(0, (int) $daten['party_size']) : null,
                 'items_count'   => max(0, (int) ($daten['items_count'] ?? 0)),
+                'items'         => $this->warenkorb($event, $daten['items'] ?? null),
                 'cart_total'    => round(max(0, (float) ($daten['cart_total'] ?? 0)), 2),
                 'last_seen_at'  => now(),
             ],
@@ -98,6 +102,53 @@ class LiveCheckoutService
         return CheckoutSession::withoutGlobalScope('team')
             ->where('last_seen_at', '<', now()->subMinutes(CheckoutSession::AUFRAEUMEN_NACH_MINUTEN))
             ->delete();
+    }
+
+    /**
+     * Den gemeldeten Warenkorb auf das reduzieren, was Hand und Fuss hat.
+     *
+     * Erwartet { pause_id: { artikel_id: menge } }. Alles andere fliegt raus:
+     * fremde Pausen (sonst stuende in der Ansicht eines Termins der Warenkorb
+     * eines anderen), krumme Mengen, und ab GRENZE_POSITIONEN auch schlicht zu
+     * viel. Die Grenze ist kein Misstrauen gegen den Shop, sondern gegen die
+     * Zeile: Sie soll klein bleiben, sie lebt Minuten.
+     *
+     * @return array<string, array<string, int>>|null
+     */
+    protected function warenkorb(Event $event, mixed $roh): ?array
+    {
+        if (! is_array($roh) || $roh === []) {
+            return null;
+        }
+
+        $event->loadMissing('slots');
+        $eigene = $event->slots->pluck('id')->all();
+
+        $sauber = [];
+        $anzahl = 0;
+
+        foreach ($roh as $slotId => $positionen) {
+            if (! is_array($positionen) || ! in_array((int) $slotId, $eigene, true)) {
+                continue;
+            }
+
+            foreach ($positionen as $artikelId => $menge) {
+                $artikelId = (int) $artikelId;
+                $menge     = (int) $menge;
+
+                if ($artikelId < 1 || $menge < 1) {
+                    continue;
+                }
+
+                if (++$anzahl > self::GRENZE_POSITIONEN) {
+                    break 2;
+                }
+
+                $sauber[(string) (int) $slotId][(string) $artikelId] = min($menge, 999);
+            }
+        }
+
+        return $sauber === [] ? null : $sauber;
     }
 
     /** Kleine positive Zahl oder null - alles andere sagt nichts. */

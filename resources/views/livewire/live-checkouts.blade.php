@@ -34,9 +34,21 @@
                 <span class="ml-auto text-[11px] text-[color:var(--nx-faint)]">aktualisiert sich alle 15 Sek.</span>
             </div>
 
+            {{-- Die Zeile ist ein Knopf, wenn es etwas zu sehen gibt.
+
+                 Ein Knopf, der ein leeres Fenster oeffnet, waere eine
+                 Sackgasse - also ist er bei leerem Warenkorb abgeschaltet und
+                 sieht auch so aus. w-full und text-left, weil ein <button>
+                 sonst weder die Breite noch die Ausrichtung der Zeile erbt. --}}
             @foreach ($this->laufende as $vorgang)
-                <div wire:key="live-{{ $vorgang->id }}"
-                    class="flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 last:border-0">
+                @php($hatKorb = $vorgang->hatWarenkorb())
+                <button type="button" wire:key="live-{{ $vorgang->id }}"
+                    @if ($hatKorb) wire:click="warenkorbZeigen({{ $vorgang->id }})" @else disabled @endif
+                    @class([
+                        'flex w-full items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 text-left last:border-0',
+                        'transition-colors hover:bg-[color:var(--nx-hover)]' => $hatKorb,
+                        'cursor-default' => ! $hatKorb,
+                    ])>
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
                             {{-- Der Schritt IST die Zeile. Wer hier hersieht, will
@@ -90,7 +102,7 @@
                             @endif
                         </span>
                     </div>
-                </div>
+                </button>
             @endforeach
 
             {{-- Der wichtigste Satz der Karte.
@@ -106,4 +118,61 @@
             </p>
         </x-nx-card>
     @endif
+
+    {{-- Was im Korb liegt.
+
+         Steht ausserhalb der Karte: Laeuft der Vorgang waehrend des Hinsehens
+         aus oder wird er bestellt, verschwindet die Karte - das Fenster soll
+         dann sagen, was passiert ist, statt mitzuverschwinden. --}}
+    <x-nx-modal size="sm" wire:model="showWarenkorb">
+        <x-slot name="header">Warenkorb</x-slot>
+
+        @if ($this->offener)
+            <div class="text-sm">
+                <p class="m-0 text-[color:var(--nx-muted)]">
+                    {{ $this->offener->schrittLabel() }}
+                    @if ($this->offener->fortschritt()) · {{ $this->offener->fortschritt() }} @endif
+                    @if ($this->offener->party_size) · {{ $this->offener->party_size }} {{ $this->offener->party_size === 1 ? 'Gast' : 'Gäste' }} @endif
+                </p>
+
+                @foreach ($this->warenkorb as $abschnitt)
+                    <div wire:key="korb-{{ $loop->index }}" class="mt-4">
+                        @if ($abschnitt['pause'])
+                            <p class="m-0 mb-1.5 text-xs font-semibold text-[color:var(--nx-muted)]">{{ $abschnitt['pause'] }}</p>
+                        @endif
+                        @foreach ($abschnitt['zeilen'] as $zeile)
+                            <div class="flex items-baseline gap-2 border-b border-[color:var(--nx-line)] py-1.5 last:border-0">
+                                <span class="w-8 shrink-0 tabular-nums text-[color:var(--nx-muted)]">{{ $zeile['menge'] }} ×</span>
+                                <span class="text-[color:var(--nx-text)]">{{ $zeile['name'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endforeach
+
+                <p class="m-0 mt-4 tabular-nums text-[color:var(--nx-text)]">
+                    Zwischensumme {{ number_format((float) $this->offener->cart_total, 2, ',', '.') }} {{ $sym }}
+                </p>
+
+                {{-- Der Satz muss hier stehen, nicht nur auf der Karte.
+
+                     Im Fenster sieht es aus wie eine Bestellung: Positionen,
+                     Mengen, eine Summe. Es ist keine. Der Gast kann alles noch
+                     ändern, und die Summe ist die des Shops – der Beleg rechnet
+                     Bundles in ihre Bestandteile auf und kann davon abweichen. --}}
+                <p class="m-0 mt-2 text-[11px] text-[color:var(--nx-faint)]">
+                    Nichts davon ist bestellt – der Gast steht noch im Bestellweg
+                    und kann alles ändern.
+                </p>
+            </div>
+        @else
+            <p class="m-0 text-sm text-[color:var(--nx-muted)]">
+                Dieser Bestellweg läuft nicht mehr – der Gast hat entweder bestellt
+                oder das Fenster geschlossen.
+            </p>
+        @endif
+
+        <x-slot name="footer">
+            <x-nx-button wire:click="warenkorbSchliessen()">Schließen</x-nx-button>
+        </x-slot>
+    </x-nx-modal>
 </div>

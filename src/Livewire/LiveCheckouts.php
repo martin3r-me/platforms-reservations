@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Platform\Reservation\Models\CheckoutSession;
 use Platform\Reservation\Models\Event;
+use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Services\LiveCheckoutService;
 
 /**
@@ -25,6 +27,12 @@ class LiveCheckouts extends Component
 {
     #[Locked]
     public int $eventId;
+
+    /** Der Vorgang, dessen Warenkorb gerade offen liegt. */
+    public ?int $offenerVorgang = null;
+
+    /** Getrennt vom Vorgang, weil x-nx-modal einen Schalter erwartet. */
+    public bool $showWarenkorb = false;
 
     /**
      * Der Termin im Team des Anwenders – oder null.
@@ -53,6 +61,86 @@ class LiveCheckouts extends Component
     public function summe(): array
     {
         return app(LiveCheckoutService::class)->zusammenfassung($this->laufende);
+    }
+
+    public function warenkorbZeigen(int $id): void
+    {
+        $this->offenerVorgang = $id;
+        $this->showWarenkorb  = true;
+    }
+
+    public function warenkorbSchliessen(): void
+    {
+        $this->showWarenkorb  = false;
+        $this->offenerVorgang = null;
+    }
+
+    /**
+     * Der offene Warenkorb, nach Pausen gegliedert und mit Namen.
+     *
+     * Aus der laufenden Liste gesucht statt neu geladen: Damit gilt hier
+     * derselbe Team-Filter, und ein Vorgang, der inzwischen ausgelaufen oder
+     * bestellt ist, faellt von selbst heraus - das Modal ist dann leer statt
+     * falsch.
+     *
+     * Die Namen kommen aus dem Menue des Teams, nicht aus der Meldung: Der
+     * Shop schickt IDs, und ein hier nachgeschlagener Name ist immer der
+     * aktuelle. Ein Artikel, den es nicht mehr gibt, verschwindet nicht - dann
+     * stuende im Modal weniger, als der Gast im Korb hat.
+     *
+     * @return array<int, array{pause: ?string, zeilen: array<int, array{menge: int, name: string}>}>
+     */
+    #[Computed]
+    public function warenkorb(): array
+    {
+        $vorgang = $this->offenerVorgang
+            ? $this->laufende->firstWhere('id', $this->offenerVorgang)
+            : null;
+
+        if (! $vorgang instanceof CheckoutSession || ! $vorgang->hatWarenkorb()) {
+            return [];
+        }
+
+        $artikelIds = collect($vorgang->items)->flatMap(fn ($p) => array_keys($p))->map('intval')->unique();
+
+        $namen = MenuItem::forTeam((int) $vorgang->team_id)
+            ->whereIn('id', $artikelIds)
+            ->pluck('name', 'id');
+
+        $pausen = $this->event?->slots->keyBy('id') ?? collect();
+
+        // Mehrere Pausen bekommen eine Ueberschrift, eine einzelne nicht: Dort
+        // waere "1. Pause" ueber der einzigen Liste nur ein Wort mehr.
+        $mehrere = count($vorgang->items) > 1;
+
+        $ergebnis = [];
+
+        foreach ($vorgang->items as $slotId => $positionen) {
+            $zeilen = [];
+
+            foreach ($positionen as $artikelId => $menge) {
+                $zeilen[] = [
+                    'menge' => (int) $menge,
+                    'name'  => $namen[(int) $artikelId] ?? 'Artikel ' . (int) $artikelId . ' (gelöscht)',
+                ];
+            }
+
+            $ergebnis[] = [
+                'pause'  => $mehrere ? $pausen[(int) $slotId]?->displayLabel() : null,
+                'zeilen' => $zeilen,
+            ];
+        }
+
+        return $ergebnis;
+    }
+
+    /** Der Vorgang zum offenen Modal - fuer Kopf und Fuss. */
+    #[Computed]
+    public function offener(): ?CheckoutSession
+    {
+        return $this->offenerVorgang
+            ? $this->laufende->firstWhere('id', $this->offenerVorgang)
+            : null;
     }
 
     public function render()

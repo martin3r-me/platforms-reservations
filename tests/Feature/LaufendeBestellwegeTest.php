@@ -183,6 +183,80 @@ class LaufendeBestellwegeTest extends TestCase
         $this->assertNull($zeile->fortschritt());
     }
 
+    public function test_der_warenkorb_wird_je_pause_gemerkt(): void
+    {
+        $termin = $this->termin(2);
+        $eins   = $this->pause($termin, 1);
+        $zwei   = $this->pause($termin, 2);
+
+        $this->dienst->merken($termin, $this->ref(), [
+            'step'  => 'products',
+            'items' => [
+                $eins->id => [7 => 2],
+                $zwei->id => [9 => 1],
+            ],
+        ]);
+
+        $zeile = CheckoutSession::first();
+
+        $this->assertSame([
+            (string) $eins->id => ['7' => 2],
+            (string) $zwei->id => ['9' => 1],
+        ], $zeile->items);
+        $this->assertTrue($zeile->hatWarenkorb());
+    }
+
+    public function test_ein_warenkorb_zu_einer_fremden_pause_wird_verworfen(): void
+    {
+        $termin  = $this->termin(1);
+        $fremder = $this->termin(1);
+
+        $this->dienst->merken($termin, $this->ref(), [
+            'step'  => 'products',
+            'items' => [$this->pause($fremder, 1)->id => [7 => 2]],
+        ]);
+
+        // Sonst stuende in der Ansicht dieses Termins der Warenkorb eines
+        // anderen - bei fremdem Team ein Leck ueber die Beschriftung.
+        $this->assertNull(CheckoutSession::first()->items);
+        $this->assertFalse(CheckoutSession::first()->hatWarenkorb());
+    }
+
+    public function test_krumme_mengen_fallen_aus_dem_warenkorb(): void
+    {
+        $termin = $this->termin(1);
+        $pause  = $this->pause($termin, 1);
+
+        $this->dienst->merken($termin, $this->ref(), [
+            'step'  => 'products',
+            'items' => [$pause->id => [7 => 0, 8 => -3, 9 => 2, 0 => 5]],
+        ]);
+
+        $this->assertSame([(string) $pause->id => ['9' => 2]], CheckoutSession::first()->items);
+    }
+
+    public function test_der_warenkorb_ist_nach_oben_begrenzt(): void
+    {
+        $termin = $this->termin(1);
+        $pause  = $this->pause($termin, 1);
+
+        $viel = [];
+        for ($i = 1; $i <= LiveCheckoutService::GRENZE_POSITIONEN + 50; $i++) {
+            $viel[$i] = 1;
+        }
+
+        $this->dienst->merken($termin, $this->ref(), [
+            'step'  => 'products',
+            'items' => [$pause->id => $viel],
+        ]);
+
+        // Die Zeile lebt Minuten - sie soll klein bleiben.
+        $this->assertCount(
+            LiveCheckoutService::GRENZE_POSITIONEN,
+            CheckoutSession::first()->items[(string) $pause->id],
+        );
+    }
+
     public function test_unbekannte_schritte_zeigen_ihren_rohnamen(): void
     {
         $zeile = new CheckoutSession(['step' => 'products']);
