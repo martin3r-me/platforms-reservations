@@ -13,6 +13,9 @@ Die Liste unten war an mehreren Stellen veraltet – Erledigtes stand als offen,
 und ein Punkt beschrieb sogar einen Import, den es seit Juli nicht mehr gibt.
 Alles hier ist gegen den Code geprüft, nicht gegen die eigene Erinnerung.
 
+Der Kunde hat am 02.09.2026 über die offenen Punkte entschieden; verworfene
+stehen unten mit Datum, nicht gelöscht.
+
 **Vor Go-live zwingend (M2): nichts mehr offen** außer einer Klärung –
 was mit der sequenziellen Raumfreigabe passieren soll, wenn jemand storniert.
 Das ist eine Frage fürs Haus, keine Programmieraufgabe.
@@ -24,20 +27,24 @@ Das ist eine Frage fürs Haus, keine Programmieraufgabe.
 - Die echten 37 Artikel (Vorlage steht bereit)
 - Reihenfolge im Bestellweg und Platz- statt Tischwahl – beides Fragen ans Haus
 
-**Zu bauen, nach Größe:**
-1. **Abholstationen** (`PLAN-abholstationen.md`) – das große Stück, in sieben
+**Zu bauen – in dieser Reihenfolge (vom Kunden entschieden am 02.09.2026):**
+1. **Abholstationen** (`PLAN-abholstationen.md`) – das große Stück, sieben
    Etappen. Hängt an keiner offenen Frage mehr.
-2. **Upselling/Cross-Selling** inkl. A/B-Tests. Bundles selbst sind fertig.
-3. **Datums-/Vorstellungssuche** in der Gäste-Terminübersicht.
-4. **Servicegebühr** (optional, kennt das Altsystem).
-5. **Tarifgrenzen zählen** – heute begrenzt nichts, und niemand merkt, wenn ein
+2. **Tarifgrenzen zählen** – heute begrenzt nichts, und niemand merkt, wenn ein
    Basic-Kunde 80 Artikel führt.
 
 **Nicht mehr auf der Liste, weil nachgeprüft erledigt:** Bestellschluss-
-Enforcement, Concurrency-Härtung der Platzvergabe, Mollie-SDK, Bundles, der tote
-`BookingConfirmationMailer` und die doppelte `CheckoutSetting`-Abfrage.
+Enforcement, Concurrency-Härtung der Platzvergabe, Mollie (läuft produktiv und
+sauber), Bundles, der tote `BookingConfirmationMailer` und die doppelte
+`CheckoutSetting`-Abfrage.
 
-**Fraglich, ob überhaupt noch gewollt:** der Guestofy-Import (siehe M3).
+**Verworfen am 02.09.2026, vom Kunden entschieden.** Steht hier, damit es nicht
+in einem halben Jahr als neue Idee zurückkommt:
+- **Guestofy-Import** – erledigt sich. Die Räume sind längst gepflegt, Termine
+  werden je Saison neu angelegt. (Der Code dafür war ohnehin seit Juli entfernt.)
+- **Upselling/Cross-Selling inkl. A/B-Tests** – nicht relevant.
+- **Datums-/Vorstellungssuche** in der Gäste-Terminübersicht – nicht relevant.
+- **Servicegebühr** – nicht relevant.
 
 ---
 
@@ -47,22 +54,19 @@ Von den ursprünglich vier Vorhaben sind drei erledigt und ausgerollt: die
 sequenzielle Raumfreigabe (1), die mehreren Pausen (4) und der Wegfall des
 Schritt-Index (5). Dazu die nachgeschobene Live-Sicht samt Auswertung (6).
 
-**Übrig in dieser Liste sind nur noch die Abholstationen** – die Punkte 2, 3
-und 7. Sie sind zurückgestellt, nicht blockiert: An ihnen hängt keine offene
-Frage mehr, seit der Schritt „Wo?" sich ohne Umnummerierung einhängen lässt.
+**Übrig sind nur noch die Abholstationen** – die Punkte 2, 3 und 7. Sie sind
+seit dem 02.09.2026 nicht mehr zurückgestellt, sondern das nächste Vorhaben. An
+ihnen hängt keine offene Frage mehr, seit der Schritt „Wo?" sich ohne
+Umnummerierung einhängen lässt.
 
-Das heißt aber nicht, dass sonst nichts offen wäre. Was außerhalb dieser Liste
-noch aussteht, steht weiter unten und ist teils dringender als die Stationen –
-und ist teils dringender als die Stationen.
+Danach: die Tarifgrenzen. Alles andere aus M2 und M3 ist erledigt oder
+verworfen – siehe die geprüfte Liste ganz oben.
 
 *(Nachtrag 02.09.2026: An dieser Stelle standen die Concurrency-Härtung und das
 Bestellschluss-Enforcement als „beide noch offen". Die Härtung ist inzwischen
-gebaut; das Enforcement war beim Nachsehen längst vollständig — die Zeile unter
+gebaut; das Enforcement war beim Nachsehen längst vollständig – die Zeile unter
 M2 war veraltet. Übrig aus diesem Punkt ist nur der Storno-Fall der
 sequenziellen Raumfreigabe.)*
-
-Die Reihenfolge der Vorhaben ergibt sich aus ihren Abhängigkeiten, nicht aus
-ihrer Größe.
 
 **1. ~~Sequenzielle Raumfreigabe fertigstellen.~~ Erledigt am 01.09.2026.**
 Sie wurde nur im VA-Dashboard angezeigt, im Bestellweg aber nicht gefragt – zwei
@@ -84,10 +88,13 @@ Der Vorgabewert bleibt bewusst 100 – die strengste Auslegung. Sie öffnet eine
 Raum nie zu früh; wer die letzten Restplätze nicht abwarten will, setzt 85 oder
 90. Ein niedrigerer Vorgabewert würde für alle raten, was nur das Haus weiß.
 
-**2. Abholstationen, Etappe 1** *(auf Wunsch zurückgestellt – großes Feature, 01.09.2026)* (`PLAN-abholstationen.md`). Migrationen, Modelle,
-Zielort, Guard, Kapazitätsdienst – und die erste **eingecheckte Testbasis** des
-Moduls. Ohne Oberfläche: deploybar, ohne dass sich etwas ändert. Hängt an keiner
-offenen Frage.
+**2. Abholstationen, Etappe 1** *(freigegeben am 02.09.2026 – das nächste
+Vorhaben)* (`PLAN-abholstationen.md`). Migrationen, Modelle, Zielort, Guard,
+Kapazitätsdienst. Ohne Oberfläche: deploybar, ohne dass sich etwas ändert.
+
+Die in dieser Etappe vorgesehene **erste eingecheckte Testbasis** gibt es
+inzwischen schon – sie ist am 01.09.2026 mit den mehreren Pausen entstanden und
+steht bei 54 Tests. Etappe 1 baut darauf auf, statt sie anzulegen.
 
 **3. Abholstationen, Etappen 2–4.** Pflege samt MCP-Tools, Betrieb (Laufzettel,
 Küche, Bon, Belege), Gast-API und manuelle Buchung. Danach sind Abholstationen im
@@ -185,7 +192,7 @@ lässt sie sich nicht rekonstruieren. Und ein Abbruch wird per Los beim Schreibe
 oder beim Öffnen der Auswertung verbucht – auf einer ruhigen Seite hinkt die Zahl
 bis zum nächsten Blick hinterher, nicht länger.
 
-**7. Abholstationen, Etappen 5–7** *(zurückgestellt)*. Der Schritt „Wo?" hängt
+**7. Abholstationen, Etappen 5–7.** Der Schritt „Wo?" hängt
 sich nach Punkt 5 ohne Umnummerierung ein. Danach Drop-off-Reste entfernen;
 Sortiment je Station zuletzt, weil es die Reihenfolge im Bestellweg kippt.
 
@@ -243,7 +250,8 @@ ob (2) oder (3) überhaupt gebraucht wird.
       Buchungen mit 393,50 € verbucht; auf dem Gast-Weg wird „bestätigt" erst
       durch den Mollie-Webhook gesetzt, die Zahlung läuft also produktiv. Ein
       ausdrücklicher, protokollierter Test-Durchlauf mit Testkey ist nirgends
-      dokumentiert – wer einen braucht, muss ihn noch machen.)*
+      dokumentiert – der Kunde hat am 02.09.2026 bestätigt, dass die Zahlung
+      sauber läuft. Damit ist der Punkt zu.)*
 - [x] **E-Mail-Bestätigungen** an Gäste — `OrderConfirmationMailer` versendet über den
       CRM-Comms-Dienst (`PostmarkEmailService` + team-scoped `CommsChannel`, wie das
       Events-Modul) mit eigenem HTML-Template; ausgelöst beim Mollie-„bezahlt"-Übergang
@@ -298,21 +306,23 @@ ob (2) oder (3) überhaupt gebraucht wird.
       `components`), zerfällt beim Bestellen in sie, und die MwSt-Mischung wird
       cent-genau je Bestandteil verteilt (`CartCalculator`). Auswertung und Beleg
       rechnen mit den Bestandteilen, nicht mit dem Paket.
-- [ ] **Upselling/Cross-Selling inkl. A/B-Tests** – nicht gebaut. Hing in derselben
-      Zeile wie die Bundles und wäre beim Abhaken lautlos verschwunden.
-- [ ] **Datums-/Vorstellungssuche** in der Gast-Terminübersicht (viele Termine pro
-      Saison, teils mehrere pro Tag; „Keine Vorstellung für …“-Zustand).
-- [ ] **Migration der Saisondaten aus Guestofy** – *diese Zeile war falsch.*
+- [–] **Upselling/Cross-Selling inkl. A/B-Tests** – **verworfen am 02.09.2026.**
+      Hing in derselben Zeile wie die Bundles und wäre beim Abhaken lautlos
+      verschwunden; jetzt ist es eine bewusste Entscheidung statt eines Versehens.
+- [–] **Datums-/Vorstellungssuche** in der Gast-Terminübersicht – **verworfen am
+      02.09.2026.** Wird wieder aufzumachen sein, wenn eine Saison so viele
+      Termine bekommt, dass die Liste nicht mehr überschaubar ist.
+- [–] **Migration der Saisondaten aus Guestofy** – **verworfen am 02.09.2026.**
+      Die Räume sind gepflegt, Termine entstehen je Saison neu; es gibt nichts
+      mehr zu migrieren. Die frühere Fassung dieser Zeile war zudem falsch:
       Sie beschrieb einen Import, den es nicht mehr gibt: `GuestofyImporter`,
       die Livewire-Komponente, die Route und der Knopf „Aus Alt-System" wurden am
       **15.07.2026 entfernt** (Commit `4eb08fa`). Im Modul ist heute kein
       Alt-System-Import vorhanden – weder für Räume noch für Termine.
-      Wer migrieren will, macht es von Hand oder baut den Import neu. Ob das
-      überhaupt noch gebraucht wird, ist die eigentliche Frage: Die Räume stehen
-      längst gepflegt im System, und Termine werden ohnehin je Saison neu angelegt.
+      Wer ihn je wieder braucht, baut ihn neu.
 - [x] **Konfigurierbare Checkout-Consents** (Datenschutz-/18+-Texte pflegbar statt
       hartkodiert) – siehe Einstellungen → Checkout-Texte.
-- [ ] **Servicegebühr** (optional, Altsystem: `service_charge`).
+- [–] **Servicegebühr** (Altsystem: `service_charge`) – **verworfen am 02.09.2026.**
 - [ ] Produkt-Sortierung nach Verkaufszahlen; „Service-Runden“-Konzept des
       Altsystems (`enable_service_rounds`) verstehen und ggf. übernehmen.
 - [ ] Reporting/Dashboard-Ausbau + Buchhaltungsschnittstelle (MwSt-Aufschlüsselung,
