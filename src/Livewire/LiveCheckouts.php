@@ -112,7 +112,6 @@ class LiveCheckouts extends Component
         }
 
         $namen  = $this->artikelnamen($vorgang, $korb);
-        $orte   = $this->tischnamen($tische);
         $pausen = $this->event?->slots->keyBy('id') ?? collect();
 
         // Mehrere Pausen bekommen eine Ueberschrift, eine einzelne nicht: Dort
@@ -133,12 +132,24 @@ class LiveCheckouts extends Component
 
             $ergebnis[] = [
                 'pause'  => $mehrere ? $pausen[(int) $slotId]?->displayLabel() : null,
-                'tisch'  => $orte[(int) ($tische[$slotId] ?? 0)] ?? null,
+                'tisch'  => $this->tischMitRaum($tische[$slotId] ?? null),
                 'zeilen' => $zeilen,
             ];
         }
 
         return $ergebnis;
+    }
+
+    /** „Tisch 3 · ROSSINI" - im Fenster ist Platz fuer den Raum. */
+    protected function tischMitRaum(mixed $tischId): ?string
+    {
+        $tisch = $tischId ? ($this->tischLabels[(int) $tischId] ?? null) : null;
+
+        if (! $tisch) {
+            return null;
+        }
+
+        return $tisch['label'] . ($tisch['raum'] ? ' · ' . $tisch['raum'] : '');
     }
 
     /**
@@ -157,30 +168,55 @@ class LiveCheckouts extends Component
     }
 
     /**
-     * Tischbeschriftungen - und HIER faellt ein fremder Tisch heraus.
+     * Beschriftung jedes angeklickten Tischs - und HIER faellt ein fremder heraus.
      *
-     * Gesucht wird nur in den Tischplaenen DIESES Termins. Eine Meldung, die
-     * eine beliebige Tisch-Id enthaelt, loest sich damit nicht auf, und im
-     * Fenster steht nichts statt eines fremden Tischs.
+     * Gesucht wird nur in den Tischplaenen DIESES Termins. Eine Meldung mit
+     * einer beliebigen Tisch-Id loest sich damit nicht auf, und es steht
+     * nichts da statt eines fremden Tischs. Deshalb prueft der Schreibweg das
+     * nicht - er laeuft bei jeder Meldung, das Nachschlagen nur beim Hinsehen.
      *
-     * @param  array<string, int>  $tische
-     * @return \Illuminate\Support\Collection<int, string>
+     * Eine Abfrage fuer alle Zeilen, nicht eine je Zeile: Die Liste laedt sich
+     * alle 15 Sekunden nach.
+     *
+     * @return \Illuminate\Support\Collection<int, array{label: string, raum: ?string}>
      */
-    protected function tischnamen(array $tische): \Illuminate\Support\Collection
+    #[Computed]
+    public function tischLabels(): \Illuminate\Support\Collection
     {
-        if ($tische === [] || ! $this->event) {
+        $ids = $this->laufende
+            ->flatMap(fn (CheckoutSession $s) => array_values($s->tables ?? []))
+            ->map('intval')
+            ->unique();
+
+        if ($ids->isEmpty() || ! $this->event) {
             return collect();
         }
 
         $plaene = $this->event->eventRooms()->pluck('floor_plan_id');
 
         return Table::whereIn('floor_plan_id', $plaene)
-            ->whereIn('id', array_map('intval', array_values($tische)))
+            ->whereIn('id', $ids)
             ->with('floorPlan')
             ->get()
             ->mapWithKeys(fn (Table $t) => [
-                $t->id => $t->label . ($t->floorPlan?->name ? ' · ' . $t->floorPlan->name : ''),
+                $t->id => ['label' => (string) $t->label, 'raum' => $t->floorPlan?->name],
             ]);
+    }
+
+    /**
+     * Der angeklickte Tisch EINER Zeile, fuer die Liste.
+     *
+     * Der der offenen Pause - die steht in derselben Zeile daneben, sonst
+     * stuende dort ein Tisch zu einer anderen. Hat sie keinen, steht nichts da;
+     * das Fenster zeigt ohnehin alle.
+     */
+    public function tischDerZeile(CheckoutSession $vorgang): ?string
+    {
+        $tischId = $vorgang->event_slot_id
+            ? ($vorgang->tables[$vorgang->event_slot_id] ?? null)
+            : null;
+
+        return $tischId ? ($this->tischLabels[(int) $tischId]['label'] ?? null) : null;
     }
 
     /** Der Vorgang zum offenen Modal - fuer Kopf und Fuss. */

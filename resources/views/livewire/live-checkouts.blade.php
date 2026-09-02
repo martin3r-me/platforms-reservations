@@ -71,6 +71,22 @@
                             @else
                                 Warenkorb noch leer
                             @endif
+                            {{-- „sieht sich … an", nicht „Tisch 3".
+
+                                 Der nackte Tischname neben einer Gästezahl liest
+                                 sich wie eine Belegung, und aus „Sitzplatz · 4
+                                 Gäste · Tisch 3" wird im Kopf schnell „Tisch 3 ist
+                                 weg". Er ist es nicht: Vergeben wird erst beim
+                                 Bestellen, zwei Gäste können denselben im Blick
+                                 haben. Das Verb trägt die ganze Einschränkung –
+                                 deshalb steht sie hier im Satz und nicht in einem
+                                 Zusatz, den man überliest.
+
+                                 Der Raum fehlt, dafür ist die Zeile zu eng; im
+                                 Fenster steht er. --}}
+                            @if ($this->tischDerZeile($vorgang))
+                                · sieht sich {{ $this->tischDerZeile($vorgang) }} an
+                            @endif
                         </p>
                     </div>
 
