@@ -1,16 +1,31 @@
 # PausePlus – Roadmap / offene Umsetzungspunkte
 
-Stand: 12.06.2026, Reihenfolge der nächsten Vorhaben ergänzt am 31.08.2026, Pausenfrage beantwortet am 01.09.2026, Live-Sicht und Auswertung gebaut am 02.09.2026 · Go-live-Ziel: **01.08.2026**, erste Veranstaltung 29.08.2026 (Bodo Wartke).
+Stand: 12.06.2026, Reihenfolge der nächsten Vorhaben ergänzt am 31.08.2026, Pausenfrage beantwortet am 01.09.2026, Live-Sicht und Auswertung gebaut und ausgerollt am 02.09.2026 · Go-live-Ziel: **01.08.2026**, erste Veranstaltung 29.08.2026 (Bodo Wartke).
 
 Meilenstein 1 (Produktmodul + Klick-Dummy bis Mock-Checkout) ist umgesetzt.
 Die folgenden Punkte sind **vereinbart und noch umzusetzen**. Referenz für viele
 Punkte ist das Altsystem des Kunden (Guestofy, WordPress/WooCommerce/Stripe):
 https://historische-stadthalle-wuppertal-culinaria.guestofy.events/#/
 
-## Nächste Vorhaben – Reihenfolge (Stand 31.08.2026)
+## Nächste Vorhaben – Reihenfolge (Stand 02.09.2026)
 
-Vier Vorhaben stehen an. Die Reihenfolge ergibt sich aus ihren Abhängigkeiten,
-nicht aus ihrer Größe.
+Von den ursprünglich vier Vorhaben sind drei erledigt und ausgerollt: die
+sequenzielle Raumfreigabe (1), die mehreren Pausen (4) und der Wegfall des
+Schritt-Index (5). Dazu die nachgeschobene Live-Sicht samt Auswertung (6).
+
+**Übrig in dieser Liste sind nur noch die Abholstationen** – die Punkte 2, 3
+und 7. Sie sind zurückgestellt, nicht blockiert: An ihnen hängt keine offene
+Frage mehr, seit der Schritt „Wo?" sich ohne Umnummerierung einhängen lässt.
+
+Das heißt aber nicht, dass sonst nichts offen wäre. Was außerhalb dieser Liste
+noch aussteht, steht weiter unten und ist teils dringender als die Stationen –
+insbesondere die **Concurrency-Härtung der Platzvergabe** und das
+**Bestellschluss-Enforcement** unter M2, beide als „vor Go-live zwingend"
+geführt und beide noch offen. Wer nach dem nächsten Schritt sucht, sollte diese
+zwei zuerst ansehen.
+
+Die Reihenfolge der Vorhaben ergibt sich aus ihren Abhängigkeiten, nicht aus
+ihrer Größe.
 
 **1. ~~Sequenzielle Raumfreigabe fertigstellen.~~ Erledigt am 01.09.2026.**
 Sie wurde nur im VA-Dashboard angezeigt, im Bestellweg aber nicht gefragt – zwei
@@ -86,18 +101,19 @@ Trichter bleibt über beide Umbauten hinweg vergleichbar. Das ist mehr Arbeit al
 ein weiterer Zweig im `match`, aber die einzige Fassung, die den zweiten Umbau
 nicht ein zweites Mal bezahlt.
 
-**Stand der Umsetzung (01.09.2026).** Alle fünf Etappen aus
-`PLAN-mehrere-pausen.md` sind gebaut und an zwei Testterminen auf demo geprüft –
-einer je Betriebsart. Im Modul ist alles ausgerollt; **der Shop nicht**, dort
-hängen vier Commits (Schritt-Namen, Pausen und Warenkorb je Pause,
-Schnittmengen-Regel, Tisch je Pause). Beim Ausrollen zu beachten: `$step` wechselt
-von int auf string, laufende Bestellwege verlieren ihre Sitzung – also außerhalb
-der Bestellzeiten. Und das Plausible-Ziel `Pause Selected` muss dort einmal von
-Hand angelegt werden.
+**Stand der Umsetzung (02.09.2026).** Alle fünf Etappen aus
+`PLAN-mehrere-pausen.md` sind gebaut, an zwei Testterminen auf demo geprüft –
+einer je Betriebsart – und bei Culinaria ausgerollt: Modul und Shop sind live.
 
-**6. ~~Live-Sicht auf laufende Checkouts.~~ Erledigt am 02.09.2026**
-(`PLAN-live-checkouts.md`). Im Modul ausgerollt; **der Shop nicht** – dort hängen
-die Commits noch, und Culinaria ist noch nicht gebumpt.
+**Offen dazu:** Das Plausible-Ziel `Pause Selected` muss im Plausible-Konto
+einmal von Hand angelegt werden (an einen Kollegen gegeben am 02.09.2026);
+solange es fehlt, feuert das Ereignis ins Leere. Und die Tischbindung bei
+Culinaria steht derzeit auf „jede Pause einzeln" – entgegen dem ausgelieferten
+Vorgabewert „ganzer Abend". Ob das so bleiben soll, ist beim Kunden noch nicht
+bestätigt.
+
+**6. ~~Live-Sicht auf laufende Checkouts.~~ Erledigt und ausgerollt am 02.09.2026**
+(`PLAN-live-checkouts.md`). Modul, Culinaria und Shop sind live.
 
 Gebaut in fünf Etappen: Server (`reservation_checkout_sessions`), Karte „Gerade
 im Bestellweg" im VA-Dashboard, Meldung aus dem Shop, Datenschutz, und die
@@ -125,19 +141,25 @@ Bestellweg mit einer Pause hat vier Schritte, einer mit zweien fünf, und „Pau
 gibt es im ersten Fall gar nicht – ein gemeinsamer Nenner sähe nur so aus, als
 wäre er einer. Gezeigt wird die Verteilung der tatsächlichen Endpunkte.
 
-**Offen:** Culinaria bumpen und den Shop deployen. Danach zählt die Auswertung –
-sie zählt **nicht rückwirkend**, der erste Tag ist der Starttag. Und: `beenden()`
-schreibt eine Statistikzeile, `aufraeumen()` auch, aber Letzteres läuft per Los
-beim Schreiben und beim Öffnen der Auswertung – auf einer ruhigen Seite hinkt die
-Zahl also bis zum nächsten Blick hinterher, nicht länger.
+**Zwei Dinge, die später jemanden irritieren werden.** Die Auswertung zählt
+**ab dem Deploy-Tag (02.09.2026), nicht rückwirkend**: Eine Statistikzeile
+entsteht in dem Moment, in dem ein Bestellweg endet, und aus Bestellungen allein
+lässt sie sich nicht rekonstruieren. Und ein Abbruch wird per Los beim Schreiben
+oder beim Öffnen der Auswertung verbucht – auf einer ruhigen Seite hinkt die Zahl
+bis zum nächsten Blick hinterher, nicht länger.
 
 **7. Abholstationen, Etappen 5–7** *(zurückgestellt)*. Der Schritt „Wo?" hängt
 sich nach Punkt 5 ohne Umnummerierung ein. Danach Drop-off-Reste entfernen;
 Sortiment je Station zuletzt, weil es die Reihenfolge im Bestellweg kippt.
 
-**Nebenbei, jederzeit:** doppelte `CheckoutSetting::forTeam()`-Abfrage in
-`checkoutFields` aufräumen; toten `BookingConfirmationMailer` entfernen; klären, ob
-eingeladene Gäste weiter als Umsatz zählen (`PLAN-abholstationen.md`, Abschnitt R).
+**Nebenbei, jederzeit:** klären, ob eingeladene Gäste weiter als Umsatz zählen
+(`PLAN-abholstationen.md`, Abschnitt R).
+
+*(Am 02.09.2026 aus dieser Liste gestrichen, weil beim Nachsehen bereits erledigt:
+die doppelte `CheckoutSetting::forTeam()`-Abfrage in `checkoutFields` – dort steht
+nur noch eine – und der tote `BookingConfirmationMailer`, den M2 unten schon als
+entfernt führt. Eine Liste, die Erledigtes mitschleppt, wird irgendwann nicht mehr
+gelesen.)*
 
 ---
 
