@@ -1,6 +1,6 @@
 # PausePlus – Roadmap / offene Umsetzungspunkte
 
-Stand: 12.06.2026, Reihenfolge der nächsten Vorhaben ergänzt am 31.08.2026, Pausenfrage beantwortet am 01.09.2026 · Go-live-Ziel: **01.08.2026**, erste Veranstaltung 29.08.2026 (Bodo Wartke).
+Stand: 12.06.2026, Reihenfolge der nächsten Vorhaben ergänzt am 31.08.2026, Pausenfrage beantwortet am 01.09.2026, Live-Sicht und Auswertung gebaut am 02.09.2026 · Go-live-Ziel: **01.08.2026**, erste Veranstaltung 29.08.2026 (Bodo Wartke).
 
 Meilenstein 1 (Produktmodul + Klick-Dummy bis Mock-Checkout) ist umgesetzt.
 Die folgenden Punkte sind **vereinbart und noch umzusetzen**. Referenz für viele
@@ -95,14 +95,41 @@ von int auf string, laufende Bestellwege verlieren ihre Sitzung – also außerh
 der Bestellzeiten. Und das Plausible-Ziel `Pause Selected` muss dort einmal von
 Hand angelegt werden.
 
-**6. Live-Sicht auf laufende Checkouts.** Wartet ab jetzt nur noch auf Punkt 5,
-nicht mehr auf eine Kundenantwort: Sobald die Schritte eine Liste mit Namen sind,
-hat ein gespeicherter Schritt eine Bedeutung, die ein späterer Umbau nicht
-rückwirkend verschiebt. Entwurf steht: Tabelle `reservation_checkout_sessions`,
-Ping huckepack auf den Livewire-Requests, Aufräum-Job ab ~30 Min,
-rollenbeschränktes Dashboard. Ohne Personenbezug, und als Kennung eine eigene
-Zufalls-UUID statt der Laravel-Session-ID (die ist bei `SESSION_DRIVER=database`
-ein Login-Token).
+**6. ~~Live-Sicht auf laufende Checkouts.~~ Erledigt am 02.09.2026**
+(`PLAN-live-checkouts.md`). Im Modul ausgerollt; **der Shop nicht** – dort hängen
+die Commits noch, und Culinaria ist noch nicht gebumpt.
+
+Gebaut in fünf Etappen: Server (`reservation_checkout_sessions`), Karte „Gerade
+im Bestellweg" im VA-Dashboard, Meldung aus dem Shop, Datenschutz, und die
+Auswertung „Bestellwege" (`reservation_checkout_stats`).
+
+Drei Entscheidungen, die man kennen sollte, bevor man daran weiterbaut:
+
+*Der Shop meldet an einer einzigen Stelle* – `dehydrate()`, am Ende jeder
+Anfrage. Ein Aufruf je Aktion wäre früher oder später an einem neuen Weg durch
+den Wizard vorbeigelaufen. Der HTTP-Aufruf läuft über `app()->terminating()`,
+also nach der Antwort an den Gast; ein langsames Office darf den Shop nicht
+langsam machen.
+
+*Schritt-NAME plus Position vom Shop, nicht im Office gerechnet.* Wie viele
+Schritte ein Bestellweg hat, entscheidet der Shop zur Laufzeit („Wann?" fehlt bei
+einer Pause, „Wo?" kommt mit den Abholstationen). Eine zweite Fassung dieser
+Regel im Office liefe beim ersten Umbau lautlos auseinander.
+
+*Die Live-Zeile wird beim Verschwinden zur Statistikzeile* – in `beenden()`
+(bestellt) und `aufraeumen()` (abgebrochen). Keine zweite Meldekette, und die
+Auswertung kann nicht von der Live-Sicht abweichen.
+
+Was die Auswertung bewusst NICHT zeigt: einen Trichter mit Prozent je Stufe. Ein
+Bestellweg mit einer Pause hat vier Schritte, einer mit zweien fünf, und „Pause"
+gibt es im ersten Fall gar nicht – ein gemeinsamer Nenner sähe nur so aus, als
+wäre er einer. Gezeigt wird die Verteilung der tatsächlichen Endpunkte.
+
+**Offen:** Culinaria bumpen und den Shop deployen. Danach zählt die Auswertung –
+sie zählt **nicht rückwirkend**, der erste Tag ist der Starttag. Und: `beenden()`
+schreibt eine Statistikzeile, `aufraeumen()` auch, aber Letzteres läuft per Los
+beim Schreiben und beim Öffnen der Auswertung – auf einer ruhigen Seite hinkt die
+Zahl also bis zum nächsten Blick hinterher, nicht länger.
 
 **7. Abholstationen, Etappen 5–7** *(zurückgestellt)*. Der Schritt „Wo?" hängt
 sich nach Punkt 5 ohne Umnummerierung ein. Danach Drop-off-Reste entfernen;

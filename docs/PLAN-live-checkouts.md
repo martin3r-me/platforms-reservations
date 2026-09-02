@@ -85,12 +85,42 @@ Keine eigene Seite: Die Sicht ist nur zusammen mit der Auslastung nützlich.
 
 ## F. Etappen
 
-1. **Server im Modul.** Migration, Modell, Dienst, zwei API-Routen. Deploybar,
-   ohne dass sich etwas ändert – es ruft sie noch niemand auf.
-2. **Ansicht im Office.** Karte im VA-Dashboard. Bleibt leer, bis Etappe 3 steht.
-3. **Shop.** UUID in der Sitzung, Meldung huckepack, Herzschlag-Komponente,
+Alle erledigt am 02.09.2026.
+
+1. ~~**Server im Modul.**~~ Migration, Modell, Dienst, zwei API-Routen.
+2. ~~**Ansicht im Office.**~~ Karte im VA-Dashboard.
+3. ~~**Shop.**~~ UUID in der Sitzung, Meldung huckepack, Herzschlag-Komponente,
    Löschen nach der Bestellung.
-4. **Abschluss.** Datenschutz-Absatz im Shop, Roadmap, Tests.
+4. ~~**Abschluss.**~~ Datenschutz-Absatz im Shop, Roadmap, Tests.
+5. ~~**Auswertung.**~~ Siehe Abschnitt G.
+
+Auf Wunsch nachgezogen, nachdem die Grundfassung stand: der wievielte Schritt
+von wie vielen (`step_no`/`step_count`), der Warenkorb im Fenster (`items`) und
+der angeklickte Tisch (`tables`, im Fenster UND in der Liste, dort als „sieht
+sich Tisch 3 an").
+
+**Nicht gebaut, bewusst:** ein Löschweg für die Statistikzeilen. Sie tragen
+keinen Personenbezug, es gibt also nichts zu löschen – und ein Knopf, der
+Auswertungsdaten wegwirft, wäre gefährlicher als nützlich. Die Testdaten auf
+demo bleiben deshalb stehen.
+
+## H. Was beim Bauen schiefging
+
+Zwei Fehler, die es wert sind, aufgeschrieben zu werden, weil beide dieselbe
+Form hatten: eine Zahl, die falsch war, ohne falsch auszusehen.
+
+*Aus einem Gast wurden fünf.* Die Kennung lag in der Sitzung unter
+`nutzlast.ref`, gelesen wurde sie als `ref` – eine Ebene höher. Sie fehlte also
+immer, das `?? Str::uuid()` griff bei jedem Klick, und jede Anfrage begann einen
+neuen Bestellweg. In der Liste sah das aus wie fünf Gäste. Lehre: Die Kennung
+gehört auf die oberste Ebene, nicht in die Nutzlast – sie beschreibt den
+Vorgang, nicht die Meldung.
+
+*Ein Abbruch wäre im falschen Monat gelandet.* `ended_at` war der Zeitpunkt des
+Verbuchens statt des Abbruchs. Zusammen damit, dass per Los aufgeräumt wird,
+hätte ein Abbruch vom März in der Auswertung für den Juni gestanden. Gefunden
+hat es der Kunde beim Testen – nicht, weil die Zahl falsch aussah, sondern weil
+sie gar nicht da war (auf einer ruhigen Seite löst niemand das Los aus).
 
 ## G. Etappe 5 (vorgeschlagen): Wo wird abgebrochen?
 
