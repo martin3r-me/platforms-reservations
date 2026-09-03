@@ -651,7 +651,9 @@
             </div>
 
             <x-slot name="footer">
-                <div class="flex items-center justify-between gap-2">
+                {{-- flex-wrap wie im Termin-Formular: Drei Knoepfe laufen sonst
+                     aus einem schmalen Fenster heraus. --}}
+                <div class="flex flex-wrap items-center justify-between gap-2">
                     @if ($editingTableId)
                         <div class="shrink-0">
                             {{-- action= wird als Methodenname aufgerufen, nicht als

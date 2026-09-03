@@ -586,7 +586,12 @@
          Escape schließt beide zugleich (die Komponente lauscht am Fenster).
          Das ist verkraftbar: Die Rückfrage tut von sich aus nichts, entfernt
          wird nur über den Knopf. --}}
-    <x-nx-modal size="sm" wire:model="showRoomRemoveConfirm">
+    {{-- md, nicht sm: Drei Knoepfe mit sprechenden Beschriftungen passen in ein
+         schmales Fenster nicht nebeneinander - "Abbrechen" wurde links
+         abgeschnitten. Die Beschriftungen zu kuerzen waere der falsche Weg
+         gewesen: Sie tragen hier den Unterschied zwischen "schliessen" und
+         "entfernen", und genau der ist die Frage. --}}
+    <x-nx-modal size="md" wire:model="showRoomRemoveConfirm">
         <x-slot name="header">
             <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">Raum entfernen?</h3>
             <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">{{ $this->roomRemoveName() }}</p>
@@ -612,9 +617,12 @@
         </div>
 
         <x-slot name="footer">
-            <div class="flex items-center justify-between gap-2">
+            {{-- flex-wrap als Netz: Wird es doch einmal eng (schmales Fenster,
+                 groessere Schrift), rutschen die beiden Aktionen unter
+                 "Abbrechen", statt aus dem Fenster zu laufen. --}}
+            <div class="flex flex-wrap items-center justify-between gap-2">
                 <x-nx-button variant="secondary-outline" wire:click="closeRoomRemoveModal">Abbrechen</x-nx-button>
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     <x-nx-button variant="primary" wire:click="closeRoomInsteadAndCloseModal">Stattdessen schließen</x-nx-button>
                     <x-nx-button variant="danger-outline" wire:click="removeRoomAndCloseModal">Trotzdem entfernen</x-nx-button>
                 </div>
