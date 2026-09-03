@@ -349,6 +349,23 @@ Sie jetzt zu erfinden hieße, sie später samt Daten zu korrigieren.
 Ein Code wäre davon unabhängig – eine nullable Spalte an der Buchung, eine Vergabe beim
 Bestellen, vier Anzeigen. Etwa ein halber Tag, heute wie später.
 
+**Die Richtung steht schon fest** (Kunde, 03.09.2026), damit sie nicht neu gesucht werden
+muss: **drei Ziffern, bewusst NICHT fortlaufend** – wie bei McDonald's. Fortlaufende
+Nummern verraten sonst, wie viele vor einem bestellt haben, und zwei Gäste mit 114 und 115
+stehen garantiert gleichzeitig am Tresen.
+
+Zwei Punkte, die dann zu entscheiden sind:
+
+*Eindeutig wovon?* Es genügt **je Pause**. Eine Pause dauert zwanzig Minuten; danach ist
+der Code verbraucht, und 1000 Werte reichen dafür bequem – auch bei ein paar hundert
+Bestellungen. Über den ganzen Termin eindeutig wäre unnötig eng und über die Saison
+sinnlos.
+
+*Wie vergeben?* Zufällig mit Prüfung auf Kollision ist bei dieser Füllung harmlos; erst
+wenn ein Pool zu über der Hälfte belegt ist, lohnt eine gemischte Liste. Die Vergabe
+gehört in `GuestOrderService::store()` – dieselbe Transaktion, in der die Buchung entsteht,
+sonst gibt es den Code zweimal.
+
 ---
 
 ## G. Gast-API (`EventController`)
