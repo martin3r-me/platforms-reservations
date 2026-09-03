@@ -531,10 +531,25 @@ widerspricht die Website dem Bestellweg.
 2. **Pflege** – Stationen-CRUD, Werkzeug im Tischplan-Editor, Zuordnung am Termin samt
    Pausen-Häkchen, Veröffentlichungs-Regel, Löschschutz (Station **und** Venue),
    MCP-Tools samt Bulk-Zuordnung, Duplizieren, Einstellung `pickup_identification`.
-3. **Betrieb** – Laufzettel, Küche, Bon, Beleg-PDF, Mails, Listen, Export über `zielortLabel()`;
-   Codevergabe und -anzeige.
-4. **Gast-API + manuelle Buchung** – `floor-plan` um `stations` erweitert,
-   `station_id` beim Anlegen, `BookingCreate` auf den Ort-Schritt.
+3. **Betrieb** – ~~Laufzettel, Küche, Bon, Beleg-PDF, Mails, Listen, Export über
+   `zielortLabel()`~~ *(erledigt am 03.09.2026)*; Codevergabe und -anzeige *(offen)*.
+
+   Vieles war schon da: Bon, Bestätigungsmail, Buchungsliste, Dashboards,
+   Detail-Ansicht, Export und das MCP-Tool lesen den Ort seit dem 31.08.2026
+   über `zielortLabel()` und brauchten gar keine Änderung. Angefasst wurden drei
+   Stellen: der **Laufzettel** (gruppierte über `table_id ?? 0` – alle
+   Abholungen landeten in EINEM Topf, beschriftet von der zufällig ersten
+   Buchung), der **Bon** (schrieb „Tisch: Foyer links“) und das
+   **VA-Dashboard** (zählte Abholungen als „ohne Tisch“).
+
+4. **Gast-API + manuelle Buchung** – ~~`station_id` beim Anlegen, `BookingCreate`
+   auf den Ort-Schritt~~ *(erledigt am 03.09.2026)*; `floor-plan` um `stations`
+   erweitern *(offen)*.
+
+   **Reihenfolge getauscht, mit Absicht:** Die manuelle Buchung kam VOR Etappe 3.
+   Vorher gab es überhaupt keinen Weg, eine Station-Buchung zu erzeugen – Küche,
+   Laufzettel und Bon hätten sich nicht prüfen lassen, man hätte drei Etappen
+   blind gebaut.
 5. **Shop** – Ort-Schritt mit Liste und Flächen im Saalplan, Schritt „Wann?" ab zwei
    Pausen (Abschnitt L), Status, Beleg, Sprachen. Lokal testen, dann Deploy.
 6. **Aufräumen** – `reservation_dropoff_slots`, `DropoffSlot`, `DropoffManager` entfernen.

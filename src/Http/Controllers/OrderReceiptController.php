@@ -109,7 +109,9 @@ class OrderReceiptController
             $groups[] = [
                 'slot'   => $booking->slot?->displayLabel() ?? ($booking->slot?->name ?? 'Pause'),
                 'table'  => $booking->zielortLabel(),
-                'room'   => $booking->table?->floorPlan?->name,
+                // Ueber die eine Auskunft: Bei einer Abholstation gibt es keinen
+                // Tisch, wohl aber einen Raum - wenn sie in einem gezeichnet ist.
+                'room'   => $booking->zielort()['raum'],
                 'blocks' => $blocks,
             ];
         }

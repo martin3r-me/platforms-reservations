@@ -180,6 +180,25 @@
                         </div>
                     @endif
 
+                    {{-- Abholstationen dieser Pause.
+
+                         Sie stehen in der Auslastung oben nicht, und das ist
+                         richtig: Die rechnet ueber Tische, eine Station hat
+                         keine. Ohne diese Zeile fehlte die Differenz zwischen
+                         Kopfzahl und Raum wieder unerklaert - derselbe Fall wie
+                         bei den Buchungen ohne Tisch, nur mit einem Ort. --}}
+                    @if (! empty($group['stationen']))
+                        <div class="border-t border-[color:var(--nx-line)] px-4 py-2.5">
+                            <p class="m-0 text-[11px] text-[color:var(--nx-muted)]">
+                                <span class="font-medium text-[color:var(--nx-text)]">Abholung</span> ·
+                                @foreach ($group['stationen'] as $st)
+                                    {{ $st['name'] }}: {{ $st['guests'] }} {{ $st['guests'] === 1 ? 'Gast' : 'Gäste' }}@unless ($loop->last) · @endunless
+                                @endforeach
+                                · in der Auslastung oben nicht enthalten
+                            </p>
+                        </div>
+                    @endif
+
                     @if ($group['count'] === 0)
                         <div class="px-4 py-4 text-xs text-[color:var(--nx-faint)]">Noch keine Buchungen für diese Pause.</div>
                     @else

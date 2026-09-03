@@ -37,7 +37,7 @@ class FunctionSheetService
 
         $bookings = $event->bookings()
             ->whereIn('status', $statuses)
-            ->with(['items.menuItem.holdingClass', 'table.floorPlan'])
+            ->with(['items.menuItem.holdingClass', 'table.floorPlan', 'pickupStation.floorPlan'])
             ->get();
 
         $pauses = $event->slots
@@ -99,16 +99,27 @@ class FunctionSheetService
                     ];
                 }
 
-                $tableId = $booking->table_id ?? 0;
-                if (! isset($runs[$key]['tables'][$tableId])) {
-                    $runs[$key]['tables'][$tableId] = [
-                        'table'    => $booking->zielortLabel()
-                            ? ['id' => $booking->table_id, 'label' => $booking->zielortLabel(), 'weg' => $booking->zielortFehlt()]
+                // Gruppiert wird ueber den ZIELORT, nicht ueber die Tisch-Id.
+                //
+                // Mit table_id ?? 0 landeten alle Abholungen in einem einzigen
+                // Topf - zusammen mit den Buchungen, deren Tisch geloescht
+                // wurde. Der Laufzettel haette dann eine Gruppe gezeigt, deren
+                // Beschriftung von der zufaellig ersten Buchung stammt, und der
+                // Service traegt alles an einen Ort, der so nicht existiert.
+                $ort    = $booking->zielort();
+                $ortKey = $booking->zielortSchluessel();
+
+                if (! isset($runs[$key]['tables'][$ortKey])) {
+                    $runs[$key]['tables'][$ortKey] = [
+                        'table'    => $ort['label']
+                            ? ['id' => $booking->table_id, 'label' => $ort['label'], 'weg' => $ort['weg']]
                             : null,
-                        'room'     => $booking->table?->floorPlan?->name,
+                        'room'     => $ort['raum'],
                         'bookings' => [],
                     ];
                 }
+
+                $tableId = $ortKey;
 
                 $bookingId = $booking->id;
                 if (! isset($runs[$key]['tables'][$tableId]['bookings'][$bookingId])) {

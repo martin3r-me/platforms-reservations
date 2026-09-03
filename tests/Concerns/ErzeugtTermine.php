@@ -10,6 +10,7 @@ use Platform\Reservation\Models\EventSlot;
 use Platform\Reservation\Models\FloorPlan;
 use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
+use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\EventStation;
 use Platform\Reservation\Models\Order;
 use Platform\Reservation\Models\PickupStation;
@@ -210,6 +211,20 @@ trait ErzeugtTermine
             'date'              => '2026-10-01',
             'time_start'        => $pause->time_start,
             'status'            => $status,
+        ]);
+    }
+
+    /** Eine Position an eine Buchung haengen – für alles, was über Artikel läuft. */
+    protected function position(Booking $buchung, ?MenuItem $artikel = null, int $menge = 1): BookingItem
+    {
+        $artikel ??= $this->artikel();
+
+        return BookingItem::create([
+            'booking_id'   => $buchung->id,
+            'menu_item_id' => $artikel->id,
+            'quantity'     => $menge,
+            'unit_price'   => $artikel->price,
+            'tax_rate'     => $artikel->tax_rate,
         ]);
     }
 

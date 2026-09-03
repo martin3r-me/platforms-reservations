@@ -114,23 +114,27 @@
 {{ str_pad('Pause:', 12) }}{{ $pause }}
 @endif
 @php
-    // Ort aus der EINEN Auskunft: lebender Tisch, sonst der eingefrorene Name.
-    // Ist der Tisch geloescht, steht statt des Raums der Hinweis - der Service
-    // soll am Bon sehen, dass der Platz neu zugeteilt werden muss.
+    // Ort aus der EINEN Auskunft: lebender Tisch oder Abholstation, sonst der
+    // eingefrorene Name. Ist der Ort geloescht, steht statt des Raums der
+    // Hinweis - der Service soll am Bon sehen, dass er neu zugeteilt werden muss.
     $ort = $printable->zielort();
     $tisch = null;
+
+    // Die Beschriftung folgt der Art. "Tisch: Foyer links" waere am Tresen
+    // schlicht eine Falschaussage - dort steht kein Tisch, dort wird abgeholt.
+    $ortLabel = $ort['art'] === 'station' ? 'Abholung:' : 'Tisch:';
 
     if ($ort['label']) {
         $tisch = (string) $ort['label'];
         if ($ort['weg']) {
-            $tisch .= ' - Tisch entfernt';
+            $tisch .= ' - Ort entfernt';
         } elseif ($ort['raum']) {
             $tisch .= ' - ' . Str::limit($ort['raum'], 24);
         }
     }
 @endphp
 @if($tisch)
-{{ str_pad('Tisch:', 12) }}{{ $tisch }}
+{{ str_pad($ortLabel, 12) }}{{ $tisch }}
 @endif
 {{ str_pad('Gast:', 12) }}{{ Str::limit($printable->guest_name ?? '-', $width - 12) }}
 {{ str_pad('Personen:', 12) }}{{ $printable->guest_count }}

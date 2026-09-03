@@ -178,7 +178,7 @@ class Event extends Model
     {
         return $this->bookings()
             ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
-            ->with(['items.menuItem', 'items.bundleMenuItem', 'table.floorPlan', 'event', 'slot'])
+            ->with(['items.menuItem', 'items.bundleMenuItem', 'table.floorPlan', 'pickupStation.floorPlan', 'event', 'slot'])
             ->get()
             ->sortBy([
                 fn ($b) => (string) ($b->slot?->time_start ?? '99:99'),

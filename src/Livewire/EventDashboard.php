@@ -91,7 +91,7 @@ class EventDashboard extends Component
         // zu. Storniert bleibt draussen, das ist der Zustand vor der VA.
         $bookings = Booking::where('event_id', $this->eventId)
             ->where('status', '!=', Booking::STATUS_CANCELLED)
-            ->with(['table', 'order'])
+            ->with(['table', 'pickupStation', 'order'])
             ->withCount('items')
             ->orderBy('guest_name')
             ->get();
@@ -148,7 +148,12 @@ class EventDashboard extends Component
         //
         // Gerechnet aus derselben Menge wie der Kopf, damit sich Raum plus
         // "ohne Tisch" auch wirklich zur Kopfzahl addiert.
-        $ohneTisch = $zaehlend->whereNull('table_id');
+        // Abholstationen sind KEIN fehlender Tisch. Sie haben einen Ort, er
+        // taucht nur nicht in der Auslastung auf - die rechnet ueber Tische.
+        // Deshalb eine eigene Zeile statt eines gemeinsamen Topfs: "8 Gaeste
+        // ohne Tisch" waere fuer eine Abholung schlicht falsch.
+        $anStation = $zaehlend->whereNotNull('pickup_station_id');
+        $ohneTisch = $zaehlend->whereNull('table_id')->whereNull('pickup_station_id');
 
         return [
             'slot_id'  => $slotId,
@@ -164,6 +169,18 @@ class EventDashboard extends Component
                 // niemand, welcher Tisch fehlt.
                 'orte'   => $ohneTisch->pluck('place_label')->filter()->unique()->sort()->values()->all(),
             ],
+            // Je Station, weil "12 Gaeste an Abholstationen" niemandem sagt,
+            // wo er die Ware hinstellen soll.
+            'stationen' => $anStation
+                ->groupBy(fn (Booking $b) => $b->zielortLabel() ?? 'Abholstation')
+                ->map(fn ($menge, $name) => [
+                    'name'   => $name,
+                    'count'  => $menge->count(),
+                    'guests' => (int) $menge->sum('guest_count'),
+                ])
+                ->sortBy('name')
+                ->values()
+                ->all(),
         ];
     }
 

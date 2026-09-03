@@ -4,6 +4,7 @@ namespace Platform\Reservation\Tests\Feature;
 
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\PickupStation;
+use Platform\Reservation\Services\FunctionSheetService;
 use Platform\Reservation\Services\PickupCapacityService;
 use Platform\Reservation\Services\SeatAvailabilityService;
 use Platform\Reservation\Tests\Concerns\ErzeugtTermine;
@@ -290,6 +291,39 @@ class AbholstationenTest extends TestCase
         // Nur die stornierte zaehlt nicht - sie haelt nichts.
         $this->abholung($zwei, $station, 2, Booking::STATUS_CANCELLED);
         $this->assertFalse($zuordnung->hatBuchungen($zwei->id));
+    }
+
+    public function test_der_laufzettel_trennt_stationen_voneinander(): void
+    {
+        $termin = $this->termin(1);
+        $pause  = $this->pause($termin, 1);
+        $plan   = $this->raum('Saal', [4]);
+
+        $foyer = $this->station('Foyer links');
+        $rang  = $this->station('Rang 1 Bar');
+
+        $artikel = $this->artikel();
+
+        // Der Laufzettel laeuft ueber die Positionen - eine Buchung ohne
+        // Artikel taucht dort gar nicht auf.
+        $this->position($this->abholung($pause, $foyer, 2), $artikel);
+        $this->position($this->abholung($pause, $rang, 3), $artikel);
+        $this->position($this->buchung($pause, $this->tisch($plan), 2), $artikel);
+
+        $orte = collect((new FunctionSheetService())->build($termin)['pauses'])
+            ->flatMap(fn ($p) => $p['runs'])
+            ->flatMap(fn ($run) => collect($run['tables'])->pluck('table.label'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        // Mit "table_id ?? 0" landeten beide Stationen in EINEM Topf, samt
+        // aller Buchungen mit geloeschtem Tisch - und die Beschriftung kam von
+        // der zufaellig ersten. Der Service traegt dann alles an einen Ort, den
+        // es so nicht gibt.
+        $this->assertTrue($orte->contains('Foyer links'), 'Foyer fehlt: ' . $orte->implode(', '));
+        $this->assertTrue($orte->contains('Rang 1 Bar'), 'Rang fehlt: ' . $orte->implode(', '));
+        $this->assertTrue($orte->contains('Saal 1'), 'Tisch fehlt: ' . $orte->implode(', '));
     }
 
     public function test_ohne_position_gibt_es_keine_flaeche(): void
