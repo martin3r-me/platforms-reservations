@@ -558,7 +558,7 @@
                 @elseif ($editingEvent?->image_context_file_id && $editingEvent->imageFile)
                     <img src="{{ $editingEvent->imageUrl('medium_16_9') }}" alt="" class="mb-2 aspect-video w-full rounded-[8px] object-cover" />
                 @endif
-                @include('reservation::partials.image-upload', [
+                @include('reservation::partials.datei-upload', [
                     'model' => 'eventImage',
                     'hint'  => '16:9 empfohlen · JPG, PNG oder WebP · max. 20 MB.',
                 ])

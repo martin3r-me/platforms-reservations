@@ -1,12 +1,18 @@
 {{--
-    Wiederverwendbare Bild-Upload-Dropzone (Drag & Drop + Button) für Livewire.
+    Wiederverwendbare Upload-Dropzone (Drag & Drop + Button) für Livewire.
+
+    Hieß bis zum 03.09.2026 „image-upload" und lag damit falsch: Sie nimmt
+    entgegen, was `accept` erlaubt – Bilder, aber auch die Artikel-CSV. Der alte
+    Name hätte den nächsten dazu gebracht, für jede weitere Dateiart eine zweite
+    Dropzone zu bauen.
 
     Erwartet:
-    - $model    (string)  Name der wire:model-Property (z. B. 'itemImage')
-    - $hint     (string)  Formathinweis unter der Zone
-    - $accept   (string)  optional, Standard: JPG/PNG/WebP
-    - $multiple (bool)    optional, mehrere Dateien zulassen (Standard: false)
-    - $text     (string)  optional, Haupttext über dem Button
+    - $model      (string)  Name der wire:model-Property (z. B. 'itemImage')
+    - $hint       (string)  Formathinweis unter der Zone
+    - $accept     (string)  optional, Standard: JPG/PNG/WebP
+    - $multiple   (bool)    optional, mehrere Dateien zulassen (Standard: false)
+    - $text       (string)  optional, Haupttext über dem Button
+    - $buttonText (string)  optional, Beschriftung des Knopfs
 --}}
 @php
     $accept     = $accept ?? 'image/jpeg,image/png,image/webp';

@@ -86,7 +86,7 @@
                     </div>
                 @endif
             </div>
-            @include('reservation::partials.image-upload', [
+            @include('reservation::partials.datei-upload', [
                 'model' => 'background',
                 'hint'  => 'JPG, PNG oder WebP · max. 20 MB. Die Tische liegen darüber.',
             ])
@@ -114,7 +114,7 @@
                     </div>
                 @endif
 
-                @include('reservation::partials.image-upload', [
+                @include('reservation::partials.datei-upload', [
                     'model'    => 'atmosphereUploads',
                     'multiple' => true,
                     'hint'     => 'Mehrere möglich · JPG, PNG oder WebP · max. 20 MB je Bild.',

@@ -213,7 +213,7 @@
                             class="absolute right-2 top-2 rounded bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80">Entfernen</button>
                     </div>
                 @endif
-                @include('reservation::partials.image-upload', [
+                @include('reservation::partials.datei-upload', [
                     'model' => 'categoryImage',
                     'hint'  => '16:9 empfohlen · JPG, PNG oder WebP · max. 20 MB.',
                 ])
@@ -335,7 +335,7 @@
                         </div>
                     @endif
                     <div class="flex-1">
-                        @include('reservation::partials.image-upload', [
+                        @include('reservation::partials.datei-upload', [
                             'model' => 'itemImage',
                             'hint'  => 'JPG, PNG oder WebP · max. 20 MB (keine HEIC-Fotos vom iPhone).',
                         ])

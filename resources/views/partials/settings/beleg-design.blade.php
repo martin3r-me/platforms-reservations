@@ -33,7 +33,7 @@
                     </div>
                 @else
                     <div class="mt-2">
-                        @include('reservation::partials.image-upload', [
+                        @include('reservation::partials.datei-upload', [
                             'model' => 'receiptLogo',
                             'hint'  => 'PNG mit transparentem Hintergrund empfohlen · max. 4 MB.',
                         ])

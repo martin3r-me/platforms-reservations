@@ -39,10 +39,24 @@
                     Es wird nichts gespeichert, bevor du die Vorschau bestätigst (Dry-Run).
                 </p>
 
-                <input type="file" wire:model="csvFile" accept=".csv,.txt"
-                    class="w-full text-sm text-[color:var(--nx-muted)]" />
-                <div wire:loading wire:target="csvFile" class="text-xs text-[color:var(--nx-muted)]">Datei wird gelesen…</div>
-                @error('csvFile') <p class="text-xs text-[color:var(--nx-danger)] m-0">{{ $message }}</p> @enderror
+                {{-- Dieselbe Dropzone wie bei den Saalplan-Bildern.
+
+                     Hier stand das nackte <input type="file">: ein Knopf im
+                     Systemstil mit "Keine ausgewaehlt" daneben, mitten in einer
+                     Seite, die sonst durchgestaltet ist. Und es liess sich nicht
+                     bewerfen - ausgerechnet bei einer Datei, die man aus dem
+                     Dateimanager zieht.
+
+                     Der Baustein ist bewusst nicht auf Bilder beschraenkt; er
+                     nimmt accept und die Texte entgegen. Ein zweiter fuer CSV
+                     waere dieselbe Dropzone mit einem anderen Symbol. --}}
+                @include('reservation::partials.datei-upload', [
+                    'model'      => 'csvFile',
+                    'accept'     => '.csv,.txt,text/csv',
+                    'text'       => 'CSV-Datei hierher ziehen oder',
+                    'buttonText' => 'Datei auswählen',
+                    'hint'       => 'CSV oder TXT, Trennzeichen ; oder ,',
+                ])
 
                 {{-- Format-Hilfe --}}
                 <div class="rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] p-3 text-xs text-[color:var(--nx-muted)]">
