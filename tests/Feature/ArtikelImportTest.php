@@ -120,7 +120,16 @@ class ArtikelImportTest extends TestCase
         $kaffee = MenuItem::where('name', 'Kaffee')->first();
 
         $this->assertTrue((bool) $kaffee->is_caffeinated);
+        $this->assertSame('40.0', (string) $kaffee->caffeine_mg);
         $this->assertNotNull($kaffee->holding_class_id);
+
+        // Cola zeigt den anderen Fall: koffeinhaltig OHNE Gehalt. Der
+        // Pflichthinweis erscheint trotzdem, nur ohne die Klammer - und die
+        // Vorlage soll beide Faelle zeigen.
+        $cola = MenuItem::where('name', 'Cola')->first();
+
+        $this->assertTrue((bool) $cola->is_caffeinated);
+        $this->assertNull($cola->caffeine_mg);
         $this->assertSame(16, MenuItem::where('name', 'Pils')->first()->min_age->value);
     }
 
