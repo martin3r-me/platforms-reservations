@@ -19,21 +19,12 @@
             <h2 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Zeitraum &amp; Filter</h2>
         </div>
         <div class="p-5 space-y-4">
-            {{-- Schnellzeiträume. Dasselbe Muster wie in den Finanzen, damit man
-                 es nicht zweimal lernen muss. --}}
-            <div class="flex flex-wrap items-center gap-1 rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] p-1">
-                @foreach (\Platform\Reservation\Livewire\Export::presets() as $preset => $label)
-                    <button type="button" wire:click="setPreset('{{ $preset }}')"
-                        class="inline-flex h-7 items-center rounded-[6px] px-3 text-xs font-medium transition-colors
-                            {{ $activePreset === $preset ? 'bg-[color:var(--nx-surface)] font-semibold text-[color:var(--nx-text)]' : 'bg-transparent text-[color:var(--nx-muted)] hover:text-[color:var(--nx-text)]' }}">
-                        {{ $label }}
-                    </button>
-                @endforeach
-            </div>
+            @include('reservation::partials.zeitraum-leiste', [
+                'presets' => \Platform\Reservation\Livewire\Export::presets(),
+                'aktiv'   => $activePreset,
+            ])
 
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <x-nx-input-date name="dateFrom" label="Von" wire:model.live="dateFrom" />
-                <x-nx-input-date name="dateTo" label="Bis" wire:model.live="dateTo" />
                 <x-nx-input-select
                     name="filterStatus"
                     label="Status"

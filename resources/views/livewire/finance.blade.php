@@ -14,32 +14,10 @@
     <div class="space-y-5">
 
     {{-- Zeitraum --}}
-    <div class="flex flex-wrap items-end justify-between gap-3">
-        <div class="flex flex-wrap items-center gap-1 rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] p-1">
-            {{-- Die Liste kommt aus der Komponente, nicht aus der Ansicht.
-
-                 Hier standen vier Zeiträume fest verdrahtet, während die
-                 Artikel-Auswertung sieben andere kannte – „Dieser Monat" gab es
-                 in den Finanzen schlicht nicht. Jetzt liegen die gemeinsamen in
-                 Support\Zeitraum, und diese Seite legt nur ihre zwei eigenen
-                 dazu. --}}
-            @foreach (\Platform\Reservation\Livewire\Finance::presets() as $preset => $label)
-                <button type="button" wire:click="setPreset('{{ $preset }}')"
-                    class="inline-flex h-7 items-center rounded-[6px] px-3 text-xs font-medium transition-colors
-                        {{ $activePreset === $preset ? 'bg-[color:var(--nx-surface)] font-semibold text-[color:var(--nx-text)]' : 'bg-transparent text-[color:var(--nx-muted)] hover:text-[color:var(--nx-text)]' }}">
-                    {{ $label }}
-                </button>
-            @endforeach
-        </div>
-        <div class="flex items-end gap-2">
-            <div class="w-40">
-                <x-nx-input-date name="dateFrom" label="Von" size="sm" wire:model.live="dateFrom" />
-            </div>
-            <div class="w-40">
-                <x-nx-input-date name="dateTo" label="Bis" size="sm" wire:model.live="dateTo" />
-            </div>
-        </div>
-    </div>
+    @include('reservation::partials.zeitraum-leiste', [
+            'presets' => \Platform\Reservation\Livewire\Finance::presets(),
+            'aktiv'   => $activePreset,
+        ])
 
     {{-- KPIs. "Umsatz" sind bestätigte und abgeschlossene Buchungen; Ausstehendes
          steht daneben, damit nichts verschwunden aussieht. --}}

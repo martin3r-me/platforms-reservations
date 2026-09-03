@@ -10,6 +10,7 @@ use Carbon\CarbonImmutable;
 use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Support\DatevBuchungsstapel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Platform\Reservation\Support\Zeitraum;
 
 class Export extends Component
 {
@@ -107,17 +108,11 @@ class Export extends Component
      */
     public static function presets(): array
     {
-        return [
-            'last_week'  => 'Letzte Woche',
-            'month'      => 'Dieser Monat',
-            'last_month' => 'Letzter Monat',
-            'quarter'    => 'Dieses Quartal',
-            'year'       => 'Dieses Jahr',
-            'last_year'  => 'Letztes Jahr',
+        return Zeitraum::beschriftungen() + [
             // Nicht "Ab heute": Das sagt, wo es anfängt, aber nicht, wo es
             // aufhört. Gemeint ist von heute bis Silvester.
-            'ahead'      => 'Rest des Jahres',
-            'all'        => 'Alles',
+            'ahead' => 'Rest des Jahres',
+            'all'   => 'Alles',
         ];
     }
 
@@ -126,21 +121,9 @@ class Export extends Component
         $this->activePreset = $preset;
         $this->exportError  = '';
 
-        [$this->dateFrom, $this->dateTo] = match ($preset) {
-            'last_week'  => [
-                now()->subWeek()->startOfWeek()->toDateString(),
-                now()->subWeek()->endOfWeek()->toDateString(),
-            ],
-            'last_month' => [
-                now()->subMonthNoOverflow()->startOfMonth()->toDateString(),
-                now()->subMonthNoOverflow()->endOfMonth()->toDateString(),
-            ],
-            'quarter'    => [now()->startOfQuarter()->toDateString(), now()->endOfQuarter()->toDateString()],
-            'year'       => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
-            'last_year'  => [
-                now()->subYear()->startOfYear()->toDateString(),
-                now()->subYear()->endOfYear()->toDateString(),
-            ],
+        // Die gemeinsamen Zeiträume aus Support\Zeitraum; hier stehen nur die
+        // beiden, die es nur im Export gibt.
+        [$this->dateFrom, $this->dateTo] = Zeitraum::spanne($preset) ?? match ($preset) {
             'ahead'      => [now()->toDateString(), now()->endOfYear()->toDateString()],
             // Von der ersten bis zur letzten Buchung – auch in die Zukunft, denn
             // Buchungen liegen dort. Ohne Buchungen das laufende Jahr.

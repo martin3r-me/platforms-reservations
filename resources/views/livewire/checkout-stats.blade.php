@@ -20,21 +20,10 @@
     <div class="space-y-5">
 
     {{-- Zeitraum: dieselbe Leiste wie in der Artikel-Auswertung und im Export --}}
-    <div class="flex flex-wrap items-end justify-between gap-3">
-        <div class="flex flex-wrap items-center gap-1 rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] p-1">
-            @foreach (\Platform\Reservation\Livewire\CheckoutStats::presets() as $preset => $label)
-                <button type="button" wire:click="setPreset('{{ $preset }}')"
-                    class="inline-flex h-7 items-center rounded-[6px] px-3 text-xs font-medium transition-colors
-                        {{ $activePreset === $preset ? 'bg-[color:var(--nx-surface)] font-semibold text-[color:var(--nx-text)]' : 'bg-transparent text-[color:var(--nx-muted)] hover:text-[color:var(--nx-text)]' }}">
-                    {{ $label }}
-                </button>
-            @endforeach
-        </div>
-        <div class="flex items-end gap-2">
-            <x-nx-input-date name="dateFrom" label="Von" size="sm" wire:model.live="dateFrom" />
-            <x-nx-input-date name="dateTo" label="Bis" size="sm" wire:model.live="dateTo" />
-        </div>
-    </div>
+    @include('reservation::partials.zeitraum-leiste', [
+        'presets' => \Platform\Reservation\Livewire\CheckoutStats::presets(),
+        'aktiv'   => $activePreset,
+    ])
 
     {{-- Kennzahlen. Der Zeitraum meint das ENDE des Bestellwegs, nicht das
          Datum der Veranstaltung: Wer im Mai für ein Konzert im September
