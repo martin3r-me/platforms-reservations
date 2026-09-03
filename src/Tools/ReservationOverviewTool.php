@@ -60,8 +60,9 @@ class ReservationOverviewTool implements ToolContract, ToolMetadataContract
             return ToolResult::success([
                 'module'      => 'reservation',
                 'description' => 'PausePlus: Vorbestellung von Speisen/Getränken für Veranstaltungspausen. '
-                    . 'Gäste bestellen je Pause (Slot) Artikel und wählen einen Tisch; die Bestellung läuft als '
-                    . 'Order (eine Zahlung, mehrere Slot-Buchungen) über Mollie.',
+                    . 'Gäste bestellen je Pause (Slot) Artikel und wählen einen ORT – einen Tisch oder eine '
+                    . 'Abholstation; die Bestellung läuft als Order (eine Zahlung, mehrere Slot-Buchungen) über '
+                    . 'Mollie.',
                 'concepts'    => [
                     'event'      => 'Termin/Veranstaltung mit Datum, Status (draft|published|closed) und Pausen-Slots.',
                     'slot'       => 'Pause innerhalb eines Termins; je Slot bestellt der Gast eigene Artikel.',
@@ -70,13 +71,20 @@ class ReservationOverviewTool implements ToolContract, ToolMetadataContract
                         . 'Verkaufsobjekt, aber KEINE Bestellposition: beim Bestellen zerfällt es in seine Bestandteile, '
                         . 'der Bundle-Preis wird proportional verteilt. Allergene, Alkohol und Mindestalter werden aus den '
                         . 'Bestandteilen abgeleitet, nicht am Bundle gepflegt.',
-                    'booking'    => 'Eine Slot-Buchung (Gast, Tisch, Positionen mit eingefrorenem Preis/MwSt).',
+                    'pickup_station' => 'Abholstation – der zweite mögliche Zielort einer Buchung neben dem Tisch. '
+                        . 'Der Gast holt in der Pause selbst ab ("Foyer links"). Gehört zum VENUE, nicht zu einem Raum, '
+                        . 'und taucht in KEINER Platzrechnung auf: capacity_per_slot sind Gäste je Pause, keine Sitzplätze. '
+                        . 'Wird je Termin UND je Pause freigeschaltet; ohne Zuordnung erscheint sie im Shop nicht.',
+                    'booking'    => 'Eine Slot-Buchung (Gast, Positionen mit eingefrorenem Preis/MwSt) mit genau EINEM '
+                        . 'Zielort: table_id ODER pickup_station_id, nie beides.',
                     'order'      => 'Klammer über mehrere Slot-Buchungen mit genau einer Zahlung.',
                 ],
                 'related_tools' => [
                     'reservation.events.GET'   => 'Termine auflisten (Filter: status, upcoming).',
                     'reservation.bookings.GET' => 'Buchungen auflisten (Filter: event_uuid, date, status).',
                     'reservation.finance.GET'  => 'Umsatz + MwSt-Aufschlüsselung für einen Zeitraum.',
+                    'reservation.pickup-stations.GET'      => 'Abholstationen des Teams.',
+                    'reservation.event-stations.bulk.POST' => 'Abholstationen mehreren Terminen auf einmal zuordnen.',
                 ],
                 'stats' => $stats,
             ]);

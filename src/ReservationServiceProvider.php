@@ -124,6 +124,19 @@ class ReservationServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Reservation\Tools\MenuItemApproveBulkTool());
             $registry->register(new \Platform\Reservation\Tools\SalesListBulkCreateTool());
 
+            // Abholstationen: der zweite moegliche Zielort einer Buchung.
+            // Die Reihe der Raeume, weil dieselbe Arbeit anfaellt - und das
+            // Bulk-Werkzeug ist das wichtigste davon: Eine Station, die man 54
+            // Mal von Hand zuordnen muss, wird nicht benutzt.
+            $registry->register(new \Platform\Reservation\Tools\PickupStationListTool());
+            $registry->register(new \Platform\Reservation\Tools\PickupStationCreateTool());
+            $registry->register(new \Platform\Reservation\Tools\PickupStationUpdateTool());
+            $registry->register(new \Platform\Reservation\Tools\PickupStationDeleteTool());
+            $registry->register(new \Platform\Reservation\Tools\EventStationListTool());
+            $registry->register(new \Platform\Reservation\Tools\EventStationCreateTool());
+            $registry->register(new \Platform\Reservation\Tools\EventStationDeleteTool());
+            $registry->register(new \Platform\Reservation\Tools\EventStationBulkCreateTool());
+
             // Venues (CRUD)
             $registry->register(new \Platform\Reservation\Tools\VenueListTool());
             $registry->register(new \Platform\Reservation\Tools\VenueCreateTool());

@@ -528,9 +528,15 @@ widerspricht die Website dem Bestellweg.
    `HasPlanPosition` und wird von Tisch und Station geteilt. Und das `down()`
    von `2026_01_01_000012` ist leer – es wollte `table_id` wieder auf NOT NULL
    setzen, was nicht mehr geht, sobald eine Buchung ohne Tisch existiert.
-2. **Pflege** – Stationen-CRUD, Werkzeug im Tischplan-Editor, Zuordnung am Termin samt
-   Pausen-Häkchen, Veröffentlichungs-Regel, Löschschutz (Station **und** Venue),
-   MCP-Tools samt Bulk-Zuordnung, Duplizieren, Einstellung `pickup_identification`.
+2. ~~**Pflege**~~ – erledigt am 03.09.2026: Stationen-CRUD (eigene Seite unter
+   „Abholstationen"), Werkzeug im Tischplan-Editor (platzieren, ziehen, drehen),
+   Zuordnung am Termin samt Pausen-Häkchen, Veröffentlichungs-Regel („ein Raum
+   ODER eine Abholstation"), Löschschutz an Station **und** Venue, acht MCP-Tools
+   samt Bulk-Zuordnung, Duplizieren.
+
+   **Offen aus dieser Etappe:** die Einstellung `pickup_identification` – sie
+   gehört zu den Abholcodes (Abschnitt F) und wartet auf dieselbe Entscheidung:
+   Wird am Tresen nach Namen oder nach Code ausgegeben?
 3. **Betrieb** – ~~Laufzettel, Küche, Bon, Beleg-PDF, Mails, Listen, Export über
    `zielortLabel()`~~ *(erledigt am 03.09.2026)*; Codevergabe und -anzeige *(offen)*.
 
