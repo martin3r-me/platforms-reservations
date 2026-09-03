@@ -251,6 +251,52 @@
                     </div>
                 @endforeach
 
+                {{-- Abholstationen im Plan.
+
+                     Optisch klar unterschieden - eigene Farbe, eigenes Zeichen,
+                     keine Platzzahl. Wer im Plan einen indigofarbenen Kasten mit
+                     "4P" sieht, denkt an einen Tisch; genau das soll hier nicht
+                     passieren.
+
+                     Kein data-table: Eine Station ist kein Einrast-Ziel fuer
+                     Tische. Sie steht, wo sie physisch steht, und richtet sich
+                     nicht an der Bestuhlung aus.
+
+                     Dieselbe Zieh-Geste wie beim Tisch, nur mit 'station' als
+                     Art - siehe draggable(). --}}
+                @foreach ($this->stationenImPlan() as $station)
+                    <div
+                        wire:key="station-{{ $station->id }}"
+                        class="group absolute flex touch-none cursor-move select-none items-center justify-center text-xs font-bold text-white"
+                        style="{{ $station->surfaceStyle() }}"
+                        x-data="draggable({{ $station->id }}, {{ $station->x_pct }}, {{ $station->y_pct }}, {{ $station->w_pct }}, {{ $station->h_pct }}, {{ $plan ? $plan->heightFactor('rectangle') : (4 / 3) }}, 'station')"
+                    >
+                        <div class="pointer-events-none absolute inset-0 bg-teal-600 shadow-md ring-2 ring-white/70 transition-colors group-hover:bg-teal-500 dark:ring-gray-900/70"
+                            style="border-radius: 8px"></div>
+
+                        <div class="pointer-events-none relative px-1 text-center leading-tight">
+                            <div class="truncate">{{ $station->name }}</div>
+                            <div class="opacity-75">Abholung</div>
+                        </div>
+
+                        {{-- Aus dem Plan nehmen. Die Station bleibt bestehen -
+                             sie gehoert dem Haus, nicht dem Raum. --}}
+                        <button type="button"
+                            wire:click="entferneStationAusPlan({{ $station->id }})"
+                            title="Aus dem Plan nehmen (die Station bleibt bestehen)"
+                            class="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-white text-teal-700 shadow ring-1 ring-teal-200 group-hover:flex">
+                            @svg('heroicon-o-x-mark', 'w-3 h-3')
+                        </button>
+
+                        <div
+                            data-resize-handle
+                            title="Größe ändern"
+                            class="absolute -bottom-2 -right-2 h-5 w-5 touch-none cursor-se-resize rounded-full border-2 border-teal-600 bg-white opacity-80 shadow transition hover:scale-110 hover:opacity-100"
+                            x-on:pointerdown.stop="startResize($event)"
+                        ></div>
+                    </div>
+                @endforeach
+
                 {{-- Hilfslinien beim Ausrichten. Liegen nach den Tischen im DOM,
                      damit sie darüber sichtbar sind; gesteuert von draggable(). --}}
                 {{-- Ausrichtungslinien: rot gestrichelt wie in PowerPoint --}}
@@ -450,6 +496,62 @@
                 Doppelklick zum Bearbeiten, Duplizieren und Übertragen auf alle
             </p>
     @endif
+
+        {{-- Abholstationen dieses Hauses.
+
+             Sie werden hier nicht angelegt, nur platziert: Name, Hinweis und
+             Obergrenze gehören zur Station, nicht zum Raum, und stehen unter
+             „Abholstationen". Zwei Formulare für dieselben Felder liefen
+             auseinander.
+
+             Der Block steht auch dann da, wenn keine Station existiert – mit
+             dem Weg dorthin. Ein fehlendes Werkzeug sieht sonst aus, als gäbe
+             es die Möglichkeit nicht. --}}
+        @if ($this->floorPlanId)
+            <div class="mt-4 rounded-[8px] border border-[color:var(--nx-line)] p-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    @svg('heroicon-o-inbox-arrow-down', 'w-4 h-4 text-[color:var(--nx-muted)]')
+                    <h4 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Abholstationen</h4>
+                    <span class="text-[11px] text-[color:var(--nx-faint)]">
+                        Im Plan platzieren, damit Gäste sie dort anklicken können. Ohne Lage bleibt sie eine Karte in der Liste.
+                    </span>
+                    <a href="{{ route('reservation.stations.index') }}" wire:navigate
+                        class="ml-auto text-[11px] text-[color:var(--nx-muted)] underline">verwalten</a>
+                </div>
+
+                @if ($this->stations->isEmpty())
+                    <p class="m-0 mt-2 text-xs text-[color:var(--nx-muted)]">
+                        Für dieses Haus ist keine Abholstation angelegt.
+                    </p>
+                @else
+                    <div class="mt-2 flex flex-wrap gap-1.5">
+                        @foreach ($this->stations as $station)
+                            @php $hier = (int) $station->floor_plan_id === (int) $this->floorPlanId; @endphp
+                            @php $woanders = $station->floor_plan_id && ! $hier; @endphp
+                            <button type="button"
+                                @if ($hier)
+                                    wire:click="entferneStationAusPlan({{ $station->id }})"
+                                    title="Aus diesem Plan nehmen"
+                                @else
+                                    wire:click="platziereStation({{ $station->id }})"
+                                    title="{{ $woanders ? 'Liegt in einem anderen Raum – hierher holen' : 'In diesem Plan platzieren' }}"
+                                @endif
+                                class="inline-flex items-center gap-1 rounded-[6px] border px-2 py-1 text-[11px] transition-colors"
+                                style="{{ $hier
+                                    ? 'border-color:#0d9488; color:#0d9488;'
+                                    : 'border-color:var(--nx-line); color:var(--nx-muted);' }}">
+                                <span>{{ $station->name }}</span>
+                                @if ($hier)
+                                    <span class="opacity-70">im Plan</span>
+                                @elseif ($woanders)
+                                    <span class="opacity-70">anderer Raum</span>
+                                @endif
+                            </button>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        @endif
         </div>
 
         {{-- Tisch-Formular: Plattform-Modal statt handgebautes Overlay --}}
@@ -675,7 +777,11 @@ Alpine.store('fpBg', {
 // x/y = Mittelpunkt (Anteil der Flächenbreite/-höhe), w/h = Größe (Anteil).
 // Deltas werden über die aktuelle Canvas-Pixelgröße in Anteile umgerechnet –
 // dadurch stimmen die Positionen unabhängig von Bildschirm/Zoom.
-Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFactor = 1) => ({
+// art: 'table' oder 'station'. Dieselbe Geste, zwei Ziele - eine zweite
+// Kopie dieser Komponente waere die Art Verdopplung, bei der nach dem
+// dritten Umbau nur eine von beiden das Einrasten kann.
+Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFactor = 1, art = 'table') => ({
+    art,
     tableId,
     x: initialX, y: initialY,   // Mittelpunkt (0…1)
     w: initialW, h: initialH,   // Größe (Anteil 0…1)
@@ -1079,10 +1185,14 @@ Alpine.data('draggable', (tableId, initialX, initialY, initialW, initialH, hFact
         // serialisiert Aufrufe derselben Komponente, ein eigener Sende-Guard
         // würde nur riskieren, eine Änderung stillschweigend zu verwerfen.
         if (m === 'move') {
-            this.$wire.updateTablePosition(this.tableId, this.x, this.y);
+            this.art === 'station'
+                ? this.$wire.updateStationPosition(this.tableId, this.x, this.y)
+                : this.$wire.updateTablePosition(this.tableId, this.x, this.y);
         } else {
             // Nur die Breite senden – die Höhe rechnet der Server aus der Form.
-            this.$wire.updateTableSize(this.tableId, this.w);
+            this.art === 'station'
+                ? this.$wire.updateStationSize(this.tableId, this.w)
+                : this.$wire.updateTableSize(this.tableId, this.w);
         }
     },
 

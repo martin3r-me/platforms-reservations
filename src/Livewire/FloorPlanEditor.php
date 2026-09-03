@@ -11,6 +11,7 @@ use Platform\Core\Services\ContextFileService;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\Venue;
 use Platform\Reservation\Models\FloorPlan;
+use Platform\Reservation\Models\PickupStation;
 use Platform\Reservation\Models\Table;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -104,6 +105,102 @@ class FloorPlanEditor extends Component
             return collect();
         }
         return Table::where('floor_plan_id', $this->floorPlanId)->active()->get();
+    }
+
+    /**
+     * Die Abholstationen dieses Hauses – die im Plan und die daneben.
+     *
+     * Beide, weil der Editor beides braucht: platzierte zum Verschieben,
+     * unplatzierte zum Hineinziehen. Eine Station gehört dem Venue, nicht dem
+     * Raum – sie kann also in einem anderen Plan liegen oder in gar keinem.
+     */
+    #[Computed]
+    public function stations(): \Illuminate\Database\Eloquent\Collection
+    {
+        return PickupStation::where('venue_id', $this->venueId)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /** Die in DIESEM Plan liegen – sie werden gezeichnet. */
+    public function stationenImPlan(): \Illuminate\Support\Collection
+    {
+        return $this->floorPlanId
+            ? $this->stations->where('floor_plan_id', $this->floorPlanId)->values()
+            : collect();
+    }
+
+    /**
+     * Station in diesen Plan legen – mittig und in Tischgröße.
+     *
+     * Bewusst keine eigene Standardgröße: Sie soll aussehen wie ein Element
+     * des Plans und nicht wie ein Fremdkörper. Wer sie größer will, zieht sie
+     * größer.
+     */
+    public function platziereStation(int $stationId): void
+    {
+        if (! $this->floorPlanId) {
+            return;
+        }
+
+        $station = PickupStation::where('venue_id', $this->venueId)->findOrFail($stationId);
+
+        $station->update([
+            'floor_plan_id' => $this->floorPlanId,
+            'x_pct' => 0.5,
+            'y_pct' => 0.5,
+            'w_pct' => $this->tableSizePct / 100,
+            'h_pct' => $this->heightFor($this->tableSizePct / 100, 'rectangle'),
+        ]);
+
+        unset($this->stations);
+    }
+
+    /**
+     * Station aus dem Plan nehmen – sie bleibt bestehen.
+     *
+     * Nur die Lage geht verloren, nicht die Station: Sie gehört dem Haus.
+     * Danach ist sie wieder eine Karte in der Liste, kein Feld im Plan.
+     */
+    public function entferneStationAusPlan(int $stationId): void
+    {
+        PickupStation::where('venue_id', $this->venueId)->findOrFail($stationId)->update([
+            'floor_plan_id' => null,
+            'x_pct' => null,
+            'y_pct' => null,
+            'w_pct' => null,
+            'h_pct' => null,
+        ]);
+
+        unset($this->stations);
+    }
+
+    /** Wie updateTablePosition(), nur für Stationen – siehe dort. */
+    public function updateStationPosition(int $stationId, float $xPct, float $yPct): void
+    {
+        PickupStation::where('venue_id', $this->venueId)->findOrFail($stationId)->update([
+            'x_pct' => min(1, max(0, $xPct)),
+            'y_pct' => min(1, max(0, $yPct)),
+        ]);
+
+        unset($this->stations);
+        $this->skipRender();
+    }
+
+    /** Wie updateTableSize(); die Höhe folgt derselben Rechnung wie beim Tisch. */
+    public function updateStationSize(int $stationId, float $wPct): void
+    {
+        $w = min(0.4, max(0.02, $wPct));
+
+        PickupStation::where('venue_id', $this->venueId)->findOrFail($stationId)->update([
+            'w_pct' => $w,
+            'h_pct' => $this->heightFor($w, 'rectangle'),
+        ]);
+
+        unset($this->stations);
+        $this->skipRender();
     }
 
     /**

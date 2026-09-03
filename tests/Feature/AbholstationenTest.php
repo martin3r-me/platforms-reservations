@@ -326,6 +326,32 @@ class AbholstationenTest extends TestCase
         $this->assertTrue($orte->contains('Saal 1'), 'Tisch fehlt: ' . $orte->implode(', '));
     }
 
+    public function test_eine_station_laesst_sich_in_einen_plan_legen_und_wieder_herausnehmen(): void
+    {
+        $plan    = $this->raum('Saal', [4]);
+        $station = $this->station('Rang 1 Bar');
+
+        // Im Editor platziert: Lage im Plan, Groesse wie ein Tisch.
+        $station->update([
+            'floor_plan_id' => $plan->id,
+            'x_pct' => 0.5, 'y_pct' => 0.5, 'w_pct' => 0.1, 'h_pct' => 0.13,
+        ]);
+
+        $this->assertTrue($station->fresh()->hatPosition());
+
+        // Wieder herausgenommen: Die Station bleibt, nur die Lage geht.
+        $station->update([
+            'floor_plan_id' => null,
+            'x_pct' => null, 'y_pct' => null, 'w_pct' => null, 'h_pct' => null,
+        ]);
+
+        $frisch = $station->fresh();
+
+        $this->assertNotNull($frisch);
+        $this->assertFalse($frisch->hatPosition());
+        $this->assertSame('Rang 1 Bar', $frisch->name);
+    }
+
     public function test_ohne_position_gibt_es_keine_flaeche(): void
     {
         $station = $this->station('Foyer links');
