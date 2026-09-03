@@ -489,7 +489,7 @@ class EventController extends ApiController
             ->where('team_id', $model->team_id)
             ->where('event_id', $model->id)
             ->where('uuid', $order)
-            ->with(['payment', 'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table', 'items.menuItem', 'items.bundleMenuItem'])])
+            ->with(['payment', 'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table', 'pickupStation', 'items.menuItem', 'items.bundleMenuItem'])])
             ->first();
 
         if (! $orderModel) {
@@ -507,7 +507,7 @@ class EventController extends ApiController
     {
         $orderModel = Order::withoutGlobalScope('team')
             ->where('uuid', $order)
-            ->with(['payment', 'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table', 'items.menuItem', 'items.bundleMenuItem'])])
+            ->with(['payment', 'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table', 'pickupStation', 'items.menuItem', 'items.bundleMenuItem'])])
             ->first();
 
         if (! $orderModel) {
@@ -633,7 +633,15 @@ class EventController extends ApiController
                 'slot'        => $b->slot?->name,
                 'status'      => $b->status,
                 'guest_count' => $b->guest_count,
+                // Der Name des Orts - Tisch ODER Abholstation. Der Schluessel
+                // heisst weiter 'table': Der Shop liest ihn seit Monaten so,
+                // und umbenennen hiesse, eine Antwort zu brechen, um ein Wort
+                // zu verbessern.
                 'table'       => $b->zielortLabel(),
+                // Die ART daneben, damit der Shop den richtigen Satz waehlen
+                // kann. "In der Pause steht alles an Ihrem Tisch bereit" ist
+                // fuer einen Abholgast eine Falschaussage.
+                'place_kind'  => $b->zielort()['art'],
                 'items'       => $this->formatBookingItems($b->items),
             ])->values()->all(),
             'vat_summary'    => $this->vatSummary($order),
