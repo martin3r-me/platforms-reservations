@@ -273,6 +273,25 @@ class AbholstationenTest extends TestCase
         $this->assertNull(PickupStation::find($id));
     }
 
+    public function test_eine_pause_mit_buchungen_bleibt_der_station_erhalten(): void
+    {
+        $termin = $this->termin(2);
+        $eins   = $this->pause($termin, 1);
+        $zwei   = $this->pause($termin, 2);
+
+        $station   = $this->station('Foyer');
+        $zuordnung = $this->haengeStationAn($termin, $station, [$eins, $zwei]);
+
+        $this->abholung($eins, $station, 2);
+
+        $this->assertTrue($zuordnung->hatBuchungen($eins->id));
+        $this->assertFalse($zuordnung->hatBuchungen($zwei->id));
+
+        // Nur die stornierte zaehlt nicht - sie haelt nichts.
+        $this->abholung($zwei, $station, 2, Booking::STATUS_CANCELLED);
+        $this->assertFalse($zuordnung->hatBuchungen($zwei->id));
+    }
+
     public function test_ohne_position_gibt_es_keine_flaeche(): void
     {
         $station = $this->station('Foyer links');

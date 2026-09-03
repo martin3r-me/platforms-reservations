@@ -200,6 +200,18 @@ Weiche Kapazität, Großgruppen-Regel, gesperrte Tische: nichts davon gilt hier.
 `SeatAvailabilityService` bleibt unberührt. **Eine Station darf in der Platzrechnung
 nie auftauchen.**
 
+**Auch nicht in der Raumfreigabe – entschieden am 03.09.2026.** Eine Station, die im
+Tischplan eines Raums gezeichnet ist, folgt dessen sequenzieller Freigabe *nicht*: Sie
+ist buchbar, sobald der Termin sie in dieser Pause führt, auch wenn der Raum noch
+geschlossen ist. Der Grund ist derselbe wie oben – eine Ausgabestelle ist kein Sitzplatz,
+und ihre Obergrenze hat mit der Bestuhlung des Raums nichts zu tun.
+
+Die Kehrseite gehört dazu: Im Plan kann dann eine offene Bar in einem gesperrten Raum
+stehen. Das ist Absicht und muss in der Darstellung erkennbar bleiben, sonst sieht es
+nach einem Fehler aus. Die verworfene Alternative war „liegt sie in einem Raum, folgt sie
+ihm" – sie hätte die Freigabekette an die Zeichnung gebunden, also an etwas rein
+Optisches.
+
 Die Personenzahl wird bei reinen Abhol-Terminen **weiter abgefragt**. Sie begrenzt dort
 nichts mehr, aber Küche und Laufzettel lesen sie, und auf dem Bewirtungsbeleg ist sie
 steuerliche Pflichtangabe.

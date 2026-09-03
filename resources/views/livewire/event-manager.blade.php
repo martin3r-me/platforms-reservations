@@ -408,6 +408,101 @@
             </section>
 
 
+            {{-- Abholstationen --}}
+            <section class="overflow-hidden rounded-[8px] border border-[color:var(--nx-line)]">
+                <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] px-3 py-2">
+                    @svg('heroicon-o-inbox-arrow-down', 'w-4 h-4 text-[color:var(--nx-muted)]')
+                    <h4 class="m-0 text-xs font-semibold text-[color:var(--nx-text)]">Abholstationen</h4>
+                    <div class="ml-auto">
+                        <x-nx-button variant="ghost" wire:click="addStation" type="button">+ Abholstation</x-nx-button>
+                    </div>
+                </div>
+                <div class="space-y-2 p-3">
+                    @if ($this->availableStations->isEmpty())
+                        <p class="m-0 text-xs text-[color:var(--nx-muted)]">
+                            Noch keine Abholstationen vorhanden –
+                            <a href="{{ route('reservation.stations.index') }}" wire:navigate class="underline">zuerst unter „Abholstationen“ anlegen</a>.
+                        </p>
+                    @elseif (empty($stations))
+                        <p class="m-0 text-xs text-[color:var(--nx-muted)]">
+                            Keine Abholstation zugeordnet. Der Termin läuft dann rein über Tische.
+                        </p>
+                    @endif
+
+                    @foreach ($stations as $i => $station)
+                        {{-- Eine Zeile je Station, und darunter die Pausen als Häkchen.
+
+                             Das ist der Unterschied zum Raum: Eine Station gilt JE PAUSE.
+                             Zwei Pausen, Station nur in der ersten – genau dieser Fall.
+
+                             Die Häkchen stehen für die Pausen dieses Formulars, auch für
+                             noch nicht gespeicherte. Deshalb wird über die Position
+                             gearbeitet und nicht über Ids. --}}
+                        <div wire:key="station-row-{{ $i }}" class="rounded-md border border-[color:var(--nx-line)] p-3">
+                            <div class="flex flex-wrap items-end gap-2">
+                                <div class="min-w-[180px] flex-1">
+                                    <x-nx-input-select
+                                        name="stations.{{ $i }}.pickup_station_id"
+                                        label="Abholstation"
+                                        size="sm"
+                                        :options="$this->availableStations->map(fn ($s) => ['value' => $s->id, 'label' => ($s->venue?->name ? $s->venue->name . ' – ' : '') . $s->name])->all()"
+                                        :nullable="true"
+                                        nullLabel="– bitte wählen –"
+                                        wire:model.live="stations.{{ $i }}.pickup_station_id"
+                                        errorKey="stations.{{ $i }}.pickup_station_id"
+                                    />
+                                </div>
+                                <div class="w-32">
+                                    <x-nx-input-number name="stations.{{ $i }}.capacity_override" label="Gäste je Pause" size="sm" min="1"
+                                        placeholder="Vorgabe" wire:model.live="stations.{{ $i }}.capacity_override" />
+                                </div>
+                                <div class="ml-auto">
+                                    <x-nx-button variant="ghost" wire:click="removeStation({{ $i }})" type="button">Entfernen</x-nx-button>
+                                </div>
+                            </div>
+
+                            <div class="mt-2">
+                                <p class="m-0 mb-1.5 text-[11px] font-semibold text-[color:var(--nx-muted)]">Geöffnet in</p>
+                                @if (empty($slots))
+                                    <p class="m-0 text-xs text-[color:var(--nx-muted)]">Erst eine Pause anlegen.</p>
+                                @else
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach ($slots as $p => $slot)
+                                            {{-- Block-Fassung, nicht @php(...): Der Einzeiler wird
+                                                 nur OHNE Leerzeichen vor der Klammer erkannt, sonst
+                                                 oeffnet er einen Rohblock und verschluckt alles bis
+                                                 zum naechsten @endphp - hier also den Rest der Datei.
+                                                 Genau dafuer gibt es BladeKompiliertTest. --}}
+                                            @php $an = in_array($p, $stations[$i]['slot_indexes'] ?? [], true); @endphp
+                                            <button type="button" wire:click="toggleStationSlot({{ $i }}, {{ $p }})"
+                                                class="inline-flex items-center gap-1 rounded-[6px] border px-2 py-1 text-[11px] transition-colors"
+                                                style="{{ $an
+                                                    ? 'border-color:var(--nx-accent); color:var(--nx-accent);'
+                                                    : 'border-color:var(--nx-line); color:var(--nx-muted);' }}">
+                                                @if ($an)
+                                                    @svg('heroicon-o-check', 'w-3 h-3')
+                                                @endif
+                                                <span>{{ $slot['name'] ?: 'Pause ' . ($p + 1) }}</span>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                @endif
+                                @error("stations.{$i}.slot_indexes")
+                                    <p class="m-0 mt-1 text-[11px]" style="color:var(--nx-danger)">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <p class="m-0 mt-2 text-[11px] text-[color:var(--nx-faint)]">
+                                Keine Sitzplätze: Die Zahl sagt, wie viele Gäste hier in <strong>einer</strong> Pause
+                                bedient werden können. Leer = Vorgabe der Station. Eine Abholstation zählt nicht zur
+                                Raumfreigabe – sie ist offen, sobald der Termin sie in dieser Pause führt.
+                            </p>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+
+
             {{-- Gesperrte Tische je Raum --}}
             @if ($this->roomTables->isNotEmpty())
                 <section class="overflow-hidden rounded-[8px] border border-[color:var(--nx-line)]">

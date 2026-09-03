@@ -65,6 +65,23 @@ class EventStation extends Model
         return $this->slots->contains('id', $slotId);
     }
 
+    /**
+     * Liegen auf dieser Station schon Buchungen – ggf. für genau eine Pause?
+     *
+     * Braucht die Pflege, bevor sie eine Station oder eine ihrer Pausen
+     * wegnimmt: Danach zeigte die Buchung auf einen Ort, den es für sie nicht
+     * mehr gibt. Storniert und No-Show zählen nicht mit; die halten nichts.
+     */
+    public function hatBuchungen(?int $slotId = null): bool
+    {
+        return Booking::withoutGlobalScope('team')
+            ->where('event_id', $this->event_id)
+            ->where('pickup_station_id', $this->pickup_station_id)
+            ->when($slotId, fn ($q) => $q->where('event_slot_id', $slotId))
+            ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_NO_SHOW])
+            ->exists();
+    }
+
     /** Die geltende Obergrenze je Pause – oder null für unbegrenzt. */
     public function grenzeJePause(): ?int
     {

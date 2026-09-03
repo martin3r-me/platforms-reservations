@@ -10,6 +10,7 @@ use Livewire\WithFileUploads;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\Table;
 use Platform\Reservation\Models\Event;
+use Platform\Reservation\Models\PickupStation;
 use Platform\Reservation\Models\EventRoom;
 use Platform\Reservation\Models\EventSlot;
 use Platform\Reservation\Models\FloorPlan;
@@ -46,6 +47,14 @@ class EventManager extends Component
 
     /** @var array<int, array{id: ?int, floor_plan_id: ?int, fill_threshold_percent: int, capacity_override: ?string, open_mode: string}> */
     public array $rooms = [];
+
+    /**
+     * Abholstationen des Termins, je Zeile mit ihren Pausen-POSITIONEN.
+     *
+     * [['id' => ?int, 'pickup_station_id' => ?int, 'capacity_override' => '',
+     *   'slot_indexes' => [0, 1]]]
+     */
+    public array $stations = [];
 
     /** @var array<int, int> Tisch-IDs, die für diesen Termin gesperrt sind */
     public array $disabledTableIds = [];
@@ -132,6 +141,25 @@ class EventManager extends Component
         return FloorPlan::with('venue')
             ->whereHas('venue', fn ($q) => $q->where('team_id', $this->getTeamId()))
             ->active()
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * Abholstationen, die dieser Termin anbieten kann.
+     *
+     * Aktive des Teams, nach Haus sortiert. Abgeschaltete stehen nicht zur
+     * Wahl – eine Station, die im Shop nicht erscheint, gehört auch nicht in
+     * die Liste eines neuen Termins. Bereits zugeordnete bleiben davon
+     * unberührt; sie stehen schon in $stations.
+     */
+    #[Computed]
+    public function availableStations(): \Illuminate\Database\Eloquent\Collection
+    {
+        return PickupStation::forTeam($this->getTeamId())
+            ->active()
+            ->with('venue')
+            ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
     }
@@ -266,7 +294,7 @@ class EventManager extends Component
             return [];
         }
 
-        $event = Event::with(['slots', 'eventRooms'])->find($this->editingEventId);
+        $event = Event::with(['slots', 'eventRooms', 'eventStations.slots'])->find($this->editingEventId);
 
         return $event
             ? app(\Platform\Reservation\Services\SeatAvailabilityService::class)->ueberbelegtBeiTerminbindung($event)
@@ -321,7 +349,7 @@ class EventManager extends Component
         $this->resetErrorBag();
 
         if ($id) {
-            $event = Event::with(['slots', 'eventRooms'])->findOrFail($id);
+            $event = Event::with(['slots', 'eventRooms', 'eventStations.slots'])->findOrFail($id);
             $this->eventName          = $event->name;
             $this->eventDescription   = $event->description ?? '';
             $this->eventDate          = $event->date->toDateString();
@@ -348,6 +376,21 @@ class EventManager extends Component
                 'open_mode'              => $room->is_open_override === null ? 'auto' : ($room->is_open_override ? 'open' : 'closed'),
             ])->toArray();
 
+            // Ids der Pausen auf ihre Position abbilden - im Formular wird mit
+            // Positionen gearbeitet, siehe addStation().
+            $positionJeSlotId = array_flip(array_column($this->slots, 'id'));
+
+            $this->stations = $event->eventStations->map(fn ($zuordnung) => [
+                'id'                => $zuordnung->id,
+                'pickup_station_id' => $zuordnung->pickup_station_id,
+                'capacity_override' => $zuordnung->capacity_override !== null ? (string) $zuordnung->capacity_override : '',
+                'slot_indexes'      => $zuordnung->slots
+                    ->map(fn ($slot) => $positionJeSlotId[$slot->id] ?? null)
+                    ->filter(fn ($p) => $p !== null)
+                    ->values()
+                    ->all(),
+            ])->toArray();
+
             $this->disabledTableIds = array_map('intval', $event->disabled_table_ids ?? []);
         } else {
             $this->eventName          = '';
@@ -363,8 +406,49 @@ class EventManager extends Component
             $this->eventReleaseMode = \Platform\Reservation\Models\CheckoutSetting::forTeam($this->getTeamId())->defaultRoomReleaseMode();
             $this->slots = [['id' => null, 'name' => 'Pause', 'time_start' => '', 'time_end' => '']];
             $this->rooms = [];
+            $this->stations = [];
             $this->disabledTableIds = [];
         }
+    }
+
+    /* ---------------------------------------------------------------------
+     | Abholstationen am Termin
+     |
+     | Der Zwilling des Raum-Blocks, mit einem Unterschied, der alles Weitere
+     | erklaert: Eine Station gilt JE PAUSE. Deshalb steht in jeder Zeile nicht
+     | nur die Station, sondern auch, in welchen Pausen sie geoeffnet ist.
+     |
+     | Gemerkt werden dabei die POSITIONEN der Pausen, nicht ihre Ids. Beim
+     | Anlegen eines Termins gibt es die Ids naemlich noch nicht - die Pausen
+     | entstehen erst beim Speichern. Ueber die Position laesst sich beides
+     | verbinden, und syncStations() loest sie danach auf.
+     --------------------------------------------------------------------- */
+
+    public function addStation(): void
+    {
+        $this->stations[] = [
+            'id'                => null,
+            'pickup_station_id' => null,
+            'capacity_override' => '',
+            // Beim Anlegen alle Pausen. Eine Station, die nur in einer Pause
+            // oeffnet, ist die Ausnahme - und die haekelt man ab.
+            'slot_indexes'      => array_keys($this->slots),
+        ];
+    }
+
+    public function removeStation(int $index): void
+    {
+        unset($this->stations[$index]);
+        $this->stations = array_values($this->stations);
+    }
+
+    public function toggleStationSlot(int $stationIndex, int $slotIndex): void
+    {
+        $gesetzt = $this->stations[$stationIndex]['slot_indexes'] ?? [];
+
+        $this->stations[$stationIndex]['slot_indexes'] = in_array($slotIndex, $gesetzt, true)
+            ? array_values(array_diff($gesetzt, [$slotIndex]))
+            : array_values(array_merge($gesetzt, [$slotIndex]));
     }
 
     public function toggleDisabledTable(int $tableId): void
@@ -384,12 +468,32 @@ class EventManager extends Component
             'time_start' => '',
             'time_end'   => '',
         ];
+
+        // Neue Pause: bei allen Stationen mit angehakt. Der haeufigere Fall ist,
+        // dass eine Station den ganzen Abend ausgibt; wer es anders will,
+        // nimmt das Haekchen weg. Eine neue Pause, die ueberall stumm fehlt,
+        // faellt dagegen erst am Abend auf.
+        $neu = count($this->slots) - 1;
+
+        foreach ($this->stations as $i => $station) {
+            $this->stations[$i]['slot_indexes'][] = $neu;
+        }
     }
 
     public function removeSlot(int $index): void
     {
         unset($this->slots[$index]);
         $this->slots = array_values($this->slots);
+
+        // Die Stationen merken sich Positionen, und die verschieben sich beim
+        // Entfernen. Ohne diese Zeilen zeigte eine Station danach auf die
+        // falsche Pause - lautlos, denn es bleibt eine gueltige Zahl.
+        foreach ($this->stations as $i => $station) {
+            $this->stations[$i]['slot_indexes'] = array_values(array_map(
+                fn (int $p) => $p > $index ? $p - 1 : $p,
+                array_filter($station['slot_indexes'] ?? [], fn (int $p) => $p !== $index),
+            ));
+        }
     }
 
     public function addRoom(): void
@@ -549,12 +653,30 @@ class EventManager extends Component
             'rooms.*.floor_plan_id' => ['required', 'integer', 'distinct', Rule::exists('reservation_floor_plans', 'id')->where('team_id', $this->getTeamId())],
             'rooms.*.fill_threshold_percent' => 'required|integer|min:1|max:100',
             'rooms.*.capacity_override' => 'nullable|integer|min:1',
+            // distinct wie beim Raum: Auf event_id + pickup_station_id liegt
+            // ein eindeutiger Index; ohne die Regel gaebe es einen Serverfehler
+            // statt einer Meldung.
+            'stations.*.pickup_station_id' => ['required', 'integer', 'distinct', Rule::exists('reservation_pickup_stations', 'id')->where('team_id', $this->getTeamId())],
+            'stations.*.capacity_override' => 'nullable|integer|min:1',
         ], [
             'eventDeadline.required' => 'Jeder Termin braucht einen Bestellschluss.',
             'slots.*.name.required' => 'Jede Pause braucht einen Namen.',
             'rooms.*.floor_plan_id.required' => 'Jeder Raum braucht einen Tischplan.',
             'rooms.*.floor_plan_id.distinct' => 'Dieser Tischplan ist schon als Raum eingetragen.',
+            'stations.*.pickup_station_id.required' => 'Jede Zeile braucht eine Abholstation.',
+            'stations.*.pickup_station_id.distinct' => 'Diese Abholstation ist schon eingetragen.',
         ]);
+
+        // Eine Station ohne Pause waere ein stiller Zustand: Sie stuende im
+        // Termin und erschiene im Shop nirgends. Deshalb ein Fehler und nicht
+        // die stillschweigende Annahme „dann eben alle".
+        foreach ($this->stations as $i => $station) {
+            if (empty($station['slot_indexes'])) {
+                $this->addError("stations.$i.slot_indexes", 'Diese Abholstation braucht mindestens eine Pause.');
+
+                return;
+            }
+        }
 
         // #518: Wenn beide Zeiten gesetzt sind, muss das Ende nach dem Beginn liegen.
         foreach ($this->slots as $i => $slot) {
@@ -606,6 +728,12 @@ class EventManager extends Component
 
         $this->syncSlots($event);
         $this->syncRooms($event);
+
+        // NACH den Pausen: syncStations loest die gemerkten Positionen in Ids
+        // auf, und die entstehen erst dort.
+        if (($fehler = $this->syncStations($event)) !== null) {
+            session()->flash('event_error', $fehler);
+        }
 
         if ($this->eventImage) {
             $event->setContextImage($this->eventImage, 'reservation.event.image', $this->getTeamId(), Auth::id());
@@ -733,6 +861,84 @@ class EventManager extends Component
         $event->eventRooms()->whereNotIn('id', $keptIds)->delete();
     }
 
+    /**
+     * Abholstationen des Termins abgleichen – samt ihrer Pausen.
+     *
+     * Läuft nach syncSlots(), weil die Pausen eines neuen Termins dort erst
+     * ihre Ids bekommen. Das Formular arbeitet mit Positionen; hier werden sie
+     * aufgelöst.
+     *
+     * Wegnehmen ist die heikle Richtung: Eine Station oder eine ihrer Pausen,
+     * auf die schon Buchungen zeigen, wird NICHT entfernt. Sonst zeigte die
+     * Buchung auf einen Ort, den es für sie nicht mehr gibt – dieselbe Art Loch
+     * wie bei einem gelöschten Tisch, nur ohne dass jemand es merkt. Der Rest
+     * wird gespeichert; gemeldet wird, was stehen blieb.
+     *
+     * @return string|null Meldung, wenn etwas nicht entfernt werden konnte
+     */
+    protected function syncStations(Event $event): ?string
+    {
+        $slotIdJePosition = $event->slots()->orderBy('sort_order')->pluck('id')->all();
+
+        $keptIds  = [];
+        $behalten = [];
+
+        foreach (array_values($this->stations) as $sortOrder => $zeile) {
+            $attribute = [
+                'pickup_station_id' => (int) $zeile['pickup_station_id'],
+                'sort_order'        => $sortOrder,
+                'capacity_override' => ($zeile['capacity_override'] ?? '') !== '' ? (int) $zeile['capacity_override'] : null,
+            ];
+
+            $zuordnung = $zeile['id']
+                ? $event->eventStations()->whereKey($zeile['id'])->first()
+                : null;
+
+            if ($zuordnung) {
+                $zuordnung->update($attribute);
+            } else {
+                $zuordnung = $event->eventStations()->create($attribute);
+            }
+
+            $keptIds[] = $zuordnung->id;
+
+            $gewuenscht = collect($zeile['slot_indexes'] ?? [])
+                ->map(fn ($position) => $slotIdJePosition[$position] ?? null)
+                ->filter()
+                ->map('intval')
+                ->all();
+
+            // Eine Pause, auf der Buchungen liegen, bleibt drin - auch wenn das
+            // Haekchen weg ist.
+            $zuordnung->load('slots');
+
+            foreach ($zuordnung->slots as $bisher) {
+                if (! in_array($bisher->id, $gewuenscht, true) && $zuordnung->hatBuchungen($bisher->id)) {
+                    $gewuenscht[] = $bisher->id;
+                    $behalten[]   = $zuordnung->station?->name . ' / ' . $bisher->displayLabel();
+                }
+            }
+
+            $zuordnung->slots()->sync($gewuenscht);
+        }
+
+        // Ganz entfernte Stationen - dieselbe Regel.
+        foreach ($event->eventStations()->whereNotIn('id', $keptIds ?: [0])->with('station')->get() as $weg) {
+            if ($weg->hatBuchungen()) {
+                $behalten[] = $weg->station?->name;
+
+                continue;
+            }
+
+            $weg->delete();
+        }
+
+        return $behalten === []
+            ? null
+            : 'Nicht entfernt, weil dort schon Buchungen liegen: ' . implode(', ', array_filter($behalten))
+                . '. Bitte die Buchungen erst stornieren oder verschieben.';
+    }
+
     public function publish(int $id): void
     {
         $event = Event::with('slots')->findOrFail($id);
@@ -786,7 +992,7 @@ class EventManager extends Component
      */
     public function duplicate(int $id): void
     {
-        $original = Event::with(['slots', 'eventRooms'])
+        $original = Event::with(['slots', 'eventRooms', 'eventStations.slots'])
             ->forTeam($this->getTeamId())
             ->findOrFail($id);
 
@@ -821,6 +1027,26 @@ class EventManager extends Component
                 $copy->eventRooms()->create($room->only([
                     'floor_plan_id', 'sort_order', 'fill_threshold_percent', 'capacity_override', 'is_open_override',
                 ]));
+            }
+
+            // Stationen samt Pausen. Die Kopie hat eigene Pausen - zugeordnet
+            // wird ueber die POSITION, nicht ueber die Id: Ein Termin mit zwei
+            // Pausen, dessen Station nur in der ersten oeffnet, soll in der
+            // Kopie genauso aussehen.
+            $kopiePausen = $copy->slots()->orderBy('sort_order')->pluck('id')->all();
+            $originalPausen = array_flip($original->slots->sortBy('sort_order')->pluck('id')->all());
+
+            foreach ($original->eventStations as $zuordnung) {
+                $neu = $copy->eventStations()->create($zuordnung->only([
+                    'pickup_station_id', 'sort_order', 'capacity_override',
+                ]));
+
+                $neu->slots()->sync(
+                    $zuordnung->slots
+                        ->map(fn ($slot) => $kopiePausen[$originalPausen[$slot->id] ?? -1] ?? null)
+                        ->filter()
+                        ->all()
+                );
             }
         });
 
