@@ -158,10 +158,37 @@ class EventManager extends Component
     {
         return PickupStation::forTeam($this->getTeamId())
             ->active()
+            // Nur die des eigenen Hauses, sobald eines feststeht. Ohne diese
+            // Grenze liesse sich einem Termin im Haus A das Foyer aus Haus B
+            // zuordnen - der Server naehme es an, denn er prueft nur "gehoert
+            // zum Termin", und zugeordnet waere es ja. Bei einem einzigen Venue
+            // faellt das nie auf; beim zweiten steht die Ware im falschen Haus.
+            ->when($this->wirksamesVenueId(), fn ($q, $venueId) => $q->where('venue_id', $venueId))
             ->with('venue')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
+    }
+
+    /**
+     * Das Haus dieses Termins – gewählt oder aus dem ersten Raum abgeleitet.
+     *
+     * Dieselbe Ableitung wie beim Speichern, damit die Liste im Formular und
+     * die Prüfung danach dasselbe meinen. Null heißt „steht noch nicht fest" –
+     * dann bleiben alle Stationen wählbar, sonst wäre die Liste beim Anlegen
+     * leer, bevor der erste Raum drin ist.
+     */
+    protected function wirksamesVenueId(): ?int
+    {
+        if ($this->eventVenueId) {
+            return (int) $this->eventVenueId;
+        }
+
+        $ersterPlan = $this->rooms[0]['floor_plan_id'] ?? null;
+
+        return $ersterPlan
+            ? FloorPlan::find((int) $ersterPlan)?->venue_id
+            : null;
     }
 
     /**
@@ -670,9 +697,26 @@ class EventManager extends Component
         // Eine Station ohne Pause waere ein stiller Zustand: Sie stuende im
         // Termin und erschiene im Shop nirgends. Deshalb ein Fehler und nicht
         // die stillschweigende Annahme „dann eben alle".
+        // Und die Station muss zum Haus des Termins gehoeren. Die Liste im
+        // Formular zeigt ohnehin nur passende - das hier faengt den Fall ab,
+        // dass jemand das Venue wechselt, nachdem er eine Station gewaehlt hat.
+        $venueId  = $this->wirksamesVenueId();
+        $erlaubte = $venueId
+            ? PickupStation::forTeam($this->getTeamId())->where('venue_id', $venueId)->pluck('id')->all()
+            : null;
+
         foreach ($this->stations as $i => $station) {
             if (empty($station['slot_indexes'])) {
                 $this->addError("stations.$i.slot_indexes", 'Diese Abholstation braucht mindestens eine Pause.');
+
+                return;
+            }
+
+            if ($erlaubte !== null && ! in_array((int) $station['pickup_station_id'], $erlaubte, true)) {
+                $this->addError(
+                    "stations.$i.pickup_station_id",
+                    'Diese Abholstation gehört zu einem anderen Haus als der Termin.'
+                );
 
                 return;
             }

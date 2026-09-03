@@ -420,8 +420,12 @@
                 <div class="space-y-2 p-3">
                     @if ($this->availableStations->isEmpty())
                         <p class="m-0 text-xs text-[color:var(--nx-muted)]">
-                            Noch keine Abholstationen vorhanden –
-                            <a href="{{ route('reservation.stations.index') }}" wire:navigate class="underline">zuerst unter „Abholstationen“ anlegen</a>.
+                            {{-- „In diesem Haus“, nicht „vorhanden“: Angeboten werden nur die
+                                 Stationen des Hauses, zu dem der Termin gehört. Stünde hier
+                                 „keine vorhanden“, während in einem anderen Haus welche
+                                 stehen, suchte jemand den Fehler an der falschen Stelle. --}}
+                            Für dieses Haus ist keine Abholstation angelegt –
+                            <a href="{{ route('reservation.stations.index') }}" wire:navigate class="underline">unter „Abholstationen“ anlegen</a>.
                         </p>
                     @elseif (empty($stations))
                         <p class="m-0 text-xs text-[color:var(--nx-muted)]">
@@ -445,7 +449,10 @@
                                         name="stations.{{ $i }}.pickup_station_id"
                                         label="Abholstation"
                                         size="sm"
-                                        :options="$this->availableStations->map(fn ($s) => ['value' => $s->id, 'label' => ($s->venue?->name ? $s->venue->name . ' – ' : '') . $s->name])->all()"
+                                        {{-- Der Hausname steht nur davor, solange mehrere
+                                             infrage kommen - also bevor ein Raum gewaehlt ist.
+                                             Danach waere er in jeder Zeile derselbe. --}}
+                                        :options="$this->availableStations->map(fn ($s) => ['value' => $s->id, 'label' => ($this->availableStations->pluck('venue_id')->unique()->count() > 1 && $s->venue?->name ? $s->venue->name . ' – ' : '') . $s->name])->all()"
                                         :nullable="true"
                                         nullLabel="– bitte wählen –"
                                         wire:model.live="stations.{{ $i }}.pickup_station_id"
