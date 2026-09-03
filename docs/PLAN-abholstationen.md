@@ -551,12 +551,21 @@ widerspricht die Website dem Bestellweg.
    blind gebaut.
 5. **Shop** – Ort-Schritt mit Liste und Flächen im Saalplan, Schritt „Wann?" ab zwei
    Pausen (Abschnitt L), Status, Beleg, Sprachen. Lokal testen, dann Deploy.
-6. **Aufräumen** – `reservation_dropoff_slots`, `DropoffSlot`, `DropoffManager` entfernen.
-   Vorher nachsehen, ob auf demo oder bei Culinaria noch Zeilen drinstehen: eine leere
-   Tabelle löscht man ohne Nachdenken, eine gefüllte will man erst angesehen haben.
-7. **Sortiment je Station** (Abschnitt K) – Spalte `sales_list_id` **erst hier**, benannte
-   Schritte im Wizard, Reihenfolge nur dort gekippt, wo eine Station ein eigenes Angebot
-   führt. Bewusst nach Etappe 6: Bis dahin ändert sich am Bestellweg nichts.
+6. ~~**Aufräumen**~~ – am 03.09.2026 entfernt: `DropoffManager`, seine Ansicht, das Modell
+   `DropoffSlot` und der Sidebar-Eintrag. `/dropoff` leitet auf die Abholstationen um,
+   damit Lesezeichen nicht ins Leere laufen.
+
+   **Die TABELLE `reservation_dropoff_slots` steht noch.** Es gibt keinen Weg, ihren
+   Inhalt von außen zu prüfen (nie ein MCP-Tool, nur die Oberfläche), und eine gefüllte
+   Tabelle will man angesehen haben, bevor man sie wegwirft – eine gelöschte kommt nicht
+   zurück. Sie ist ohne Modell und ohne Oberfläche inert; die Migration, die sie fallen
+   lässt, kommt, sobald jemand bestätigt hat, dass sie leer ist.
+
+7. ~~**Sortiment je Station**~~ (Abschnitt K) – **verworfen am 03.09.2026.** Ein eigenes
+   Angebot je Station erzwingt die Ortsfrage VOR den Artikeln und kippt damit die
+   Reihenfolge im Bestellweg. Der Kunde will sie so lassen, wie sie ist. Die Spalte
+   `sales_list_id` wird nicht angelegt; kommt der Wunsch je zurück, ist die Reihenfolge
+   die eigentliche Entscheidung, nicht die Spalte.
 
 Bestehende Termine merken von alldem nichts: Ohne zugeordnete Station läuft jeder
 Ablauf wie bisher.

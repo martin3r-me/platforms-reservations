@@ -120,8 +120,8 @@
                     <span class="absolute right-1 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[color:var(--nx-accent)] px-1 text-[9px] font-semibold text-white">{{ $this->approvalCount > 99 ? '99+' : $this->approvalCount }}</span>
                 @endif
             </a>
-            <a href="{{ route('reservation.dropoff.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]">
-                @svg('heroicon-o-clock', 'w-5 h-5')
+            <a href="{{ route('reservation.stations.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]">
+                @svg('heroicon-o-inbox-arrow-down', 'w-5 h-5')
             </a>
             <a href="{{ route('reservation.events.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]">
                 @svg('heroicon-o-ticket', 'w-5 h-5')

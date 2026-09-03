@@ -6,7 +6,6 @@ use Platform\Reservation\Livewire\BookingCreate;
 use Platform\Reservation\Livewire\FloorPlanEditor;
 use Platform\Reservation\Livewire\MenuManager;
 use Platform\Reservation\Livewire\MenuImport;
-use Platform\Reservation\Livewire\DropoffManager;
 use Platform\Reservation\Livewire\Export;
 use Platform\Reservation\Livewire\VenueManager;
 use Platform\Reservation\Livewire\SalesListManager;
@@ -59,11 +58,10 @@ Route::get('/menu/import/vorlage', \Platform\Reservation\Http\Controllers\MenuIm
 // Abholstationen: der zweite moegliche Zielort einer Buchung, neben dem Tisch.
 Route::get('/stations', \Platform\Reservation\Livewire\StationManager::class)->name('reservation.stations.index');
 
-// Drop-off Slots - der Vorlaeufer der Abholstationen, aus der Navigation
-// genommen und noch nicht entfernt. Erst nachsehen, ob irgendwo Zeilen
-// drinstehen: Eine leere Tabelle loescht man ohne Nachdenken, eine gefuellte
-// will man erst angesehen haben. Siehe PLAN-abholstationen.md, Etappe 6.
-Route::get('/dropoff', DropoffManager::class)->name('reservation.dropoff.index');
+// Alt-Link: Die Drop-off-Slots waren der Vorlaeufer der Abholstationen und sind
+// am 03.09.2026 entfernt worden. Der Pfad bleibt als Weiterleitung stehen -
+// Lesezeichen und aeltere Verweise laufen sonst ins Leere.
+Route::get('/dropoff', fn () => redirect()->route('reservation.stations.index'))->name('reservation.dropoff.index');
 
 // Export
 Route::get('/export', Export::class)->name('reservation.export');
