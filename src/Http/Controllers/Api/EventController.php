@@ -110,6 +110,73 @@ class EventController extends ApiController
         ], 'Artikel erfolgreich geladen');
     }
 
+    /**
+     * Abholstationen eines Termins, je Pause mit Rest und Buchbarkeit.
+     *
+     * Gezeigt werden nur zugeordnete und aktive Stationen. Anders als bei einem
+     * geschlossenen Raum verschwindet hier nichts, was der Gast erwarten würde:
+     * Eine Station, die dem Termin nicht zugeordnet ist, gehört nicht dazu –
+     * sie ist kein gesperrtes Angebot, sondern gar keines.
+     *
+     * `free` ist null für „unbegrenzt", nicht 0. Der Shop darf daraus nichts
+     * anzeigen; eine 0 stünde für ausgebucht.
+     *
+     * @param  \Illuminate\Support\Collection  $slots
+     * @return array<int, array<string, mixed>>
+     */
+    protected function formatStations(Event $event, $slots, ?int $party): array
+    {
+        $kapazitaet = app(\Platform\Reservation\Services\PickupCapacityService::class);
+
+        return $event->eventStations
+            ->filter(fn ($z) => $z->station?->is_active)
+            ->map(function ($zuordnung) use ($slots, $party, $kapazitaet) {
+                $station = $zuordnung->station;
+
+                $offen    = [];
+                $frei     = [];
+                $buchbar  = [];
+
+                foreach ($slots as $slot) {
+                    $inPause = $zuordnung->offenIn($slot->id);
+
+                    $offen[$slot->id] = $inPause;
+                    $frei[$slot->id]  = $inPause ? $kapazitaet->frei($zuordnung, $slot) : 0;
+
+                    if ($party !== null) {
+                        $buchbar[$slot->id] = $inPause && $kapazitaet->passt($zuordnung, $slot, $party);
+                    }
+                }
+
+                $daten = [
+                    'id'            => $station->id,
+                    'name'          => $station->name,
+                    'description'   => $station->description,
+                    'sort_order'    => (int) $station->sort_order,
+                    // Wo sie gezeichnet ist - null, wenn sie in keinem Plan liegt.
+                    'floor_plan_id' => $station->floor_plan_id,
+                    'x_pct'         => $station->x_pct !== null ? (float) $station->x_pct : null,
+                    'y_pct'         => $station->y_pct !== null ? (float) $station->y_pct : null,
+                    'w_pct'         => $station->w_pct !== null ? (float) $station->w_pct : null,
+                    'h_pct'         => $station->h_pct !== null ? (float) $station->h_pct : null,
+                    'rotation'      => (int) $station->rotation,
+                    // { slot_id: bool } - in welchen Pausen sie ueberhaupt oeffnet
+                    'open'          => $offen,
+                    // { slot_id: ?int } - null heisst unbegrenzt, 0 heisst voll
+                    'free'          => $frei,
+                ];
+
+                if ($party !== null) {
+                    $daten['bookable'] = $buchbar;
+                }
+
+                return $daten;
+            })
+            ->sortBy('sort_order')
+            ->values()
+            ->all();
+    }
+
     /** Locale aus ?lang= (Fallback Basis-Sprache DE), locale-Format normalisiert. */
     protected function requestLocale(Request $request): string
     {
@@ -223,6 +290,8 @@ class EventController extends ApiController
             'eventRooms.floorPlan'        => fn ($q) => $q->withoutGlobalScope('team'),
             'eventRooms.floorPlan.tables' => fn ($q) => $q->withoutGlobalScope('team')->where('is_active', true),
             'eventRooms.floorPlan.atmosphereFiles.variants',
+            'eventStations.station',
+            'eventStations.slots',
         ]);
 
         $checkout   = CheckoutSetting::forTeam((int) $model->team_id);
@@ -298,6 +367,18 @@ class EventController extends ApiController
                 'time_start' => $s->time_start,
                 'time_end'   => $s->time_end,
             ])->values()->all(),
+            // Abholstationen: der zweite moegliche Zielort, neben den Raeumen.
+            //
+            // NEBEN 'rooms' und nicht darin, obwohl eine Station in einem
+            // Tischplan liegen kann: Sie gehoert dem Haus, nicht dem Raum, und
+            // viele liegen in gar keinem. Ein Shop, der sie unter den Raeumen
+            // suchte, faende "Foyer links" nie.
+            //
+            // Die Lage steht trotzdem dabei (floor_plan_id + x/y/w/h), damit
+            // eine gezeichnete Station im richtigen Plan als Flaeche erscheinen
+            // kann. Ohne Lage bleibt sie eine Karte in der Liste - das ist der
+            // Normalfall, kein Mangel.
+            'stations' => $this->formatStations($model, $slots, $party),
             'rooms' => $rooms->all(),
         ], 'Tischplan/Verfügbarkeit geladen');
     }
@@ -340,7 +421,11 @@ class EventController extends ApiController
             'redirect_url'          => ['nullable', 'url', 'max:2048'],
             'slots'                 => 'required|array|min:1',
             'slots.*.slot_id'       => 'required|integer',
-            'slots.*.table_id'      => 'required|integer',
+            // Genau EINES von beidem - geprueft wird das im GuestOrderService,
+            // weil dort auch die Zugehoerigkeit zum Termin geprueft wird und
+            // beides zusammengehoert. Hier nur die Form.
+            'slots.*.table_id'      => 'nullable|integer',
+            'slots.*.station_id'    => 'nullable|integer',
             'slots.*.items'         => 'required|array|min:1',
         ]);
 
