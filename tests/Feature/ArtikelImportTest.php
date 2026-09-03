@@ -84,6 +84,46 @@ class ArtikelImportTest extends TestCase
         $this->assertNull($artikel->min_age);
     }
 
+    public function test_die_beispiel_vorlage_laesst_sich_importieren(): void
+    {
+        // Die Vorlage ist das, was der Kunde herunterlaedt und ausfuellt. Passt
+        // sie nicht zum Importer, faellt es erst auf, wenn jemand sie benutzt -
+        // und dann sieht es aus, als koenne er kein CSV.
+        //
+        // Beim Ergaenzen der Standzeit hatte ich sie von zehn Beispielzeilen auf
+        // drei zusammengestrichen. Dieser Test haette es nicht gemerkt; die
+        // Zeilenzahl steht deshalb ausdruecklich darin.
+        $pfad = __DIR__ . '/../../resources/samples/artikel-import-vorlage.csv';
+
+        $this->assertFileExists($pfad);
+
+        foreach (['Unbedenklich', 'Sollte kalt sein', 'Sollte heiß sein'] as $name) {
+            HoldingClass::create(['team_id' => 1, 'name' => $name]);
+        }
+
+        $ergebnis = $this->importer->parse(file_get_contents($pfad), 1);
+
+        $this->assertSame([], $ergebnis['errors']);
+        $this->assertCount(10, $ergebnis['rows']);
+
+        foreach ($ergebnis['rows'] as $zeile) {
+            $this->assertNotSame(
+                MenuItemCsvImporter::STATUS_ERROR,
+                $zeile['status'],
+                'Zeile ' . $zeile['line'] . ': ' . implode(' ', $zeile['messages']),
+            );
+        }
+
+        $this->assertSame(10, $this->importer->import($ergebnis['rows'], 1)['created']);
+
+        // Und die Spalten kommen wirklich an, nicht nur die Namen.
+        $kaffee = MenuItem::where('name', 'Kaffee')->first();
+
+        $this->assertTrue((bool) $kaffee->is_caffeinated);
+        $this->assertNotNull($kaffee->holding_class_id);
+        $this->assertSame(16, MenuItem::where('name', 'Pils')->first()->min_age->value);
+    }
+
     /** @return array{created: int, skipped: int} */
     private function importiere(string $csv): array
     {

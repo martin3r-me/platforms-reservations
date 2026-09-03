@@ -1,4 +1,11 @@
-name;beschreibung;portionsgroesse;kategorie;preis;mwst;allergene;zusatzstoffe;vegetarisch;vegan;alkohol;verfuegbar;standzeit;altersgrenze
-Brezel;Ofenfrisch mit Butter;100 g;Snacks;3,50;7;A,G;;ja;nein;nein;ja;Unbedenklich;
-Käsewürfel;Mit Trauben und Crackern;150 g;Snacks;6,50;7;A,G;;ja;nein;nein;ja;Sollte kalt sein;
-Sekt;Trocken, 0,1 l;0,1 l;Getränke;5,90;19;;;ja;ja;ja;ja;Sollte kalt sein;16
+name;beschreibung;portionsgroesse;kategorie;preis;mwst;allergene;zusatzstoffe;vegetarisch;vegan;alkohol;verfuegbar;standzeit;altersgrenze;koffein
+Brezel;Ofenfrisch mit Butter;100 g;Snacks;3,50;7;A,G;;ja;nein;nein;ja;Unbedenklich;;nein
+Käsewürfel;Mit Trauben und Crackern;150 g;Snacks;6,50;7;A,G;;ja;nein;nein;ja;Sollte kalt sein;;nein
+Antipasti-Teller;Mediterranes Gemüse, Oliven, Ciabatta;250 g;Snacks;8,90;7;A;;ja;ja;nein;ja;Sollte kalt sein;;nein
+Schokoladen-Brownie;Hausgemacht;120 g;Süßes;4,00;7;A,C,G,H;;ja;nein;nein;ja;Unbedenklich;;nein
+Obstsalat;Saisonale Früchte;200 g;Süßes;4,50;7;;;ja;ja;nein;ja;Sollte kalt sein;;nein
+Mineralwasser;Still oder spritzig;0,25 l;Getränke;2,80;19;;;ja;ja;nein;ja;Unbedenklich;;nein
+Cola;;0,2 l;Getränke;3,20;19;;1,2,11;ja;ja;nein;ja;Sollte kalt sein;;ja
+Riesling;Trocken, von der Mosel;0,2 l;Getränke;6,90;19;L;;ja;ja;ja;ja;Sollte kalt sein;16;nein
+Pils;Frisch gezapft;0,33 l;Getränke;4,20;19;A;;ja;ja;ja;ja;Sollte kalt sein;16;nein
+Kaffee;Aus der Siebträgermaschine;0,2 l;Getränke;2,90;19;;;ja;ja;nein;ja;Sollte heiß sein;;ja
