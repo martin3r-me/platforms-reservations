@@ -177,6 +177,26 @@ class FloorPlanEditor extends Component
         unset($this->stations);
     }
 
+    /**
+     * Station im Plan weiterdrehen – wie beim Tisch, 45° je Klick.
+     *
+     * Eine Station ist immer länglich (sie hat keine Formwahl), also gibt es
+     * hier keinen Sonderfall „rund sieht gedreht gleich aus".
+     *
+     * Ohne skipRender(): Die Drehung steckt im gerenderten style, es muss also
+     * neues HTML kommen.
+     */
+    public function rotateStation(int $stationId, int $delta = 45): void
+    {
+        $station = PickupStation::where('venue_id', $this->venueId)->findOrFail($stationId);
+
+        $station->update([
+            'rotation' => PickupStation::normalizeRotation((int) $station->rotation + $delta),
+        ]);
+
+        unset($this->stations);
+    }
+
     /** Wie updateTablePosition(), nur für Stationen – siehe dort. */
     public function updateStationPosition(int $stationId, float $xPct, float $yPct): void
     {

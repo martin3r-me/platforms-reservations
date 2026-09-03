@@ -271,12 +271,38 @@
                         style="{{ $station->surfaceStyle() }}"
                         x-data="draggable({{ $station->id }}, {{ $station->x_pct }}, {{ $station->y_pct }}, {{ $station->w_pct }}, {{ $station->h_pct }}, {{ $plan ? $plan->heightFactor('rectangle') : (4 / 3) }}, 'station')"
                     >
+                        {{-- Eigene Ebene fuer die Drehung, wie beim Tisch: Der
+                             transform des aeusseren Elements gehoert der
+                             Zieh-Geste, und die Beschriftung soll aufrecht
+                             bleiben statt mitzukippen. --}}
                         <div class="pointer-events-none absolute inset-0 bg-teal-600 shadow-md ring-2 ring-white/70 transition-colors group-hover:bg-teal-500 dark:ring-gray-900/70"
-                            style="border-radius: 8px"></div>
+                            style="border-radius: 8px;@if ((int) $station->rotation !== 0) transform: rotate({{ (int) $station->rotation }}deg);@endif"></div>
 
                         <div class="pointer-events-none relative px-1 text-center leading-tight">
                             <div class="truncate">{{ $station->name }}</div>
                             <div class="opacity-75">Abholung</div>
+                        </div>
+
+                        {{-- Dreh-Leiste wie beim laenglichen Tisch. Eine Station hat
+                             keine Formwahl, ist also immer laenglich - der Sonderfall
+                             "rund sieht gedreht gleich aus" entfaellt. --}}
+                        <div
+                            data-rotate-handle
+                            x-on:pointerdown.stop
+                            x-on:dblclick.stop
+                            class="absolute -top-9 left-1/2 flex -translate-x-1/2 touch-none items-center gap-0.5 rounded-lg border border-[var(--ui-border)] bg-white px-1 py-0.5 opacity-90 shadow-sm transition hover:opacity-100 dark:bg-gray-900"
+                        >
+                            <button type="button" title="45° nach links"
+                                wire:click="rotateStation({{ $station->id }}, -45)"
+                                class="inline-flex h-5 w-5 items-center justify-center rounded text-[var(--ui-secondary)] hover:bg-gray-100 dark:hover:bg-gray-800">
+                                @svg('heroicon-o-arrow-uturn-left', 'w-3.5 h-3.5')
+                            </button>
+                            <span class="min-w-[2rem] text-center text-[10px] font-medium tabular-nums text-[var(--ui-secondary)]">{{ (int) $station->rotation }}°</span>
+                            <button type="button" title="45° nach rechts"
+                                wire:click="rotateStation({{ $station->id }}, 45)"
+                                class="inline-flex h-5 w-5 items-center justify-center rounded text-[var(--ui-secondary)] hover:bg-gray-100 dark:hover:bg-gray-800">
+                                @svg('heroicon-o-arrow-uturn-right', 'w-3.5 h-3.5')
+                            </button>
                         </div>
 
                         {{-- Aus dem Plan nehmen. Die Station bleibt bestehen -
