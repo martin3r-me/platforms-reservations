@@ -7,6 +7,7 @@ use Platform\Core\Contracts\ToolContext;
 use Platform\Core\Contracts\ToolContract;
 use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
+use Platform\Reservation\Tools\Concerns\PflegtKennzeichnung;
 use Platform\Reservation\Models\HoldingClass;
 use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
@@ -17,6 +18,8 @@ use Platform\Reservation\Support\BundleComponents;
  */
 class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
 {
+    use PflegtKennzeichnung;
+
     public function getName(): string
     {
         return 'reservation.menu-items.PATCH';
@@ -30,7 +33,8 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
             . 'portion_size, available, is_vegetarian, is_vegan, is_alcoholic, is_bundle mit components '
             . '(jeweils optional). Bei Bundles kann price_notice zurueckkommen: ein Hinweis, dass der '
             . 'Bundle-Preis keinen Vorteil gegenueber den Einzelpreisen bringt. Kein Fehler – '
-            . 'gespeichert wurde trotzdem –, sollte dem Nutzer aber gemeldet werden.';
+            . 'gespeichert wurde trotzdem –, sollte dem Nutzer aber gemeldet werden. '
+            . 'Allergene und Zusatzstoffe als CODES: allergen_codes ("A","C","G") und additive_codes ("1","2","11"). Sie ERSETZEN die bisherigen; ein leeres Array entfernt alle, Weglassen laesst sie unveraendert. Unbekannte Codes kommen als unknown_codes zurueck, statt still zu verschwinden.';
     }
 
     public function getSchema(): array
@@ -62,7 +66,7 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
                 'min_age'       => ['type' => ['integer', 'null'], 'enum' => [16, 18, null], 'description' => 'Altersgrenze 16|18|null.'],
                 'is_caffeinated' => ['type' => 'boolean'],
                 'caffeine_mg'   => ['type' => ['number', 'null'], 'description' => 'mg/100 ml.'],
-            ],
+            ] + self::kennzeichnungSchema(),
             'required'   => ['id'],
         ];
     }
@@ -163,6 +167,8 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
                 $item->components()->sync([]);
             }
 
+            $unbekannteCodes = $this->kennzeichnungSetzen($item, $arguments, $teamId);
+
             $priceNotice = $item->is_bundle
                 ? BundleComponents::priceNotice($item->load('components'))
                 : null;
@@ -177,6 +183,9 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
                 // Kein Fehler: gespeichert ist gespeichert. Nur ein Hinweis, damit
                 // ein Bundle ohne Preisvorteil nicht unbemerkt bleibt.
                 'price_notice' => $priceNotice,
+                // Uebergangene Codes zurueckmelden statt still zu schlucken:
+                // Eine verlorene Kennzeichnung faellt sonst niemandem auf.
+                'unknown_codes' => $unbekannteCodes,
             ], ['updated' => true]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Aktualisieren des Artikels: ' . $e->getMessage(), 'EXECUTION_ERROR');

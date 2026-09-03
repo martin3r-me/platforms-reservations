@@ -7,6 +7,7 @@ use Platform\Core\Contracts\ToolContext;
 use Platform\Core\Contracts\ToolContract;
 use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
+use Platform\Reservation\Tools\Concerns\PflegtKennzeichnung;
 use Platform\Reservation\Models\HoldingClass;
 use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
@@ -17,6 +18,8 @@ use Platform\Reservation\Support\BundleComponents;
  */
 class MenuItemCreateTool implements ToolContract, ToolMetadataContract
 {
+    use PflegtKennzeichnung;
+
     public function getName(): string
     {
         return 'reservation.menu-items.POST';
@@ -33,7 +36,8 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
             . 'keinen Vorteil gegenueber den Einzelpreisen bringt. Das ist kein Fehler – der '
             . 'Artikel wurde angelegt – sollte dem Nutzer aber gemeldet werden. '
             . 'Bei einem Bundle ist price der Bundle-Preis; er wird beim Bestellen proportional auf die '
-            . 'Bestandteile verteilt. Allergene, Alkohol und Mindestalter ergeben sich aus den Bestandteilen.';
+            . 'Bestandteile verteilt. Allergene, Alkohol und Mindestalter ergeben sich aus den Bestandteilen. '
+            . 'Bei einem Einzelartikel lassen sich Allergene und Zusatzstoffe als CODES setzen: allergen_codes ("A","C","G"), additive_codes ("1","2","11"). Unbekannte Codes kommen als unknown_codes zurueck, statt still zu verschwinden.';
     }
 
     public function getSchema(): array
@@ -67,7 +71,7 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
                 'min_age'       => ['type' => ['integer', 'null'], 'enum' => [16, 18, null], 'description' => 'Altersgrenze: 16 (Bier/Wein/Sekt), 18 (Spirituosen), null = keine.'],
                 'is_caffeinated' => ['type' => 'boolean', 'description' => 'Koffeinhaltig (Kennzeichnung).'],
                 'caffeine_mg'   => ['type' => ['number', 'null'], 'description' => 'Koffeingehalt in mg/100 ml (optional).'],
-            ],
+            ] + self::kennzeichnungSchema(),
             'required'   => ['category_id', 'name', 'price'],
         ];
     }
@@ -138,6 +142,8 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
                 BundleComponents::apply($item, $components);
             }
 
+            $unbekannteCodes = $this->kennzeichnungSetzen($item, $arguments, $teamId);
+
             $priceNotice = $isBundle
                 ? BundleComponents::priceNotice($item->load('components'))
                 : null;
@@ -149,6 +155,7 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
                 'tax_rate'        => (float) $item->tax_rate,
                 'is_bundle'       => $item->is_bundle,
                 'components'      => count($components),
+                'unknown_codes'   => $unbekannteCodes,
                 // Kein Fehler: der Artikel ist angelegt. Nur ein Hinweis, damit
                 // ein Bundle ohne Preisvorteil nicht unbemerkt bleibt.
                 'price_notice'    => $priceNotice,
