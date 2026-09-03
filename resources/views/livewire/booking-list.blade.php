@@ -49,7 +49,9 @@
                 <x-nx-table-header-cell>VA-Datum</x-nx-table-header-cell>
                 <x-nx-table-header-cell>Veranstaltung</x-nx-table-header-cell>
                 <x-nx-table-header-cell>Uhrzeit</x-nx-table-header-cell>
-                <x-nx-table-header-cell>Tisch</x-nx-table-header-cell>
+                {{-- "Ort" statt "Tisch": In der Spalte kann seit den Abholstationen auch
+                     ein Foyer stehen. --}}
+                <x-nx-table-header-cell>Ort</x-nx-table-header-cell>
                 <x-nx-table-header-cell>Gast</x-nx-table-header-cell>
                 <x-nx-table-header-cell align="center">Personen</x-nx-table-header-cell>
                 <x-nx-table-header-cell align="right">Bestellung</x-nx-table-header-cell>

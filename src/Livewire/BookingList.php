@@ -54,7 +54,7 @@ class BookingList extends Component
         $user   = Auth::user();
         $teamId = $user?->current_team_id;
 
-        $query = Booking::with(['table.floorPlan.venue', 'order.payment', 'event', 'slot'])
+        $query = Booking::with(['table.floorPlan.venue', 'pickupStation', 'order.payment', 'event', 'slot'])
             ->withCount('items')
             ->where('team_id', $teamId)
             ->orderByDesc('date')

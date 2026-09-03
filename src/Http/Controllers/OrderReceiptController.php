@@ -24,7 +24,7 @@ class OrderReceiptController
             ->where('uuid', $uuid)
             ->with([
                 'event',
-                'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table.floorPlan', 'items.menuItem', 'items.bundleMenuItem']),
+                'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table.floorPlan', 'pickupStation.floorPlan', 'items.menuItem', 'items.bundleMenuItem']),
                 'payment',
             ])
             ->first();

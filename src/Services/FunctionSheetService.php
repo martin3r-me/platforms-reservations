@@ -111,8 +111,11 @@ class FunctionSheetService
 
                 if (! isset($runs[$key]['tables'][$ortKey])) {
                     $runs[$key]['tables'][$ortKey] = [
+                        // 'art' mit dabei, damit die Ansicht beim geloeschten Ort
+                        // das richtige Wort waehlt - "(Tisch entfernt)" waere bei
+                        // einer Abholstation falsch.
                         'table'    => $ort['label']
-                            ? ['id' => $booking->table_id, 'label' => $ort['label'], 'weg' => $ort['weg']]
+                            ? ['id' => $booking->table_id, 'label' => $ort['label'], 'weg' => $ort['weg'], 'art' => $ort['art']]
                             : null,
                         'room'     => $ort['raum'],
                         'bookings' => [],

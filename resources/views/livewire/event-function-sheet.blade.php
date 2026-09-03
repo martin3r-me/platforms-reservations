@@ -80,7 +80,7 @@
                                         <div class="mb-1 flex items-baseline gap-2">
                                             {{-- Kein "Tisch" davor: Die Bezeichnung aus dem Tischplan heisst bereits
                                              "Tisch 4" bzw. "Stehtisch 12" - sonst steht da "Tisch Stehtisch 12". --}}
-                                        <span class="text-sm font-semibold text-[color:var(--nx-text)]">{{ $table['table']['label'] ?? '—' }}</span>@if ($table['table']['weg'] ?? false)<span class="ml-1 text-[11px] font-normal text-[color:var(--nx-faint)]">(Tisch entfernt)</span>@endif
+                                        <span class="text-sm font-semibold text-[color:var(--nx-text)]">{{ $table['table']['label'] ?? '—' }}</span>@if ($table['table']['weg'] ?? false)<span class="ml-1 text-[11px] font-normal text-[color:var(--nx-faint)]">({{ ($table['table']['art'] ?? 'table') === 'station' ? 'Abholstation' : 'Tisch' }} entfernt)</span>@endif
                                             @if ($table['room'])<span class="text-xs text-[color:var(--nx-faint)]">{{ $table['room'] }}</span>@endif
                                         </div>
                                         @foreach ($table['bookings'] as $booking)

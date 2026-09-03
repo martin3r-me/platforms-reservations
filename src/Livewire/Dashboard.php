@@ -87,7 +87,7 @@ class Dashboard extends Component
     public function recentBookings(): \Illuminate\Database\Eloquent\Collection
     {
         return Booking::forTeam($this->getTeamId())
-            ->with(['event', 'table'])
+            ->with(['event', 'table', 'pickupStation'])
             ->withCount('items')
             ->latest()
             ->limit(8)

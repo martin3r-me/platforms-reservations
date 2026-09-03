@@ -69,7 +69,7 @@ class ListBookingsTool implements ToolContract, ToolMetadataContract
 
             $query = Booking::withoutGlobalScope('team')
                 ->where('team_id', $teamId)
-                ->with(['items', 'event', 'slot', 'table']);
+                ->with(['items', 'event', 'slot', 'table', 'pickupStation']);
 
             if (!empty($arguments['event_uuid'])) {
                 $eventId = Event::withoutGlobalScope('team')

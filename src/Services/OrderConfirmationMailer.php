@@ -22,7 +22,7 @@ class OrderConfirmationMailer
     {
         $order->loadMissing([
             'event',
-            'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table', 'items.menuItem', 'items.bundleMenuItem']),
+            'bookings' => fn ($q) => $q->withoutGlobalScope('team')->with(['slot', 'table', 'pickupStation', 'items.menuItem', 'items.bundleMenuItem']),
             'payment',
         ]);
 

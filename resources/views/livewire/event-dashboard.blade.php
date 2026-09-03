@@ -207,7 +207,8 @@
                         <x-nx-table>
                             <x-nx-table-header>
                                 <x-nx-table-header-cell compact>Gast</x-nx-table-header-cell>
-                                <x-nx-table-header-cell compact>Tisch</x-nx-table-header-cell>
+                                {{-- "Ort": Tisch ODER Abholstation. --}}
+                                <x-nx-table-header-cell compact>Ort</x-nx-table-header-cell>
                                 <x-nx-table-header-cell compact align="center">Personen</x-nx-table-header-cell>
                                 <x-nx-table-header-cell compact align="right">Bestellung</x-nx-table-header-cell>
                                 <x-nx-table-header-cell compact>Status</x-nx-table-header-cell>
