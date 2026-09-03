@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Platform\Reservation\Exceptions\FloorPlanInUseException;
 use Platform\Reservation\Models\Concerns\BelongsToTeam;
 use Platform\Reservation\Models\Concerns\HasPlanPosition;
 use Platform\Reservation\Models\Concerns\HasTranslations;
@@ -100,6 +101,23 @@ class PickupStation extends Model
      * einen Seeder angelegte Station kein Team und wäre für den globalen Scope
      * unsichtbar – vorhanden, aber nirgends zu sehen.
      */
+    /**
+     * Termine, in denen diese Station noch eingeplant ist.
+     *
+     * Nur anstehende und nicht abgesagte – ein Abend von letzter Saison hält
+     * nichts mehr fest. Wortgleich zu FloorPlan::anstehendeTermine(); die
+     * beiden Fassungen unterscheiden sich nur in der Zwischentabelle.
+     */
+    public function anstehendeTermine(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Event::withoutGlobalScope('team')
+            ->whereIn('id', EventStation::query()->where('pickup_station_id', $this->getKey())->select('event_id'))
+            ->upcoming()
+            ->where('status', '!=', Event::STATUS_CANCELLED)
+            ->orderBy('date')
+            ->get();
+    }
+
     protected static function booted(): void
     {
         static::creating(function (self $model) {
@@ -107,6 +125,29 @@ class PickupStation extends Model
                 $model->team_id = Venue::withoutGlobalScope('team')
                     ->whereKey($model->venue_id)
                     ->value('team_id');
+            }
+        });
+
+        /**
+         * Nicht löschbar, solange sie in einem anstehenden Termin hängt.
+         *
+         * Ohne diesen Schutz nimmt die Kaskade die Zuordnung mit, und der
+         * Termin verliert lautlos einen Ort, an dem Gäste bestellt haben – die
+         * Buchungen behielten nur noch ihren eingefrorenen Namen.
+         *
+         * Dieselbe Ausnahme wie beim Tischplan: Für die Oberfläche ist es
+         * derselbe Fall, und zwei Ausnahmen für dieselbe Aussage müssten überall
+         * doppelt gefangen werden.
+         */
+        static::deleting(function (self $model) {
+            $termine = $model->anstehendeTermine();
+
+            if ($termine->isNotEmpty()) {
+                throw new FloorPlanInUseException(
+                    'Die Abholstation „' . $model->name . '" ist noch in Terminen eingeplant: '
+                    . $termine->map(fn ($e) => $e->name . ' (' . $e->date?->format('d.m.Y') . ')')->implode(', ')
+                    . '. Bitte dort erst die Station entfernen oder den Termin absagen.'
+                );
             }
         });
     }

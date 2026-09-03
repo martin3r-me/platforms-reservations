@@ -99,6 +99,10 @@ class EventPublishBulkTool implements ToolContract, ToolMetadataContract
                         continue;
                     }
 
+                    // Alles, was jetzt noch fehlt, ist der Ort - Raum oder
+                    // Abholstation. Bewusst nicht auf den Wortlaut geprueft:
+                    // Der steht am Event und darf sich dort aendern, ohne dass
+                    // dieses Werkzeug lautlos aufhoert zu filtern.
                     if ($fehlt !== []) {
                         $skippedNoRoom[] = (string) $uuid;
                         continue;

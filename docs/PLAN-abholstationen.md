@@ -237,11 +237,10 @@ Reihenfolge, optionale Obergrenze, Häkchen je Pause (beim Anlegen alle gesetzt)
 Die Veröffentlichungs-Regel (`EventManager.php:483`, Stand 31.08.2026) fordert heute
 mindestens einen Raum – künftig mindestens einen Raum **oder** eine Station.
 
-**Sie steht allerdings zweimal, und zwar verschieden.** Die Oberfläche verlangt Pausen
-*und* Raum; `EventPublishTool` verlangt nur Pausen und prüft den Raum gar nicht. Wer über
-MCP veröffentlicht, umgeht die Bedingung also heute schon. Bevor die Station als dritte
-Möglichkeit dazukommt, gehört die Regel an **eine** Stelle – eine Methode am Event, die
-Oberfläche und Werkzeug gemeinsam fragen. Sonst entsteht die dritte Fassung.
+~~**Sie steht allerdings zweimal, und zwar verschieden.**~~ *Erledigt vor dem 02.09.2026:*
+Die Regel liegt in `Event::fehltZumVeroeffentlichen()`, und Oberfläche, `EventPublishTool`
+und `EventPublishBulkTool` fragen alle dort. Am **03.09.2026** ist sie um die Station
+erweitert worden – an dieser einen Stelle, und genau dafür war die Zusammenlegung nötig.
 
 Das Duplizieren eines Termins nimmt Stationen samt Pausen-Zuordnung mit.
 

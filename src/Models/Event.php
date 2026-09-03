@@ -279,11 +279,20 @@ class Event extends Model
             $fehlt[] = 'ein Pausen-Slot';
         }
 
-        if (! $this->eventRooms()->exists()) {
-            $fehlt[] = 'ein Raum';
+        // Ein Raum ODER eine Abholstation. Beides gibt dem Gast einen Ort, an
+        // dem er etwas bekommt; ohne beides steht der Termin im Shop, ohne dass
+        // sich etwas buchen liesse.
+        if (! $this->eventRooms()->exists() && ! $this->eventStations()->exists()) {
+            $fehlt[] = 'ein Raum oder eine Abholstation';
         }
 
         return $fehlt;
+    }
+
+    /** Die Abholstationen dieses Termins – der Zwilling von eventRooms(). */
+    public function eventStations(): HasMany
+    {
+        return $this->hasMany(EventStation::class, 'event_id')->orderBy('sort_order');
     }
 
     /** Bestellschluss erreicht? (kein Deadline gesetzt = offen) */

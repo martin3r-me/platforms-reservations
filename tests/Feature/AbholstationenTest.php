@@ -220,6 +220,59 @@ class AbholstationenTest extends TestCase
         $this->assertTrue($station->hatPosition());
     }
 
+    public function test_ein_termin_mit_station_darf_veroeffentlicht_werden(): void
+    {
+        $termin  = $this->termin(1);
+        $station = $this->station('Foyer');
+
+        // Ohne Ort fehlt etwas - und der Wortlaut nennt jetzt beide Wege.
+        $this->assertSame(['ein Raum oder eine Abholstation'], $termin->fehltZumVeroeffentlichen());
+
+        $this->haengeStationAn($termin, $station, [$this->pause($termin, 1)]);
+
+        // Eine Station allein genuegt: Der Gast bekommt einen Ort, an dem er
+        // etwas erhaelt. Ein Saal muss dafuer nicht bestuhlt sein.
+        $this->assertSame([], $termin->fresh()->fehltZumVeroeffentlichen());
+    }
+
+    public function test_eine_eingeplante_station_laesst_sich_nicht_loeschen(): void
+    {
+        $termin  = $this->termin(1);
+        $station = $this->station('Foyer');
+
+        $this->haengeStationAn($termin, $station, [$this->pause($termin, 1)]);
+
+        // Ohne diesen Schutz naehme die Kaskade die Zuordnung mit, und der
+        // Termin verloere lautlos einen Ort, an dem Gaeste bestellt haben.
+        $this->expectException(\Platform\Reservation\Exceptions\FloorPlanInUseException::class);
+
+        $station->delete();
+    }
+
+    public function test_ein_venue_nimmt_keine_eingeplante_station_mit(): void
+    {
+        $termin  = $this->termin(1);
+        $station = $this->station('Foyer');
+
+        $this->haengeStationAn($termin, $station, [$this->pause($termin, 1)]);
+
+        // Der Blick auf die Raeume beantwortet die Frage nicht: „Foyer links"
+        // liegt in keinem.
+        $this->expectException(\Platform\Reservation\Exceptions\FloorPlanInUseException::class);
+
+        $station->venue->delete();
+    }
+
+    public function test_eine_station_ohne_termin_laesst_sich_loeschen(): void
+    {
+        $station = $this->station('Foyer');
+        $id      = $station->id;
+
+        $station->delete();
+
+        $this->assertNull(PickupStation::find($id));
+    }
+
     public function test_ohne_position_gibt_es_keine_flaeche(): void
     {
         $station = $this->station('Foyer links');
