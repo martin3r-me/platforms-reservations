@@ -52,9 +52,9 @@
                 <span class="ml-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[color:var(--nx-accent-soft)] px-1 text-[10px] font-semibold text-[color:var(--nx-muted)]">{{ $this->approvalCount }}</span>
             @endif
         </x-ui-sidebar-item>
-        <x-ui-sidebar-item :href="route('reservation.dropoff.index')">
-            @svg('heroicon-o-clock', 'w-4 h-4 text-[color:var(--nx-muted)]')
-            <span class="ml-2 text-sm">Drop-off</span>
+        <x-ui-sidebar-item :href="route('reservation.stations.index')">
+            @svg('heroicon-o-inbox-arrow-down', 'w-4 h-4 text-[color:var(--nx-muted)]')
+            <span class="ml-2 text-sm">Abholstationen</span>
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
 

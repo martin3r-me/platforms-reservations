@@ -56,7 +56,13 @@ Route::get('/menu', MenuManager::class)->name('reservation.menu.index');
 Route::get('/menu/import', MenuImport::class)->name('reservation.menu.import');
 Route::get('/menu/import/vorlage', \Platform\Reservation\Http\Controllers\MenuImportSampleController::class)->name('reservation.menu.import.sample');
 
-// Drop-off Slots
+// Abholstationen: der zweite moegliche Zielort einer Buchung, neben dem Tisch.
+Route::get('/stations', \Platform\Reservation\Livewire\StationManager::class)->name('reservation.stations.index');
+
+// Drop-off Slots - der Vorlaeufer der Abholstationen, aus der Navigation
+// genommen und noch nicht entfernt. Erst nachsehen, ob irgendwo Zeilen
+// drinstehen: Eine leere Tabelle loescht man ohne Nachdenken, eine gefuellte
+// will man erst angesehen haben. Siehe PLAN-abholstationen.md, Etappe 6.
 Route::get('/dropoff', DropoffManager::class)->name('reservation.dropoff.index');
 
 // Export
