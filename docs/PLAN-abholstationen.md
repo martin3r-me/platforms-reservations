@@ -288,7 +288,7 @@ Bietet der Termin nur Stationen, entfällt der Saalplan.
 
 **Laufzettel** (`FunctionSheetService`) – gruppiert nach `zielortSchluessel()` statt
 nach `table_id`. Innerhalb einer Station **alphabetisch nach Gastnamen** bzw. nach
-Abholcode (siehe F): Am Tresen sucht man nach Namen, nicht nach Nummern. Genau das ist
+Namen (siehe F – ein Abholcode ist verworfen): Am Tresen sucht man nach Namen. Genau das ist
 die Abholliste, ein zusätzlicher Ausdruck ist nicht nötig.
 
 **Küche** (`EventOrders`, `KitchenPrepService`) – je Pause eine Aufteilung nach Station,
@@ -330,49 +330,24 @@ obendrein haltbar.
 
 ---
 
-## F. Abholcode
+## F. Abholcode – verworfen am 03.09.2026
 
-**`pickup_identification`: `name` | `code`** – die Einstellung steht an **zwei** Stellen:
+**Am Tresen wird nach dem NAMEN ausgegeben.** Entscheidung des Hauses. Ein Abholcode
+wird nicht gebaut, auch nicht als abschaltbare Möglichkeit.
 
-- `reservation_checkout_settings.default_pickup_identification` – die Vorgabe des Teams.
-  Die Einstellungen sind seit `84c288c` nach Kategorien geteilt (zweite Sidebar,
-  `partials/settings-nav.blade.php`, je Thema ein Partial). Der Schalter gehört unter
-  **„Veranstaltung & Plätze"** in `partials/settings/termine.blade.php`, wo schon die
-  weiche Tisch-Kapazität steht: Es geht um die Form der Bewirtung, nicht um den Beleg.
-- `reservation_events.pickup_identification` – der Wert, der wirklich gilt. Beim Anlegen
-  eines Termins aus der Vorgabe gefüllt, danach am Termin änderbar.
+Der Grund gegen „bauen wir gleich mit, mit Schalter": Ein Schalter wäre kein Schalter,
+sondern eine Gabelung an sechs Stellen – Bon, Laufzettel, Bestätigungsmail, Statusseite,
+Shop, Küchenansicht. Jede bekäme einen zweiten Zustand, den nie jemand ansieht, und genau
+solche Zustände sind falsch, wenn man sie Jahre später zum ersten Mal benutzt.
 
-**Fest, sobald die erste Bestellung für den Termin liegt.** Nicht wegen der Daten – Codes
-werden ohnehin immer vergeben (siehe unten) –, sondern wegen der schon verschickten
-Bestätigungen: Wer früh bestellt hat, hält eine Mail ohne Nummer in der Hand und stünde
-abends vor einem Tresen, der nach Nummern arbeitet. Vor der ersten Bestellung ist das
-Umstellen folgenlos und deshalb frei.
+Dazu sind die fachlichen Fragen unbeantwortet: Format, Eindeutigkeit (je Termin oder je
+Pause), ob der Gast ihn vor oder nach der Zahlung sieht, auf welchen Belegen er steht.
+Sie jetzt zu erfinden hieße, sie später samt Daten zu korrigieren.
 
-Beim Duplizieren eines Termins wird der Modus mitkopiert und ist wieder offen – die Kopie
-hat noch keine Bestellungen.
-
-Bei `name` bleibt alles wie oben: Der Gast nennt seinen Namen, die Liste ist alphabetisch.
-
-Bei `code` bekommt **die Bestellung** (`Order`, nicht die einzelne Pausen-Buchung) eine
-vierstellige Nummer, eindeutig je Termin. Sonst müsste der Gast sich zwei Nummern merken.
-Der Code steht auf der Bestätigungsseite, in der Mail, auf dem Beleg und auf dem Bon;
-die Abholliste ist dann nach Code sortiert.
-
-Vierstellig und je Termin eindeutig, weil zwei „Müller" an einem Abend wahrscheinlicher
-sind als eine Kollision unter zehntausend Nummern – und weil eine über alle Termine
-fortlaufende Nummer irgendwann fünfstellig wird und am Tresen niemand mehr vorlesen mag.
-
-Spalte: `reservation_orders.pickup_code`, nullable, `unique(event_id, pickup_code)`.
-
-**Der Code wird immer vergeben, angezeigt wird er nur bei `code`.** Sonst entsteht ein
-halber Zustand: Wer die Einstellung mitten in einem Verkauf umstellt, hätte fünfzig
-Bestellungen ohne Nummer und fünfzig mit – und die Abholliste wüsste nicht, wonach sie
-sortieren soll. Eine ungenutzte Zahl in einer Spalte kostet nichts, ein halber Zustand
-kostet einen Abend.
-
-Vergabe mit Wiederholung bei Kollision: Vier Stellen je Termin sind reichlich, aber zwei
-gleichzeitige Bestellungen können dieselbe Zahl ziehen. Der eindeutige Index fängt das
-ab, die Vergabe versucht es erneut – nicht die Zahl vorher „freihalten".
+**Falls er doch kommt**, ist der teure Teil schon getan: Der Ort wird überall über
+`Booking::zielortLabel()` gelesen, der Laufzettel gruppiert über `zielortSchluessel()`.
+Ein Code wäre davon unabhängig – eine nullable Spalte an der Buchung, eine Vergabe beim
+Bestellen, vier Anzeigen. Etwa ein halber Tag, heute wie später.
 
 ---
 
@@ -404,7 +379,8 @@ Die Prüfung liegt in `GuestOrderService::store()`, also auf demselben Weg wie d
 Backoffice-Buchung – zwei Fassungen der Validierung wären die Art Fehler, die man erst
 bemerkt, wenn die Zahlen auseinanderlaufen.
 
-**`GET /orders/{order}`** und der Beleg zeigen den Zielort und ggf. den Abholcode.
+**`GET /orders/{order}`** und der Beleg zeigen den Zielort (`table` = Name des Orts,
+`place_kind` = `table`|`station`). Erledigt am 03.09.2026.
 
 ---
 
@@ -473,7 +449,8 @@ Sätze müssen den Ort kennen.
 ### 6. Statusseite
 
 `order-status.blade.php` liest `$booking['table']`. Die Antwort des Order-Endpunkts muss
-den Ort liefern (Abschnitt G), die Seite ihn anzeigen – und bei Bedarf den Abholcode.
+den Ort liefern (Abschnitt G), die Seite ihn anzeigen. Erledigt am 03.09.2026 –
+`place_kind` entscheidet dort auch, welcher Abschlusssatz erscheint.
 
 ### 7. Mock-Daten
 
@@ -534,11 +511,10 @@ widerspricht die Website dem Bestellweg.
    ODER eine Abholstation"), Löschschutz an Station **und** Venue, acht MCP-Tools
    samt Bulk-Zuordnung, Duplizieren.
 
-   **Offen aus dieser Etappe:** die Einstellung `pickup_identification` – sie
-   gehört zu den Abholcodes (Abschnitt F) und wartet auf dieselbe Entscheidung:
-   Wird am Tresen nach Namen oder nach Code ausgegeben?
-3. **Betrieb** – ~~Laufzettel, Küche, Bon, Beleg-PDF, Mails, Listen, Export über
-   `zielortLabel()`~~ *(erledigt am 03.09.2026)*; Codevergabe und -anzeige *(offen)*.
+   Die Einstellung `pickup_identification` entfällt – siehe Abschnitt F.
+3. ~~**Betrieb**~~ – erledigt am 03.09.2026. Laufzettel, Küche, Bon, Beleg-PDF,
+   Mails, Listen und Export lesen den Ort über `zielortLabel()`. Die Codevergabe
+   entfällt (Abschnitt F).
 
    Vieles war schon da: Bon, Bestätigungsmail, Buchungsliste, Dashboards,
    Detail-Ansicht, Export und das MCP-Tool lesen den Ort seit dem 31.08.2026
