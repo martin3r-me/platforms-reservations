@@ -61,9 +61,16 @@
                 {{-- Format-Hilfe --}}
                 <div class="rounded-[8px] border border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] p-3 text-xs text-[color:var(--nx-muted)]">
                     <p class="font-semibold mb-1 m-0">Erwartete Spalten (Kopfzeile, Trennzeichen ; oder ,):</p>
-                    <code>name; beschreibung; portionsgroesse; kategorie; preis; mwst; allergene; zusatzstoffe; vegetarisch; vegan; alkohol; verfuegbar</code>
+                    <code>name; beschreibung; portionsgroesse; kategorie; preis; mwst; allergene; zusatzstoffe; vegetarisch; vegan; alkohol; verfuegbar; standzeit; altersgrenze; koffein</code>
                     <p class="mt-2 m-0">Allergene als Buchstaben („A,C,G“), Zusatzstoffe als Nummern („1,2“) gemäß Legende.
                     Preise mit Komma oder Punkt. Ja/Nein-Spalten: ja/nein bzw. 1/0.</p>
+                    {{-- Nur „name“ ist Pflicht. Der Satz stand nirgends, und ohne ihn
+                         sieht die Liste oben nach fünfzehn Pflichtfeldern aus. --}}
+                    <p class="mt-2 m-0"><strong>Nur „name“ ist Pflicht</strong> – jede andere Spalte darf fehlen oder leer bleiben.
+                    <em>standzeit</em> ist der Name einer vorhandenen Standzeit-Klasse (z.&nbsp;B. „Sollte kalt sein“); unbekannte
+                    werden gemeldet und übersprungen, angelegt wird keine. <em>altersgrenze</em> ist 16 oder 18.
+                    <em>koffein</em> (ja/nein) blendet beim Gast den Pflichthinweis ein; mit der optionalen Spalte
+                    <em>koffein_mg</em> steht der Gehalt in Klammern dahinter.</p>
                     <p class="mt-3 m-0">
                         <a href="{{ route('reservation.menu.import.sample') }}"
                             class="inline-flex items-center gap-1 font-medium text-[color:var(--nx-text)] hover:underline">

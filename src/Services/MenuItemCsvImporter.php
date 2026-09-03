@@ -5,6 +5,7 @@ namespace Platform\Reservation\Services;
 use Illuminate\Support\Facades\DB;
 use Platform\Reservation\Models\Additive;
 use Platform\Reservation\Models\Allergen;
+use Platform\Reservation\Models\HoldingClass;
 use Platform\Reservation\Models\MenuCategory;
 use Platform\Reservation\Models\MenuItem;
 
@@ -13,7 +14,7 @@ use Platform\Reservation\Models\MenuItem;
  *
  * Erwartete Spalten (Header-Zeile, Reihenfolge egal):
  * name; beschreibung; portionsgroesse; kategorie; preis; mwst; allergene; zusatzstoffe;
- * vegetarisch; vegan; alkohol; verfuegbar
+ * vegetarisch; vegan; alkohol; verfuegbar; standzeit; altersgrenze; koffein; koffein_mg
  *
  * Allergene als Buchstaben-Codes ("A,C,G"), Zusatzstoffe als Nummern ("1,2").
  * Unbekannte Codes werden als Warnung gemeldet und übersprungen (keine
@@ -28,7 +29,7 @@ class MenuItemCsvImporter
     protected const KNOWN_COLUMNS = [
         'name', 'beschreibung', 'portionsgroesse', 'kategorie', 'preis', 'mwst',
         'allergene', 'zusatzstoffe', 'vegetarisch', 'vegan', 'alkohol', 'verfuegbar',
-        'altersgrenze', 'koffein', 'koffein_mg',
+        'altersgrenze', 'koffein', 'koffein_mg', 'standzeit',
     ];
 
     /**
@@ -58,6 +59,14 @@ class MenuItemCsvImporter
         $allergenCodes = Allergen::whereNotNull('code')->pluck('id', 'code')
             ->mapWithKeys(fn ($id, $code) => [mb_strtoupper($code) => $id])->all();
         $additiveCodes = Additive::pluck('id', 'code')->all();
+
+        // Standzeit-Klassen nach NAME, kleingeschrieben verglichen. Anders als
+        // Kategorien werden sie NICHT angelegt: An einer Klasse haengt eine
+        // Vorlaufzeit, und eine erfundene mit Standardwerten waere eine Zusage
+        // an die Kueche, die niemand gepruefzt hat. Unbekannt heisst deshalb
+        // Warnung und leer - der Artikel entsteht trotzdem.
+        $standzeiten = HoldingClass::forTeam($teamId)->pluck('id', 'name')
+            ->mapWithKeys(fn ($id, $name) => [mb_strtolower((string) $name) => $id])->all();
         $existingNames = MenuItem::forTeam($teamId)->pluck('name')
             ->map(fn ($n) => mb_strtolower($n))->flip()->all();
 
@@ -76,7 +85,7 @@ class MenuItemCsvImporter
                 }
             }
 
-            $rows[] = $this->validateRow($data, $lineNumber + 2, $allergenCodes, $additiveCodes, $existingNames);
+            $rows[] = $this->validateRow($data, $lineNumber + 2, $allergenCodes, $additiveCodes, $existingNames, $standzeiten);
         }
 
         return ['rows' => $rows, 'errors' => []];
@@ -118,6 +127,7 @@ class MenuItemCsvImporter
                     'min_age'         => $row['min_age'],
                     'is_caffeinated'  => $row['is_caffeinated'],
                     'caffeine_mg'     => $row['caffeine_mg'],
+                    'holding_class_id' => $row['holding_class_id'],
                     'approval_status' => MenuItem::APPROVAL_DRAFT,
                 ]);
 
@@ -137,6 +147,7 @@ class MenuItemCsvImporter
         array $allergenCodes,
         array $additiveCodes,
         array $existingNames,
+        array $standzeiten = [],
     ): array {
         $messages = [];
         $status = self::STATUS_OK;
@@ -196,6 +207,18 @@ class MenuItemCsvImporter
             $warn('Unbekannte Zusatzstoff-Codes übersprungen: ' . implode(', ', $unknownAdditives));
         }
 
+        // Standzeit: bekannt -> Id, unbekannt -> Warnung und leer, leer -> leer.
+        $standzeitName = trim((string) ($data['standzeit'] ?? ''));
+        $standzeitId   = null;
+
+        if ($standzeitName !== '') {
+            $standzeitId = $standzeiten[mb_strtolower($standzeitName)] ?? null;
+
+            if ($standzeitId === null) {
+                $warn('Unbekannte Standzeit-Klasse übersprungen: ' . $standzeitName);
+            }
+        }
+
         return [
             'line'          => $lineNumber,
             'status'        => $status,
@@ -216,6 +239,7 @@ class MenuItemCsvImporter
             'caffeine_mg'   => isset($data['koffein_mg']) && is_numeric(str_replace(',', '.', (string) $data['koffein_mg']))
                 ? (float) str_replace(',', '.', (string) $data['koffein_mg'])
                 : null,
+            'holding_class_id' => $standzeitId,
             'allergen_ids'  => $allergenIds,
             'additive_ids'  => $additiveIds,
         ];
