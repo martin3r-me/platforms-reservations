@@ -131,6 +131,96 @@ class PlatzvergabeTest extends TestCase
         $this->assertSame($vorher, Booking::count());
     }
 
+    public function test_eine_bestellung_an_eine_abholstation(): void
+    {
+        [$termin, $pause, , $artikel] = $this->aufbau(kapazitaet: 4);
+
+        $station = $this->station('Foyer links');
+        $this->haengeStationAn($termin, $station, [$pause]);
+
+        $this->dienst->placeForStaff($termin, $this->gast(3), [[
+            'slot_id'    => $pause->id,
+            'station_id' => $station->id,
+            'items'      => [$artikel->id => 1],
+        ]]);
+
+        $buchung = Booking::first();
+
+        $this->assertNull($buchung->table_id);
+        $this->assertSame($station->id, $buchung->pickup_station_id);
+        $this->assertSame('station', $buchung->place_kind);
+        $this->assertSame('Foyer links', $buchung->place_label);
+        $this->assertSame('Foyer links', $buchung->zielortLabel());
+    }
+
+    public function test_eine_fremde_station_wird_abgewiesen(): void
+    {
+        [$termin, $pause, , $artikel] = $this->aufbau(kapazitaet: 4);
+
+        // Angelegt, aber diesem Termin nicht zugeordnet. Ohne die Pruefung waere
+        // die Stations-Id aus der Anfrage ein IDOR.
+        $fremde = $this->station('Fremdes Foyer');
+
+        $this->erwarteFehler('STATION_NOT_IN_EVENT', fn () => $this->dienst->placeForStaff($termin, $this->gast(2), [[
+            'slot_id'    => $pause->id,
+            'station_id' => $fremde->id,
+            'items'      => [$artikel->id => 1],
+        ]]));
+    }
+
+    public function test_eine_station_ausserhalb_ihrer_pause_wird_abgewiesen(): void
+    {
+        $termin = $this->termin(2);
+        $plan   = $this->raum('Saal', [4]);
+        $this->haengeRaumAn($termin, $plan);
+        $artikel = $this->artikel();
+
+        $station = $this->station('Foyer');
+        $this->haengeStationAn($termin, $station, [$this->pause($termin, 1)]);
+
+        $this->erwarteFehler('STATION_NOT_IN_SLOT', fn () => $this->dienst->placeForStaff($termin, $this->gast(2), [[
+            'slot_id'    => $this->pause($termin, 2)->id,
+            'station_id' => $station->id,
+            'items'      => [$artikel->id => 1],
+        ]]));
+    }
+
+    public function test_die_obergrenze_der_station_wird_geprueft(): void
+    {
+        [$termin, $pause, , $artikel] = $this->aufbau(kapazitaet: 4);
+
+        $station = $this->station('Foyer', grenze: 5);
+        $this->haengeStationAn($termin, $station, [$pause]);
+
+        $this->dienst->placeForStaff($termin, $this->gast(4), [[
+            'slot_id' => $pause->id, 'station_id' => $station->id, 'items' => [$artikel->id => 1],
+        ]]);
+
+        $this->erwarteFehler('STATION_FULL', fn () => $this->dienst->placeForStaff($termin, $this->gast(2), [[
+            'slot_id' => $pause->id, 'station_id' => $station->id, 'items' => [$artikel->id => 1],
+        ]]));
+    }
+
+    public function test_tisch_und_station_zugleich_werden_abgewiesen(): void
+    {
+        [$termin, $pause, $tisch, $artikel] = $this->aufbau(kapazitaet: 4);
+
+        $station = $this->station('Foyer');
+        $this->haengeStationAn($termin, $station, [$pause]);
+
+        $this->erwarteFehler('PLACE_AMBIGUOUS', fn () => $this->dienst->placeForStaff($termin, $this->gast(2), [[
+            'slot_id'    => $pause->id,
+            'table_id'   => $tisch->id,
+            'station_id' => $station->id,
+            'items'      => [$artikel->id => 1],
+        ]]));
+
+        $this->erwarteFehler('PLACE_REQUIRED', fn () => $this->dienst->placeForStaff($termin, $this->gast(2), [[
+            'slot_id' => $pause->id,
+            'items'   => [$artikel->id => 1],
+        ]]));
+    }
+
     /** @return array{0: \Platform\Reservation\Models\Event, 1: \Platform\Reservation\Models\EventSlot, 2: \Platform\Reservation\Models\Table, 3: \Platform\Reservation\Models\MenuItem} */
     private function aufbau(int $kapazitaet): array
     {

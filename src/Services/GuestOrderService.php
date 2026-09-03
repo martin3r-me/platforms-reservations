@@ -8,6 +8,7 @@ use Platform\Reservation\Exceptions\GuestOrderException;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\Order;
+use Platform\Reservation\Models\EventStation;
 use Platform\Reservation\Models\Table;
 use Platform\Reservation\Services\RoomReleaseService;
 
@@ -25,6 +26,7 @@ class GuestOrderService
         protected SeatAvailabilityService $seats,
         protected MolliePaymentService $payments,
         protected RoomReleaseService $freigabe,
+        protected PickupCapacityService $pickup,
     ) {
     }
 
@@ -136,7 +138,8 @@ class GuestOrderService
         $maxGroup     = $checkout->maxGroupEmptyTable();
 
         // Vorbereiten & validieren je Pause (ohne zu schreiben).
-        $prepared = [];  // [ ['slot'=>EventSlot, 'table'=>Table, 'lines'=>Collection], ... ]
+        // [ ['slot'=>EventSlot, 'lines'=>Collection, 'table'=>Table ODER 'station'=>EventStation], ... ]
+        $prepared = [];
         $allLines = collect();
 
         foreach ($slotOrders as $slotOrder) {
@@ -150,14 +153,52 @@ class GuestOrderService
                 throw new GuestOrderException('Für eine Pause wurden keine gültigen Produkte übermittelt.', 'INVALID_ITEMS');
             }
 
-            $table = Table::withoutGlobalScope('team')->find((int) ($slotOrder['table_id'] ?? 0));
+            // Genau EIN Zielort je Pause: ein Tisch oder eine Abholstation.
+            // Dieselbe Regel wie am Booking-Model, nur hier als fachlicher
+            // Fehler statt als Ausnahme - hier kommt sie aus einer Anfrage.
+            $tableId   = (int) ($slotOrder['table_id'] ?? 0);
+            $stationId = (int) ($slotOrder['station_id'] ?? 0);
+
+            if ($tableId > 0 && $stationId > 0) {
+                throw new GuestOrderException('Für eine Pause wurden Tisch und Abholstation zugleich übermittelt.', 'PLACE_AMBIGUOUS');
+            }
+
+            if ($tableId < 1 && $stationId < 1) {
+                throw new GuestOrderException('Für eine Pause fehlt der Ort: ein Tisch oder eine Abholstation.', 'PLACE_REQUIRED');
+            }
+
+            // Belegung, Raumfreigabe und Stationskapazität werden hier NICHT
+            // geprüft - alle drei hängen davon ab, was andere Gäste in
+            // derselben Sekunde tun. Sie stehen in der Transaktion weiter unten.
+
+            if ($stationId > 0) {
+                // Die Station muss zum TERMIN und zur PAUSE gehören. Ohne diese
+                // Prüfung wäre die Stations-Id aus der Anfrage ein IDOR -
+                // dieselbe Strenge, mit der der Tisch gegen die Tischpläne des
+                // Termins geprüft wird.
+                $zuordnung = EventStation::where('event_id', $event->id)
+                    ->where('pickup_station_id', $stationId)
+                    ->with(['slots', 'station'])
+                    ->first();
+
+                if (! $zuordnung || ! $zuordnung->station?->is_active) {
+                    throw new GuestOrderException('Die gewählte Abholstation gehört nicht zu diesem Termin.', 'STATION_NOT_IN_EVENT');
+                }
+
+                if (! $zuordnung->offenIn($slot->id)) {
+                    throw new GuestOrderException('Die gewählte Abholstation ist in dieser Pause nicht geöffnet.', 'STATION_NOT_IN_SLOT');
+                }
+
+                $prepared[] = ['slot' => $slot, 'station' => $zuordnung, 'lines' => $lines];
+                $allLines    = $allLines->merge($lines);
+
+                continue;
+            }
+
+            $table = Table::withoutGlobalScope('team')->find($tableId);
             if (!$table || !in_array($table->floor_plan_id, $allowedFloorPlanIds, true)) {
                 throw new GuestOrderException('Der gewählte Tisch gehört nicht zu diesem Termin.', 'TABLE_NOT_IN_EVENT');
             }
-
-            // Belegung und Raumfreigabe werden hier NICHT geprüft - beide
-            // hängen davon ab, was andere Gäste in derselben Sekunde tun.
-            // Sie stehen in der Transaktion weiter unten.
 
             $prepared[] = ['slot' => $slot, 'table' => $table, 'lines' => $lines];
             $allLines    = $allLines->merge($lines);
@@ -209,12 +250,13 @@ class GuestOrderService
                     'team_id'                => $event->team_id,
                     'event_id'               => $event->id,
                     'event_slot_id'          => $p['slot']->id,
-                    'table_id'               => $p['table']->id,
+                    'table_id'               => isset($p['table']) ? $p['table']->id : null,
+                    'pickup_station_id'      => isset($p['station']) ? $p['station']->pickup_station_id : null,
                     // Ort einfrieren, wie Preise eingefroren werden. Wird der
                     // Tisch später gelöscht, bleibt wenigstens sein Name an der
                     // Buchung - sonst steht auf Bon und Laufzettel gar nichts.
-                    'place_kind'             => 'table',
-                    'place_label'            => $p['table']->label,
+                    'place_kind'             => isset($p['table']) ? 'table' : 'station',
+                    'place_label'            => isset($p['table']) ? $p['table']->label : $p['station']->station?->name,
                     'guest_name'             => $displayName,
                     'guest_email'            => ($guest['email'] ?? null) ?: null,
                     'guest_phone'            => ($guest['phone'] ?? null) ?: null,
@@ -265,12 +307,20 @@ class GuestOrderService
      */
     protected function tischeSperren(array $prepared): void
     {
+        // Nur Tische. Eine Abholstation wird bewusst NICHT gesperrt - ihre
+        // Obergrenze ist eine Bremse gegen Ueberlast, keine Zusage ueber
+        // vorhandene Ware (Entscheidung 28.08.2026, siehe PickupCapacityService).
         $ids = collect($prepared)
+            ->filter(fn ($p) => isset($p['table']))
             ->map(fn ($p) => (int) $p['table']->id)
             ->unique()
             ->sort()
             ->values()
             ->all();
+
+        if ($ids === []) {
+            return;
+        }
 
         Table::withoutGlobalScope('team')
             ->whereIn('id', $ids)
@@ -313,6 +363,18 @@ class GuestOrderService
         ?int $maxGroup,
     ): void {
         foreach ($prepared as $p) {
+            if (isset($p['station'])) {
+                // Keine Raumfreigabe: Eine Abholstation folgt ihr nicht, auch
+                // wenn sie im Tischplan eines Raums gezeichnet ist
+                // (Entscheidung 03.09.2026). Sie ist offen, sobald der Termin
+                // sie in dieser Pause fuehrt - das steht schon fest.
+                if (! $this->pickup->passt($p['station'], $p['slot'], $partySize)) {
+                    throw new GuestOrderException('Die Abholstation ist in dieser Pause ausgebucht.', 'STATION_FULL');
+                }
+
+                continue;
+            }
+
             // Raumfreigabe: Bei sequentieller Reihenfolge ist Raum 2 erst offen,
             // wenn Raum 1 voll genug ist. Das stand bisher nur im VA-Dashboard -
             // der Bestellweg fragte gar nicht, und der Shop nahm Buchungen in
