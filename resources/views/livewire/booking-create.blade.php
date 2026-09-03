@@ -146,11 +146,11 @@
                         {{-- Tisch mit freien Plätzen. Volle Tische stehen dabei, aber
                              gesperrt: Sonst sucht jemand einen Tisch, der einfach fehlt. --}}
                         @if ($this->slot)
-                            @if ($this->tables->isEmpty())
+                            @if ($this->tables->isEmpty() && $this->stations->isEmpty())
                                 <x-nx-callout variant="warning">
-                                    Dem Termin ist kein Raum mit Tischen zugeordnet.
+                                    Dem Termin ist weder ein Raum mit Tischen noch eine Abholstation zugeordnet.
                                 </x-nx-callout>
-                            @else
+                            @elseif ($this->tables->isNotEmpty())
                                 {{-- Die Markierung passiert im Browser, nicht auf dem Server.
                                      $set mit false als drittem Argument setzt die Eigenschaft
                                      nur örtlich; mitgeschickt wird sie mit dem nächsten
@@ -158,7 +158,11 @@
                                      Anfrage, und die Markierung erschien erst mit der
                                      Antwort – bei einem Dutzend Tischen fühlte sich das
                                      zäh an, obwohl der Server nichts zu rechnen hatte. --}}
-                                <div x-data="{ gewaehlt: @js($tableId) }">
+                                {{-- Anders als vorher laeuft die Wahl ueber die Komponente
+                                     ($wire.chooseTable) statt nur ueber $set im Browser: Tisch und
+                                     Station schliessen einander aus, und dieses Aufraeumen gehoert
+                                     an EINE Stelle. Die Verzoegerung ist eine Anfrage ohne Rechnung. --}}
+                                <div x-data="{ gewaehlt: @js($tableId ? 'tisch-'.$tableId : ($stationId ? 'station-'.$stationId : null)) }">
                                     <span class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">Tisch <span class="text-[color:var(--nx-danger)]">*</span></span>
                                     <div class="grid gap-2 sm:grid-cols-2">
                                         @foreach ($this->tables as $zeile)
@@ -168,7 +172,7 @@
                                             <button
                                                 type="button"
                                                 @if ($moeglich)
-                                                    x-on:click="gewaehlt = {{ $t->id }}; $wire.$set('tableId', {{ $t->id }}, false)"
+                                                    x-on:click="gewaehlt = 'tisch-{{ $t->id }}'; $wire.chooseTable({{ $t->id }})"
                                                 @else
                                                     disabled
                                                 @endif
@@ -181,7 +185,7 @@
                                                 @if ($moeglich)
                                                     {{-- :style als Objekt, nicht als Zeichenkette: Eine
                                                          Zeichenkette ersetzt das ganze style-Attribut. --}}
-                                                    :style="gewaehlt === {{ $t->id }}
+                                                    :style="gewaehlt === 'tisch-{{ $t->id }}'
                                                         ? { borderColor: 'var(--nx-accent)', background: 'var(--nx-accent-soft)' }
                                                         : {}"
                                                 @endif
@@ -199,6 +203,60 @@
                                     @error('tableId')
                                         <p x-show="! gewaehlt" class="mt-1 text-xs text-[color:var(--nx-danger)]">{{ $message }}</p>
                                     @enderror
+                                </div>
+                            @endif
+
+                            {{-- Abholstationen: der zweite moegliche Ort, nicht der zweite Schritt.
+
+                                 Steht unter den Tischen und nicht daneben, weil beides dieselbe
+                                 Frage beantwortet - wohin kommt die Bestellung. Gewaehlt wird
+                                 genau eines; ein Klick hier nimmt die Tischwahl zurueck. --}}
+                            @if ($this->stations->isNotEmpty())
+                                <div class="mt-3">
+                                    <span class="mb-1 block text-xs font-medium text-[color:var(--nx-text)]">
+                                        Oder Abholstation
+                                    </span>
+                                    <div class="grid gap-2 sm:grid-cols-2">
+                                        @foreach ($this->stations as $zeile)
+                                            {{-- Wie oben: eine Zuweisung je Zeile, kein Rohblock.
+                                                 Und in KOMMENTAREN dieser Datei darf der schliessende
+                                                 Rohblock-Befehl nicht vorkommen - Blade sucht die
+                                                 Bloecke, bevor es Kommentare entfernt, und findet ihn
+                                                 auch dort. Genau daran ist der erste Anlauf
+                                                 gescheitert. --}}
+                                            @php ($st = $zeile['station'])
+                                            @php ($frei = $zeile['frei'])
+                                            @php ($moeglich = $zeile['buchbar'])
+                                            <button
+                                                type="button"
+                                                @if ($moeglich)
+                                                    wire:click="chooseStation({{ $st->id }})"
+                                                @else
+                                                    disabled
+                                                @endif
+                                                wire:key="station-{{ $st->id }}"
+                                                @class([
+                                                    'flex items-center justify-between rounded-[6px] border px-3 py-2 text-left transition-colors',
+                                                    'border-[color:var(--nx-line-strong)] hover:bg-[color:var(--nx-hover)]' => $moeglich,
+                                                    'cursor-not-allowed border-[color:var(--nx-line)] opacity-50' => ! $moeglich,
+                                                ])
+                                                @if ($stationId === $st->id)
+                                                    style="border-color:var(--nx-accent); background:var(--nx-accent-soft)"
+                                                @endif
+                                            >
+                                                <span class="text-sm font-medium text-[color:var(--nx-text)]">{{ $st->name }}</span>
+                                                <span class="whitespace-nowrap text-[11px] tabular-nums text-[color:var(--nx-muted)]">
+                                                    {{-- „unbegrenzt" als Wort: Eine leere Stelle liesse
+                                                         offen, ob die Zahl fehlt oder keine gilt. --}}
+                                                    @if ($frei === null)
+                                                        unbegrenzt
+                                                    @else
+                                                        {{ $frei }} frei
+                                                    @endif
+                                                </span>
+                                            </button>
+                                        @endforeach
+                                    </div>
                                 </div>
                             @endif
                         @endif

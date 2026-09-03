@@ -10,9 +10,11 @@ use Platform\Reservation\Exceptions\GuestOrderException;
 use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
+use Platform\Reservation\Models\PickupStation;
 use Platform\Reservation\Models\Table;
 use Platform\Reservation\Services\CartCalculator;
 use Platform\Reservation\Services\GuestOrderService;
+use Platform\Reservation\Services\PickupCapacityService;
 use Platform\Reservation\Services\SeatAvailabilityService;
 
 /**
@@ -44,6 +46,15 @@ class BookingCreate extends Component
     public ?int $eventId = null;
     public ?int $slotId = null;
     public ?int $tableId = null;
+
+    /**
+     * Die gewählte Abholstation – die Alternative zum Tisch, nie zusätzlich.
+     *
+     * Zwei Felder statt eines Paars aus Art und Id: Die Ansicht fragt beide
+     * getrennt ab, und ein zusammengesetzter Wert („station-7") müsste an jeder
+     * Stelle wieder auseinandergenommen werden.
+     */
+    public ?int $stationId = null;
     public int $guestCount = 2;
 
     // Schritt 2. Vor- und Nachname getrennt wie im Shop – der Auftrag hält beide
@@ -68,10 +79,14 @@ class BookingCreate extends Component
     protected function regelnFuerSchritt(): array
     {
         return match ($this->step) {
+            // tableId ist hier NICHT mehr Pflicht: Der Ort kann auch eine
+            // Abholstation sein. Dass genau eines von beidem gesetzt sein muss,
+            // prueft nextStep() gleich darunter - eine Validierungsregel kann
+            // "das eine ODER das andere" nicht ausdruecken, ohne dass die
+            // Meldung an einem der beiden Felder haengt und dort falsch steht.
             1 => [
                 'eventId'    => 'required|integer',
                 'slotId'     => 'required|integer',
-                'tableId'    => 'required|integer',
                 'guestCount' => 'required|integer|min:1|max:100',
             ],
             2 => [
@@ -195,6 +210,38 @@ class BookingCreate extends Component
      * Verbindlich bleibt die Platzprüfung beim Speichern – die kennt auch die
      * schon belegten Plätze.
      */
+    /**
+     * Die Abholstationen dieses Termins, in dieser Pause.
+     *
+     * Zeigt auch die, die voll sind – „belegt" ist eine Information, ein
+     * Verschwinden nicht. Wer nicht buchbar ist, steht mit Grund da.
+     *
+     * @return \Illuminate\Support\Collection<int, array{station: PickupStation, frei: ?int, buchbar: bool}>
+     */
+    #[Computed]
+    public function stations(): \Illuminate\Support\Collection
+    {
+        $event = $this->event;
+        $slot  = $this->slot;
+
+        if (! $event || ! $slot) {
+            return collect();
+        }
+
+        $kapazitaet = app(PickupCapacityService::class);
+
+        return $event->eventStations()
+            ->with(['station', 'slots'])
+            ->get()
+            ->filter(fn ($z) => $z->station?->is_active && $z->offenIn($slot->id))
+            ->map(fn ($z) => [
+                'station' => $z->station,
+                'frei'    => $kapazitaet->frei($z, $slot),
+                'buchbar' => $kapazitaet->passt($z, $slot, $this->guestCount),
+            ])
+            ->values();
+    }
+
     #[Computed]
     public function maxGuests(): int
     {
@@ -252,6 +299,29 @@ class BookingCreate extends Component
             : null;
     }
 
+    /** Der gewählte Ort in Worten – für die Übersicht im letzten Schritt. */
+    public function ortLabel(): ?string
+    {
+        if ($this->stationId) {
+            return $this->stations->firstWhere(fn ($z) => $z['station']->id === $this->stationId)['station']->name ?? null;
+        }
+
+        return $this->selectedTable?->label;
+    }
+
+    /** Tisch und Station schließen einander aus – hier, nicht erst beim Speichern. */
+    public function chooseTable(int $id): void
+    {
+        $this->tableId   = $id;
+        $this->stationId = null;
+    }
+
+    public function chooseStation(int $id): void
+    {
+        $this->stationId = $id;
+        $this->tableId   = null;
+    }
+
     #[Computed]
     public function orderTotal(): float
     {
@@ -263,6 +333,7 @@ class BookingCreate extends Component
     {
         $this->slotId        = null;
         $this->tableId       = null;
+        $this->stationId = null;
         $this->selectedItems = [];
         $this->bookingError  = '';
         $this->resetValidation();
@@ -305,6 +376,12 @@ class BookingCreate extends Component
             $this->validate($regeln);
         }
 
+        if ($this->step === 1 && ! $this->tableId && ! $this->stationId) {
+            $this->addError('tableId', 'Bitte einen Tisch oder eine Abholstation wählen.');
+
+            return;
+        }
+
         $this->step++;
     }
 
@@ -334,7 +411,6 @@ class BookingCreate extends Component
         $this->validate([
             'eventId'        => 'required|integer',
             'slotId'         => 'required|integer',
-            'tableId'        => 'required|integer',
             'guestFirstName' => 'required|string|max:255',
             'guestLastName'  => 'required|string|max:255',
             'guestCount'     => 'required|integer|min:1|max:100',
@@ -344,6 +420,14 @@ class BookingCreate extends Component
 
         if (! $event) {
             $this->bookingError = 'Der Termin ist nicht mehr verfügbar.';
+
+            return;
+        }
+
+        // Genau ein Ort. Die Regel gilt auch im Kern, aber dort ist sie eine
+        // Ausnahme fuer Programmfehler - hier ist es eine Eingabe.
+        if (! $this->tableId && ! $this->stationId) {
+            $this->bookingError = 'Bitte einen Tisch oder eine Abholstation wählen.';
 
             return;
         }
@@ -365,11 +449,12 @@ class BookingCreate extends Component
                     'count'      => $this->guestCount,
                     'notes'      => $this->notes ?: null,
                 ],
-                [[
-                    'slot_id'  => $this->slotId,
-                    'table_id' => $this->tableId,
-                    'items'    => $this->selectedItems,
-                ]],
+                [array_filter([
+                    'slot_id'    => $this->slotId,
+                    'table_id'   => $this->tableId,
+                    'station_id' => $this->stationId,
+                    'items'      => $this->selectedItems,
+                ], fn ($wert) => $wert !== null)],
             );
         } catch (GuestOrderException $e) {
             $this->bookingError = $e->getMessage();

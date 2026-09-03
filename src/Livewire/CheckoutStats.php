@@ -7,6 +7,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Platform\Reservation\Models\CheckoutStat;
 use Platform\Reservation\Services\CheckoutStatsService;
+use Platform\Reservation\Support\Zeitraum;
 use Platform\Reservation\Services\LiveCheckoutService;
 
 /**
@@ -47,26 +48,15 @@ class CheckoutStats extends Component
     {
         $this->activePreset = $preset;
 
-        [$this->dateFrom, $this->dateTo] = match ($preset) {
-            'last_week'  => [
-                now()->subWeek()->startOfWeek()->toDateString(),
-                now()->subWeek()->endOfWeek()->toDateString(),
-            ],
-            'last_month' => [
-                now()->subMonthNoOverflow()->startOfMonth()->toDateString(),
-                now()->subMonthNoOverflow()->endOfMonth()->toDateString(),
-            ],
-            'quarter'    => [now()->startOfQuarter()->toDateString(), now()->endOfQuarter()->toDateString()],
-            'year'       => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
-            'last_year'  => [
-                now()->subYear()->startOfYear()->toDateString(),
-                now()->subYear()->endOfYear()->toDateString(),
-            ],
-            'all'        => [
+        [$this->dateFrom, $this->dateTo] = Zeitraum::spanne($preset) ?? match ($preset) {
+            // Bis HEUTE, nicht bis zum Jahresende: Ein Bestellweg endet in der
+            // Vergangenheit. Anders als in den Finanzen, wo Buchungen auf
+            // kuenftige Termine zeigen.
+            'all'   => [
                 self::alsDatum(CheckoutStat::where('team_id', $this->teamId())->min('ended_at'), now()->startOfYear()),
                 now()->toDateString(),
             ],
-            default      => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+            default => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
         };
     }
 

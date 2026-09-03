@@ -12,6 +12,7 @@ use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\SalesList;
+use Platform\Reservation\Support\Zeitraum;
 
 /**
  * Was wurde verkauft – Mengen und Umsätze je Artikel in einem Zeitraum.
@@ -57,40 +58,20 @@ class ProductStats extends Component
     {
         $this->activePreset = $preset;
 
-        [$this->dateFrom, $this->dateTo] = match ($preset) {
-            'last_week'  => [
-                now()->subWeek()->startOfWeek()->toDateString(),
-                now()->subWeek()->endOfWeek()->toDateString(),
-            ],
-            'last_month' => [
-                now()->subMonthNoOverflow()->startOfMonth()->toDateString(),
-                now()->subMonthNoOverflow()->endOfMonth()->toDateString(),
-            ],
-            'quarter'    => [now()->startOfQuarter()->toDateString(), now()->endOfQuarter()->toDateString()],
-            'year'       => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
-            'last_year'  => [
-                now()->subYear()->startOfYear()->toDateString(),
-                now()->subYear()->endOfYear()->toDateString(),
-            ],
-            'all'        => [
+        // Gemeinsame Zeiträume aus Support\Zeitraum; „Alles" beantwortet jede
+        // Seite selbst - hier über die tatsächlich vorhandenen Buchungen.
+        [$this->dateFrom, $this->dateTo] = Zeitraum::spanne($preset) ?? match ($preset) {
+            'all'   => [
                 self::alsDatum(Booking::where('team_id', $this->teamId())->min('date'), now()->startOfYear()),
                 self::alsDatum(Booking::where('team_id', $this->teamId())->max('date'), now()->endOfYear()),
             ],
-            default      => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+            default => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
         };
     }
 
     public static function presets(): array
     {
-        return [
-            'last_week'  => 'Letzte Woche',
-            'month'      => 'Dieser Monat',
-            'last_month' => 'Letzter Monat',
-            'quarter'    => 'Dieses Quartal',
-            'year'       => 'Dieses Jahr',
-            'last_year'  => 'Letztes Jahr',
-            'all'        => 'Alles',
-        ];
+        return Zeitraum::beschriftungen() + ['all' => 'Alles'];
     }
 
     protected static function alsDatum($wert, $ersatz): string

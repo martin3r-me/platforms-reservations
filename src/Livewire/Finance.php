@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Platform\Reservation\Models\Booking;
+use Platform\Reservation\Support\Zeitraum;
 use Platform\Reservation\Models\BookingItem;
 use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Event;
@@ -23,6 +24,19 @@ use Platform\Reservation\Support\Vat;
  */
 class Finance extends Component
 {
+    /**
+     * Die Zeiträume dieser Seite: die gemeinsamen plus zwei eigene.
+     *
+     * @return array<string, string>
+     */
+    public static function presets(): array
+    {
+        return Zeitraum::beschriftungen() + [
+            'last_12' => 'Letzte 12 Monate',
+            'all'     => 'Gesamt',
+        ];
+    }
+
     public string $dateFrom = '';
     public string $dateTo = '';
     public string $activePreset = 'year';
@@ -36,17 +50,18 @@ class Finance extends Component
     {
         $this->activePreset = $preset;
 
-        [$this->dateFrom, $this->dateTo] = match ($preset) {
-            'last_year' => [
-                now()->subYear()->startOfYear()->toDateString(),
-                now()->subYear()->endOfYear()->toDateString(),
-            ],
-            'last_12'   => [now()->subMonths(11)->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
-            'all'       => [
+        // Die gemeinsamen Zeiträume kommen aus Support\Zeitraum - dieselben wie
+        // in der Artikel-Auswertung und bei den Bestellwegen. Hier stehen nur
+        // die beiden, die es nur in den Finanzen gibt.
+        [$this->dateFrom, $this->dateTo] = Zeitraum::spanne($preset) ?? match ($preset) {
+            'last_12' => [now()->subMonths(11)->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+            // Bis zum JAHRESENDE, nicht bis heute: Buchungen zeigen auf
+            // Termine, die noch bevorstehen. „Gesamt" ohne sie wäre kein Gesamt.
+            'all'     => [
                 Booking::forTeam($this->getTeamId())->min('date') ?? now()->startOfYear()->toDateString(),
                 now()->endOfYear()->toDateString(),
             ],
-            default     => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
+            default   => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
         };
     }
 
