@@ -236,6 +236,45 @@ Drei Wege, in aufsteigender Härte:
 Empfehlung: erst (1), weil es nichts kaputtmachen kann und die Frage beantwortet,
 ob (2) oder (3) überhaupt gebraucht wird.
 
+### Nachtrag 04.09.2026: Der Core zählt das längst – PausePlus meldet sich nur nicht an
+
+`Platform\Core\Services\UsageTrackingService` läuft täglich über alle Teams und
+alle Module, liest deren `billables` aus der Modul-Registry (`PlatformCore::getModules()`)
+und schreibt die Zahlen nach `TeamBillableUsage`. CRM, Helpdesk, Planner,
+Organization und Hatch sind dort angemeldet – **PausePlus als einziges nicht**.
+Stufe (1) ist damit keine neue Maschinerie, sondern eine Deklaration: ein
+`billables`-Block in der Modul-Konfiguration mit `model`, `type: per_item` und
+`label`, und der Zähler läuft. Vorbild: `modules/platform-crm/config/crm.php`.
+
+**Wo was hingehört.** Der Tarif gehört in den Core, die Zählung ins Modul:
+
+- **Core:** welcher Tarif gilt, welche Grenzen er hat, was beim Überschreiten
+  passiert, und die Übersicht über alle Module. Ein Kunde hat EINEN Tarif, keinen
+  je Modul. Läge er hier, erfände das nächste Modul seine eigene Tabelle, und die
+  Antwort auf „welcher Tarif?" stünde an drei Stellen mit drei Werten.
+- **Modul:** nur „wie viele davon hat dieses Team?". Was ein Raum oder ein Artikel
+  ist, weiß nur PausePlus; der Core soll das Schema nicht kennen müssen. Genau
+  diese Grenze zieht die `billables`-Deklaration bereits.
+
+**Was nicht passt.** Der bestehende Mechanismus ist auf nutzungsabhängige KOSTEN
+gebaut – `cost_per_day`, `pricing`, `billing_period`. Die Tarifgrenzen sind aber
+Staffeln mit Obergrenzen (Basic 2 Räume / 25 Artikel). Verwandt, aber nicht
+dasselbe: Ein Tageszähler beantwortet „was kostet es", nicht „ist die Grenze
+überschritten". Zwei Wege:
+
+1. Zählung mitnutzen, Grenzen im Core danebenlegen. `TeamBillableUsage` liefert
+   den Ist-Wert, ein Tarif-Modell den Soll-Wert. Wenig Neues, aber Grenze und
+   Zählung wohnen getrennt.
+2. `billables` um ein `limit` erweitern. Ist und Soll an einer Stelle, und jedes
+   Modul bekommt Grenzen geschenkt – dafür ein Eingriff im Core, der die anderen
+   Module berührt.
+
+Erst (1); (2) lohnt sich, sobald ein zweites Modul Grenzen braucht.
+
+**Entscheidung 04.09.2026: liegen lassen.** Umgesetzt wird das erst, wenn der Core
+soweit ist – der Tarif ist dessen Thema, und der `billables`-Block hier allein
+erzeugt Zahlen, die niemand auswertet.
+
 ---
 
 ## M2 – Zahlung & Härtung (Kern, vor Go-live zwingend)
