@@ -57,7 +57,7 @@ class OrderCancellationService
      *
      * @return array{status:string,message:string,refund?:array}
      */
-    public function approveAndCancel(Order $order): array
+    public function approveAndCancel(Order $order, ?string $grund = null): array
     {
         $order->loadMissing('bookings');
 
@@ -69,11 +69,11 @@ class OrderCancellationService
             return ['status' => 'not_cancellable', 'message' => 'Bestellung kann in diesem Status nicht storniert werden.'];
         }
 
-        return $this->cancel($order);
+        return $this->cancel($order, $grund);
     }
 
-    /** Führt Storno (Plätze frei) + Rückerstattung aus. */
-    protected function cancel(Order $order): array
+    /** Führt Storno (Plätze frei) + Rückerstattung + Mail an den Gast aus. */
+    protected function cancel(Order $order, ?string $grund = null): array
     {
         DB::transaction(function () use ($order) {
             foreach ($order->bookings as $booking) {
@@ -96,10 +96,29 @@ class OrderCancellationService
 
         $refund = $this->payments->refundOrder($order);
 
+        // Der Gast erfährt davon – bis zum 04.09.2026 tat er das nicht. Im
+        // besten Fall merkte er es am Kontoauszug, im schlechteren stand er
+        // vor der Halle.
+        //
+        // NACH der Erstattung, damit in der Mail steht, was wirklich passiert
+        // ist: „already_refunded" zählt mit, „not_paid" oder „no_payment"
+        // nicht - über eine Gutschrift zu schreiben, die es nicht gibt, wäre
+        // schlimmer als nichts zu schreiben.
+        //
+        // Der Versand darf das Storno nicht umwerfen: GastMail gibt Fehler als
+        // Status zurück, statt zu werfen. Die Bestellung IST storniert, auch
+        // wenn kein Absender konfiguriert ist.
+        $mail = OrderCancellationMailer::send(
+            $order,
+            $grund,
+            in_array($refund['status'] ?? '', ['refunded', 'already_refunded'], true),
+        );
+
         return [
             'status'  => 'cancelled',
             'message' => 'Ihre Bestellung wurde storniert.',
             'refund'  => $refund,
+            'mail'    => $mail,
         ];
     }
 }

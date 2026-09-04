@@ -148,6 +148,14 @@
                                         @svg('heroicon-o-x-circle', 'w-4 h-4') <span>Absagen</span>
                                     </x-nx-dropdown-item>
                                 @endif
+                                {{-- Erst NACH dem Absagen, und als eigener Schritt: Ein
+                                     Haus sagt ab und verlegt, erstattet in Gutscheinen
+                                     oder verhandelt einzeln. Und es kostet echtes Geld. --}}
+                                @if ($event->status->value === 'cancelled')
+                                    <x-nx-dropdown-item wire:click="askRefundAll({{ $event->id }})">
+                                        @svg('heroicon-o-banknotes', 'w-4 h-4') <span>Bestellungen erstatten</span>
+                                    </x-nx-dropdown-item>
+                                @endif
                                 <x-nx-dropdown-divider />
                                 <x-nx-dropdown-item variant="danger" wire:click="delete({{ $event->id }})" wire:confirm="Termin wirklich löschen?">
                                     @svg('heroicon-o-trash', 'w-4 h-4') <span>Löschen</span>
@@ -633,6 +641,64 @@
                     <x-nx-button variant="primary" wire:click="closeRoomInsteadAndCloseModal">Stattdessen schließen</x-nx-button>
                     <x-nx-button variant="danger-outline" wire:click="removeRoomAndCloseModal">Trotzdem entfernen</x-nx-button>
                 </div>
+            </div>
+        </x-slot>
+    </x-nx-modal>
+
+    {{-- Rückfrage vor der Massen-Erstattung.
+
+         Eigenes Modal statt wire:confirm, aus demselben Grund wie beim
+         Raum-Entfernen: Der Browser-Dialog kann nichts erklären. Hier stehen
+         die Zahl UND die Summe – „12 Bestellungen" ist etwas anderes als
+         „12 Bestellungen über 1.240 €", und wer bestätigt, soll wissen worüber.
+
+         Steht wie die anderen Rückfragen am Ende, damit es über dem
+         Terminformular liegt. --}}
+    <x-nx-modal size="md" wire:model="showRefundConfirm">
+        <x-slot name="header">
+            <h3 class="m-0 text-base font-semibold leading-tight text-[color:var(--nx-text)]">Bestellungen erstatten?</h3>
+            <p class="m-0 mt-1 text-xs text-[color:var(--nx-muted)]">{{ $this->refundEventName() }}</p>
+        </x-slot>
+
+        <div class="space-y-3">
+            @if ($refundCount === 0)
+                <x-nx-callout variant="info">
+                    Zu diesem Termin gibt es keine bezahlten Bestellungen. Es gibt nichts zu erstatten.
+                </x-nx-callout>
+            @else
+                <x-nx-callout variant="warning">
+                    <strong>{{ $refundCount }}</strong> {{ $refundCount === 1 ? 'Bestellung' : 'Bestellungen' }}
+                    über <strong>{{ number_format($refundSum, 2, ',', '.') }} €</strong>
+                    {{ $refundCount === 1 ? 'wird' : 'werden' }} storniert und erstattet.
+                </x-nx-callout>
+
+                <p class="m-0 text-sm text-[color:var(--nx-muted)]">
+                    Das Geld geht über das jeweilige Zahlungsmittel zurück, die Plätze werden frei,
+                    und jeder Gast bekommt eine Stornobestätigung per E-Mail.
+                </p>
+
+                <p class="m-0 text-sm text-[color:var(--nx-muted)]">
+                    <strong>Das lässt sich nicht zurücknehmen.</strong> Eine erstattete Zahlung kann
+                    nicht erneut eingezogen werden – der Gast müsste neu bestellen.
+                </p>
+
+                @if ($refundOpen > 0)
+                    <p class="m-0 text-xs text-[color:var(--nx-faint)]">
+                        Dazu {{ $refundOpen === 1 ? 'wartet eine weitere Bestellung' : 'warten ' . $refundOpen . ' weitere Bestellungen' }}
+                        noch auf Zahlung. Da wurde nichts abgebucht – sie {{ $refundOpen === 1 ? 'verfällt' : 'verfallen' }} von selbst.
+                    </p>
+                @endif
+            @endif
+        </div>
+
+        <x-slot name="footer">
+            <div class="flex flex-wrap justify-end gap-2">
+                <x-nx-button wire:click="closeRefundConfirm">Abbrechen</x-nx-button>
+                @if ($refundCount > 0)
+                    <x-nx-button variant="danger" wire:click="confirmRefundAll" wire:loading.attr="disabled" wire:target="confirmRefundAll">
+                        {{ number_format($refundSum, 2, ',', '.') }} € erstatten
+                    </x-nx-button>
+                @endif
             </div>
         </x-slot>
     </x-nx-modal>

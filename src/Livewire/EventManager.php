@@ -5,11 +5,14 @@ namespace Platform\Reservation\Livewire;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\Table;
+use Platform\Reservation\Jobs\TerminBestellungenStornieren;
 use Platform\Reservation\Models\Event;
+use Platform\Reservation\Services\EventCancellationService;
 use Platform\Reservation\Models\PickupStation;
 use Platform\Reservation\Models\EventRoom;
 use Platform\Reservation\Models\EventSlot;
@@ -1048,6 +1051,75 @@ class EventManager extends Component
     {
         Event::findOrFail($id)->update(['status' => Event::STATUS_CANCELLED]);
         unset($this->events);
+    }
+
+    /* ---------------------------------------------------------------------
+     | Bestellungen eines abgesagten Termins stornieren und erstatten
+     |
+     | BEWUSST getrennt vom Absagen. Ein Haus sagt ab und verlegt, erstattet in
+     | Gutscheinen oder verhandelt einzeln - und die Erstattung kostet echtes
+     | Geld. Wer sie auslöst, soll es ausdrücklich tun und vorher sehen, um
+     | wie viel es geht.
+     --------------------------------------------------------------------- */
+
+    public bool $showRefundConfirm = false;
+
+    #[Locked]
+    public ?int $refundEventId = null;
+
+    public int $refundCount = 0;
+
+    public float $refundSum = 0.0;
+
+    public int $refundOpen = 0;
+
+    public function askRefundAll(int $id): void
+    {
+        $event = Event::findOrFail($id);
+        $vorschau = app(EventCancellationService::class)->vorschau($event);
+
+        $this->refundEventId = $event->id;
+        $this->refundCount   = $vorschau['anzahl'];
+        $this->refundSum     = $vorschau['summe'];
+        $this->refundOpen    = $vorschau['offen'];
+
+        $this->showRefundConfirm = true;
+    }
+
+    public function closeRefundConfirm(): void
+    {
+        $this->showRefundConfirm = false;
+        $this->refundEventId = null;
+    }
+
+    public function confirmRefundAll(): void
+    {
+        if (! $this->refundEventId) {
+            return;
+        }
+
+        // findOrFail über den Team-Scope: Die Id steht in einem wire:click und
+        // ist damit vom Client änderbar. Ohne diese Zeile liesse sich ein
+        // fremder Termin leerräumen.
+        $event = Event::findOrFail($this->refundEventId);
+
+        TerminBestellungenStornieren::dispatch($event->id);
+
+        $this->closeRefundConfirm();
+        unset($this->events);
+
+        session()->flash('event_message', $this->refundCount === 0
+            ? 'Es gab nichts zu erstatten.'
+            : 'Die Stornierung von ' . $this->refundCount . ' Bestellung(en) läuft. '
+                . 'Die Gäste bekommen eine Stornobestätigung; die Rückerstattung braucht je nach Bank einige Werktage.');
+    }
+
+    /** Name des Termins in der Rückfrage. */
+    public function refundEventName(): string
+    {
+        return $this->refundEventId
+            ? (string) (Event::find($this->refundEventId)?->name ?? '')
+            : '';
     }
 
     /**

@@ -223,10 +223,25 @@ Modul hatte keinen einzigen geplanten Lauf. Neu:
 Bestellungen älter als 24 h, deren Zahlung nicht bezahlt ist. Bestellungen OHNE
 Zahlungssatz (Barzahlung, Backoffice) bleiben unberührt.
 
-**Noch offen am Zahlungsweg:** Rückerstattung und Chargeback werden nicht
-behandelt – nach einem Refund bleibt die Buchung bestätigt und der Gast auf dem
-Laufzettel. Solange Rückerstattungen von Hand laufen, tragbar; es sollte nur eine
-Entscheidung sein und kein Versehen.
+**Termin-Absage mit Erstattung – erledigt 04.09.2026.** Eine Absage setzte nur
+den Status des Termins: Buchungen blieben bestätigt, Gäste standen auf dem
+Laufzettel, das Geld lag beim Haus. Neu ist am abgesagten Termin die Aktion
+„Bestellungen erstatten" mit Rückfrage über Zahl UND Summe. Sie läuft über
+denselben Weg wie das Einzelstorno und in der Warteschlange.
+
+Bewusst NICHT automatisch beim Absagen: Ein Haus sagt ab und verlegt, erstattet
+in Gutscheinen oder verhandelt einzeln. Absagen und Erstatten sind zwei
+Entscheidungen.
+
+**Storno-Mail – erledigt 04.09.2026.** Jedes Storno informiert jetzt den Gast,
+egal wodurch ausgelöst. Über die Erstattung wird nur gesprochen, wenn wirklich
+Geld zurückgeht.
+
+**Noch offen am Zahlungsweg:** Ein von Mollie gemeldeter Refund oder Chargeback
+(also einer, der NICHT über PausePlus ausgelöst wurde) wird nicht verarbeitet –
+die Buchung bliebe bestätigt. Deshalb gilt: erstatten über die Oberfläche, nicht
+im Mollie-Dashboard. Ein Webhook-Zweig für `refunded`/`chargeback` wäre die
+saubere Absicherung.
 
 ---
 
