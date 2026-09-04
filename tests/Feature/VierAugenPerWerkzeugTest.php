@@ -48,13 +48,22 @@ class VierAugenPerWerkzeugTest extends TestCase
         $this->bert = User::create(['name' => 'Bert']);
 
         $this->kategorie = MenuCategory::create(['team_id' => 1, 'name' => 'Getränke']);
+
+        // Ausdrücklich einschalten. Seit dem 04.09.2026 ist die Pflicht per
+        // Vorgabe AUS – wer sie will, schaltet sie ein. Ein Test, der sich auf
+        // eine Vorgabe verlässt, prüft die Vorgabe statt die Regel.
+        $this->pflicht(true);
     }
 
-    /** Die Pflicht gilt per Vorgabe – ohne Eintrag ist sie an. */
     private function pflichtAus(): void
     {
+        $this->pflicht(false);
+    }
+
+    private function pflicht(bool $an): void
+    {
         $einstellung = CheckoutSetting::forTeam(1);
-        $einstellung->four_eyes_enabled = false;
+        $einstellung->four_eyes_enabled = $an;
         $einstellung->save();
     }
 
@@ -180,5 +189,16 @@ class VierAugenPerWerkzeugTest extends TestCase
         // noch eine Freigabe von vorgestern.
         $this->assertNull($artikel->fresh()->approved_by);
         $this->assertNull($artikel->fresh()->approved_at);
+    }
+
+    public function test_ohne_eintrag_gilt_die_pflicht_nicht(): void
+    {
+        // Die Vorgabe war bis zum 04.09.2026 AN, und das war eine Falle:
+        // Einschalten darf jeder allein, Abschalten braucht zwei Menschen. Wer
+        // allein pflegt, kam nie wieder heraus - aus einer Pflicht, die er
+        // sich nie ausgesucht hatte.
+        CheckoutSetting::forTeam(1)->delete();
+
+        $this->assertFalse(CheckoutSetting::forTeam(1)->fourEyesRequired());
     }
 }

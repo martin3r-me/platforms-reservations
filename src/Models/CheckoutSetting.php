@@ -190,7 +190,12 @@ class CheckoutSetting extends Model
     /** Gilt die Freigabepflicht gerade? Default ist an – wer nichts einstellt, ist streng. */
     public function fourEyesRequired(): bool
     {
-        return $this->four_eyes_enabled === null || (bool) $this->four_eyes_enabled;
+        // null heisst „nie eingestellt" (ein Team ohne eigene Zeile, forTeam()
+        // liefert dann ein frisches Objekt). Das galt bis zum 04.09.2026 als
+        // AN und war die eigentliche Falle: Einschalten darf jeder allein,
+        // Abschalten braucht zwei Menschen - wer allein pflegt, kam nie wieder
+        // heraus aus einer Pflicht, die er sich nie ausgesucht hatte.
+        return (bool) $this->four_eyes_enabled;
     }
 
     /** Wartet ein Abschalten auf den zweiten Menschen? */
