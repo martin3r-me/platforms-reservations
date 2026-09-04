@@ -449,8 +449,24 @@ class MenuItem extends Model
      */
     public function requiresReapprovalAfterChange(): bool
     {
-        return $this->approval_status !== self::APPROVAL_DRAFT
-            && CheckoutSetting::forTeam((int) $this->team_id)->fourEyesRequired();
+        if ($this->approval_status === self::APPROVAL_DRAFT) {
+            return false;
+        }
+
+        // Eine LAUFENDE Prüfung fällt immer zurück – auch ohne Pflicht. Sie
+        // beschreibt den Artikel nach der Änderung nicht mehr, und im Shop
+        // steht er ohnehin nicht; es geht also nichts verloren.
+        //
+        // Ohne diese Zeile entstand eine Sackgasse: Ein Artikel, der beim
+        // ABSCHALTEN der Pflicht gerade in Prüfung war, behält sie (siehe
+        // canBeApprovedBy) – sein Einreicher darf ihn nie freigeben, und die
+        // Oberfläche bietet für „in Prüfung" nur „Freigeben" an. Wer allein
+        // pflegt, bekam ihn nie wieder los.
+        if ($this->approval_status === self::APPROVAL_REVIEW) {
+            return true;
+        }
+
+        return CheckoutSetting::forTeam((int) $this->team_id)->fourEyesRequired();
     }
 
     /**

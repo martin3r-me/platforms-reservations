@@ -115,6 +115,19 @@ class VierAugenPerWerkzeugTest extends TestCase
         $this->assertFalse($artikel->requiresReapprovalAfterChange());
     }
 
+    public function test_eine_laufende_pruefung_faellt_auch_ohne_pflicht_zurueck(): void
+    {
+        $this->pflichtAus();
+        $artikel = $this->artikel(['approval_status' => MenuItem::APPROVAL_REVIEW]);
+
+        // Sonst entsteht eine Sackgasse: Ein Artikel, der beim Abschalten
+        // gerade in Pruefung war, behaelt die Pflicht (canBeApprovedBy), sein
+        // Einreicher darf ihn nie freigeben - und die Oberflaeche bietet fuer
+        // „in Pruefung" nur „Freigeben" an. Wer allein pflegt, kaeme nicht
+        // mehr heran.
+        $this->assertTrue($artikel->requiresReapprovalAfterChange());
+    }
+
     public function test_ein_entwurf_hat_nichts_zu_verlieren(): void
     {
         $artikel = $this->artikel(['approval_status' => MenuItem::APPROVAL_DRAFT]);
