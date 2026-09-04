@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Schema;
  * alten Fassung zu erstarren.
  *
  * place_kind ist auf 'table' beschränkt, solange es nur Tische gibt. Die
- * Abholstationen (siehe docs/PLAN-abholstationen.md) tragen später 'station'
+ * Abholstationen (siehe docs-intern/PLAN-abholstationen.md) tragen später 'station'
  * ein – das Feld ist genau dafür da.
  */
 return new class extends Migration

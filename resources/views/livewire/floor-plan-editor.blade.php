@@ -533,7 +533,10 @@
              Der Block steht auch dann da, wenn keine Station existiert – mit
              dem Weg dorthin. Ein fehlendes Werkzeug sieht sonst aus, als gäbe
              es die Möglichkeit nicht. --}}
-        @if ($this->floorPlanId)
+        {{-- Wie im Terminformular: ohne eine einzige Station im Team bleibt der
+             Abschnitt ganz weg, statt als leerer Kasten unter jedem Saalplan zu
+             stehen. --}}
+        @if ($this->floorPlanId && $this->teamNutztStationen())
             <div class="mt-4 rounded-[8px] border border-[color:var(--nx-line)] p-3">
                 <div class="flex flex-wrap items-center gap-2">
                     @svg('heroicon-o-inbox-arrow-down', 'w-4 h-4 text-[color:var(--nx-muted)]')

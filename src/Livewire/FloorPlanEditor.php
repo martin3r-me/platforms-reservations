@@ -124,6 +124,20 @@ class FloorPlanEditor extends Component
             ->get();
     }
 
+    /**
+     * Nutzt dieses Team überhaupt Abholstationen?
+     *
+     * Wie im Terminformular: Ohne eine einzige Station im Team bleibt der
+     * ganze Abschnitt weg, statt als leerer Kasten unter jedem Saalplan zu
+     * stehen. Abgeschaltete zählen mit.
+     */
+    public function teamNutztStationen(): bool
+    {
+        // Ohne venue_id-Grenze, aber mit dem Team-Scope des Modells - wie die
+        // Abfrage darueber auch.
+        return PickupStation::exists();
+    }
+
     /** Die in DIESEM Plan liegen – sie werden gezeichnet. */
     public function stationenImPlan(): \Illuminate\Support\Collection
     {

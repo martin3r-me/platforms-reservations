@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Schema;
  * Der Schritt steht als NAME, nicht als Nummer. Der Bestellweg baut seine
  * Schritte seit dem 01.09.2026 zur Laufzeit als Liste, in der Schritte fehlen
  * dürfen; eine Nummer bekäme beim nächsten Umbau rückwirkend eine andere
- * Bedeutung. Siehe docs/PLAN-live-checkouts.md, Abschnitt B.
+ * Bedeutung. Siehe docs-intern/PLAN-live-checkouts.md, Abschnitt B.
  */
 return new class extends Migration
 {

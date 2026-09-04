@@ -146,7 +146,9 @@
             </div>
             <div>
                 @forelse ($this->recentBookings as $booking)
-                    <div wire:key="dash-booking-{{ $booking->id }}" class="flex items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 last:border-0">
+                    <div wire:key="dash-booking-{{ $booking->id }}"
+                        wire:click="openDetail({{ $booking->id }})"
+                        class="flex cursor-pointer items-center justify-between gap-3 border-b border-[color:var(--nx-line)] px-4 py-2.5 transition-colors last:border-0 hover:bg-[color:var(--nx-hover)]">
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
                                 <span class="truncate text-sm font-medium text-[color:var(--nx-text)]">{{ $booking->guest_name }}</span>
@@ -195,6 +197,11 @@
                 @endforelse
             </div>
         </x-nx-card>
+
+        {{-- Gehören zu ShowsBookingDetail und PrintsBookingReceipt: Wer die
+             Züge einbindet, bindet auch ihre Fenster ein. --}}
+        @include('reservation::partials.booking-detail-modal')
+        @include('reservation::partials.booking-print-modal')
     </div>
 
     </div>

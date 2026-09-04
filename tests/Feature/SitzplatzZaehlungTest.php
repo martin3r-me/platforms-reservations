@@ -17,7 +17,7 @@ use Platform\Reservation\Tests\TestCase;
  * Tisch, der zu früh voll ist – und den sieht niemand, weil niemand weiß, dass
  * dort noch etwas hätte gebucht werden können.
  *
- * Siehe docs/PLAN-mehrere-pausen.md, Abschnitte D und J.
+ * Siehe docs-intern/PLAN-mehrere-pausen.md, Abschnitte D und J.
  */
 class SitzplatzZaehlungTest extends TestCase
 {

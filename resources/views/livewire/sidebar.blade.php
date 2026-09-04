@@ -91,6 +91,18 @@
             <span class="ml-2 text-sm">Einstellungen</span>
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
+
+    {{-- Die Hilfe ist kein Arbeitsbereich und keine Einstellung, sondern gehört
+         zu allen – deshalb ein eigener Block ganz unten. Sie öffnet das
+         Hilfe-Modal der Plattform, das in jedem Layout schon geladen ist und
+         auf 'open-help' hört; die Seiten dazu liegen in docs/ dieses Moduls.
+         Ein Knopf, keine Route: Der Core stellt nur das Modal, keinen Auslöser. --}}
+    <x-ui-sidebar-list label="Hilfe">
+        <x-ui-sidebar-item type="button" @click="$dispatch('open-help', { module: 'reservation' })">
+            @svg('heroicon-o-question-mark-circle', 'w-4 h-4 text-[color:var(--nx-muted)]')
+            <span class="ml-2 text-sm">So funktioniert PausePlus</span>
+        </x-ui-sidebar-item>
+    </x-ui-sidebar-list>
     </div>
 
     {{-- Collapsed: Icons-only --}}
@@ -135,6 +147,9 @@
             <a href="{{ route('reservation.export') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]">
                 @svg('heroicon-o-arrow-down-tray', 'w-5 h-5')
             </a>
+            <button type="button" @click="$dispatch('open-help', { module: 'reservation' })" class="flex items-center justify-center p-2 rounded-md text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]" title="Hilfe">
+                @svg('heroicon-o-question-mark-circle', 'w-5 h-5')
+            </button>
         </div>
     </div>
 </div>

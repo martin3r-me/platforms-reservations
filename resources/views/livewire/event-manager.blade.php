@@ -408,7 +408,13 @@
             </section>
 
 
-            {{-- Abholstationen --}}
+            {{-- Abholstationen.
+
+                 Nur, wenn das Team welche hat – oder dieser Termin schon eine
+                 zugeordnet hat. Wer die Funktion nie braucht, soll nicht bei
+                 jedem Termin einen leeren Kasten sehen; angelegt wird unter
+                 „Abholstationen“, dort wird sie auch entdeckt. --}}
+            @if (! empty($stations) || $this->teamNutztStationen)
             <section class="overflow-hidden rounded-[8px] border border-[color:var(--nx-line)]">
                 <div class="flex items-center gap-2 border-b border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] px-3 py-2">
                     @svg('heroicon-o-inbox-arrow-down', 'w-4 h-4 text-[color:var(--nx-muted)]')
@@ -508,6 +514,7 @@
                     @endforeach
                 </div>
             </section>
+            @endif
 
 
             {{-- Gesperrte Tische je Raum --}}

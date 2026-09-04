@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
  * Abholstationen – „Foyer links", „Rang 1 Bar".
  *
  * Eine Buchung zeigt künftig auf einen ORT: entweder auf einen Tisch oder auf
- * eine Station, genau eines von beidem. Siehe docs/PLAN-abholstationen.md.
+ * eine Station, genau eines von beidem. Siehe docs-intern/PLAN-abholstationen.md.
  *
  * Eine eigene Tabelle statt eines Schalters „ist Abholstation" an
  * `reservation_tables`, und der dritte Grund wiegt am schwersten:

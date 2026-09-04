@@ -146,6 +146,27 @@ class EventManager extends Component
     }
 
     /**
+     * Nutzt dieses Team überhaupt Abholstationen?
+     *
+     * Entscheidet, ob der Block im Terminformular ÜBERHAUPT erscheint. Sonst
+     * stünde bei jedem Termin jedes Kunden, der die Funktion nie braucht, ein
+     * leerer Kasten mit dem Hinweis, dass nichts angelegt ist – Rauschen an
+     * einer Stelle, an der es um den Ablauf des Abends geht.
+     *
+     * Entdeckt wird die Funktion über die Seite „Abholstationen", nicht über
+     * eine Dauerwerbung im Formular.
+     *
+     * Abgeschaltete zählen mit: Wer eine angelegt hat, kennt die Funktion, und
+     * ein Kasten, der beim Deaktivieren der letzten Station verschwindet, wäre
+     * sein eigenes Rätsel.
+     */
+    #[Computed]
+    public function teamNutztStationen(): bool
+    {
+        return PickupStation::forTeam($this->getTeamId())->exists();
+    }
+
+    /**
      * Abholstationen, die dieser Termin anbieten kann.
      *
      * Aktive des Teams, nach Haus sortiert. Abgeschaltete stehen nicht zur

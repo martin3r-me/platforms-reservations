@@ -17,7 +17,7 @@ use Platform\Reservation\Tests\TestCase;
  * automatisch – und genau das soll dieser Test festhalten, weil es sonst beim
  * nächsten Umbau als Zufall durchgehen könnte.
  *
- * Siehe docs/PLAN-mehrere-pausen.md, Abschnitt E.
+ * Siehe docs-intern/PLAN-mehrere-pausen.md, Abschnitt E.
  */
 class RaumfreigabeMehrerePausenTest extends TestCase
 {

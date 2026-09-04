@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\Schema;
  * Anlegen kopiert: Ändert das Haus seine Vorgabe, sollen die Termine folgen, die
  * nie eine eigene bekommen haben. Gleiches Muster wie max_guest_count.
  *
- * Keine Spalte an den Buchungen – siehe docs/PLAN-mehrere-pausen.md, Abschnitt F:
+ * Keine Spalte an den Buchungen – siehe docs-intern/PLAN-mehrere-pausen.md, Abschnitt F:
  * Anders als Preise oder der Zielort darf die Betriebsart nicht je Buchung
  * eingefroren werden. Die Kapazität eines Tisches muss für alle Buchungen daran
  * nach derselben Regel gerechnet werden, sonst ergibt sie keine Zahl.

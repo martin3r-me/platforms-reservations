@@ -964,7 +964,7 @@ werden. Mindestens Liste, Anlegen, Zuordnen zum Termin – Etappe 2.
 Verkaufslisten, Buchungen, Orders. Die Abholstation gehört dazu, sonst kennt der Assistent
 das halbe Modell.
 
-**`docs/ROADMAP.md` weiß nichts davon.** Ein Zweizeiler mit Verweis auf diesen Plan.
+**`docs-intern/ROADMAP.md` weiß nichts davon.** Ein Zweizeiler mit Verweis auf diesen Plan.
 
 **Der DemoSeeder legt keine Station an.** Für Etappe 1 nützlich: Wer auf demo prüfen soll,
 soll nicht erst eine Station von Hand anlegen müssen.

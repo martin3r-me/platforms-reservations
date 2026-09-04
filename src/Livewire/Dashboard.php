@@ -11,12 +11,24 @@ use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Event;
 use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Models\Order;
+use Platform\Reservation\Livewire\Concerns\PrintsBookingReceipt;
+use Platform\Reservation\Livewire\Concerns\ShowsBookingDetail;
 
 /**
  * PausePlus-Startseite: Kennzahlen, nächste Termine, neueste Buchungen.
  */
 class Dashboard extends Component
 {
+    // Ein Klick auf eine Buchung öffnet dasselbe Fenster wie in „Alle
+    // Buchungen" und im VA-Dashboard. Die Liste zeigt Name, Ort und Betrag –
+    // die naheliegende nächste Frage ist „was hat er bestellt?", und die soll
+    // nicht erst über zwei Seitenwechsel zu beantworten sein.
+    //
+    // PrintsBookingReceipt kommt mit, weil das Fenster „Bon drucken" anbietet.
+    // Fehlt das Druckmodul, meldet der Zug das selbst und der Knopf bleibt weg.
+    use ShowsBookingDetail;
+    use PrintsBookingReceipt;
+
     protected function getTeamId(): int
     {
         return (int) (Auth::user()?->current_team_id ?? 0);
