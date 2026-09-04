@@ -65,7 +65,7 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
                 ],
                 'approved' => [
                     'type'        => 'boolean',
-                    'description' => 'true = Artikel direkt freigeben (gast-sichtbar), statt als Entwurf. Default false.',
+                    'description' => 'true = Artikel direkt freigeben (gast-sichtbar), statt als Entwurf. Default false. Bei aktiver Vier-Augen-Pflicht wird NICHT freigegeben: Die Artikel landen auf review mit dem aufrufenden Nutzer als Einreicher, freigeben muss ein anderer Mensch. Die Antwort sagt es als approval_withheld=true; approval_status nennt den Zustand der angelegten Artikel.',
                 ],
             ],
             'required'   => ['items'],
@@ -94,7 +94,14 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
             $allergenMap = Allergen::where('team_id', $teamId)->pluck('id', 'code'); // code => id
             $additiveMap = Additive::where('team_id', $teamId)->pluck('id', 'code');
 
-            $approve = (bool) ($arguments['approved'] ?? false);
+            // Vier-Augen: Gilt die Pflicht, wird NICHT direkt freigegeben. Die
+            // Artikel landen stattdessen auf „wartet auf Pruefung", mit dem
+            // Anlegenden als Einreicher - freigeben muss ein anderer Mensch.
+            // Ohne das waere approved=true der bequeme Weg an der Pruefung
+            // vorbei: anlegen und sich selbst durchwinken, in einem Aufruf.
+            $vierAugen  = MenuItem::approvalDefaultsForNew($context->user, $teamId);
+            $gewuenscht = (bool) ($arguments['approved'] ?? false);
+            $approve    = $gewuenscht && $vierAugen === [];
 
             $created = [];
             $failed  = [];
@@ -149,6 +156,8 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
                     $data['approval_status'] = MenuItem::APPROVAL_APPROVED;
                     $data['approved_by']     = $context->user?->id;
                     $data['approved_at']     = now();
+                } else {
+                    $data += $vierAugen;
                 }
 
                 $item = MenuItem::create($data);
@@ -169,6 +178,15 @@ class MenuItemBulkCreateTool implements ToolContract, ToolMetadataContract
             return ToolResult::success([
                 'created_count' => count($created),
                 'failed_count'  => count($failed),
+                // In welchem Zustand die Artikel jetzt stehen. Ein blosses
+                // "20 angelegt" liesse den Nutzer glauben, sie stuenden im
+                // Shop - gast-sichtbar sind sie erst nach der Freigabe.
+                'approval_status'   => $approve
+                    ? MenuItem::APPROVAL_APPROVED
+                    : ($vierAugen['approval_status'] ?? MenuItem::APPROVAL_DRAFT),
+                // Freigabe gewuenscht, aber wegen der Vier-Augen-Pflicht nicht
+                // erteilt: Das darf nicht stillschweigend passieren.
+                'approval_withheld' => $gewuenscht && ! $approve,
                 'created'       => $created,
                 'failed'        => $failed,
             ], ['created' => count($created)]);

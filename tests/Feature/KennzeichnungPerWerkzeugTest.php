@@ -47,26 +47,27 @@ class KennzeichnungPerWerkzeugTest extends TestCase
 
     public function test_codes_werden_zugeordnet(): void
     {
-        $unbekannt = $this->kennzeichnungSetzen($this->artikel, [
+        $ergebnis = $this->kennzeichnungSetzen($this->artikel, [
             'allergen_codes' => ['A', 'G'],
             'additive_codes' => ['11'],
         ], 1);
 
-        $this->assertSame([], $unbekannt);
+        $this->assertSame([], $ergebnis['unbekannt']);
+        $this->assertTrue($ergebnis['geaendert']);
         $this->assertCount(2, $this->artikel->allergens()->get());
         $this->assertCount(1, $this->artikel->additives()->get());
     }
 
     public function test_unbekannte_codes_werden_gemeldet_statt_geschluckt(): void
     {
-        $unbekannt = $this->kennzeichnungSetzen($this->artikel, [
+        $ergebnis = $this->kennzeichnungSetzen($this->artikel, [
             'allergen_codes' => ['A', 'Z'],
         ], 1);
 
         // Gemeldet, nicht verschwiegen: Eine verlorene Kennzeichnung faellt
         // sonst niemandem auf. Und nicht abgebrochen: Ein Tippfehler soll nicht
         // den ganzen Artikel kosten.
-        $this->assertSame(['Z'], $unbekannt);
+        $this->assertSame(['Z'], $ergebnis['unbekannt']);
         $this->assertCount(1, $this->artikel->allergens()->get());
     }
 
@@ -76,6 +77,17 @@ class KennzeichnungPerWerkzeugTest extends TestCase
         $this->kennzeichnungSetzen($this->artikel, ['allergen_codes' => []], 1);
 
         $this->assertCount(0, $this->artikel->allergens()->get());
+    }
+
+    public function test_ohne_bewegung_keine_meldung(): void
+    {
+        $this->kennzeichnungSetzen($this->artikel, ['allergen_codes' => ['A']], 1);
+
+        // Dieselbe Kennzeichnung noch einmal: Daran haengt beim Aendern die
+        // Freigabe - ein Aufruf, der nichts bewegt, darf sie nicht kosten.
+        $ergebnis = $this->kennzeichnungSetzen($this->artikel, ['allergen_codes' => ['A']], 1);
+
+        $this->assertFalse($ergebnis['geaendert']);
     }
 
     public function test_weglassen_laesst_die_kennzeichnung_unveraendert(): void

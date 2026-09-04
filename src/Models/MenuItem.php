@@ -386,6 +386,74 @@ class MenuItem extends Model
     }
 
     /**
+     * Felder, deren Änderung eine erteilte Freigabe entwertet.
+     *
+     * Bewusst NICHT dabei: available, category_id, holding_class_id. Einen
+     * Artikel auszublenden, umzusortieren oder anders zu takten ändert nichts
+     * an dem, was der Gast bekommt – dafür braucht es kein zweites Augenpaar.
+     *
+     * Die Liste steht hier und nicht in der Oberfläche, weil inzwischen auch
+     * das MCP-Werkzeug danach entscheidet. Stünde sie zweimal da, liefe sie
+     * beim nächsten neuen Feld auseinander.
+     */
+    public const CONTENT_FIELDS = [
+        'name', 'description', 'portion_size', 'price', 'tax_rate',
+        'is_vegetarian', 'is_vegan', 'is_alcoholic', 'min_age',
+        'is_caffeinated', 'caffeine_mg',
+        // Aus einem Artikel ein Bundle zu machen (oder umgekehrt) ändert das
+        // Produkt grundlegend – Freigabe muss neu erteilt werden.
+        'is_bundle',
+    ];
+
+    /**
+     * Freigabe-Felder für einen Artikel, den ein WERKZEUG anlegt.
+     *
+     * Gilt die Vier-Augen-Pflicht, gilt der Anlegende als Einreicher: Der
+     * Artikel landet auf „wartet auf Prüfung", mit ihm als submitted_by. Damit
+     * greift die Sperre in canBeApprovedBy() – er kann seinen eigenen Artikel
+     * nicht selbst freigeben, genau wie in der Oberfläche.
+     *
+     * Ohne das wäre die Pflicht per Werkzeug zu umgehen: Ein so angelegter
+     * Artikel hatte keinen submitted_by, und ohne Einreicher greift die Sperre
+     * nicht – der Urheber konnte sich selbst durchwinken.
+     *
+     * Ist die Pflicht abgeschaltet, gibt es hier nichts zu tun: Der Artikel
+     * bleibt Entwurf, und jeder darf ihn freigeben.
+     */
+    public static function approvalDefaultsForNew(?User $user, int $teamId): array
+    {
+        if ($user === null || ! CheckoutSetting::forTeam($teamId)->fourEyesRequired()) {
+            return [];
+        }
+
+        return [
+            'approval_status' => self::APPROVAL_REVIEW,
+            'submitted_by'    => $user->id,
+            'submitted_at'    => now(),
+        ];
+    }
+
+    /**
+     * Muss dieser Artikel nach einer inhaltlichen Änderung erneut freigegeben
+     * werden?
+     *
+     * Nur, wenn die Vier-Augen-Pflicht GILT. Ist sie abgeschaltet, bleibt die
+     * Freigabe stehen: Ein Team, das ausdrücklich kein zweites Augenpaar will,
+     * soll nicht bei jedem korrigierten Tippfehler den Artikel aus dem Shop
+     * fallen sehen und ihn von Hand wieder hereinholen müssen.
+     *
+     * Anders als canBeApprovedBy() ohne Stichtags-Feinheit, und das mit Absicht:
+     * Der Stichtag schützt eine LAUFENDE Prüfung davor, per Abschalten umgangen
+     * zu werden. Hier läuft keine – hier entsteht gerade erst ein neuer
+     * Prüfbedarf, und ob es den gibt, entscheidet die Einstellung von heute.
+     */
+    public function requiresReapprovalAfterChange(): bool
+    {
+        return $this->approval_status !== self::APPROVAL_DRAFT
+            && CheckoutSetting::forTeam((int) $this->team_id)->fourEyesRequired();
+    }
+
+    /**
      * Zurück auf Entwurf (z.B. nach inhaltlicher Änderung).
      */
     public function resetApproval(): void

@@ -26,11 +26,15 @@ trait PflegtKennzeichnung
 {
     /**
      * @param  array<string, mixed>  $arguments
-     * @return array<int, string>  unbekannte Codes, für die Rückmeldung
+     * @return array{unbekannt: array<int, string>, geaendert: bool}
+     *         unbekannte Codes für die Rückmeldung; „geaendert" sagt, ob sich
+     *         an der Kennzeichnung wirklich etwas bewegt hat – daran hängt beim
+     *         Ändern die Freigabe.
      */
     protected function kennzeichnungSetzen(MenuItem $item, array $arguments, int $teamId): array
     {
         $unbekannt = [];
+        $geaendert = false;
 
         foreach ([
             'allergen_codes' => [Allergen::class, 'allergens'],
@@ -46,7 +50,11 @@ trait PflegtKennzeichnung
             $karte = $modell::where('team_id', $teamId)->pluck('id', 'code');
             $codes = array_map(fn ($c) => (string) $c, $arguments[$feld]);
 
-            $item->{$beziehung}()->sync($karte->only($codes)->values()->all());
+            $bewegung = $item->{$beziehung}()->sync($karte->only($codes)->values()->all());
+
+            $geaendert = $geaendert
+                || $bewegung['attached'] !== []
+                || $bewegung['detached'] !== [];
 
             $unbekannt = array_merge(
                 $unbekannt,
@@ -54,7 +62,7 @@ trait PflegtKennzeichnung
             );
         }
 
-        return $unbekannt;
+        return ['unbekannt' => $unbekannt, 'geaendert' => $geaendert];
     }
 
     /** Schema-Bausteine, damit beide Werkzeuge dieselben Feldnamen anbieten. */

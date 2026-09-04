@@ -14,7 +14,11 @@ use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Support\BundleComponents;
 
 /**
- * Legt einen Artikel/eine Speise für das aktive Team an (Status: Entwurf).
+ * Legt einen Artikel/eine Speise für das aktive Team an.
+ *
+ * Status: Entwurf – oder „wartet auf Prüfung", wenn die Vier-Augen-Pflicht
+ * gilt; dann zählt der Anlegende als Einreicher. Siehe
+ * MenuItem::approvalDefaultsForNew().
  */
 class MenuItemCreateTool implements ToolContract, ToolMetadataContract
 {
@@ -37,7 +41,8 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
             . 'Artikel wurde angelegt – sollte dem Nutzer aber gemeldet werden. '
             . 'Bei einem Bundle ist price der Bundle-Preis; er wird beim Bestellen proportional auf die '
             . 'Bestandteile verteilt. Allergene, Alkohol und Mindestalter ergeben sich aus den Bestandteilen. '
-            . 'Bei einem Einzelartikel lassen sich Allergene und Zusatzstoffe als CODES setzen: allergen_codes ("A","C","G"), additive_codes ("1","2","11"). Unbekannte Codes kommen als unknown_codes zurueck, statt still zu verschwinden.';
+            . 'Bei einem Einzelartikel lassen sich Allergene und Zusatzstoffe als CODES setzen: allergen_codes ("A","C","G"), additive_codes ("1","2","11"). Unbekannte Codes kommen als unknown_codes zurueck, statt still zu verschwinden. '
+            . 'VIER-AUGEN: Gilt die Pflicht, entsteht der Artikel als review (wartet auf Freigabe) mit dem aufrufenden Nutzer als Einreicher - freigeben muss ihn dann ein ANDERER Mensch. Sonst entsteht er als draft. Der Status steht in der Antwort als approval_status; gast-sichtbar ist ein Artikel erst nach der Freigabe.';
     }
 
     public function getSchema(): array
@@ -136,13 +141,17 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
             unset($data['components']);
             $data['is_bundle'] = $isBundle;
 
+            // Vier-Augen: Gilt die Pflicht, ist der Anlegende der Einreicher -
+            // und darf den Artikel dann nicht selbst freigeben.
+            $data += MenuItem::approvalDefaultsForNew($context->user, $teamId);
+
             $item = MenuItem::create($data);
 
             if ($isBundle) {
                 BundleComponents::apply($item, $components);
             }
 
-            $unbekannteCodes = $this->kennzeichnungSetzen($item, $arguments, $teamId);
+            $kennzeichnung = $this->kennzeichnungSetzen($item, $arguments, $teamId);
 
             $priceNotice = $isBundle
                 ? BundleComponents::priceNotice($item->load('components'))
@@ -155,7 +164,7 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
                 'tax_rate'        => (float) $item->tax_rate,
                 'is_bundle'       => $item->is_bundle,
                 'components'      => count($components),
-                'unknown_codes'   => $unbekannteCodes,
+                'unknown_codes'   => $kennzeichnung['unbekannt'],
                 // Kein Fehler: der Artikel ist angelegt. Nur ein Hinweis, damit
                 // ein Bundle ohne Preisvorteil nicht unbemerkt bleibt.
                 'price_notice'    => $priceNotice,

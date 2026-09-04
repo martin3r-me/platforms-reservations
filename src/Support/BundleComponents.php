@@ -107,7 +107,8 @@ class BundleComponents
      *
      * @param  array<int, int>  $components  [component_id => quantity]
      */
-    public static function apply(MenuItem $item, array $components): void
+    /** @return array{attached: array, detached: array, updated: array} was sich bewegt hat */
+    public static function apply(MenuItem $item, array $components): array
     {
         $sync = [];
         $sort = 0;
@@ -116,6 +117,6 @@ class BundleComponents
             $sync[$id] = ['quantity' => $quantity, 'sort_order' => $sort++];
         }
 
-        $item->components()->sync($sync);
+        return $item->components()->sync($sync);
     }
 }

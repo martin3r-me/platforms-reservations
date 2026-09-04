@@ -23,6 +23,17 @@ use Orchestra\Testbench\TestCase as BaseTestCase;
 abstract class TestCase extends BaseTestCase
 {
     /**
+     * Der User der Plattform – im Betrieb aus der Wirts-App, hier ein
+     * Platzhalter. Ohne ihn liesse sich das Vier-Augen-Prinzip nicht prüfen.
+     */
+    public static function setUpBeforeClass(): void
+    {
+        require_once __DIR__ . '/Stubs/PlatformCoreUser.php';
+
+        parent::setUpBeforeClass();
+    }
+
+    /**
      * Fremdschlüssel wirklich durchsetzen.
      *
      * SQLite prüft sie nur, wenn man es verlangt – ohne dieses PRAGMA laufen

@@ -34,7 +34,8 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
             . '(jeweils optional). Bei Bundles kann price_notice zurueckkommen: ein Hinweis, dass der '
             . 'Bundle-Preis keinen Vorteil gegenueber den Einzelpreisen bringt. Kein Fehler – '
             . 'gespeichert wurde trotzdem –, sollte dem Nutzer aber gemeldet werden. '
-            . 'Allergene und Zusatzstoffe als CODES: allergen_codes ("A","C","G") und additive_codes ("1","2","11"). Sie ERSETZEN die bisherigen; ein leeres Array entfernt alle, Weglassen laesst sie unveraendert. Unbekannte Codes kommen als unknown_codes zurueck, statt still zu verschwinden.';
+            . 'Allergene und Zusatzstoffe als CODES: allergen_codes ("A","C","G") und additive_codes ("1","2","11"). Sie ERSETZEN die bisherigen; ein leeres Array entfernt alle, Weglassen laesst sie unveraendert. Unbekannte Codes kommen als unknown_codes zurueck, statt still zu verschwinden. '
+            . 'VIER-AUGEN: Aendert sich bei aktiver Pflicht der INHALT eines freigegebenen Artikels (Name, Preis, Steuersatz, Beschreibung, Portion, Kennzeichnung, Bundle), faellt die Freigabe zurueck auf draft - der Artikel ist dann NICHT mehr gast-sichtbar und braucht eine neue Freigabe. Die Antwort meldet das als approval_reset=true; sag es dem Nutzer. available, category_id und holding_class_id zaehlen nicht als Inhalt.';
     }
 
     public function getSchema(): array
@@ -159,15 +160,41 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
 
             $item->update($data);
 
+            // Vor den Bestandteilen abfragen: wasChanged() gilt fuer den
+            // letzten save(), und sync() weiter unten loest keinen aus.
+            $inhaltGeaendert = $item->wasChanged(MenuItem::CONTENT_FIELDS);
+
+            $bewegung = ['attached' => [], 'detached' => [], 'updated' => []];
+
             if ($isBundle && ($componentsGiven || $components !== [])) {
-                BundleComponents::apply($item, $components);
+                $bewegung = BundleComponents::apply($item, $components);
             } elseif (! $isBundle) {
                 // Kein Bundle mehr: Bestandteile lösen, sonst bliebe ein
                 // unsichtbarer Inhalt am Artikel hängen.
-                $item->components()->sync([]);
+                $bewegung = $item->components()->sync([]);
             }
 
-            $unbekannteCodes = $this->kennzeichnungSetzen($item, $arguments, $teamId);
+            $kennzeichnung = $this->kennzeichnungSetzen($item, $arguments, $teamId);
+
+            $inhaltGeaendert = $inhaltGeaendert
+                || $kennzeichnung['geaendert']
+                || $bewegung['attached'] !== []
+                || $bewegung['detached'] !== []
+                || ($bewegung['updated'] ?? []) !== [];
+
+            // Inhaltlich geaendert und die Vier-Augen-Pflicht gilt? Dann faellt
+            // die Freigabe, genau wie in der Oberflaeche - sonst waere das
+            // Werkzeug der bequeme Weg an der Pruefung vorbei: einmal
+            // freigeben lassen, danach den Inhalt per PATCH austauschen.
+            //
+            // Ist die Pflicht aus, bleibt die Freigabe stehen. Ein Team, das
+            // kein zweites Augenpaar will, soll nicht bei jedem Tippfehler den
+            // Artikel aus dem Shop fallen sehen.
+            $freigabeZurueckgesetzt = $inhaltGeaendert && $item->requiresReapprovalAfterChange();
+
+            if ($freigabeZurueckgesetzt) {
+                $item->resetApproval();
+            }
 
             $priceNotice = $item->is_bundle
                 ? BundleComponents::priceNotice($item->load('components'))
@@ -185,7 +212,12 @@ class MenuItemUpdateTool implements ToolContract, ToolMetadataContract
                 'price_notice' => $priceNotice,
                 // Uebergangene Codes zurueckmelden statt still zu schlucken:
                 // Eine verlorene Kennzeichnung faellt sonst niemandem auf.
-                'unknown_codes' => $unbekannteCodes,
+                'unknown_codes' => $kennzeichnung['unbekannt'],
+                'approval_status' => $item->approval_status,
+                // Muss gemeldet werden: Der Artikel ist damit nicht mehr
+                // gast-sichtbar, und das darf der Mensch nicht erst im Shop
+                // merken.
+                'approval_reset'  => $freigabeZurueckgesetzt,
             ], ['updated' => true]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Aktualisieren des Artikels: ' . $e->getMessage(), 'EXECUTION_ERROR');

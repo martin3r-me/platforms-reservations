@@ -487,13 +487,7 @@ class MenuManager extends Component
         if ($this->editingItemId) {
             $item = MenuItem::findOrFail($this->editingItemId);
             $item->update($data);
-            $contentChanged = $item->wasChanged([
-                'name', 'description', 'portion_size', 'price', 'tax_rate',
-                'is_vegetarian', 'is_vegan', 'is_alcoholic', 'min_age', 'is_caffeinated', 'caffeine_mg',
-                // Aus einem Artikel ein Bundle zu machen (oder umgekehrt) ändert
-                // das Produkt grundlegend – Freigabe muss neu erteilt werden.
-                'is_bundle',
-            ]);
+            $contentChanged = $item->wasChanged(MenuItem::CONTENT_FIELDS);
         } else {
             $item = MenuItem::create($data);
             $contentChanged = false;
@@ -563,8 +557,9 @@ class MenuManager extends Component
             session()->flash('menu_warning', '„' . $item->name . '“: ' . $notice . ' Gespeichert wurde trotzdem.');
         }
 
-        // Inhaltliche Änderung nach Freigabe → zurück auf Entwurf (Vier-Augen)
-        if (($contentChanged || $pivotChanged) && $item->approval_status !== MenuItem::APPROVAL_DRAFT) {
+        // Inhaltliche Änderung nach Freigabe → zurück auf Entwurf (Vier-Augen).
+        // Nur solange die Pflicht gilt; siehe requiresReapprovalAfterChange().
+        if (($contentChanged || $pivotChanged) && $item->requiresReapprovalAfterChange()) {
             $item->resetApproval();
             session()->flash('menu_message', 'Artikel geändert – Freigabestatus wurde auf „Entwurf“ zurückgesetzt.');
         }
