@@ -152,6 +152,49 @@ class VierAugenPerWerkzeugTest extends TestCase
     }
 
     /* ------------------------------------------------------------------
+     | Was ueberhaupt freigebbar ist
+     ------------------------------------------------------------------ */
+
+    public function test_mit_pflicht_ist_ein_entwurf_nicht_freigebbar(): void
+    {
+        // Der Weg, auf dem ein CSV-Import ohne zweites Augenpaar in den Shop
+        // kam: importieren (alles Entwuerfe, ohne Einreicher), dann alles
+        // freigeben. Die Oberflaeche bietet fuer einen Entwurf auch nur
+        // „Zur Pruefung" an.
+        $entwurf = $this->artikel(['approval_status' => MenuItem::APPROVAL_DRAFT]);
+
+        $this->assertFalse($entwurf->isApprovable());
+    }
+
+    public function test_mit_pflicht_ist_ein_artikel_in_pruefung_freigebbar(): void
+    {
+        $artikel = $this->artikel(['approval_status' => MenuItem::APPROVAL_REVIEW]);
+
+        // Freigebbar heisst nicht: von JEDEM. Wer, entscheidet canBeApprovedBy().
+        $this->assertTrue($artikel->isApprovable());
+    }
+
+    public function test_ohne_pflicht_ist_auch_ein_entwurf_freigebbar(): void
+    {
+        $this->pflichtAus();
+        $entwurf = $this->artikel(['approval_status' => MenuItem::APPROVAL_DRAFT]);
+
+        // Dann ist die Massenfreigabe wieder die schnelle Verwaltungsaktion,
+        // die sie vorher war.
+        $this->assertTrue($entwurf->isApprovable());
+    }
+
+    public function test_der_mitgegebene_pflichtstand_gewinnt(): void
+    {
+        $entwurf = $this->artikel(['approval_status' => MenuItem::APPROVAL_DRAFT]);
+
+        // Der Parameter ist dafuer da, die Einstellung bei einer Massenaktion
+        // einmal statt je Artikel zu lesen - er muss dieselbe Antwort geben.
+        $this->assertFalse($entwurf->isApprovable(true));
+        $this->assertTrue($entwurf->isApprovable(false));
+    }
+
+    /* ------------------------------------------------------------------
      | Freigeben: nicht die eigene Einreichung
      ------------------------------------------------------------------ */
 
@@ -172,5 +215,39 @@ class VierAugenPerWerkzeugTest extends TestCase
         $artikel->submitForReview($this->anna);
 
         $this->assertTrue($artikel->canBeApprovedBy($this->anna));
+    }
+
+    /* ------------------------------------------------------------------
+     | Einreichen im Bund
+     ------------------------------------------------------------------ */
+
+    public function test_einreichen_macht_den_aufrufenden_zum_einreicher(): void
+    {
+        $artikel = $this->artikel();
+        $artikel->submitForReview($this->anna);
+
+        // Damit ist die Kette geschlossen: Anna reicht ein, Bert gibt frei.
+        // Ohne ein Massen-Einreichen waere das nach einem Import 200-mal von
+        // Hand - und niemand haette es getan.
+        $this->assertSame(MenuItem::APPROVAL_REVIEW, $artikel->fresh()->approval_status);
+        $this->assertTrue($artikel->fresh()->isApprovable());
+        $this->assertFalse($artikel->fresh()->canBeApprovedBy($this->anna));
+        $this->assertTrue($artikel->fresh()->canBeApprovedBy($this->bert));
+    }
+
+    public function test_einreichen_loescht_eine_alte_freigabe_mit(): void
+    {
+        $artikel = $this->artikel([
+            'approval_status' => MenuItem::APPROVAL_APPROVED,
+            'approved_by'     => $this->bert->id,
+            'approved_at'     => now(),
+        ]);
+
+        $artikel->submitForReview($this->anna);
+
+        // Sonst stuende an einem Artikel, der gerade erst eingereicht wurde,
+        // noch eine Freigabe von vorgestern.
+        $this->assertNull($artikel->fresh()->approved_by);
+        $this->assertNull($artikel->fresh()->approved_at);
     }
 }

@@ -122,6 +122,7 @@ class ReservationServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Reservation\Tools\HoldingClassBulkCreateTool());
             $registry->register(new \Platform\Reservation\Tools\MenuItemBulkCreateTool());
             $registry->register(new \Platform\Reservation\Tools\MenuItemApproveBulkTool());
+            $registry->register(new \Platform\Reservation\Tools\MenuItemSubmitBulkTool());
             $registry->register(new \Platform\Reservation\Tools\SalesListBulkCreateTool());
 
             // Abholstationen: der zweite moegliche Zielort einer Buchung.

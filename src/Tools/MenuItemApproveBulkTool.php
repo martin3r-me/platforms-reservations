@@ -6,6 +6,7 @@ use Platform\Core\Contracts\ToolContext;
 use Platform\Core\Contracts\ToolContract;
 use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
+use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\MenuItem;
 
 /**
@@ -34,8 +35,12 @@ class MenuItemApproveBulkTool implements ToolContract, ToolMetadataContract
             . 'item_ids (Array von Artikel-IDs) ODER all=true (alle noch nicht freigegebenen Artikel des Teams). '
             . 'VIER-AUGEN: Gilt die Pflicht, werden Artikel UEBERSPRUNGEN, die der aufrufende Nutzer selbst '
             . 'zur Pruefung eingereicht hat - die muss ein anderer Mensch freigeben. Sie kommen als '
-            . 'skipped_own (Ids) und skipped_own_count zurueck; das ist kein Fehler, sollte dem Nutzer aber '
-            . 'gesagt werden. Ist die Pflicht abgeschaltet, wird alles freigegeben.';
+            . 'skipped_own (Ids) und skipped_own_count zurueck. Ebenso UEBERSPRUNGEN werden ENTWUERFE '
+            . '(skipped_draft): Bei aktiver Pflicht ist nur freigebbar, was in Pruefung liegt - ein Entwurf '
+            . 'hat keinen Einreicher, gegen den zu pruefen waere. Entwuerfe zuerst per '
+            . 'reservation.menu-items.submit.bulk.POST einreichen; freigeben muss sie dann ein anderer '
+            . 'Mensch. Beides ist kein Fehler, sollte dem Nutzer aber gesagt werden. Ist die Pflicht '
+            . 'abgeschaltet, wird alles freigegeben.';
     }
 
     public function getSchema(): array
@@ -74,16 +79,24 @@ class MenuItemApproveBulkTool implements ToolContract, ToolMetadataContract
                 $query->where('approval_status', '!=', MenuItem::APPROVAL_APPROVED);
             }
 
-            $user = $context->user;
+            $user    = $context->user;
+            $pflicht = CheckoutSetting::forTeam($teamId)->fourEyesRequired();
 
-            // Wer nicht der Einreicher ist, darf immer - das ist der erste Satz
+            // Zuerst: Was ist ueberhaupt freigebbar? Gilt die Pflicht, nur was
+            // in Pruefung liegt - ein Entwurf hat keinen Einreicher, gegen den
+            // zu pruefen waere. Genau hier kam ein CSV-Import bisher ohne
+            // zweites Augenpaar in den Shop: importieren, dann alles freigeben.
+            [$freigebbar, $entwuerfe] = $query
+                ->get(['id', 'team_id', 'approval_status', 'submitted_by', 'submitted_at'])
+                ->partition(fn (MenuItem $item) => $item->isApprovable($pflicht));
+
+            // Dann: Wer nicht der Einreicher ist, darf immer - das ist der erste Satz
             // in canBeApprovedBy(). Deshalb zuerst nach dem Einreicher trennen
             // und die Regel nur fuer die EIGENEN Einreichungen befragen: Sie
             // schlaegt je Artikel in den Team-Einstellungen nach, und das waere
             // bei einer Massenfreigabe ueber hunderte Artikel eine Abfrage je
             // Artikel, fuer eine Antwort, die fuer alle dieselbe ist.
-            [$fremde, $eigeneEinreichungen] = $query
-                ->get(['id', 'team_id', 'approval_status', 'submitted_by', 'submitted_at'])
+            [$fremde, $eigeneEinreichungen] = $freigebbar
                 ->partition(fn (MenuItem $item) => (int) $item->submitted_by !== (int) $user?->id);
 
             $erlaubt = $eigeneEinreichungen->filter(fn (MenuItem $item) => $item->canBeApprovedBy($user));
@@ -101,9 +114,13 @@ class MenuItemApproveBulkTool implements ToolContract, ToolMetadataContract
 
             return ToolResult::success([
                 'approved_count' => $approved,
-                // Eigene Einreichungen: uebersprungen, nicht verschwiegen.
-                'skipped_own'       => $eigene,
-                'skipped_own_count' => count($eigene),
+                // Uebersprungenes wird gemeldet, nicht verschwiegen - sonst
+                // glaubt der Nutzer, alles stehe im Shop.
+                'skipped_own'         => $eigene,
+                'skipped_own_count'   => count($eigene),
+                // Entwuerfe: muessen erst zur Pruefung, siehe submit.bulk.
+                'skipped_draft'       => $entwuerfe->pluck('id')->values()->all(),
+                'skipped_draft_count' => $entwuerfe->count(),
             ], ['updated' => $approved]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler bei der Freigabe: ' . $e->getMessage(), 'EXECUTION_ERROR');
