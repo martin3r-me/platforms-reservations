@@ -21,6 +21,8 @@ Ein Termin ist eine Veranstaltung mit Datum, Bestellschluss, mindestens einer Pa
 
 Nur **Veröffentlicht** erlaubt Bestellungen, und auch dann nur bis zum Bestellschluss. Alle anderen Status sind Anzeige.
 
+**Eine Absage erstattet nichts von selbst.** Sie stoppt den Verkauf, mehr nicht – die bestehenden Bestellungen bleiben bestätigt. Das ist Absicht: Ein Haus sagt ab und verlegt, erstattet in Gutscheinen oder verhandelt einzeln. Wer erstatten will, findet am abgesagten Termin im Menü **Bestellungen erstatten**; die Rückfrage nennt Zahl und Summe. Siehe [Bestellungen, Zahlung und Storno](bestellungen.md).
+
 **„Vergangen" ist kein Status.** Ein Termin bleibt nach dem Abend, was er war, und verschwindet im Shop von selbst am Tag nach dem Veranstaltungsdatum. Im Backoffice findet ihn die Terminliste unter dem Filter *Nachzubereiten*, solange er noch bestätigte Buchungen hat, die nicht abgeschlossen sind. Siehe [Bestellungen, Zahlung und Storno](bestellungen.md).
 
 ---

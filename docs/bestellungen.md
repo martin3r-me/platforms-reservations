@@ -32,7 +32,9 @@ Eine Bestellung ist der Einkauf eines Gastes: **eine Zahlung**, **je Pause eine 
 
 ### Zahlung
 
-Die Zahlung läuft über Mollie. PausePlus übernimmt den Mollie-Status wörtlich: offen, ausstehend, bezahlt, gescheitert, abgebrochen, abgelaufen, und ergänzt **erstattet**.
+Die Zahlung läuft über Mollie. PausePlus übernimmt den Mollie-Status weitgehend wörtlich: offen, ausstehend, bezahlt, gescheitert, abgebrochen, abgelaufen, und ergänzt zwei eigene: **erstattet** und **rückbelastet**.
+
+Eine Ausnahme gibt es: Ist Geld schon zurückgegangen, wird der Status **nicht** wieder auf *bezahlt* gesetzt. Mollie führt eine erstattete Zahlung nämlich weiterhin als bezahlt – zurück geht sie dort nur über einen eigenen Betrag. Ohne diese Ausnahme stünde im Backoffice „bezahlt" an einer Bestellung, deren Geld längst zurück ist.
 
 ---
 
@@ -41,6 +43,7 @@ Die Zahlung läuft über Mollie. PausePlus übernimmt den Mollie-Status wörtlic
 1. **Der Gast bestellt.** Bestellung und Buchungen entstehen als *Ausstehend*. Die Plätze sind ab jetzt reserviert. Der Gast wird zur Zahlung weitergeleitet.
 2. **Die Zahlung geht ein.** Bestellung und Buchungen werden *Bestätigt*. Genau jetzt geht die **Bestätigungsmail** heraus, ein einziges Mal je Bestellung, und, wenn eingerichtet, der **Bon** in die Küche.
 3. **Die Zahlung scheitert, läuft ab oder wird abgebrochen.** Bestellung und Buchungen werden *Storniert*, die Plätze sind wieder frei. Der Vorgang erscheint im Posteingang als „Zahlung gescheitert".
+4. **Der Gast bricht im Bezahlfenster ab und Mollie meldet nichts.** Dann räumt ein nächtlicher Lauf auf: Was länger als **24 Stunden** auf eine Zahlung wartet, wird storniert und gibt seine Plätze frei. Bestellungen **ohne** Zahlung – Barzahlung, Buchung im Backoffice – bleiben dabei unberührt; die werden vor Ort abgerechnet.
 
 Die Bestätigungsmail braucht einen eingerichteten Absender in den Einstellungen. Ohne Absender wird nicht versendet.
 
@@ -82,9 +85,37 @@ Ob Gäste selbst stornieren dürfen, ist eine Einstellung, standardmäßig **aus
 
 Das Haus kann jede bestätigte Bestellung stornieren, jederzeit. Alle Buchungen der Bestellung werden storniert, auch solche, die schon *Nicht erschienen* oder *Abgeschlossen* waren.
 
+### Bei einem abgesagten Termin
+
+Eine Absage stoppt den Verkauf, sie erstattet aber **nichts von selbst**. Das ist Absicht: Ein Haus sagt ab und verlegt, erstattet in Gutscheinen oder verhandelt einzeln.
+
+Am abgesagten Termin steht dafür im Menü **Bestellungen erstatten**. Die Rückfrage nennt die **Zahl der Bestellungen und die Summe**, und der Knopf trägt den Betrag. Ausgelöst wird erst damit. Danach laufen alle Stornos nacheinander im Hintergrund: Plätze frei, Geld zurück, Storno-Mail an jeden Gast. Bleibt eine Erstattung bei Mollie hängen, laufen die übrigen trotzdem durch.
+
+Unbezahlte Bestellungen zählt die Rückfrage getrennt – da wurde nichts abgebucht.
+
+### Die Storno-Mail
+
+Bei **jedem** Storno bekommt der Gast eine Stornobestätigung: beim Selbst-Storno, beim Storno durch das Haus und bei der Absage eines Termins. Darin steht, was storniert wurde, und – wenn ein Grund mitgegeben wurde – warum.
+
+Über die Rückerstattung schreibt die Mail nur, wenn wirklich Geld zurückgeht. Wurde nie etwas abgebucht, steht das so drin, statt den Gast auf eine Gutschrift warten zu lassen.
+
+Wie die Bestätigungsmail braucht sie einen eingerichteten Absender. Ohne Absender wird nicht versendet – das Storno selbst passiert trotzdem.
+
 ### Rückerstattung
 
-Bei einer bezahlten Zahlung wird über Mollie **automatisch erstattet**. Ist die Zahlung nicht bezahlt oder schon erstattet, passiert nichts. Das Ergebnis steht am Vorgang.
+Bei einer bezahlten Zahlung wird über Mollie **automatisch erstattet**. Ist die Zahlung nicht bezahlt oder schon vollständig erstattet, passiert nichts. Erstattet wird immer nur der **noch offene Rest**: Wurde vorher schon ein Teil zurückgegeben, geht nur die Differenz zurück und nie mehr, als eingenommen wurde. Das Ergebnis steht am Vorgang.
+
+### Wenn außerhalb von PausePlus erstattet wird
+
+**Erstatten Sie über die Oberfläche, nicht im Mollie-Dashboard.** Der Grund ist nicht Bequemlichkeit: Nur so werden Buchung, Laufzettel und Umsatz mitgeführt.
+
+Passiert es trotzdem – oder bucht die Bank eine Zahlung zurück –, merkt PausePlus es inzwischen und zieht nach:
+
+| Fall | Was passiert |
+|---|---|
+| **Voller Betrag zurück** | Bestellung und Buchungen werden storniert, Plätze frei, Storno-Mail geht raus |
+| **Rückbelastung durch die Bank** | dasselbe, die Zahlung steht danach auf *rückbelastet* |
+| **Nur ein Teil zurück** | nichts wird storniert. Welche Position gemeint war, weiß niemand, und wer 8 von 24 € zurückbekommt, soll nicht vor einem leeren Tisch stehen. Der Betrag steht im Detailfenster der Buchung, mit der Bitte zu prüfen, was noch geliefert wird |
 
 ---
 
