@@ -27,11 +27,16 @@ Das ist eine Frage fürs Haus, keine Programmieraufgabe.
 - Die echten 37 Artikel (Vorlage steht bereit)
 - Reihenfolge im Bestellweg und Platz- statt Tischwahl – beides Fragen ans Haus
 
-**Zu bauen – in dieser Reihenfolge (vom Kunden entschieden am 02.09.2026):**
-1. **Abholstationen** (`PLAN-abholstationen.md`) – das große Stück, sieben
-   Etappen. Hängt an keiner offenen Frage mehr.
-2. **Tarifgrenzen zählen** – heute begrenzt nichts, und niemand merkt, wenn ein
-   Basic-Kunde 80 Artikel führt.
+**Zu bauen – Stand 04.09.2026:**
+1. ~~Abholstationen~~ – **erledigt** und bei Culinaria ausgerollt (03./04.09.).
+2. **Tarifgrenzen zählen** – liegt beim Core, siehe unten. Vom Kunden bewusst
+   zurückgestellt, bis der Core soweit ist.
+3. **Löschfrist für Gastdaten** – NEU und der letzte echte Punkt vor „rund":
+   Name, E-Mail und Telefon stehen unbegrenzt in der Datenbank, mit Index auf
+   der E-Mail. Kein Wort zu Aufbewahrung oder Anonymisierung im ganzen Modul.
+   Fachlich einfach – nach dem Termin plus Aufbewahrungsfrist die Personendaten
+   anonymisieren, Beträge und Positionen bleiben für die Finanzen stehen. Die
+   Frist ist eine Entscheidung des Hauses, keine Programmierfrage.
 
 **Nicht mehr auf der Liste, weil nachgeprüft erledigt:** Bestellschluss-
 Enforcement, Concurrency-Härtung der Platzvergabe, Mollie (läuft produktiv und
