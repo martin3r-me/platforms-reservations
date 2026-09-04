@@ -168,7 +168,10 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
                 // Kein Fehler: der Artikel ist angelegt. Nur ein Hinweis, damit
                 // ein Bundle ohne Preisvorteil nicht unbemerkt bleibt.
                 'price_notice'    => $priceNotice,
-                'approval_status' => $item->approval_status,
+                // Der Ersatzwert ist noetig, weil 'draft' aus der DB-Vorgabe
+                // kommt: Steht es nicht in $data, kennt das frisch angelegte
+                // Modell das Feld nicht und meldete bisher null.
+                'approval_status' => $item->approval_status ?? MenuItem::APPROVAL_DRAFT,
             ], ['created' => true]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Anlegen des Artikels: ' . $e->getMessage(), 'EXECUTION_ERROR');
