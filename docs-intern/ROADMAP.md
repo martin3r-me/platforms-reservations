@@ -207,6 +207,29 @@ gelesen.)*
 
 ---
 
+## Zahlungsweg – erledigt 04.09.2026
+
+**Doppelte Bestellbestätigung.** `syncFromMollie()` las `$order->status === PENDING`
+ungesperrt und schrieb danach. Zwei Aufrufer treffen fast gleichzeitig ein – der
+Mollie-Webhook und die Rückkehrseite, auf der der Gast landet und die pollt.
+Beide sahen „ausstehend", beide bestätigten, beide schickten eine Mail. Der
+Wechsel liegt jetzt in `zustandUebernehmen()`: eine Transaktion, `lockForUpdate()`
+als erste Anweisung, und die Mail geht nur raus, wenn DIESER Aufruf bestätigt hat.
+
+**Hängende Bestellungen.** Bricht ein Gast bei Mollie ab, blieb der Platz belegt.
+Der Regelweg ist Mollies Verfalls-Meldung; bleibt sie aus, gab es kein Netz – das
+Modul hatte keinen einzigen geplanten Lauf. Neu:
+`reservation:bestellungen-aufraeumen`, täglich 03:10, storniert wartende
+Bestellungen älter als 24 h, deren Zahlung nicht bezahlt ist. Bestellungen OHNE
+Zahlungssatz (Barzahlung, Backoffice) bleiben unberührt.
+
+**Noch offen am Zahlungsweg:** Rückerstattung und Chargeback werden nicht
+behandelt – nach einem Refund bleibt die Buchung bestätigt und der Gast auf dem
+Laufzettel. Solange Rückerstattungen von Hand laufen, tragbar; es sollte nur eine
+Entscheidung sein und kein Versehen.
+
+---
+
 ## Produkt & Vertrieb – offener Punkt (31.08.2026)
 
 **Die Tarifgrenzen sind nirgends hinterlegt.** Die Produkt-Landingpage

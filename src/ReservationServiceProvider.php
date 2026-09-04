@@ -33,6 +33,19 @@ class ReservationServiceProvider extends ServiceProvider
         // Migrationen laden
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
+        // Hängende Bestellungen aufräumen. Der Regelweg ist Mollies
+        // Verfalls-Meldung; dieser Lauf ist der Boden darunter, falls sie nie
+        // ankommt - sonst bleibt ein Platz belegt, den niemand mehr bezahlt.
+        // Nachts, weil ein Storno den Saalplan verändert.
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Platform\Reservation\Console\Commands\HaengendeBestellungenAufraeumen::class,
+            ]);
+
+            \Illuminate\Support\Facades\Schedule::command('reservation:bestellungen-aufraeumen')
+                ->dailyAt('03:10')->withoutOverlapping();
+        }
+
         // Config veröffentlichen
         $this->publishes([
             __DIR__ . '/../config/reservation.php' => config_path('reservation.php'),

@@ -3,6 +3,7 @@
 namespace Platform\Reservation\Services;
 
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Mollie\Api\MollieApiClient;
 use Platform\Reservation\Contracts\MollieCredentialResolver;
 use Platform\Reservation\Models\Booking;
@@ -107,7 +108,7 @@ class MolliePaymentService
             'paid_at' => $molliePayment->paidAt ? Carbon::parse($molliePayment->paidAt) : null,
         ]);
 
-        // Vollständige Status-Behandlung (idempotent – nur aus pending heraus):
+        // Vollständige Status-Behandlung:
         //   paid                        → alle Buchungen der Order bestätigt (+ Mail)
         //   failed | canceled | expired → storniert (gibt Plätze wieder frei)
         //   open | pending | authorized → bleibt pending (Return-Seite pollt weiter)
@@ -115,36 +116,82 @@ class MolliePaymentService
             || $molliePayment->isCanceled()
             || $molliePayment->isExpired();
 
-        if ($molliePayment->isPaid()) {
-            if ($order->status === Order::STATUS_PENDING) {
-                $order->update(['status' => Order::STATUS_CONFIRMED]);
+        $bestaetigt = $this->zustandUebernehmen(
+            $order,
+            $molliePayment->isPaid(),
+            $isFailure,
+            $molliePayment->method,
+        );
 
-                foreach ($order->bookings as $booking) {
-                    if ($booking->status !== Booking::STATUS_PENDING) {
-                        continue;
-                    }
-
-                    $booking->update([
-                        'status'         => Booking::STATUS_CONFIRMED,
-                        // Von Mollie gemeldete echte Zahlungsart übernehmen (z.B. ideal, creditcard, paypal).
-                        'payment_method' => $molliePayment->method ?: $booking->payment_method,
-                    ]);
-                }
-
-                // EINE Bestellbestätigung je Order (über CRM-Comms; inert ohne Channel).
-                OrderConfirmationMailer::send($order);
-            }
-        } elseif ($isFailure) {
-            if ($order->status === Order::STATUS_PENDING) {
-                $order->update(['status' => Order::STATUS_CANCELLED]);
-
-                foreach ($order->bookings as $booking) {
-                    if ($booking->status === Booking::STATUS_PENDING) {
-                        $booking->update(['status' => Booking::STATUS_CANCELLED]);
-                    }
-                }
-            }
+        // NACH der Transaktion, und nur wenn dieser Aufruf derjenige war, der
+        // bestätigt hat. Drinnen wäre die Mail schon raus, wenn die Transaktion
+        // noch zurückrollt – und ohne die Rückgabe schickten zwei gleichzeitige
+        // Aufrufe zwei Bestätigungen an denselben Gast.
+        if ($bestaetigt) {
+            OrderConfirmationMailer::send($order->refresh());
         }
+    }
+
+    /**
+     * Den Zustand einer Bestellung nachziehen – gesperrt, damit es GENAU EINMAL
+     * passiert.
+     *
+     * Zwei Wege führen hierher, und sie kommen fast gleichzeitig an: der
+     * Mollie-Webhook und die Rückkehrseite, auf der der Gast landet und die
+     * pollt. Vorher las beide `$order->status === PENDING` ungesperrt – beide
+     * sahen „pending", beide bestätigten, beide schickten eine
+     * Bestellbestätigung. Der Gast bekam zwei Mails.
+     *
+     * Die Sperre ist die ERSTE Anweisung der Transaktion. Ein sperrender
+     * Lesezugriff sieht den neuesten festgeschriebenen Stand; ein einfaches
+     * SELECT davor würde den Schnappschuss festlegen, und wir läsen genau den
+     * Status, den der andere Aufruf gerade überschreibt.
+     *
+     * @param  bool  $bezahlt         Mollie meldet die Zahlung als eingegangen
+     * @param  bool  $fehlgeschlagen  fehlgeschlagen, abgebrochen oder verfallen
+     * @return bool  ob DIESER Aufruf bestätigt hat – nur dann geht die Mail raus
+     */
+    public function zustandUebernehmen(Order $order, bool $bezahlt, bool $fehlgeschlagen, ?string $method = null): bool
+    {
+        // Offen, laufend, autorisiert: nichts zu tun, die Rückkehrseite pollt.
+        if (! $bezahlt && ! $fehlgeschlagen) {
+            return false;
+        }
+
+        return (bool) DB::transaction(function () use ($order, $bezahlt, $method) {
+            $frisch = Order::withoutGlobalScope('team')
+                ->whereKey($order->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            // Ein anderer Aufruf war schneller. Kein Fehler – der Normalfall,
+            // wenn Webhook und Rückkehrseite zusammentreffen.
+            if (! $frisch || $frisch->status !== Order::STATUS_PENDING) {
+                return false;
+            }
+
+            $frisch->update([
+                'status' => $bezahlt ? Order::STATUS_CONFIRMED : Order::STATUS_CANCELLED,
+            ]);
+
+            $buchungen = $frisch->bookings()
+                ->withoutGlobalScope('team')
+                ->where('status', Booking::STATUS_PENDING)
+                ->get();
+
+            foreach ($buchungen as $booking) {
+                $booking->update($bezahlt
+                    ? [
+                        'status' => Booking::STATUS_CONFIRMED,
+                        // Die von Mollie gemeldete echte Zahlungsart (ideal,
+                        // creditcard, paypal ...).
+                        'payment_method' => $method ?: $booking->payment_method,
+                    ]
+                    : ['status' => Booking::STATUS_CANCELLED]);
+            }
+
+            return $bezahlt;
+        });
     }
 
     /**
