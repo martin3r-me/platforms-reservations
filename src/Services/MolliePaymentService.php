@@ -102,8 +102,16 @@ class MolliePaymentService
 
         $molliePayment = $this->client($creds)->payments->get($molliePaymentId);
 
+        // Den Status NICHT zurueckdrehen, wenn Geld schon zurueckgegangen ist.
+        //
+        // Eine erstattete Zahlung bleibt bei Mollie auf „paid" - zurueck geht
+        // sie nur ueber amountRefunded. Wer das stumpf uebernimmt, schreibt an
+        // eine erstattete Bestellung wieder „bezahlt", und im Backoffice steht
+        // die Unwahrheit.
+        $geldZurueck = in_array($payment->status, ['refunded', 'charged_back'], true);
+
         $payment->update([
-            'status'  => $molliePayment->status,
+            'status'  => $geldZurueck ? $payment->status : $molliePayment->status,
             'method'  => $molliePayment->method,
             'paid_at' => $molliePayment->paidAt ? Carbon::parse($molliePayment->paidAt) : null,
         ]);
@@ -130,6 +138,38 @@ class MolliePaymentService
         if ($bestaetigt) {
             OrderConfirmationMailer::send($order->refresh());
         }
+
+        // Rueckerstattung oder Rueckbelastung, die NICHT von uns kam - jemand
+        // hat im Mollie-Dashboard erstattet, oder die Bank hat zurueckgebucht.
+        //
+        // Das faellt sonst durch jedes Raster: Der Zahlungsstatus bleibt
+        // „paid", nur amountRefunded/amountChargedBack aendern sich. Die
+        // Buchung bliebe bestaetigt, der Gast auf dem Laufzettel, der Betrag im
+        // Umsatz - obwohl das Geld weg ist.
+        //
+        // Spaet aufgeloest statt im Konstruktor: Der Storno-Dienst haelt
+        // seinerseits diesen hier.
+        app(OrderCancellationService::class)->erstattungAusMollie(
+            $order->refresh(),
+            $payment->refresh(),
+            $this->betrag($molliePayment, 'getAmountRefunded'),
+            $this->betrag($molliePayment, 'getAmountChargedBack'),
+        );
+    }
+
+    /**
+     * Betrag aus dem SDK holen, ohne an dessen Version zu haengen.
+     *
+     * Die Helfer gibt es erst ab einer bestimmten Fassung; fehlt einer, ist die
+     * Antwort 0 - also „nichts zurueckgegangen". Das ist die sichere Richtung:
+     * Lieber eine Erstattung nicht bemerken, als eine erfinden und eine gueltige
+     * Buchung stornieren.
+     */
+    protected function betrag(object $molliePayment, string $methode): float
+    {
+        return method_exists($molliePayment, $methode)
+            ? (float) $molliePayment->{$methode}()
+            : 0.0;
     }
 
     /**
@@ -231,7 +271,17 @@ class MolliePaymentService
             }
 
             $currency = strtoupper((string) ($payment->currency ?: config('reservation.currency', 'EUR')));
-            $value    = number_format((float) $payment->amount, 2, '.', '');
+
+            // Nur den REST, nicht den ganzen Betrag. Ist schon einmal teilweise
+            // erstattet worden - im Mollie-Dashboard etwa -, wuerde eine
+            // Erstattung ueber die volle Summe zu viel zurueckgeben.
+            $offen = max(0.0, (float) $payment->amount - (float) ($payment->refunded_amount ?? 0));
+
+            if ($offen <= 0.0) {
+                return ['status' => 'already_refunded', 'message' => 'Es ist nichts mehr offen.'];
+            }
+
+            $value = number_format($offen, 2, '.', '');
 
             $molliePayment->refund([
                 'amount'      => ['currency' => $currency, 'value' => $value],
@@ -241,7 +291,8 @@ class MolliePaymentService
             $payment->update([
                 'status'          => 'refunded',
                 'refunded_at'     => now(),
-                'refunded_amount' => $payment->amount,
+                // Was insgesamt zurueckging, nicht nur dieser Vorgang.
+                'refunded_amount' => (float) ($payment->refunded_amount ?? 0) + $offen,
             ]);
 
             return ['status' => 'refunded', 'message' => 'Rückerstattung ausgelöst: ' . $value . ' ' . $currency];

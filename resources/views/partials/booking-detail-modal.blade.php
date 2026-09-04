@@ -43,6 +43,21 @@
                 @endif
             </div>
 
+            {{-- Teilweise zurueckgegangenes Geld.
+
+                 Nur DIESER Fall: Eine volle Erstattung storniert die Buchung,
+                 die steht dann ohnehin als storniert da. Eine teilweise laesst
+                 alles bestehen - und dann ist das hier die einzige Stelle, an
+                 der jemand ueberhaupt erfaehrt, dass Geld zurueckgegangen ist. --}}
+            @if ($detail->order?->payment?->refunded_amount > 0 && $detail->status !== \Platform\Reservation\Models\Booking::STATUS_CANCELLED)
+                <x-nx-callout variant="warning">
+                    Es wurden bereits
+                    <strong>{{ number_format((float) $detail->order->payment->refunded_amount, 2, ',', '.') }} €</strong>
+                    von {{ number_format((float) $detail->order->payment->amount, 2, ',', '.') }} € zurückerstattet.
+                    Die Buchung besteht weiter – bitte prüfen, was davon noch geliefert wird.
+                </x-nx-callout>
+            @endif
+
             {{-- Bestellpositionen --}}
             @if ($detail->items->isEmpty())
                 <div class="flex flex-col items-center justify-center py-6 text-[color:var(--nx-faint)]">

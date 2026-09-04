@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Platform\Reservation\Models\Booking;
 use Platform\Reservation\Models\CheckoutSetting;
 use Platform\Reservation\Models\Order;
+use Platform\Reservation\Models\Payment;
 
 /**
  * Storno einer Bestellung durch den Kunden (Storno-Link) oder das Team.
@@ -70,6 +71,65 @@ class OrderCancellationService
         }
 
         return $this->cancel($order, $grund);
+    }
+
+    /**
+     * Geld ist bei Mollie zurückgegangen, ohne dass PausePlus es ausgelöst hat
+     * – jemand hat im Mollie-Dashboard erstattet, oder die Bank hat
+     * zurückgebucht.
+     *
+     * Ohne diese Behandlung bliebe die Buchung „bestätigt": Der Gast stünde
+     * weiter auf dem Laufzettel, und der Betrag zählte weiter in Umsatz und
+     * DATEV, obwohl das Geld weg ist.
+     *
+     * VOLL zurück → storniert wie jedes andere Storno, samt Mail und freiem
+     * Platz. TEILWEISE → nur festhalten: Welche Position gemeint war, weiß
+     * niemand, und wer 8 von 24 € zurückbekommt, soll nicht vor einem leeren
+     * Tisch stehen. Der Betrag steht danach an der Zahlung, damit im
+     * Backoffice jemand hinsehen kann.
+     *
+     * @return string keine|teilweise|voll|rueckbelastung
+     */
+    public function erstattungAusMollie(Order $order, Payment $payment, float $erstattet, float $rueckbelastet): string
+    {
+        $zurueck = $erstattet + $rueckbelastet;
+
+        if ($zurueck <= 0.0) {
+            return 'keine';
+        }
+
+        // Centbruchteile: Mollie rechnet in Strings, ein Vergleich auf Gleichheit
+        // ginge irgendwann schief.
+        $voll           = $zurueck >= ((float) $payment->amount - 0.005);
+        $rueckbelastung = $rueckbelastet > 0.0;
+
+        $payment->update([
+            'status' => match (true) {
+                $rueckbelastung => 'charged_back',
+                $voll           => 'refunded',
+                // Teilweise: Bei Mollie steht die Zahlung weiter auf „paid",
+                // und das stimmt ja auch – ein Teil ist geflossen.
+                default         => $payment->status,
+            },
+            // NUR bei voll. refunded_at ist die Sperre gegen eine zweite
+            // Erstattung; nach einer Teilerstattung muss der Rest noch
+            // erstattbar bleiben.
+            'refunded_at'     => $voll ? ($payment->refunded_at ?? now()) : $payment->refunded_at,
+            'refunded_amount' => $zurueck,
+        ]);
+
+        if (! $voll) {
+            return 'teilweise';
+        }
+
+        // Über den gewohnten Weg – der schreibt die Buchungen fort und schickt
+        // die Storno-Mail. refundOrder() darin läuft ins Leere, weil oben
+        // refunded_at gesetzt wurde: KEINE zweite Erstattung bei Mollie.
+        $this->approveAndCancel($order, $rueckbelastung
+            ? 'Ihre Bank hat die Zahlung zurückgebucht.'
+            : 'Der Betrag wurde Ihnen zurückerstattet.');
+
+        return $rueckbelastung ? 'rueckbelastung' : 'voll';
     }
 
     /** Führt Storno (Plätze frei) + Rückerstattung + Mail an den Gast aus. */

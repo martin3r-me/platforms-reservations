@@ -237,11 +237,24 @@ Entscheidungen.
 egal wodurch ausgelöst. Über die Erstattung wird nur gesprochen, wenn wirklich
 Geld zurückgeht.
 
-**Noch offen am Zahlungsweg:** Ein von Mollie gemeldeter Refund oder Chargeback
-(also einer, der NICHT über PausePlus ausgelöst wurde) wird nicht verarbeitet –
-die Buchung bliebe bestätigt. Deshalb gilt: erstatten über die Oberfläche, nicht
-im Mollie-Dashboard. Ein Webhook-Zweig für `refunded`/`chargeback` wäre die
-saubere Absicherung.
+**Refund & Chargeback von aussen – erledigt 04.09.2026.** Erstattet jemand im
+Mollie-Dashboard, oder bucht die Bank zurück, wird das jetzt verarbeitet. In
+Mollie war dafür nichts einzustellen: Die Webhook-Adresse hängt an jeder
+Zahlung, Mollie ruft längst an – wir haben nur nicht zugehört. Die Tücke: Eine
+erstattete Zahlung bleibt bei Mollie auf `paid`, zurück geht sie nur über
+`amountRefunded` / `amountChargedBack`.
+
+- **Voll zurück oder Chargeback** → storniert wie jedes andere Storno, samt Mail
+  und freiem Platz. Chargeback bekommt einen eigenen Zahlungsstatus
+  (`charged_back`), weil eine Rückbuchung der Bank etwas anderes ist als eine
+  Erstattung durch das Haus.
+- **Teilweise** → nur festgehalten. Welche Position gemeint war, weiß niemand;
+  wer 8 von 24 € zurückbekommt, soll nicht vor einem leeren Tisch stehen. Der
+  Betrag steht im Buchungs-Detailfenster.
+
+Zwei Fehler kamen dabei mit heraus: Der Webhook schrieb den Zahlungsstatus einer
+erstatteten Bestellung wieder auf „bezahlt", und `refundOrder()` hätte nach einer
+Teilerstattung erneut die VOLLE Summe erstattet – jetzt nur noch den Rest.
 
 ---
 
