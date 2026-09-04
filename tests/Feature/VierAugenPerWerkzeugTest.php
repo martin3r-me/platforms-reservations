@@ -11,11 +11,18 @@ use Platform\Reservation\Tests\TestCase;
 /**
  * Das Vier-Augen-Prinzip gilt auch über die Werkzeuge.
  *
- * Vorher galt es nur in der Oberfläche. Über MCP war es auf drei Wegen zu
- * umgehen: ein freigegebener Artikel liess sich inhaltlich austauschen, ohne
- * dass die Freigabe fiel; die Massenfreigabe winkte auch die eigene
- * Einreichung durch; und ein per Werkzeug angelegter Artikel hatte gar keinen
- * Einreicher, gegen den zu prüfen gewesen wäre.
+ * Vorher galt es nur in der Oberfläche: Ein freigegebener Artikel liess sich
+ * per PATCH inhaltlich austauschen, ohne dass die Freigabe fiel, und die
+ * Massenfreigabe winkte auch die eigene Einreichung durch.
+ *
+ * Weiter geht das Werkzeug bewusst NICHT. Es stempelt niemanden automatisch
+ * als Einreicher und lehnt keine Entwürfe ab. Beides klänge strenger, wäre
+ * aber für ein Ein-Personen-Team eine Sackgasse: Wer einreicht, darf nie
+ * selbst freigeben – und ein zweiter Mensch, der es könnte, existiert dort
+ * nicht. Das Modul kann Team-Grössen nicht sehen; es kennt keine
+ * Mitgliedschaften. Eine Pflicht gegen ein Ein-Personen-Team durchzusetzen
+ * erzeugt keine Sicherheit, sondern Stillstand. Einreichen ist deshalb ein
+ * ausdrücklicher Schritt geblieben (submit.bulk oder die Oberfläche).
  *
  * Geprüft werden die REGELN, nicht die Werkzeugklassen: Deren Verträge liegen
  * in platforms-core, das dieses Modul bewusst nicht als Abhängigkeit führt
@@ -60,38 +67,6 @@ class VierAugenPerWerkzeugTest extends TestCase
             'price'       => 3.20,
             'tax_rate'    => 19,
         ], $attribute));
-    }
-
-    /* ------------------------------------------------------------------
-     | Anlegen: wer anlegt, ist der Einreicher
-     ------------------------------------------------------------------ */
-
-    public function test_mit_pflicht_gilt_der_anlegende_als_einreicher(): void
-    {
-        $vorgaben = MenuItem::approvalDefaultsForNew($this->anna, 1);
-
-        $this->assertSame(MenuItem::APPROVAL_REVIEW, $vorgaben['approval_status']);
-        $this->assertSame($this->anna->id, $vorgaben['submitted_by']);
-    }
-
-    public function test_der_anlegende_kann_seinen_eigenen_artikel_nicht_freigeben(): void
-    {
-        // Das ist der Zweck der Uebung: Ohne submitted_by griff die Sperre
-        // nicht, und ein per Werkzeug angelegter Artikel liess sich vom
-        // Urheber selbst durchwinken.
-        $artikel = $this->artikel(MenuItem::approvalDefaultsForNew($this->anna, 1));
-
-        $this->assertFalse($artikel->canBeApprovedBy($this->anna));
-        $this->assertTrue($artikel->canBeApprovedBy($this->bert));
-    }
-
-    public function test_ohne_pflicht_bleibt_es_beim_entwurf(): void
-    {
-        $this->pflichtAus();
-
-        // Leer heisst: nichts wird aufgedraengt. Der Artikel entsteht als
-        // Entwurf, und jeder darf ihn freigeben - wie vor der Aenderung.
-        $this->assertSame([], MenuItem::approvalDefaultsForNew($this->anna, 1));
     }
 
     /* ------------------------------------------------------------------
@@ -152,49 +127,6 @@ class VierAugenPerWerkzeugTest extends TestCase
     }
 
     /* ------------------------------------------------------------------
-     | Was ueberhaupt freigebbar ist
-     ------------------------------------------------------------------ */
-
-    public function test_mit_pflicht_ist_ein_entwurf_nicht_freigebbar(): void
-    {
-        // Der Weg, auf dem ein CSV-Import ohne zweites Augenpaar in den Shop
-        // kam: importieren (alles Entwuerfe, ohne Einreicher), dann alles
-        // freigeben. Die Oberflaeche bietet fuer einen Entwurf auch nur
-        // „Zur Pruefung" an.
-        $entwurf = $this->artikel(['approval_status' => MenuItem::APPROVAL_DRAFT]);
-
-        $this->assertFalse($entwurf->isApprovable());
-    }
-
-    public function test_mit_pflicht_ist_ein_artikel_in_pruefung_freigebbar(): void
-    {
-        $artikel = $this->artikel(['approval_status' => MenuItem::APPROVAL_REVIEW]);
-
-        // Freigebbar heisst nicht: von JEDEM. Wer, entscheidet canBeApprovedBy().
-        $this->assertTrue($artikel->isApprovable());
-    }
-
-    public function test_ohne_pflicht_ist_auch_ein_entwurf_freigebbar(): void
-    {
-        $this->pflichtAus();
-        $entwurf = $this->artikel(['approval_status' => MenuItem::APPROVAL_DRAFT]);
-
-        // Dann ist die Massenfreigabe wieder die schnelle Verwaltungsaktion,
-        // die sie vorher war.
-        $this->assertTrue($entwurf->isApprovable());
-    }
-
-    public function test_der_mitgegebene_pflichtstand_gewinnt(): void
-    {
-        $entwurf = $this->artikel(['approval_status' => MenuItem::APPROVAL_DRAFT]);
-
-        // Der Parameter ist dafuer da, die Einstellung bei einer Massenaktion
-        // einmal statt je Artikel zu lesen - er muss dieselbe Antwort geben.
-        $this->assertFalse($entwurf->isApprovable(true));
-        $this->assertTrue($entwurf->isApprovable(false));
-    }
-
-    /* ------------------------------------------------------------------
      | Freigeben: nicht die eigene Einreichung
      ------------------------------------------------------------------ */
 
@@ -230,7 +162,6 @@ class VierAugenPerWerkzeugTest extends TestCase
         // Ohne ein Massen-Einreichen waere das nach einem Import 200-mal von
         // Hand - und niemand haette es getan.
         $this->assertSame(MenuItem::APPROVAL_REVIEW, $artikel->fresh()->approval_status);
-        $this->assertTrue($artikel->fresh()->isApprovable());
         $this->assertFalse($artikel->fresh()->canBeApprovedBy($this->anna));
         $this->assertTrue($artikel->fresh()->canBeApprovedBy($this->bert));
     }

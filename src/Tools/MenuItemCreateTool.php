@@ -14,11 +14,12 @@ use Platform\Reservation\Models\MenuItem;
 use Platform\Reservation\Support\BundleComponents;
 
 /**
- * Legt einen Artikel/eine Speise für das aktive Team an.
+ * Legt einen Artikel/eine Speise für das aktive Team an (Status: Entwurf).
  *
- * Status: Entwurf – oder „wartet auf Prüfung", wenn die Vier-Augen-Pflicht
- * gilt; dann zählt der Anlegende als Einreicher. Siehe
- * MenuItem::approvalDefaultsForNew().
+ * Reicht bewusst NICHT gleich zur Prüfung ein. Anlegen und Einreichen sind
+ * zwei Schritte – und wo nur ein Mensch pflegt, wäre ein automatischer Stempel
+ * eine Sackgasse: Der Einreicher darf nie selbst freigeben.
+ * Einreichen: reservation.menu-items.submit.bulk.POST.
  */
 class MenuItemCreateTool implements ToolContract, ToolMetadataContract
 {
@@ -42,7 +43,7 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
             . 'Bei einem Bundle ist price der Bundle-Preis; er wird beim Bestellen proportional auf die '
             . 'Bestandteile verteilt. Allergene, Alkohol und Mindestalter ergeben sich aus den Bestandteilen. '
             . 'Bei einem Einzelartikel lassen sich Allergene und Zusatzstoffe als CODES setzen: allergen_codes ("A","C","G"), additive_codes ("1","2","11"). Unbekannte Codes kommen als unknown_codes zurueck, statt still zu verschwinden. '
-            . 'VIER-AUGEN: Gilt die Pflicht, entsteht der Artikel als review (wartet auf Freigabe) mit dem aufrufenden Nutzer als Einreicher - freigeben muss ihn dann ein ANDERER Mensch. Sonst entsteht er als draft. Der Status steht in der Antwort als approval_status; gast-sichtbar ist ein Artikel erst nach der Freigabe.';
+            . 'Der Artikel entsteht als ENTWURF und ist damit noch nicht gast-sichtbar. Zur Pruefung einreichen: reservation.menu-items.submit.bulk.POST; freigeben: reservation.menu-items.approve.bulk.POST.';
     }
 
     public function getSchema(): array
@@ -140,10 +141,6 @@ class MenuItemCreateTool implements ToolContract, ToolMetadataContract
 
             unset($data['components']);
             $data['is_bundle'] = $isBundle;
-
-            // Vier-Augen: Gilt die Pflicht, ist der Anlegende der Einreicher -
-            // und darf den Artikel dann nicht selbst freigeben.
-            $data += MenuItem::approvalDefaultsForNew($context->user, $teamId);
 
             $item = MenuItem::create($data);
 

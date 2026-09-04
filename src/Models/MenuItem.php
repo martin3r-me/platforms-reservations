@@ -406,58 +406,6 @@ class MenuItem extends Model
     ];
 
     /**
-     * Freigabe-Felder für einen Artikel, den ein WERKZEUG anlegt.
-     *
-     * Gilt die Vier-Augen-Pflicht, gilt der Anlegende als Einreicher: Der
-     * Artikel landet auf „wartet auf Prüfung", mit ihm als submitted_by. Damit
-     * greift die Sperre in canBeApprovedBy() – er kann seinen eigenen Artikel
-     * nicht selbst freigeben, genau wie in der Oberfläche.
-     *
-     * Ohne das wäre die Pflicht per Werkzeug zu umgehen: Ein so angelegter
-     * Artikel hatte keinen submitted_by, und ohne Einreicher greift die Sperre
-     * nicht – der Urheber konnte sich selbst durchwinken.
-     *
-     * Ist die Pflicht abgeschaltet, gibt es hier nichts zu tun: Der Artikel
-     * bleibt Entwurf, und jeder darf ihn freigeben.
-     */
-    public static function approvalDefaultsForNew(?User $user, int $teamId): array
-    {
-        if ($user === null || ! CheckoutSetting::forTeam($teamId)->fourEyesRequired()) {
-            return [];
-        }
-
-        return [
-            'approval_status' => self::APPROVAL_REVIEW,
-            'submitted_by'    => $user->id,
-            'submitted_at'    => now(),
-        ];
-    }
-
-    /**
-     * Darf dieser Artikel überhaupt freigegeben werden – unabhängig davon, WER
-     * freigibt?
-     *
-     * Gilt die Pflicht: nur aus der Prüfung heraus. Ein Entwurf hat keinen
-     * Einreicher, gegen den zu prüfen wäre – ihn direkt freizugeben ist der
-     * Weg, auf dem ein CSV-Import ohne zweites Augenpaar in den Shop kommt.
-     * Die Oberfläche bietet für einen Entwurf deshalb auch nur „Zur Prüfung"
-     * an; das hier ist dieselbe Regel für die Werkzeuge.
-     *
-     * Ist die Pflicht aus, ist jeder Zustand freigebbar – dann ist die
-     * Massenfreigabe wieder die schnelle Verwaltungsaktion, die sie war.
-     *
-     * $pflichtGilt kann mitgegeben werden, wenn viele Artikel desselben Teams
-     * geprüft werden: Die Einstellung ist für alle dieselbe, und ohne den
-     * Parameter wäre es je Artikel eine Abfrage.
-     */
-    public function isApprovable(?bool $pflichtGilt = null): bool
-    {
-        $pflichtGilt ??= CheckoutSetting::forTeam((int) $this->team_id)->fourEyesRequired();
-
-        return ! $pflichtGilt || $this->approval_status === self::APPROVAL_REVIEW;
-    }
-
-    /**
      * Muss dieser Artikel nach einer inhaltlichen Änderung erneut freigegeben
      * werden?
      *
