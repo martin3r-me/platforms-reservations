@@ -258,6 +258,26 @@ Teilerstattung erneut die VOLLE Summe erstattet – jetzt nur noch den Rest.
 
 ---
 
+## Liegt beim Core, nicht bei uns (04.09.2026)
+
+**MCP schluckt unbekannte Parameter.** Gibt man einem Werkzeug einen Parameter
+mit, den sein Schema nicht kennt – etwa `search` bei einer Liste, die nicht
+suchen kann –, wird er kommentarlos ignoriert und die UNGEFILTERTE Antwort
+zurückgegeben. Ein Agent, der filtert und alles bekommt, rechnet danach mit den
+falschen Daten weiter und merkt es nicht. Zweimal beim Testen hineingelaufen.
+
+Ursache: `Platform\Core\Services\ToolValidationService::validate()` behandelt
+unbekannte Felder nur dann als Fehler, wenn das Schema ausdrücklich
+`additionalProperties: false` setzt – und das tut fast keines.
+
+Vorschlag (nicht umgesetzt, wir dürfen den Core nicht ändern): unbekannte
+Felder als `warnings` zurückgeben und im MCP-Adapter dem Ergebnis VORANstellen.
+Nicht als Fehler – ein harter Abbruch bräche bestehende Aufrufer aller Module.
+Betrifft `ToolValidationService` und `Mcp/Adapters/ToolContractAdapter.php`.
+Wer den Core betreut, kann das in einer halben Stunde machen.
+
+---
+
 ## Produkt & Vertrieb – offener Punkt (31.08.2026)
 
 **Die Tarifgrenzen sind nirgends hinterlegt.** Die Produkt-Landingpage
