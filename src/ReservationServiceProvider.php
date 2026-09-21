@@ -81,6 +81,7 @@ class ReservationServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Reservation\Tools\ReservationOverviewTool());
             $registry->register(new \Platform\Reservation\Tools\ListEventsTool());
             $registry->register(new \Platform\Reservation\Tools\ListBookingsTool());
+            $registry->register(new \Platform\Reservation\Tools\BookingCreateTool());
             $registry->register(new \Platform\Reservation\Tools\RevenueSummaryTool());
 
             // Allergene & Zusatzstoffe (CRUD)
