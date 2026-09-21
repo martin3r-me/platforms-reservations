@@ -115,7 +115,12 @@
                             </p>
                         </div>
                         <div class="flex shrink-0 items-center justify-end gap-1">
-                            @if ($event->status->value !== 'published')
+                            {{-- Kein Veröffentlichen fuer Vergangenes und fuer Abgesagtes.
+                                 Der vergangene Abend liesse sich zwar in den Shop stellen,
+                                 bestellbar ist er aber nie wieder. Und eine Absage nimmt man
+                                 nicht im Vorbeigehen zurueck - dafuer gibt es unten einen
+                                 eigenen Eintrag, der auf Entwurf zurueckstellt. --}}
+                            @if ($event->status->value !== 'published' && $event->status->value !== 'cancelled' && ! $event->istVergangen())
                                 <x-nx-button variant="primary" wire:click="publish({{ $event->id }})">
                                     @svg('heroicon-o-rocket-launch', 'w-4 h-4')
                                     <span>Veröffentlichen</span>
@@ -128,7 +133,7 @@
                                 <x-nx-dropdown-item wire:click="duplicate({{ $event->id }})">
                                     @svg('heroicon-o-document-duplicate', 'w-4 h-4') <span>Duplizieren</span>
                                 </x-nx-dropdown-item>
-                                @if ($event->status->value === 'draft')
+                                @if ($event->status->value === 'draft' && ! $event->istVergangen())
                                     <x-nx-dropdown-item wire:click="announce({{ $event->id }})">
                                         @svg('heroicon-o-megaphone', 'w-4 h-4') <span>Ankündigen</span>
                                     </x-nx-dropdown-item>
@@ -151,6 +156,13 @@
                                 {{-- Erst NACH dem Absagen, und als eigener Schritt: Ein
                                      Haus sagt ab und verlegt, erstattet in Gutscheinen
                                      oder verhandelt einzeln. Und es kostet echtes Geld. --}}
+                                {{-- Zurueck aus der Absage, aber nur bei einem Termin, der noch
+                                     bevorsteht - und auf Entwurf, nicht direkt in den Shop. --}}
+                                @if ($event->status->value === 'cancelled' && ! $event->istVergangen())
+                                    <x-nx-dropdown-item wire:click="uncancel({{ $event->id }})">
+                                        @svg('heroicon-o-arrow-uturn-left', 'w-4 h-4') <span>Absage zurücknehmen</span>
+                                    </x-nx-dropdown-item>
+                                @endif
                                 @if ($event->status->value === 'cancelled')
                                     <x-nx-dropdown-item wire:click="askRefundAll({{ $event->id }})">
                                         @svg('heroicon-o-banknotes', 'w-4 h-4') <span>Bestellungen erstatten</span>

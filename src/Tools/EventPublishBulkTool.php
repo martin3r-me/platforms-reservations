@@ -24,8 +24,9 @@ class EventPublishBulkTool implements ToolContract, ToolMetadataContract
         return 'POST /reservation/events/publish/bulk - Setzt den Status mehrerer Termine. REST-Parameter: '
             . 'event_uuids (Array), status (draft|announced|published|closed|cancelled) ODER publish (bool, '
             . 'Default true → published; false → draft). status gewinnt, wenn beides kommt. '
-            . 'Veröffentlichen überspringt Termine ohne Pausen-Slot (skipped_no_slot) und ohne '
-            . 'zugewiesenen Raum (skipped_no_room) - beide werden gemeldet, der Stapel läuft weiter; '
+            . 'Veröffentlichen überspringt Termine ohne Pausen-Slot (skipped_no_slot), ohne '
+            . 'zugewiesenen Raum (skipped_no_room) und solche, deren Datum vorbei ist '
+            . '(skipped_past) - alle werden gemeldet, der Stapel läuft weiter; '
             . 'announced ist der Zustand '
             . '„steht im Shop, Vorbestellung noch nicht offen".';
     }
@@ -73,6 +74,7 @@ class EventPublishBulkTool implements ToolContract, ToolMetadataContract
             $changed       = 0;
             $skippedNoSlot = [];
             $skippedNoRoom = [];
+            $skippedPast   = [];
             $notFound      = [];
 
             foreach ($uuids as $uuid) {
@@ -99,6 +101,14 @@ class EventPublishBulkTool implements ToolContract, ToolMetadataContract
                         continue;
                     }
 
+                    // Ein vergangener Termin fehlt nichts, was sich nachtragen
+                    // liesse - der eigene Topf sagt das, statt ihn unter
+                    // "kein Raum" zu verbuchen und zum Suchen zu schicken.
+                    if ($event->istVergangen()) {
+                        $skippedPast[] = (string) $uuid;
+                        continue;
+                    }
+
                     // Alles, was jetzt noch fehlt, ist der Ort - Raum oder
                     // Abholstation. Bewusst nicht auf den Wortlaut geprueft:
                     // Der steht am Event und darf sich dort aendern, ohne dass
@@ -119,6 +129,8 @@ class EventPublishBulkTool implements ToolContract, ToolMetadataContract
                 'skipped_no_slot'      => $skippedNoSlot,
                 'skipped_no_room_count'=> count($skippedNoRoom),
                 'skipped_no_room'      => $skippedNoRoom,
+                'skipped_past_count'   => count($skippedPast),
+                'skipped_past'         => $skippedPast,
                 'not_found_count'      => count($notFound),
                 'not_found'            => $notFound,
                 'status'               => $status,

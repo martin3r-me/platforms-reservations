@@ -1053,6 +1053,29 @@ class EventManager extends Component
         unset($this->events);
     }
 
+    /**
+     * Absage zuruecknehmen - zurueck auf ENTWURF, nicht in den Shop.
+     *
+     * Bisher war "Veroeffentlichen" der einzige Weg aus einer Absage heraus:
+     * derselbe Knopf wie bei einem frischen Termin, an einem Abend, der
+     * womoeglich laengst vorbei ist. Wer eine Absage zurueckholt, soll Raeume,
+     * Pausen und Bestellschluss noch einmal ansehen, bevor Gaeste wieder
+     * bestellen - deshalb der Zwischenschritt.
+     */
+    public function uncancel(int $id): void
+    {
+        $event = Event::findOrFail($id);
+
+        if ($event->istVergangen()) {
+            session()->flash('event_error', 'Ein vergangener Termin lässt sich nicht zurückholen.');
+
+            return;
+        }
+
+        $event->update(['status' => Event::STATUS_DRAFT]);
+        unset($this->events);
+    }
+
     /* ---------------------------------------------------------------------
      | Bestellungen eines abgesagten Termins stornieren und erstatten
      |

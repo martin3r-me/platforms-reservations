@@ -286,6 +286,14 @@ class Event extends Model
             $fehlt[] = 'ein Raum oder eine Abholstation';
         }
 
+        // Ein vergangener Abend gehoert nicht in den Shop. Bestellen kann dort
+        // niemand mehr - der Bestellschluss lag davor -, sichtbar waere nur ein
+        // Termin, den es nicht mehr gibt. Die Regel steht hier und nicht in der
+        // Oberflaeche, damit das Werkzeug nicht erlaubt, was der Knopf verbietet.
+        if ($this->istVergangen()) {
+            $fehlt[] = 'ein Datum in der Zukunft';
+        }
+
         return $fehlt;
     }
 
