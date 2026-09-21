@@ -34,6 +34,38 @@
     $settings = \Platform\Reservation\Models\CheckoutSetting::forTeam((int) $printable->team_id);
     $issuer   = $settings->hasIssuer() ? $settings->issuer() : null;
 
+    // Fusszeile: Telefon, E-Mail und Website passen selten in eine Zeile.
+    // Der Drucker kennt nur 48 Zeichen und bricht laengere Zeilen hart um -
+    // aus einer zentrierten Zeile werden dann zwei, die zweite linksbuendig
+    // angeschlagen, und der Bon sieht aus, als waere er verrutscht. Deshalb
+    // wird hier selbst umbrochen: Telefon und E-Mail teilen sich eine Zeile,
+    // solange sie zusammen passen, die Website steht immer allein - sie ist
+    // das laengste Stueck und soll als Adresse lesbar bleiben.
+    $passtOderKuerzer = function (string $s) use ($width) {
+        $s = trim($s);
+        if (mb_strlen($s) <= $width) {
+            return $s;
+        }
+        // Erst das Entbehrliche weg (Schema, Schraegstrich am Ende), erst
+        // danach abschneiden - eine abgeschnittene Adresse ist wertlos.
+        $s = rtrim(preg_replace('#^https?://#i', '', $s), '/');
+        return \Illuminate\Support\Str::limit($s, $width, '');
+    };
+
+    $fussZeilen = [];
+    if ($issuer) {
+        $kontakt = array_values(array_filter([$issuer['phone'] ?? null, $issuer['email'] ?? null]));
+        if ($kontakt) {
+            $zusammen = implode(' · ', $kontakt);
+            $fussZeilen = mb_strlen($zusammen) <= $width
+                ? [$zusammen]
+                : array_map($passtOderKuerzer, $kontakt);
+        }
+        if (!empty($issuer['website'])) {
+            $fussZeilen[] = $passtOderKuerzer((string) $issuer['website']);
+        }
+    }
+
     // Order-/Zahlungs-Kontext
     $order   = $printable->order;
     $payment = $printable->payment; // Accessor: order->payment
@@ -222,9 +254,9 @@
 {{ wordwrap($printable->notes, $width, "\n", true) }}
 @endif
 {{ $sep }}
-@if($issuer && ($issuer['email'] || $issuer['phone'] || $issuer['website']))
-{{ $center(trim(implode(' · ', array_filter([$issuer['phone'], $issuer['email'], $issuer['website']]))), $width) }}
-@endif
+@foreach($fussZeilen as $fussZeile)
+{{ $center($fussZeile, $width) }}
+@endforeach
 @if(isset($data['requested_by']))
 {{ $center('Gedruckt von: ' . $data['requested_by'], $width) }}
 @endif
