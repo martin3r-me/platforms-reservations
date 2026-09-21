@@ -63,6 +63,20 @@
     }
     $ratePct = fn ($r) => rtrim(rtrim(number_format((float) $r, 1, ',', ''), '0'), ',');
 @endphp
+{{-- Die Trennlinie steht bewusst GANZ oben, vor dem Aussteller.
+
+     Laravels View-Engine gibt jede gerenderte View durch ltrim()
+     (PhpEngine::evaluatePath) - fuehrende Leerzeichen der ersten Zeile sind
+     also weg, bevor dieses Modul den Bon zu sehen bekommt. Bei einer
+     zentrierten Zeile SIND diese Leerzeichen die Zentrierung: Der Firmenname
+     klebte links, waehrend Strasse und Ort darunter mittig standen. Auch eine
+     Huelle per @include hilft nicht - die innere View laeuft durch dieselbe
+     Engine und wird ebenso beschnitten.
+
+     Eine Zeile, die mit einem sichtbaren Zeichen beginnt, macht den Schnitt
+     wirkungslos. Der Bon faengt damit zwischen zwei Belegen ohnehin sauberer
+     an. --}}
+{{ $sep }}
 @if($issuer)
 {{ $center($issuer['name'], $width) }}
 @if($issuer['street']){{ $center($issuer['street'], $width) }}
