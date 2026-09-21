@@ -127,6 +127,7 @@ class ReservationServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Reservation\Tools\EventRoomBulkCreateTool());
             $registry->register(new \Platform\Reservation\Tools\EventSlotBulkCreateTool());
             $registry->register(new \Platform\Reservation\Tools\EventPublishBulkTool());
+            $registry->register(new \Platform\Reservation\Tools\EventBulkDeleteTool());
 
             // Bulk-Tools (Stammdaten)
             $registry->register(new \Platform\Reservation\Tools\AllergenBulkCreateTool());
