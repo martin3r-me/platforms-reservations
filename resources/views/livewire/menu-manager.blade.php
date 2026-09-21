@@ -163,6 +163,11 @@
                                 <x-nx-button wire:click="submitItemForReview({{ $item->id }})">Zur Prüfung</x-nx-button>
                             @elseif ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_REVIEW)
                                 <x-nx-button variant="primary" wire:click="approveItem({{ $item->id }})">Freigeben</x-nx-button>
+                                {{-- Ohne diesen Knopf ist "In Prüfung" eine Sackgasse: Wer allein
+                                     pflegt, darf die eigene Einreichung nicht freigeben und hatte
+                                     keinen Weg zurück. Zurückziehen darf man die eigene Einreichung
+                                     immer - das umgeht keine Prüfung, es beendet sie. --}}
+                                <x-nx-button wire:click="resetItemApproval({{ $item->id }})" wire:confirm="Prüfung zurückziehen? Der Artikel geht zurück auf Entwurf.">Zurückziehen</x-nx-button>
                             @elseif ($item->approval_status === \Platform\Reservation\Models\MenuItem::APPROVAL_APPROVED)
                                 <x-nx-button wire:click="resetItemApproval({{ $item->id }})" wire:confirm="Freigabe zurückziehen?">Zurückziehen</x-nx-button>
                             @endif

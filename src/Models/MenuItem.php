@@ -20,6 +20,10 @@ class MenuItem extends Model
     /** Übersetzbare Felder (#522). */
     protected array $translatable = ['name', 'description'];
 
+    /** Gruende, aus denen der Einreicher nicht selbst freigeben darf. */
+    public const HINDERNIS_PFLICHT  = 'four_eyes';
+    public const HINDERNIS_STICHTAG = 'stichtag';
+
     public const APPROVAL_DRAFT    = 'draft';
     public const APPROVAL_REVIEW   = 'review';
     public const APPROVAL_APPROVED = 'approved';
@@ -341,22 +345,38 @@ class MenuItem extends Model
      */
     public function canBeApprovedBy(User $user): bool
     {
+        return $this->freigabeHindernis($user) === null;
+    }
+
+    /**
+     * WARUM darf dieser Mensch nicht freigeben? null = er darf.
+     *
+     * Dieselbe Regel wie canBeApprovedBy(), nur mit Begruendung. Ohne sie
+     * bekam der Einreicher immer denselben Satz zu lesen - "das muss ein
+     * anderer Mensch tun" -, auch wenn die Pflicht laengst abgeschaltet war.
+     * Das ist in dem Moment schlicht falsch: Dann haengt es am Stichtag, und
+     * der Ausweg ist ein anderer (zuruecknehmen und neu einreichen).
+     */
+    public function freigabeHindernis(User $user): ?string
+    {
         if ($this->submitted_by === null || (int) $this->submitted_by !== (int) $user->id) {
-            return true;
+            return null;
         }
 
         $setting = CheckoutSetting::forTeam((int) $this->team_id);
 
         if ($setting->fourEyesRequired()) {
-            return false;
+            return self::HINDERNIS_PFLICHT;
         }
 
         // Pflicht ist aus: die eigene Einreichung ist frei, sofern sie nach dem
         // Abschalten entstand.
         $stichtag = $setting->four_eyes_changed_at;
 
-        return $stichtag === null
+        $nachStichtag = $stichtag === null
             || ($this->submitted_at !== null && $this->submitted_at->gte($stichtag));
+
+        return $nachStichtag ? null : self::HINDERNIS_STICHTAG;
     }
 
     /**

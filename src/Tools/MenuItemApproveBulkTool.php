@@ -35,7 +35,10 @@ class MenuItemApproveBulkTool implements ToolContract, ToolMetadataContract
             . 'VIER-AUGEN: Gilt die Pflicht, werden Artikel UEBERSPRUNGEN, die der aufrufende Nutzer selbst '
             . 'zur Pruefung eingereicht hat - die muss ein anderer Mensch freigeben. Sie kommen als '
             . 'skipped_own (Ids) und skipped_own_count zurueck; das ist kein Fehler, sollte dem Nutzer aber '
-            . 'gesagt werden. Ist die Pflicht abgeschaltet, wird alles freigegeben.';
+            . 'gesagt werden. Ist die Pflicht ABGESCHALTET, bleiben nur noch eigene Einreichungen liegen, die '
+            . 'VOR dem Abschalten eingereicht wurden (skipped_stichtag / skipped_stichtag_count) - eine '
+            . 'laufende Pruefung soll nicht per Schalter umgangen werden. Weg dort: zuruecknehmen (inhaltliche '
+            . 'Aenderung per menu-items.PATCH oder "Zurueckziehen" in der Oberflaeche) und neu einreichen.';
     }
 
     public function getSchema(): array
@@ -87,7 +90,19 @@ class MenuItemApproveBulkTool implements ToolContract, ToolMetadataContract
                 ->partition(fn (MenuItem $item) => (int) $item->submitted_by !== (int) $user?->id);
 
             $erlaubt = $eigeneEinreichungen->filter(fn (MenuItem $item) => $item->canBeApprovedBy($user));
-            $eigene  = $eigeneEinreichungen->diff($erlaubt)->pluck('id')->values()->all();
+
+            // Der Grund entscheidet ueber den naechsten Schritt, deshalb zwei
+            // Toepfe statt einem: Gilt die Pflicht, muss ein zweiter Mensch ran.
+            // Haengt es am Stichtag, ist die Pflicht aus und der Artikel nur
+            // frueher eingereicht worden - dann fuehrt der Weg ueber
+            // Zuruecknehmen (menu-items.PATCH oder die Oberflaeche) und neu
+            // Einreichen. Ohne diese Trennung liest sich beides als "geht
+            // nicht wegen Vier-Augen", obwohl niemand mehr darauf wartet.
+            $gestoppt = $eigeneEinreichungen->diff($erlaubt);
+            $eigene   = $gestoppt->filter(fn (MenuItem $item) => $item->freigabeHindernis($user) === MenuItem::HINDERNIS_PFLICHT)
+                ->pluck('id')->values()->all();
+            $stichtag = $gestoppt->filter(fn (MenuItem $item) => $item->freigabeHindernis($user) === MenuItem::HINDERNIS_STICHTAG)
+                ->pluck('id')->values()->all();
 
             $query = MenuItem::withoutGlobalScope('team')
                 ->where('team_id', $teamId)
@@ -103,8 +118,11 @@ class MenuItemApproveBulkTool implements ToolContract, ToolMetadataContract
                 'approved_count' => $approved,
                 // Uebersprungenes wird gemeldet, nicht verschwiegen - sonst
                 // glaubt der Nutzer, alles stehe im Shop.
-                'skipped_own'         => $eigene,
-                'skipped_own_count'   => count($eigene),
+                'skipped_own'            => $eigene,
+                'skipped_own_count'      => count($eigene),
+                // Pflicht ist AUS, die Einreichung stammt aber von davor.
+                'skipped_stichtag'       => $stichtag,
+                'skipped_stichtag_count' => count($stichtag),
             ], ['updated' => $approved]);
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler bei der Freigabe: ' . $e->getMessage(), 'EXECUTION_ERROR');

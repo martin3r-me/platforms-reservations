@@ -60,6 +60,24 @@ class VierAugenPerWerkzeugTest extends TestCase
         $this->pflicht(false);
     }
 
+    /**
+     * Abschalten auf dem echten Weg: Anna beantragt, Bert bestaetigt. Nur so
+     * entsteht der Stichtag (four_eyes_changed_at) - pflichtAus() legt bloss
+     * den Schalter um und laesst ihn leer.
+     */
+    private function pflichtAbschalten(): void
+    {
+        // Im Test passiert alles in derselben Sekunde; dann liegt die
+        // Einreichung nicht VOR dem Stichtag und die Sperre greift nicht.
+        // Also die Uhr weiterstellen, wie es im Betrieb ohnehin ist: erst
+        // eingereicht, spaeter abgeschaltet.
+        $this->travel(5)->minutes();
+
+        $einstellung = CheckoutSetting::forTeam(1);
+        $einstellung->requestFourEyesOff($this->anna);
+        $einstellung->confirmFourEyesOff($this->bert);
+    }
+
     private function pflicht(bool $an): void
     {
         $einstellung = CheckoutSetting::forTeam(1);
@@ -156,6 +174,51 @@ class VierAugenPerWerkzeugTest extends TestCase
         $artikel->submitForReview($this->anna);
 
         $this->assertTrue($artikel->canBeApprovedBy($this->anna));
+    }
+
+    /* ------------------------------------------------------------------
+     | Warum gesperrt? Der Grund entscheidet ueber den naechsten Schritt
+     ------------------------------------------------------------------ */
+
+    public function test_mit_pflicht_nennt_die_sperre_die_pflicht(): void
+    {
+        $artikel = $this->artikel();
+        $artikel->submitForReview($this->anna);
+
+        $this->assertSame(MenuItem::HINDERNIS_PFLICHT, $artikel->freigabeHindernis($this->anna));
+        $this->assertNull($artikel->freigabeHindernis($this->bert));
+    }
+
+    public function test_nach_dem_abschalten_nennt_die_sperre_den_stichtag(): void
+    {
+        // Der Fall aus dem Betrieb: Der Artikel lag in Pruefung, DANN wurde die
+        // Pflicht abgeschaltet. Er bleibt gesperrt - aber aus einem anderen
+        // Grund, und mit einem anderen Ausweg: zuruecknehmen, neu einreichen.
+        //
+        // Ohne diese Unterscheidung las der Einreicher "das muss ein anderer
+        // Mensch tun", obwohl niemand mehr darauf wartete.
+        $artikel = $this->artikel();
+        $artikel->submitForReview($this->anna);
+
+        $this->pflichtAbschalten();
+
+        $this->assertSame(MenuItem::HINDERNIS_STICHTAG, $artikel->fresh()->freigabeHindernis($this->anna));
+        $this->assertFalse($artikel->fresh()->canBeApprovedBy($this->anna));
+    }
+
+    public function test_nach_dem_abschalten_neu_eingereicht_ist_frei(): void
+    {
+        $artikel = $this->artikel();
+        $artikel->submitForReview($this->anna);
+
+        $this->pflichtAbschalten();
+
+        // Der Weg aus der Sackgasse: zurueck auf Entwurf, neu einreichen.
+        $artikel->resetApproval();
+        $artikel->fresh()->submitForReview($this->anna);
+
+        $this->assertNull($artikel->fresh()->freigabeHindernis($this->anna));
+        $this->assertTrue($artikel->fresh()->canBeApprovedBy($this->anna));
     }
 
     /* ------------------------------------------------------------------

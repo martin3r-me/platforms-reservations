@@ -630,10 +630,21 @@ class MenuManager extends Component
     {
         $item = MenuItem::findOrFail($id);
 
-        if (!$item->approve(Auth::user())) {
-            session()->flash('menu_error', 'Vier-Augen-Prinzip: Die Freigabe muss durch eine andere Person erfolgen als die Einreichung.');
+        // Der Grund gehoert in die Meldung. "Das muss ein anderer Mensch tun"
+        // stimmt nur, solange die Pflicht gilt; haengt es am Stichtag, ist die
+        // Pflicht aus und der Satz verwirrt mehr, als er hilft - dort fuehrt
+        // der Weg ueber Zuruecknehmen und neu Einreichen.
+        if ($hindernis = $item->freigabeHindernis(Auth::user())) {
+            session()->flash('menu_error', match ($hindernis) {
+                MenuItem::HINDERNIS_STICHTAG => 'Diese Einreichung lief noch unter der Vier-Augen-Pflicht. '
+                    . 'Zieh sie zurück und reiche sie neu ein – dann kannst du selbst freigeben.',
+                default => 'Vier-Augen-Prinzip: Die Freigabe muss durch eine andere Person erfolgen als die Einreichung.',
+            });
+
             return;
         }
+
+        $item->approve(Auth::user());
 
         unset($this->categories);
     }
