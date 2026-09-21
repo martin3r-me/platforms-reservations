@@ -226,8 +226,16 @@
         </div>
 
         <x-slot name="footer">
+            {{-- Waehrend gespeichert wird, sind die Knöpfe aus: Ein Bild wird
+                 beim Hochladen nach WebP umgerechnet, das dauert spürbar - und
+                 ein zweiter Klick in dieser Zeit legte den Eintrag früher ein
+                 zweites Mal an. --}}
+            <span wire:loading.flex wire:target="saveCategory, categoryImage" class="mr-auto items-center gap-1.5 text-xs text-[color:var(--nx-muted)]">
+                @svg('heroicon-o-arrow-path', 'w-3.5 h-3.5 animate-spin')
+                Wird gespeichert…
+            </span>
             <x-nx-button wire:click="$set('showCategoryForm', false)">Abbrechen</x-nx-button>
-            <x-nx-button variant="primary" wire:click="saveCategory">Speichern</x-nx-button>
+            <x-nx-button variant="primary" wire:click="saveCategory" wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none" wire:target="saveCategory, categoryImage">Speichern</x-nx-button>
         </x-slot>
     </x-nx-modal>
 
@@ -557,11 +565,19 @@
         </div>
 
         <x-slot name="footer">
+            {{-- Waehrend gespeichert wird, sind die Knöpfe aus: Ein Bild wird
+                 beim Hochladen nach WebP umgerechnet, das dauert spürbar - und
+                 ein zweiter Klick in dieser Zeit legte den Eintrag früher ein
+                 zweites Mal an. --}}
+            <span wire:loading.flex wire:target="saveItem, itemImage" class="mr-auto items-center gap-1.5 text-xs text-[color:var(--nx-muted)]">
+                @svg('heroicon-o-arrow-path', 'w-3.5 h-3.5 animate-spin')
+                Wird gespeichert…
+            </span>
             <x-nx-button wire:click="$set('showItemForm', false)">Abbrechen</x-nx-button>
             @unless ($editingItemId)
-                <x-nx-button wire:click="saveItem(true)">Speichern &amp; Neu</x-nx-button>
+                <x-nx-button wire:click="saveItem(true)" wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none" wire:target="saveItem, itemImage">Speichern &amp; Neu</x-nx-button>
             @endunless
-            <x-nx-button variant="primary" wire:click="saveItem">Speichern</x-nx-button>
+            <x-nx-button variant="primary" wire:click="saveItem" wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none" wire:target="saveItem, itemImage">Speichern</x-nx-button>
         </x-slot>
     </x-nx-modal>
 

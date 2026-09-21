@@ -301,6 +301,13 @@ class MenuManager extends Component
 
     public function saveCategory(): void
     {
+        // Zweiter Klick auf ein bereits gespeichertes Formular - siehe
+        // saveItem(). Auch die Kategorie traegt ein Bild und speichert
+        // dadurch spuerbar lange.
+        if (! $this->showCategoryForm) {
+            return;
+        }
+
         $this->validate([
             'categoryName'  => 'required|string|max:255',
             'categoryImage' => 'nullable|image|max:20480',
@@ -326,6 +333,8 @@ class MenuManager extends Component
 
         $this->showCategoryForm = false;
         $this->editingCategoryId = null;
+        $this->categoryName = '';
+        $this->categoryDescription = '';
         unset($this->categories);
     }
 
@@ -417,6 +426,20 @@ class MenuManager extends Component
 
     public function saveItem(bool $createAnother = false): void
     {
+        // Ist das Formular schon zu, ist dieser Aufruf ein zweiter Klick auf
+        // denselben Knopf.
+        //
+        // Das passiert, wenn das Speichern spuerbar dauert - ein Produktbild
+        // wird beim Hochladen nach WebP gewandelt, und bis die Antwort kommt,
+        // steht das Formular offen da, als waere nichts geschehen. Wer dann
+        // noch einmal klickt, traf bisher auf einen Stand, in dem zwar
+        // editingItemId geleert, das Formular aber noch gefuellt war: Der
+        // zweite Klick legte den Artikel ein zweites Mal an, als Entwurf,
+        // neben dem soeben gespeicherten.
+        if (! $this->showItemForm) {
+            return;
+        }
+
         $this->validate([
             'itemCategoryId' => ['required', 'integer', Rule::exists('reservation_menu_categories', 'id')->where('team_id', $this->getTeamId())],
             'itemHoldingClassId' => ['nullable', 'integer', Rule::exists('reservation_holding_classes', 'id')->where('team_id', $this->getTeamId())],
@@ -571,6 +594,9 @@ class MenuManager extends Component
         } else {
             $this->showItemForm = false;
             $this->editingItemId = null;
+            // Mitgeleert, nicht nur zugeklappt: Ein gefuelltes Formular ohne
+            // editingItemId ist eine Neuanlage in Wartestellung.
+            $this->resetItemForm();
         }
 
         unset($this->categories);
