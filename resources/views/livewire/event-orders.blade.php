@@ -39,23 +39,16 @@
             @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'kitchen'])
         </div>
 
-        @php $totals = $this->slotStats->get(0); @endphp
-        {{-- dünne Kennzahl-Zeile --}}
-        <div class="flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-[color:var(--nx-line)] pb-3">
-            <div>
-                <div class="text-xl font-bold leading-none tabular-nums text-[color:var(--nx-text)]">{{ $totals?->bookings ?? 0 }}</div>
-                <div class="mt-1 text-xs text-[color:var(--nx-muted)]">Buchungen</div>
-            </div>
-            <div>
-                <div class="text-xl font-bold leading-none tabular-nums text-[color:var(--nx-text)]">{{ $totals?->guests ?? 0 }}</div>
-                <div class="mt-1 text-xs text-[color:var(--nx-muted)]">Gäste</div>
-            </div>
-            <div>
-                <div class="text-xl font-bold leading-none tabular-nums text-[color:var(--nx-text)]">{{ $this->event->slots->count() }}</div>
-                <div class="mt-1 text-xs text-[color:var(--nx-muted)]">{{ $this->event->slots->count() === 1 ? 'Pause' : 'Pausen' }}</div>
-            </div>
-            <span class="ml-auto text-xs text-[color:var(--nx-faint)]">ohne Stornos / No-Shows</span>
-        </div>
+        @php
+            $totals = $this->slotStats->get(0);
+            $pausen = $this->event->slots->count();
+            $tiles  = [
+                ['Buchungen', $totals?->bookings ?? 0],
+                ['Gäste', $totals?->guests ?? 0],
+                [$pausen === 1 ? 'Pause' : 'Pausen', $pausen],
+            ];
+        @endphp
+        @include('reservation::partials.event-kennzahlen', ['tiles' => $tiles, 'note' => 'ohne Stornos / No-Shows'])
 
         {{-- Vorbereitungsplan: pro Pause → Standzeit-Klasse (Timing) → Mengen --}}
         @forelse ($this->prepBySlot as $slot)
@@ -87,9 +80,13 @@
                             </div>
                             <div class="space-y-1">
                                 @foreach ($g['items'] as $it)
-                                    <div class="flex items-center justify-between gap-3">
+                                    {{-- Menge links, nicht rechts: Zwischen "Petit Fours / Macarons"
+                                         und einer Zahl am rechten Rand liegt die halbe Bildschirmbreite,
+                                         und in der Kueche verrutscht die Zeile beim Lesen. Links stehen
+                                         die Mengen untereinander und lassen sich in einem Blick abzaehlen. --}}
+                                    <div class="flex items-baseline gap-3">
+                                        <span class="w-10 shrink-0 text-lg font-bold tabular-nums text-[color:var(--nx-text)]">{{ $it['qty'] }}×</span>
                                         <span class="min-w-0 truncate text-sm text-[color:var(--nx-text)]">{{ $it['name'] }}</span>
-                                        <span class="shrink-0 text-lg font-bold tabular-nums text-[color:var(--nx-text)]">{{ $it['qty'] }}×</span>
                                     </div>
                                 @endforeach
                             </div>

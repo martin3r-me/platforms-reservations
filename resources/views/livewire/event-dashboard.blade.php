@@ -76,15 +76,7 @@
             <x-nx-callout variant="success">{{ session('event_message') }}</x-nx-callout>
         @endif
 
-        {{-- Kennzahlen --}}
-        <div class="grid grid-cols-2 gap-x-4 gap-y-4 border-y border-[color:var(--nx-line)] py-4 sm:grid-cols-4">
-            @foreach ($tiles as [$label, $value])
-                <div wire:key="stat-{{ $loop->index }}">
-                    <div class="text-2xl font-bold leading-none tabular-nums text-[color:var(--nx-text)]">{{ $value }}</div>
-                    <div class="mt-1.5 text-xs text-[color:var(--nx-muted)]">{{ $label }}</div>
-                </div>
-            @endforeach
-        </div>
+        @include('reservation::partials.event-kennzahlen', ['tiles' => $tiles])
 
         {{-- Was gerade passiert, VOR dem, was passiert ist.
 
