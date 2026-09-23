@@ -67,9 +67,7 @@
 
     <div class="space-y-6">
 
-        @include('reservation::partials.event-header', ['event' => $this->event])
-
-        @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'dashboard'])
+        @include('reservation::partials.event-kopf', ['event' => $this->event, 'active' => 'dashboard'])
 
         @if (session('booking_message'))
             <x-nx-callout variant="success">{{ session('booking_message') }}</x-nx-callout>

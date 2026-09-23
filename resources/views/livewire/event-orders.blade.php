@@ -19,7 +19,7 @@
 
     <x-ui-page-container width="contained">
     @include('reservation::partials.print-styles')
-    <div id="pp-print" class="space-y-5">
+    <div id="pp-print" class="space-y-6">
 
         {{-- Nur auf Papier: Auf dem Schirm sagen Navigation und Reiter, wo man
              ist – im Ausdruck fehlen beide, und ohne Kopf wüsste niemand, zu
@@ -33,11 +33,7 @@
             </p>
         </div>
 
-        @include('reservation::partials.event-header', ['event' => $this->event])
-
-        <div class="pp-no-print">
-            @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'kitchen'])
-        </div>
+        @include('reservation::partials.event-kopf', ['event' => $this->event, 'active' => 'kitchen'])
 
         @php
             $totals = $this->slotStats->get(0);

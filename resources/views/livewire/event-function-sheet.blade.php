@@ -19,7 +19,7 @@
 
     <x-ui-page-container width="contained">
     @include('reservation::partials.print-styles')
-    <div id="pp-print" class="space-y-5">
+    <div id="pp-print" class="space-y-6">
 
         {{-- Nur auf Papier: Auf dem Schirm sagen Navigation und Reiter, wo man
              ist – im Ausdruck fehlen beide, und ohne Kopf wüsste niemand, zu
@@ -37,14 +37,11 @@
 
         {{-- Stand als dritte Zeile: Der Zettel ist eine Momentaufnahme, und
              was waehrend des Abends dazukommt, steht nicht drin. --}}
-        @include('reservation::partials.event-header', [
+        @include('reservation::partials.event-kopf', [
             'event'   => $this->event,
+            'active'  => 'function',
             'hinweis' => 'Stand ' . $sheet['generated_at']->format('d.m.Y H:i') . ' Uhr',
         ])
-
-        <div class="pp-no-print">
-            @include('reservation::partials.event-tabs', ['event' => $this->event, 'active' => 'function'])
-        </div>
 
         @forelse ($sheet['pauses'] as $pause)
             <x-nx-card flush wire:key="fs-pause-{{ $loop->index }}">
