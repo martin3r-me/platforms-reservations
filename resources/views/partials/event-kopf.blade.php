@@ -8,11 +8,10 @@
      Der Abstand gehoert dem Paar, nicht der Seite. Er steht hier, und damit
      kann keine Seite ihn mehr verstellen.
 
-     Aus demselben Grund steht $hinweis UNTER den Reitern und nicht als dritte
-     Kopfzeile darueber: Der Laufzettel nennt dort seinen Stand, und eine Zeile
-     mehr im Kopf schob seine Leiste um mehr als die vier Pixel nach unten, um
-     die es hier ueberhaupt geht. Unter den Reitern gehoert sie ohnehin besser
-     hin - sie beschreibt den Inhalt dieser Seite, nicht den Termin.
+     Aus demselben Grund traegt $hinweis die Reiterleiste selbst, rechts auf
+     Hoehe der Reiter: Als eigene Zeile - ob ueber oder unter der Leiste -
+     kostete er Hoehe, und die Leiste sass auf dem Laufzettel tiefer als
+     anderswo. Genau das Problem, um das es hier geht.
 
      Erwartet: $event, $active ('dashboard'|'kitchen'|'function').
      Optional: $hinweis.
@@ -20,14 +19,9 @@
 <div class="pp-no-print space-y-6">
     @include('reservation::partials.event-header', ['event' => $event])
 
-    <div>
-        @include('reservation::partials.event-tabs', [
-            'event'  => $event,
-            'active' => $active,
-        ])
-
-        @if (! empty($hinweis))
-            <p class="m-0 mt-2 text-xs text-[color:var(--nx-faint)]">{{ $hinweis }}</p>
-        @endif
-    </div>
+    @include('reservation::partials.event-tabs', [
+        'event'   => $event,
+        'active'  => $active,
+        'hinweis' => $hinweis ?? null,
+    ])
 </div>

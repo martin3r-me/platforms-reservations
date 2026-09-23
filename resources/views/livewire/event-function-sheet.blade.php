@@ -40,7 +40,11 @@
         @include('reservation::partials.event-kopf', [
             'event'   => $this->event,
             'active'  => 'function',
-            'hinweis' => 'Stand ' . $sheet['generated_at']->format('d.m.Y H:i') . ' Uhr',
+            // Kurz halten: Die Angabe teilt sich die Zeile mit den Reitern.
+            // Am selben Tag sagt die Uhrzeit alles.
+            'hinweis' => 'Stand ' . ($sheet['generated_at']->isToday()
+                ? $sheet['generated_at']->format('H:i') . ' Uhr'
+                : $sheet['generated_at']->format('d.m.Y H:i') . ' Uhr'),
         ])
 
         @forelse ($sheet['pauses'] as $pause)

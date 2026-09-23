@@ -79,6 +79,19 @@
                ja gerade weg. */
             .pp-print-only { display: block !important; }
 
+            /* Kennzahlen in EINE Reihe. Am Bildschirm sind es zwei mal zwei,
+               weil ein Telefon nicht vier nebeneinander traegt - auf Papier
+               ist die Breite da, und zwei Reihen hohe Kacheln kosten den
+               halben oberen Seitenrand, bevor die erste Pause anfaengt.
+               Dazu enger gesetzt: Auf Papier wird nichts angeklickt, die
+               Polsterung fuer den Finger ist dort verschenkt. */
+            .pp-kennzahlen {
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+                gap: 6px !important;
+            }
+            .pp-kennzahlen > * { padding: 6px 8px !important; }
+            .pp-kennzahlen > * > * { margin-top: 2px !important; }
+
             /* Nichts mitten im Eintrag umbrechen. */
             section, tr, li { break-inside: avoid; page-break-inside: avoid; }
             thead { display: table-header-group; }

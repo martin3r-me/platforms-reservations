@@ -5,8 +5,11 @@
     genau das war passiert: Buchungen hatte eine Überschrift, Küche gar keine,
     der Laufzettel eine kleine graue Zeile unter den Reitern.
 
-    Erwartet: $event (Event). Optional: $hinweis (string) für eine dritte,
-    seitenspezifische Zeile – der Laufzettel nennt dort seinen Stand.
+    Erwartet: $event (Event).
+
+    Bewusst OHNE seitenspezifische Zusatzzeile: Die kostete eine Zeile Hoehe,
+    und damit sass die Reiterleiste auf dem Laufzettel tiefer als anderswo.
+    Was nur eine Seite betrifft, steht in der Reiterleiste (siehe event-tabs).
 
     Steht bewusst NICHT im Ausdruck: Dort trägt jede Seite ihre eigene
     Druck-Kopfzeile, die Angaben würden sich sonst doppeln.
@@ -81,8 +84,4 @@
             · <span class="text-[color:var(--nx-faint)]">Kein Bestellschluss gesetzt</span>
         @endif
     </p>
-
-    @if (! empty($hinweis))
-        <p class="m-0 mt-1 text-xs text-[color:var(--nx-faint)]">{{ $hinweis }}</p>
-    @endif
 </div>
