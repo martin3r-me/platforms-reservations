@@ -42,13 +42,20 @@
         @php
             $totals = $this->slotStats->get(0);
             $pausen = $this->event->slots->count();
-            $tiles  = [
-                ['Buchungen', $totals?->bookings ?? 0],
-                ['Gäste', $totals?->guests ?? 0],
-                [$pausen === 1 ? 'Pause' : 'Pausen', $pausen],
+            // Vierte Kachel: was insgesamt rausgehen muss. Die Kueche fragt
+            // zuerst nach der Menge, nicht nach den Buchungen - und die Reihe
+            // fuellt sich damit genauso wie unter "Buchungen", wo der Umsatz
+            // an dieser Stelle steht.
+            $artikel = (int) $this->prepBySlot->sum('total');
+            $ohne    = 'ohne Stornos / No-Shows';
+            $tiles   = [
+                ['Buchungen', $totals?->bookings ?? 0, $ohne],
+                ['Gäste', $totals?->guests ?? 0, $ohne],
+                ['Artikel', $artikel, $ohne],
+                [$pausen === 1 ? 'Pause' : 'Pausen', $pausen, null],
             ];
         @endphp
-        @include('reservation::partials.event-kennzahlen', ['tiles' => $tiles, 'note' => 'ohne Stornos / No-Shows'])
+        @include('reservation::partials.event-kennzahlen', ['tiles' => $tiles])
 
         {{-- Vorbereitungsplan: pro Pause → Standzeit-Klasse (Timing) → Mengen --}}
         @forelse ($this->prepBySlot as $slot)

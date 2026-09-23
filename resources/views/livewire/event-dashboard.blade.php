@@ -52,11 +52,16 @@
         $currency = strtoupper((string) config('reservation.currency', 'EUR'));
         $sym = $currency === 'EUR' ? '€' : $currency;
         $s = $this->stats;
+        // Der Hinweis haengt an jeder Zahl, fuer die er gilt - und nicht
+        // einmal unter der Reihe. stats() zaehlt Stornos und No-Shows
+        // ueberall heraus; ohne den Zusatz liest man "3 Buchungen" als
+        // alles, was je gebucht wurde.
+        $ohne  = 'ohne Stornos / No-Shows';
         $tiles = [
-            ['Buchungen', $s['bookings']],
-            ['Gäste', $s['guests']],
-            ['Umsatz', number_format($s['revenue'], 2, ',', '.') . ' ' . $sym],
-            [$s['pauses'] === 1 ? 'Pause' : 'Pausen', $s['pauses']],
+            ['Buchungen', $s['bookings'], $ohne],
+            ['Gäste', $s['guests'], $ohne],
+            ['Umsatz', number_format($s['revenue'], 2, ',', '.') . ' ' . $sym, $ohne],
+            [$s['pauses'] === 1 ? 'Pause' : 'Pausen', $s['pauses'], null],
         ];
     @endphp
 
