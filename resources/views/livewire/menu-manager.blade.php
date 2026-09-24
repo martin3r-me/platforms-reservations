@@ -43,7 +43,9 @@
     </x-slot>
 
     <x-ui-page-container width="contained">
-    <div class="space-y-5">
+    <div class="space-y-5" x-data="{ bild: { offen: false, src: '', name: '' } }">
+
+    @include('reservation::partials.bild-lightbox')
 
     @if (session('menu_message'))
         <x-nx-callout variant="success">{{ session('menu_message') }}</x-nx-callout>
@@ -93,8 +95,19 @@
                 @foreach ($category->menuItems as $item)
                     <div wire:key="item-{{ $item->id }}" class="group flex items-center border-b border-[color:var(--nx-line)] px-4 py-2.5 transition-colors last:border-0 hover:bg-[color:var(--nx-hover)]">
                         @if ($item->image_context_file_id && $item->imageFile)
-                            <img src="{{ $item->imageUrl('thumbnail_1_1') }}" alt=""
-                                class="mr-3 h-12 w-12 shrink-0 rounded-[8px] object-cover" />
+                            {{-- Gross ansehen: In 48 Pixeln sieht man nicht, ob das
+                                 richtige Gericht drauf ist und ob der Anschnitt sitzt.
+                                 Genau die Frage steht vor einer Freigabe an.
+                                 medium_1_1 statt der Vorschau - das ist die Groesse,
+                                 wegen der man ueberhaupt klickt. --}}
+                            <button type="button"
+                                    class="pp-bild-knopf mr-3 h-12 w-12 shrink-0"
+                                    @click="bild = { offen: true, src: @js($item->imageUrl('medium_1_1')), name: @js($item->name) }"
+                                    aria-label="Bild von {{ $item->name }} gross ansehen">
+                                <img src="{{ $item->imageUrl('thumbnail_1_1') }}" alt=""
+                                     class="h-12 w-12 object-cover" />
+                                <span class="pp-bild-lupe">@svg('heroicon-o-magnifying-glass-plus', 'w-5 h-5')</span>
+                            </button>
                         @else
                             <div class="mr-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--nx-bg)] text-[color:var(--nx-faint)]">
                                 @svg('heroicon-o-photo', 'w-5 h-5 opacity-40')
