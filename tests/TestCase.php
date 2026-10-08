@@ -2,6 +2,8 @@
 
 namespace Platform\Reservation\Tests;
 
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -47,11 +49,40 @@ abstract class TestCase extends BaseTestCase
         $app['config']->set('database.connections.testing.foreign_key_constraints', true);
     }
 
+    /**
+     * Fester Zeitpunkt fuer die ganze Suite.
+     *
+     * Die Testdaten tragen feste Termindaten (2026-10-01). Solange die Uhr
+     * laeuft, wandern die irgendwann in die Vergangenheit - und dann schlagen
+     * Tests fehl, an deren Code niemand etwas geaendert hat: "Termin darf
+     * veroeffentlicht werden" verlangt plotzlich ein Datum in der Zukunft,
+     * "Station ist noch eingeplant" findet keinen anstehenden Termin mehr.
+     * Genau das ist am 08.10.2026 passiert.
+     *
+     * Der Punkt liegt bewusst VOR den Termindaten, damit "anstehend" auch
+     * anstehend heisst. Wer neue Testdaten anlegt, richtet sich danach.
+     */
+    protected const JETZT = '2026-09-01 10:00:00';
+
     protected function setUp(): void
     {
         parent::setUp();
 
+        // Vor allem anderen: Was in setUp noch angelegt wird, soll schon die
+        // feste Uhr sehen.
+        CarbonImmutable::setTestNow(self::JETZT);
+        Carbon::setTestNow(self::JETZT);
+
         DB::statement('PRAGMA foreign_keys = ON');
+    }
+
+    protected function tearDown(): void
+    {
+        // Sonst traegt der naechste Test die Uhr des vorigen weiter.
+        Carbon::setTestNow();
+        CarbonImmutable::setTestNow();
+
+        parent::tearDown();
     }
 
     protected function defineDatabaseMigrations(): void
