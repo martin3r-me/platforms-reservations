@@ -127,6 +127,7 @@ class CheckoutSettings extends Component
         $this->datevErloes7          = (string) ($setting->datev_erloes_7 ?? '');
         $this->datevErloes19         = (string) ($setting->datev_erloes_19 ?? '');
         $this->datevGeldkonto        = (string) ($setting->datev_geldkonto ?? '');
+        $this->datevKostenstelle     = (string) ($setting->datev_kostenstelle ?? '');
         $this->datevModus            = (string) ($setting->datev_modus ?: CheckoutSetting::DATEV_EINZEL);
 
         $this->revenueIncludesNoShow = (bool) $setting->revenue_includes_no_show;
@@ -155,6 +156,25 @@ class CheckoutSettings extends Component
     public string $datevErloes7 = '';
     public string $datevErloes19 = '';
     public string $datevGeldkonto = '';
+    public string $datevKostenstelle = '';
+
+    /**
+     * Konten, deren Stellenzahl nicht zur gewählten Sachkontenlänge passt.
+     *
+     * Aus den FORMULARWERTEN und nicht aus dem gespeicherten Satz: Wer die
+     * Länge gerade von 4 auf 6 stellt, soll den Hinweis sofort sehen und nicht
+     * erst nach dem Speichern.
+     *
+     * @return array<int, string>
+     */
+    public function datevKontenHinweis(): array
+    {
+        return CheckoutSetting::datevKontenlaengeAbweichung((int) $this->datevSachkontenlaenge, [
+            'Erlöskonto 7 %'               => $this->datevErloes7,
+            'Erlöskonto 19 %'              => $this->datevErloes19,
+            'Gegenkonto (Zahlungseingang)' => $this->datevGeldkonto,
+        ]);
+    }
     public string $datevModus = 'einzel';
 
     /** Zaehlen No-Shows zum Umsatz? Siehe CheckoutSetting::umsatzStatus(). */
@@ -261,11 +281,13 @@ class CheckoutSettings extends Component
             'soft_table_capacity'       => $this->softTableCapacity,
             'datev_berater'             => trim($this->datevBerater) ?: null,
             'datev_mandant'             => trim($this->datevMandant) ?: null,
-            'datev_sachkontenlaenge'    => in_array($this->datevSachkontenlaenge, [4, 5], true) ? $this->datevSachkontenlaenge : 4,
+            'datev_sachkontenlaenge'    => in_array($this->datevSachkontenlaenge, CheckoutSetting::DATEV_SACHKONTENLAENGEN, true)
+                ? $this->datevSachkontenlaenge : 4,
             'datev_wj_beginn'           => preg_match('/^\d{2}-\d{2}$/', $this->datevWjBeginn) ? $this->datevWjBeginn : '01-01',
             'datev_erloes_7'            => trim($this->datevErloes7) ?: null,
             'datev_erloes_19'           => trim($this->datevErloes19) ?: null,
             'datev_geldkonto'           => trim($this->datevGeldkonto) ?: null,
+            'datev_kostenstelle'        => trim($this->datevKostenstelle) ?: null,
             'datev_modus'               => in_array($this->datevModus, [CheckoutSetting::DATEV_EINZEL, CheckoutSetting::DATEV_TAGESSUMME], true)
                 ? $this->datevModus : CheckoutSetting::DATEV_EINZEL,
             'revenue_includes_no_show'  => $this->revenueIncludesNoShow,

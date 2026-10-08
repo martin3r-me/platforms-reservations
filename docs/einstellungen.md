@@ -94,9 +94,19 @@ Mehr dazu in [Bestellungen, Zahlung und Storno](bestellungen.md).
 | Einstellung | Wirkung | Vorgabe |
 |---|---|---|
 | **Berater, Mandant, Erlöskonten 7 % und 19 %, Geldkonto** | Pflichtangaben für den Buchungsstapel | leer. Der Export nennt, was fehlt |
-| **Sachkontenlänge** | Stellen der Konten | 4 |
+| **Sachkontenlänge** | Stellen der Konten, 4 bis 8 | 4 |
+| **Kostenstelle (KOST1)** | steht in jeder Buchungszeile; leer lassen, wenn ohne Kostenrechnung gebucht wird | leer |
 | **Wirtschaftsjahr-Beginn** | Monat und Tag | 1. Januar |
 | **Buchungsstil** | Einzelbuchungen oder Tagessumme | Einzelbuchungen |
+
+Die Sachkontenlänge steht im Kopf der Datei und sagt DATEV, wie die Kontonummern zu
+lesen sind. Steht dort 6 und in den Feldern noch die alten vierstelligen Konten, bucht
+DATEV auf ein anderes Konto oder weist den Stapel zurück — die Einstellungen warnen
+deshalb, wenn ein Konto nicht die eingestellte Stellenzahl hat. Eine Sperre ist das
+nicht: Welche Konten gültig sind, weiß der Kontenrahmen.
+
+Die Kostenstelle gilt für das ganze Haus. Je Raum oder Veranstaltung eine eigene gibt
+es noch nicht.
 
 ## Zahlung (Mollie)
 

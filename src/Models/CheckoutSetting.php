@@ -85,6 +85,7 @@ class CheckoutSetting extends Model
         'datev_erloes_7',
         'datev_erloes_19',
         'datev_geldkonto',
+        'datev_kostenstelle',
         'datev_modus',
         'revenue_includes_no_show',
     ];
@@ -585,6 +586,49 @@ class CheckoutSetting extends Model
     public function datevReady(): bool
     {
         return $this->datevMissing() === [];
+    }
+
+    /** Zulaessige Sachkontenlaengen laut DATEV-Formatbeschreibung. */
+    public const DATEV_SACHKONTENLAENGEN = [4, 5, 6, 7, 8];
+
+    /**
+     * Konten, deren Stellenzahl nicht zur eingestellten Sachkontenlänge passt.
+     *
+     * Die Länge steht im Kopf der Datei und sagt DATEV, wie die Kontonummern
+     * zu lesen sind. Steht dort 6 und im Feld „8400", liest DATEV das als ein
+     * anderes Konto – oder weist den Stapel zurück. Beides merkt erst die
+     * Kanzlei, und dann ist der Monat schon gebucht.
+     *
+     * Bewusst nur ein Hinweis und keine Sperre: Welche Konten gültig sind,
+     * weiß der Kontenrahmen, nicht wir. Ein Export, der wegen unserer Annahme
+     * nicht läuft, wäre schlimmer als eine Warnung, die jemand kennt und
+     * übergeht.
+     *
+     * Statisch und mit uebergebenen Werten, damit auch das Formular fragen
+     * kann, bevor gespeichert ist - der Hinweis soll beim Tippen stimmen.
+     *
+     * @param  array<string, ?string>  $konten  Feldname => Kontonummer
+     * @return array<int, string> sprechende Feldnamen
+     */
+    public static function datevKontenlaengeAbweichung(int $laenge, array $konten): array
+    {
+        $abweichend = [];
+
+        foreach ($konten as $name => $wert) {
+            $wert = trim((string) $wert);
+
+            // Leere Felder meldet datevMissing(), nicht diese Prüfung - zwei
+            // Meldungen fuer denselben Mangel sind eine zu viel.
+            if ($wert === '') {
+                continue;
+            }
+
+            if (mb_strlen($wert) !== $laenge) {
+                $abweichend[] = $name;
+            }
+        }
+
+        return $abweichend;
     }
 
     /**

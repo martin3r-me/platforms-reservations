@@ -144,6 +144,7 @@ class DatevBuchungsstapel
                 'belegdatum'  => $eintrag['datum']->format('dm'),
                 'belegfeld1'  => mb_substr($eintrag['beleg'], 0, 36),
                 'buchungstext'=> mb_substr(self::sauber($eintrag['text']), 0, 60),
+                'kost1'       => mb_substr(self::sauber((string) $einst->datev_kostenstelle), 0, 36),
             ];
         }
 
@@ -202,13 +203,20 @@ class DatevBuchungsstapel
     /**
      * Spaltenüberschriften laut Formatbeschreibung.
      *
-     * Nur so viele, wie hier tatsächlich gefüllt werden – DATEV liest die Datei
-     * über die Reihenfolge der Felder, nicht über die Namen, und weitere leere
-     * Spalten bringen nichts als Länge.
+     * DATEV liest die Datei über die REIHENFOLGE der Felder, nicht über die
+     * Namen. Die Kostenstelle ist Feld 37 – deshalb stehen hier jetzt auch die
+     * Felder 15 bis 36, obwohl keines davon gefüllt wird. Liesse man sie weg,
+     * landete die Kostenstelle in „Beleginfo – Inhalt 8", und ob das auffällt,
+     * entscheidet sich erst beim Import in der Kanzlei.
+     *
+     * Vorher reichten 14 Spalten, weil hinter dem Buchungstext nichts kam.
+     *
+     * @return array<int, string>
      */
-    protected static function ueberschriften(): string
+    public static function spalten(): array
     {
-        return implode(';', array_map(fn ($n) => self::t($n), [
+        return [
+            // 1-14: der Buchungssatz selbst
             'Umsatz (ohne Soll/Haben-Kz)',
             'Soll/Haben-Kennzeichen',
             'WKZ Umsatz',
@@ -223,13 +231,52 @@ class DatevBuchungsstapel
             'Belegfeld 2',
             'Skonto',
             'Buchungstext',
-        ]));
+            // 15-20: Steuerung und Verweise, hier ungenutzt
+            'Postensperre',
+            'Diverse Adressnummer',
+            'Geschäftspartnerbank',
+            'Sachverhalt',
+            'Zinssperre',
+            'Beleglink',
+            // 21-36: Beleginfo Art/Inhalt 1-8, hier ungenutzt
+            'Beleginfo - Art 1',
+            'Beleginfo - Inhalt 1',
+            'Beleginfo - Art 2',
+            'Beleginfo - Inhalt 2',
+            'Beleginfo - Art 3',
+            'Beleginfo - Inhalt 3',
+            'Beleginfo - Art 4',
+            'Beleginfo - Inhalt 4',
+            'Beleginfo - Art 5',
+            'Beleginfo - Inhalt 5',
+            'Beleginfo - Art 6',
+            'Beleginfo - Inhalt 6',
+            'Beleginfo - Art 7',
+            'Beleginfo - Inhalt 7',
+            'Beleginfo - Art 8',
+            'Beleginfo - Inhalt 8',
+            // 37: hier steht die Kostenstelle
+            'KOST1 - Kostenstelle',
+        ];
     }
 
-    /** Ein Buchungssatz als Zeile. */
+    /** Position der Kostenstelle, 1-basiert – für den Test und zum Nachlesen. */
+    public const FELD_KOST1 = 37;
+
+    protected static function ueberschriften(): string
+    {
+        return implode(';', array_map(fn ($n) => self::t($n), self::spalten()));
+    }
+
+    /**
+     * Ein Buchungssatz als Zeile.
+     *
+     * Die Zahl der Felder muss zu {@see spalten()} passen – die leeren Felder
+     * 15 bis 36 sind kein Füllwerk, sie halten die Kostenstelle auf Platz 37.
+     */
     protected static function zeile(array $satz): string
     {
-        return implode(';', [
+        $felder = [
             self::t($satz['umsatz']),
             self::t($satz['soll_haben']),
             self::t('EUR'),
@@ -244,7 +291,16 @@ class DatevBuchungsstapel
             '',                       // Belegfeld 2
             '',                       // Skonto
             self::t($satz['buchungstext']),
-        ]);
+        ];
+
+        // 15 bis 36 bleiben leer.
+        $felder = array_pad($felder, self::FELD_KOST1 - 1, '');
+
+        // 37: Kostenstelle. Ohne gepflegte Kostenstelle ein leeres Feld - der
+        // Normalfall fuer jeden Mandanten ohne Kostenrechnung.
+        $felder[] = ($satz['kost1'] ?? '') === '' ? '' : self::t($satz['kost1']);
+
+        return implode(';', $felder);
     }
 
     /** Textfeld in Anführungszeichen, innere Zeichen entschärft. */

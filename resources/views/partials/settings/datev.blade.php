@@ -21,7 +21,8 @@
             <x-nx-input-select
                 name="datevSachkontenlaenge"
                 label="Sachkontenlänge"
-                :options="[['value' => 4, 'label' => '4-stellig'], ['value' => 5, 'label' => '5-stellig']]"
+                :options="collect(\Platform\Reservation\Models\CheckoutSetting::DATEV_SACHKONTENLAENGEN)
+                    ->map(fn ($n) => ['value' => $n, 'label' => $n . '-stellig'])->all()"
                 wire:model="datevSachkontenlaenge"
             />
             {{-- Auswahl statt Textfeld: Ein Wirtschaftsjahr beginnt am
@@ -44,6 +45,32 @@
             <x-nx-input-text name="datevErloes19" label="Erlöskonto 19 %" wire:model="datevErloes19" placeholder="8400" />
             <x-nx-input-text name="datevGeldkonto" label="Gegenkonto (Zahlungseingang)" wire:model="datevGeldkonto" placeholder="1200" />
         </div>
+
+        {{-- Die Laenge steht im Kopf der Datei und sagt DATEV, wie die
+             Kontonummern zu lesen sind. Steht dort 6 und im Feld "8400", liest
+             DATEV ein anderes Konto - oder weist den Stapel zurueck. Beides
+             merkt erst die Kanzlei, und dann ist der Monat gebucht. Hinweis
+             und keine Sperre: Welche Konten gueltig sind, weiss der
+             Kontenrahmen, nicht wir. --}}
+        @php $laengeKrumm = $this->datevKontenHinweis(); @endphp
+        @if ($laengeKrumm !== [])
+            <x-nx-callout variant="warning">
+                {{ count($laengeKrumm) === 1 ? 'Dieses Konto hat' : 'Diese Konten haben' }}
+                nicht {{ $this->datevSachkontenlaenge }} Stellen:
+                {{ implode(', ', $laengeKrumm) }}.
+                Die Sachkontenlänge steht im Kopf der Datei – passt sie nicht zu den Konten,
+                bucht DATEV auf ein anderes Konto oder weist den Stapel zurück.
+            </x-nx-callout>
+        @endif
+
+        {{-- Eine fuers ganze Haus. Kommt je Raum oder Veranstaltung einmal
+             eine eigene dazu, ist der Weg von hier aus kurz. --}}
+        <x-nx-input-text
+            name="datevKostenstelle"
+            label="Kostenstelle (KOST1)"
+            wire:model="datevKostenstelle"
+            placeholder="z.B. 1000 – leer lassen, wenn ohne Kostenrechnung gebucht wird"
+        />
 
         <x-nx-input-select
             name="datevModus"
