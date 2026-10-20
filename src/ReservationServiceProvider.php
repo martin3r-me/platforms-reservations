@@ -3,7 +3,6 @@
 namespace Platform\Reservation;
 
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use RecursiveDirectoryIterator;
@@ -199,7 +198,7 @@ class ReservationServiceProvider extends ServiceProvider
         try {
             if (
                 class_exists(\Platform\Core\PlatformCore::class) &&
-                Schema::hasTable('modules')
+                \Platform\Core\PlatformCore::modulesTableExists()
             ) {
                 \Platform\Core\PlatformCore::registerModule([
                     'key'        => 'reservation',
