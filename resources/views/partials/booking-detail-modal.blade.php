@@ -4,6 +4,9 @@
      (Fußzeile bietet „Bon drucken" an). --}}
 @php
     $detail = $this->detailBooking;
+    // Einmal hier, weil zwei Stellen danach fragen: die ruhige Zeile in den
+    // Eckdaten und der laute Hinweis darunter.
+    $zahlung = $detail?->order?->payment?->zustandText();
     $sym = ($c = strtoupper((string) config('reservation.currency', 'EUR'))) === 'EUR' ? '€' : $c;
 @endphp
 <x-nx-modal size="md" wire:model="showDetail">
@@ -42,6 +45,27 @@
                          verschiedenen Worten verwirrt. --}}
                     <p class="m-0 text-[color:var(--nx-muted)]">Zahlart: {{ ['card' => 'Karte', 'paypal' => 'PayPal', 'applepay' => 'Apple Pay', 'onsite' => 'Vor Ort'][$detail->payment_method] ?? $detail->payment_method }}</p>
                 @endif
+                {{-- Der Zahlungszustand gehoert zu den Eckdaten, nicht daneben.
+
+                     Als eigene Zeile zwischen den beiden Kaesten hing er in der
+                     Luft und sah aus, als haette ihn jemand vergessen. Hier
+                     steht er bei dem, was er beschreibt - derselbe Kasten, in
+                     dem auch Termin, Personen und Kontakt stehen.
+
+                     Nur die RUHIGEN Faelle. Eine gescheiterte Zahlung bleibt
+                     unten als eigener Hinweis: Sie ist der Grund, warum die
+                     Buchung storniert ist, und darf nicht als dritte graue
+                     Zeile mitlaufen. --}}
+                @if (($zahlung['art'] ?? null) && $zahlung['art'] !== 'fehlgeschlagen')
+                    <p class="m-0 flex items-center gap-1.5 text-[color:var(--nx-muted)]">
+                        <span class="h-1.5 w-1.5 shrink-0 rounded-full" style="background: {{ match ($zahlung['art']) {
+                            'ok'      => 'var(--nx-success)',
+                            'zurueck' => 'var(--nx-warning)',
+                            default   => 'var(--nx-faint)',
+                        } }}"></span>
+                        {{ $zahlung['text'] }}
+                    </p>
+                @endif
                 @if ($detail->notes)
                     <p class="m-0 text-[color:var(--nx-muted)]">Anmerkung: {{ $detail->notes }}</p>
                 @endif
@@ -58,23 +82,11 @@
                  Die Wortwahl kommt vom Modell, nicht von hier: Dieselbe Frage
                  stellt sich im Posteingang und in der Auswertung, und drei
                  Fassungen desselben Satzes laufen auseinander. --}}
-            @if ($detail->order?->payment)
-                @php $zahlung = $detail->order->payment->zustandText(); @endphp
-                @if ($zahlung['art'] === 'fehlgeschlagen')
-                    <x-nx-callout variant="warning">
-                        {{ $zahlung['text'] }}.
-                        Die Buchung wurde deshalb storniert – der Platz ist wieder frei.
-                    </x-nx-callout>
-                @else
-                    <p class="m-0 flex flex-wrap items-center gap-2 text-xs text-[color:var(--nx-muted)]">
-                        <span class="h-2 w-2 shrink-0 rounded-full" style="background: {{ match ($zahlung['art']) {
-                            'ok'      => 'var(--nx-success)',
-                            'zurueck' => 'var(--nx-warning)',
-                            default   => 'var(--nx-faint)',
-                        } }}"></span>
-                        {{ $zahlung['text'] }}
-                    </p>
-                @endif
+            @if (($zahlung['art'] ?? null) === 'fehlgeschlagen')
+                <x-nx-callout variant="warning">
+                    {{ $zahlung['text'] }}.
+                    Die Buchung wurde deshalb storniert – der Platz ist wieder frei.
+                </x-nx-callout>
             @endif
 
             {{-- Teilweise zurueckgegangenes Geld.
