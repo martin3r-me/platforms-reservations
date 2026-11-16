@@ -29,8 +29,8 @@
              die Kachel ruhig, statt mit Warnfarbe Aufmerksamkeit zu fordern. --}}
         <x-nx-stat label="Posteingang" :value="(string) $this->stats->unseen_inbox"
             :hint="$this->stats->unseen_inbox === 0
-                ? 'alles gesehen'
-                : ($this->stats->unseen_inbox === 1 ? 'Vorgang ungesehen' : 'Vorgänge ungesehen')"
+                ? 'nichts zu entscheiden'
+                : ($this->stats->unseen_inbox === 1 ? 'wartet auf Entscheidung' : 'warten auf Entscheidung')"
             icon="heroicon-o-inbox"
             :accent="$this->stats->unseen_inbox > 0 ? 'var(--nx-warning)' : 'var(--nx-muted)'"
             :href="route('reservation.inbox.index')" wire:navigate />

@@ -20,7 +20,24 @@ class Sidebar extends Component
         return Auth::user()?->current_team_id;
     }
 
-    /** Ungesehene Vorgänge im Posteingang (team-geteilt). */
+    /**
+     * Vorgänge, bei denen jemand entscheiden muss.
+     *
+     * Vorher stand hier die Zahl der UNGESEHENEN Vorgänge. Bei Culinaria war
+     * das 126 - davon 102 neue Bestellungen, 24 gescheiterte Zahlungen und
+     * NULL Entscheidungen. Eine Zahl, die seit Wochen dreistellig in der
+     * Leiste steht, liest niemand mehr; eine Stornierungsanfrage wäre darin
+     * untergegangen.
+     *
+     * Eine neue Bestellung ist eine Nachricht. Eine Stornierungsanfrage ist
+     * eine Aufgabe - da wartet ein Gast auf eine Entscheidung. Nur die zählt
+     * hier. Meistens steht also gar kein Punkt, und genau deshalb fällt er
+     * auf, wenn er da ist.
+     *
+     * Über den Status und nicht über seen_at: Sonst liesse „Alle als gesehen"
+     * eine offene Entscheidung aus der Zahl verschwinden, ohne sie zu
+     * entscheiden.
+     */
     #[Computed]
     public function inboxCount(): int
     {
@@ -28,10 +45,23 @@ class Sidebar extends Component
             return 0;
         }
 
-        return Order::where('team_id', $this->teamId())
-            ->whereIn('status', Order::INBOX_STATUSES)
-            ->whereNull('seen_at')
-            ->count();
+        return Order::where('team_id', $this->teamId())->zuEntscheiden()->count();
+    }
+
+    /**
+     * Zahl für eine Plakette, gekappt.
+     *
+     * Hier, weil die Leiste sie an sechs Stellen zeichnet - breit und schmal,
+     * je drei Plaketten. Die schmale Fassung kappte schon bei 99, die breite
+     * gar nicht: dieselbe Regel in zwei Fassungen, und eine davon fehlte.
+     *
+     * 999 und nicht 99: Die Termin-Zahl kann bei einem Haus mit vollem
+     * Kalender dreistellig werden, und dann soll dort nicht dauerhaft
+     * dieselbe Zeichenfolge stehen. Breiter als „999+" wird es nie.
+     */
+    public function badge(int $zahl): string
+    {
+        return $zahl > 999 ? '999+' : (string) $zahl;
     }
 
     /** Kommende Veranstaltungen mit Buchungen (operative Sicht). */

@@ -21,7 +21,18 @@ class Inbox extends Component
     /** Einträge je Seite – wie in „Alle Buchungen". */
     public const JE_SEITE = 25;
 
-    public bool $unseenOnly = true;
+    /**
+     * Welcher Ausschnitt gezeigt wird.
+     *
+     * Vorher ein Ja/Nein („nur ungesehene"). Damit liessen sich zwei Dinge
+     * nicht finden, die beide wichtig sind: die Vorgänge, bei denen jemand
+     * ENTSCHEIDEN muss, und die, bei denen die ZAHLUNG nicht zustande kam.
+     * Letztere lagen bei Culinaria zu 24 Stück im Stapel, ohne dass sie
+     * irgendwo aufgefallen wären.
+     */
+    public const FILTER = ['unseen', 'decide', 'payment_failed', 'all'];
+
+    public string $filter = 'unseen';
 
     /** @var array<int,int> ausgewählte Order-IDs für Bulk */
     public array $selected = [];
@@ -51,11 +62,49 @@ class Inbox extends Component
             ->with(['event', 'payment', 'bookings'])
             ->orderByDesc('updated_at');
 
-        if ($this->unseenOnly) {
-            $query->whereNull('seen_at');
-        }
+        $this->schaerfen($query);
 
         return $query->paginate(self::JE_SEITE);
+    }
+
+    /** Den gewählten Ausschnitt auf eine Abfrage legen. */
+    protected function schaerfen($query, ?string $filter = null): void
+    {
+        match ($filter ?? $this->filter) {
+            'decide'         => $query->zuEntscheiden(),
+            'payment_failed' => $query->zahlungGescheitert(),
+            'all'            => null,
+            default          => $query->whereNull('seen_at'),
+        };
+    }
+
+    /**
+     * Die Zahl an jedem Filter.
+     *
+     * Ohne sie müsste man jeden anklicken, um zu sehen, ob etwas dahinter
+     * liegt - und genau das tut niemand. Die 24 gescheiterten Zahlungen bei
+     * Culinaria lagen monatelang da, weil nichts auf sie hinwies.
+     *
+     * @return array<string, int>
+     */
+    #[Computed]
+    public function zaehler(): array
+    {
+        $zahl = function (string $filter): int {
+            $query = Order::where('team_id', $this->teamId())
+                ->whereIn('status', Order::INBOX_STATUSES);
+
+            $this->schaerfen($query, $filter);
+
+            return $query->count();
+        };
+
+        return [
+            'unseen'         => $zahl('unseen'),
+            'decide'         => $zahl('decide'),
+            'payment_failed' => $zahl('payment_failed'),
+            'all'            => $zahl('all'),
+        ];
     }
 
     #[Computed]
@@ -71,7 +120,7 @@ class Inbox extends Component
 
     protected function refresh(): void
     {
-        unset($this->entries, $this->unseenCount);
+        unset($this->entries, $this->unseenCount, $this->zaehler);
     }
 
     public function markSeen(int $id): void
@@ -132,7 +181,7 @@ class Inbox extends Component
         $this->refresh();
     }
 
-    public function updatedUnseenOnly(): void
+    public function updatedFilter(): void
     {
         $this->selected = [];
 

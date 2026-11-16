@@ -35,13 +35,47 @@
                     @if ($detail->guest_email) · {{ $detail->guest_email }} @endif
                     @if ($detail->guest_phone) · {{ $detail->guest_phone }} @endif
                 </p>
-                @if ($detail->payment_method)
+                @if ($detail->payment_method && ! $detail->order?->payment)
+                    {{-- Nur noch der Rueckfall fuer Buchungen ohne Zahlungssatz
+                         (Backoffice-/Telefonweg). Liegt eine Zahlung vor, sagt
+                         der Kasten unten mehr, und zweimal dieselbe Angabe in
+                         verschiedenen Worten verwirrt. --}}
                     <p class="m-0 text-[color:var(--nx-muted)]">Zahlart: {{ ['card' => 'Karte', 'paypal' => 'PayPal', 'applepay' => 'Apple Pay', 'onsite' => 'Vor Ort'][$detail->payment_method] ?? $detail->payment_method }}</p>
                 @endif
                 @if ($detail->notes)
                     <p class="m-0 text-[color:var(--nx-muted)]">Anmerkung: {{ $detail->notes }}</p>
                 @endif
             </div>
+
+            {{-- Was mit dem Geld passiert ist.
+
+                 Die wichtigste Zeile steht bei einer stornierten Buchung: Ob
+                 das Haus abgesagt hat oder ob der Gast an der Kasse nicht
+                 durchkam, stand bisher NIRGENDS. Das sind sehr verschiedene
+                 Faelle - beim zweiten hat jemand bestellen wollen, und das
+                 ist ein Anruf wert.
+
+                 Die Wortwahl kommt vom Modell, nicht von hier: Dieselbe Frage
+                 stellt sich im Posteingang und in der Auswertung, und drei
+                 Fassungen desselben Satzes laufen auseinander. --}}
+            @if ($detail->order?->payment)
+                @php $zahlung = $detail->order->payment->zustandText(); @endphp
+                @if ($zahlung['art'] === 'fehlgeschlagen')
+                    <x-nx-callout variant="warning">
+                        {{ $zahlung['text'] }}.
+                        Die Buchung wurde deshalb storniert – der Platz ist wieder frei.
+                    </x-nx-callout>
+                @else
+                    <p class="m-0 flex flex-wrap items-center gap-2 text-xs text-[color:var(--nx-muted)]">
+                        <span class="h-2 w-2 shrink-0 rounded-full" style="background: {{ match ($zahlung['art']) {
+                            'ok'      => 'var(--nx-success)',
+                            'zurueck' => 'var(--nx-warning)',
+                            default   => 'var(--nx-faint)',
+                        } }}"></span>
+                        {{ $zahlung['text'] }}
+                    </p>
+                @endif
+            @endif
 
             {{-- Teilweise zurueckgegangenes Geld.
 

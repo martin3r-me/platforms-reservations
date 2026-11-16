@@ -65,6 +65,42 @@ class Order extends Model
             ->count();
     }
 
+    /**
+     * Zahlungszustände, die „nicht zustande gekommen" bedeuten.
+     *
+     * An einer Stelle, weil drei Orte danach fragen: inboxType(), der Filter
+     * im Posteingang und die Zahl auf der Startseite. Dreimal geschrieben
+     * liefen sie auseinander, und dann zeigt der Filter andere Vorgänge, als
+     * die Zahl daneben zählt.
+     */
+    public const ZAHLUNG_GESCHEITERT = ['failed', 'expired', 'canceled'];
+
+    /**
+     * Vorgänge, bei denen jemand ENTSCHEIDEN muss.
+     *
+     * Nicht „ungesehen": Eine Stornierungsanfrage bleibt eine Aufgabe, bis sie
+     * freigegeben oder abgelehnt ist – auch wenn sie längst jemand angesehen
+     * hat. Vorher zählte die Seitenleiste ungesehene Vorgänge, und ein Klick
+     * auf „Alle als gesehen" liess eine offene Entscheidung aus der Zahl
+     * verschwinden, ohne dass sie entschieden war.
+     */
+    public function scopeZuEntscheiden($query)
+    {
+        return $query->where('status', self::STATUS_CANCELLATION_REQUESTED);
+    }
+
+    /**
+     * Vorgänge, bei denen die Zahlung nicht zustande kam.
+     *
+     * Storniert IST hier nicht genug: Eine vom Haus stornierte Bestellung
+     * steht genauso da. Erst die Zahlung sagt, ob der Gast nicht durchkam.
+     */
+    public function scopeZahlungGescheitert($query)
+    {
+        return $query->where('status', self::STATUS_CANCELLED)
+            ->whereHas('payment', fn ($q) => $q->whereIn('status', self::ZAHLUNG_GESCHEITERT));
+    }
+
     /** Für den Posteingang relevante Order-Status. */
     public const INBOX_STATUSES = [
         self::STATUS_CONFIRMED,
@@ -83,7 +119,7 @@ class Order extends Model
         }
 
         if ($this->status === self::STATUS_CANCELLED) {
-            return in_array($this->payment?->status, ['failed', 'expired', 'canceled'], true)
+            return in_array($this->payment?->status, self::ZAHLUNG_GESCHEITERT, true)
                 ? 'payment_failed'
                 : 'cancelled';
         }

@@ -60,7 +60,11 @@ class Dashboard extends Component
             //
             // Was dort hingehört, ist etwas, das jemand tun kann: die
             // ungesehenen Vorgänge.
-            'unseen_inbox'     => Order::ungeseheneImPosteingang($teamId),
+            // Dasselbe wie die Plakette in der Leiste: Vorgaenge, bei denen
+            // jemand ENTSCHEIDEN muss. Stuenden hier die ungesehenen und dort
+            // die offenen Entscheidungen, nennten zwei Stellen dieselbe Kachel
+            // mit verschiedenen Zahlen.
+            'unseen_inbox'     => Order::where('team_id', $teamId)->zuEntscheiden()->count(),
             'upcoming_events'  => Event::forTeam($teamId)->upcoming()->count(),
             'month_revenue'    => $monthRevenue,
             'approved_items'   => MenuItem::forTeam($teamId)->approved()->count(),

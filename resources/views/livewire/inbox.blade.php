@@ -30,10 +30,36 @@
         {{-- Filter + Bulk (rahmenlos) --}}
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
             <div class="flex items-center gap-1">
-                <button type="button" wire:click="$set('unseenOnly', true)"
-                    class="rounded-full px-2.5 py-1 transition-colors {{ $unseenOnly ? 'bg-[color:var(--nx-active)] font-medium text-[color:var(--nx-text)]' : 'text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]' }}">Ungesehen ({{ $this->unseenCount }})</button>
-                <button type="button" wire:click="$set('unseenOnly', false)"
-                    class="rounded-full px-2.5 py-1 transition-colors {{ !$unseenOnly ? 'bg-[color:var(--nx-active)] font-medium text-[color:var(--nx-text)]' : 'text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]' }}">Alle</button>
+                {{-- Vier Ausschnitte statt Ungesehen/Alle. "Zu entscheiden" und
+                     "Zahlung gescheitert" liessen sich vorher gar nicht finden -
+                     die 24 gescheiterten Zahlungen bei Culinaria lagen monatelang
+                     im Stapel, ohne dass irgendwo etwas auf sie hinwies.
+
+                     Die Zahl steht am Filter, nicht dahinter: Sonst muesste man
+                     jeden anklicken, um zu sehen, ob etwas darin liegt. Ein Filter
+                     ohne Inhalt wird blass - weg darf er nicht, sonst heisst sein
+                     Verschwinden fuer den Leser "gibt es nicht" statt "ist leer". --}}
+                @php
+                    $filterNamen = [
+                        'unseen'         => 'Ungesehen',
+                        'decide'         => 'Zu entscheiden',
+                        'payment_failed' => 'Zahlung gescheitert',
+                        'all'            => 'Alle',
+                    ];
+                    $zaehler = $this->zaehler;
+                @endphp
+                @foreach ($filterNamen as $schluessel => $name)
+                    @php
+                        $aktiv = $filter === $schluessel;
+                        $leer  = ($zaehler[$schluessel] ?? 0) === 0 && $schluessel !== 'all';
+                    @endphp
+                    <button type="button" wire:click="$set('filter', '{{ $schluessel }}')"
+                        class="rounded-full px-2.5 py-1 transition-colors {{ $aktiv
+                            ? 'bg-[color:var(--nx-active)] font-medium text-[color:var(--nx-text)]'
+                            : ($leer
+                                ? 'text-[color:var(--nx-faint)] hover:bg-[color:var(--nx-hover)]'
+                                : 'text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]') }}">{{ $name }}@unless ($schluessel === 'all') ({{ $zaehler[$schluessel] ?? 0 }})@endunless</button>
+                @endforeach
             </div>
             <div class="ml-auto flex items-center gap-2">
                 @if (count($selected))
@@ -82,7 +108,12 @@
                         </div>
                     </div>
                 @empty
-                    <x-nx-empty icon="heroicon-o-check-circle">{{ $unseenOnly ? 'Alles gesehen – nichts Neues im Posteingang.' : 'Keine Vorgänge.' }}</x-nx-empty>
+                    <x-nx-empty icon="heroicon-o-check-circle">{{ match ($filter) {
+                        'unseen'         => 'Alles gesehen – nichts Neues im Posteingang.',
+                        'decide'         => 'Nichts zu entscheiden – keine offene Stornierungsanfrage.',
+                        'payment_failed' => 'Keine gescheiterte Zahlung.',
+                        default          => 'Keine Vorgänge.',
+                    } }}</x-nx-empty>
                 @endforelse
             </div>
         </x-nx-card>
