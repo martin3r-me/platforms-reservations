@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Platform\Reservation\Livewire\Concerns\PrintsBookingReceipt;
+use Platform\Reservation\Livewire\Concerns\ShowsBookingDetail;
 use Platform\Reservation\Models\Order;
 use Platform\Reservation\Services\OrderCancellationService;
 
@@ -16,7 +18,19 @@ use Platform\Reservation\Services\OrderCancellationService;
  */
 class Inbox extends Component
 {
+    use PrintsBookingReceipt;
+    use ShowsBookingDetail;
     use WithPagination;
+
+    /**
+     * Bestellung, deren Buchungen zur Auswahl aufgeklappt sind.
+     *
+     * Nur noetig, wenn eine Bestellung MEHRERE Buchungen hat - eine je Pause.
+     * Dann hat ein Klick auf die Zeile kein eindeutiges Ziel, und die Zeile
+     * fragt zurueck, statt zu raten. Bei einer Buchung passiert das nie: Da
+     * oeffnet der Klick direkt.
+     */
+    public ?int $aufgeklappt = null;
 
     /** Einträge je Seite – wie in „Alle Buchungen". */
     public const JE_SEITE = 25;
@@ -113,6 +127,61 @@ class Inbox extends Component
         return Order::ungeseheneImPosteingang($this->teamId());
     }
 
+    /**
+     * Klick auf eine Zeile.
+     *
+     * Der Posteingang listet BESTELLUNGEN, das Fenster zeigt BUCHUNGEN - und
+     * eine Bestellung kann mehrere haben, eine je Pause. Bei genau einer
+     * oeffnet der Klick sie direkt; bei mehreren klappt die Zeile auf und
+     * laesst waehlen. Raten waere hier falsch: Es gibt keinen Grund, warum
+     * die erste Pause gemeint sein sollte.
+     */
+    public function oeffneVorgang(int $orderId): void
+    {
+        $order = $this->order($orderId);
+
+        if (! $order) {
+            return;
+        }
+
+        $buchungen = $order->bookings;
+
+        if ($buchungen->count() === 1) {
+            $this->aufgeklappt = null;
+            $this->openDetail($buchungen->first()->id);
+
+            return;
+        }
+
+        // Zweiter Klick schliesst wieder.
+        $this->aufgeklappt = $this->aufgeklappt === $orderId ? null : $orderId;
+    }
+
+    /**
+     * Die Bestellung zur gerade geoeffneten Buchung.
+     *
+     * Das Fenster kennt nur die Buchung; „gesehen" und die Entscheidung ueber
+     * ein Storno haengen aber an der Bestellung. Ohne diesen Weg zurueck
+     * koennte der Fuss des Fensters nichts davon anbieten.
+     */
+    #[Computed]
+    public function detailOrder(): ?Order
+    {
+        $orderId = $this->detailBooking?->order_id;
+
+        return $orderId ? $this->order($orderId) : null;
+    }
+
+    /** Als gesehen markieren, ohne das Fenster zu verlassen. */
+    public function markSeenAusDetail(): void
+    {
+        if ($order = $this->detailOrder) {
+            $order->update(['seen_at' => now()]);
+        }
+
+        $this->refresh();
+    }
+
     protected function order(int $id): ?Order
     {
         return Order::where('team_id', $this->teamId())->find($id);
@@ -120,7 +189,7 @@ class Inbox extends Component
 
     protected function refresh(): void
     {
-        unset($this->entries, $this->unseenCount, $this->zaehler);
+        unset($this->entries, $this->unseenCount, $this->zaehler, $this->detailOrder);
     }
 
     public function markSeen(int $id): void
@@ -162,6 +231,11 @@ class Inbox extends Component
             session()->flash('inbox_message', 'Storno freigegeben & Rückerstattung ausgelöst.');
         }
 
+        // Entschieden heisst auch: Das Fenster hat seinen Zweck erfuellt.
+        if ($this->showDetail) {
+            $this->closeDetail();
+        }
+
         $this->refresh();
     }
 
@@ -176,6 +250,10 @@ class Inbox extends Component
                 'seen_at'                   => now(),
             ]);
             session()->flash('inbox_message', 'Storno-Anfrage abgelehnt – Bestellung bleibt bestätigt.');
+        }
+
+        if ($this->showDetail) {
+            $this->closeDetail();
         }
 
         $this->refresh();

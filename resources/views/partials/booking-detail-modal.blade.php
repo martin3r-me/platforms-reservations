@@ -143,13 +143,40 @@
         </div>
     @endif
 
+    {{-- Der Fuss richtet sich nach dem ZUSTAND, nicht nach der Seite.
+
+         Dieselbe Buchung soll ueberall dieselben sinnvollen Knoepfe haben.
+         Einzige Ausnahme ist "Als gesehen" - das Konzept gibt es nur im
+         Posteingang, deshalb reicht die einbindende Ansicht $posteingang
+         herein.
+
+         Bon drucken faellt bei einer stornierten Buchung weg, und zwar
+         ueberall: Ein Laufzettel fuer etwas, das nicht stattfindet, ist in
+         der Kueche schlimmer als keiner. --}}
+    @php
+        $posteingang = $posteingang ?? false;
+        $storniert   = $detail?->status === \Platform\Reservation\Models\Booking::STATUS_CANCELLED;
+        $entscheiden = $posteingang
+            && $detail?->order?->status === \Platform\Reservation\Models\Order::STATUS_CANCELLATION_REQUESTED;
+    @endphp
+
     <x-slot name="footer">
-        @if ($this->printingAvailable && $detail)
+        @if ($entscheiden)
+            <x-nx-button variant="danger" wire:click="approveCancellation({{ $detail->order_id }})"
+                wire:confirm="Storno freigeben und Zahlung erstatten?">Freigeben &amp; erstatten</x-nx-button>
+            <x-nx-button variant="ghost" wire:click="rejectCancellation({{ $detail->order_id }})"
+                wire:confirm="Storno-Anfrage ablehnen?">Ablehnen</x-nx-button>
+        @elseif ($this->printingAvailable && $detail && ! $storniert)
             <x-nx-button wire:click="openPrintModal({{ $detail->id }})">
                 @svg('heroicon-o-printer', 'w-4 h-4')
                 <span>Bon drucken</span>
             </x-nx-button>
         @endif
+
+        @if ($posteingang && $detail?->order && ! $detail->order->seen_at)
+            <x-nx-button wire:click="markSeenAusDetail">Als gesehen markieren</x-nx-button>
+        @endif
+
         <x-nx-button wire:click="closeDetail">Schließen</x-nx-button>
     </x-slot>
 </x-nx-modal>

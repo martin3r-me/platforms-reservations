@@ -76,8 +76,14 @@
             <div>
                 @forelse ($this->entries as $order)
                     @php [$label, $variant, $icon] = $typeMap[$order->inboxType()] ?? ['Vorgang', 'neutral', 'heroicon-o-bell']; @endphp
-                    <div wire:key="inbox-{{ $order->id }}" class="flex flex-wrap items-center gap-3 border-b border-[color:var(--nx-line)] px-4 py-3 last:border-0 {{ $order->seen_at ? '' : 'bg-[color:var(--nx-accent-soft)]' }}">
-                        <input type="checkbox" wire:model.live="selected" value="{{ $order->id }}" class="h-4 w-4 rounded-[4px] accent-[var(--nx-accent)]" />
+                    {{-- Die Zeile oeffnet den Vorgang. Das Haekchen und die
+                         Knoepfe rechts duerfen das nicht ausloesen, deshalb
+                         stoppen sie den Klick. --}}
+                    <div wire:key="inbox-{{ $order->id }}"
+                         wire:click="oeffneVorgang({{ $order->id }})"
+                         class="group flex cursor-pointer flex-wrap items-center gap-3 border-b border-[color:var(--nx-line)] px-4 py-3 transition-colors last:border-0 hover:bg-[color:var(--nx-hover)] {{ $order->seen_at ? '' : 'bg-[color:var(--nx-accent-soft)]' }}">
+                        <input type="checkbox" wire:model.live="selected" value="{{ $order->id }}" wire:click.stop
+                               class="h-4 w-4 rounded-[4px] accent-[var(--nx-accent)]" />
 
                         <div class="w-40 shrink-0">
                             <x-nx-badge :variant="$variant">{{ $label }}</x-nx-badge>
@@ -90,12 +96,15 @@
                                 @if ($order->event){{ $order->event->name }} · @endif
                                 {{ number_format((float) $order->total_amount, 2, ',', '.') }} {{ $sym }}
                                 · {{ $order->bookings->count() }} {{ $order->bookings->count() === 1 ? 'Pause' : 'Pausen' }}
-                                @if ($order->payment) · Zahlung: {{ $order->payment->status }} @endif
+                                {{-- Hier stand der rohe Mollie-Schluessel ("expired").
+                                     Derselbe Satz wie im Fenster, damit beides
+                                     dasselbe sagt - und zwar auf Deutsch. --}}
+                                @if ($order->payment) · {{ $order->payment->zustandText()['text'] }} @endif
                                 · {{ $order->updated_at?->locale('de')->diffForHumans() }}
                             </p>
                         </div>
 
-                        <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                        <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5" wire:click.stop>
                             @if ($order->inboxType() === 'cancellation_requested')
                                 <x-nx-button variant="danger" wire:click="approveCancellation({{ $order->id }})" wire:confirm="Storno freigeben und Zahlung erstatten?">Freigeben &amp; erstatten</x-nx-button>
                                 <x-nx-button variant="ghost" wire:click="rejectCancellation({{ $order->id }})" wire:confirm="Storno-Anfrage ablehnen?">Ablehnen</x-nx-button>
@@ -107,6 +116,21 @@
                             @endif
                         </div>
                     </div>
+                    {{-- Mehrere Pausen in einer Bestellung: Der Klick hat kein
+                         eindeutiges Ziel, also fragt die Zeile zurueck, statt
+                         die erste zu nehmen. --}}
+                    @if ($aufgeklappt === $order->id)
+                        <div wire:key="inbox-pausen-{{ $order->id }}" class="border-b border-[color:var(--nx-line)] bg-[color:var(--nx-bg)] px-4 py-2">
+                            <p class="m-0 mb-1.5 text-[11px] text-[color:var(--nx-muted)]">Diese Bestellung hat mehrere Pausen – welche möchten Sie sehen?</p>
+                            <div class="flex flex-wrap gap-1.5">
+                                @foreach ($order->bookings as $buchung)
+                                    <x-nx-button wire:key="inbox-pause-{{ $buchung->id }}" wire:click="openDetail({{ $buchung->id }})">
+                                        {{ $buchung->slot?->displayLabel() ?? 'Pause' }}
+                                    </x-nx-button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 @empty
                     <x-nx-empty icon="heroicon-o-check-circle">{{ match ($filter) {
                         'unseen'         => 'Alles gesehen – nichts Neues im Posteingang.',
@@ -132,5 +156,11 @@
             {{ $this->entries->links('reservation::partials.pagination') }}
         </div>
     </div>
+    {{-- Dasselbe Fenster wie in "Alle Buchungen" und im VA-Dashboard.
+         $posteingang schaltet die beiden Knoepfe frei, die es nur hier gibt:
+         entscheiden und als gesehen markieren. --}}
+    @include('reservation::partials.booking-detail-modal', ['posteingang' => true])
+    @include('reservation::partials.booking-print-modal')
+
     </x-ui-page-container>
 </x-ui-page>
