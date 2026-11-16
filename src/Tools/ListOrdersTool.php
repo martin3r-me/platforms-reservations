@@ -185,7 +185,9 @@ class ListOrdersTool implements ToolContract, ToolMetadataContract
             'method'    => $payment->method,
             'amount'    => round((float) $payment->amount, 2),
             'paid_at'   => $payment->paid_at?->toDateTimeString(),
-            'dauer_sek' => ($von && $bis) ? $bis->diffInSeconds($von) : null,
+            // diffInSeconds ist vorzeichenbehaftet - ohne die Richtung kam
+            // hier eine negative Dauer heraus.
+            'dauer_sek' => ($von && $bis) ? $von->diffInSeconds($bis) : null,
         ];
     }
 

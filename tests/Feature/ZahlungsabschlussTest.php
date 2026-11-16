@@ -126,4 +126,30 @@ class ZahlungsabschlussTest extends TestCase
         $this->assertSame(Order::STATUS_CANCELLED, $bestellung->fresh()->status);
         $this->assertSame(Booking::STATUS_CANCELLED, $buchung->fresh()->status);
     }
+    /**
+     * Mollie-Zeitstempel kommen in UTC - gespeichert wird in unserer Zone.
+     *
+     * Sonst stand paid_at im Winter eine Stunde, im Sommer zwei Stunden vor
+     * allen anderen Zeiten derselben Bestellung: Es sah aus, als waere bezahlt
+     * worden, bevor die Bestellung entstand.
+     */
+    public function test_ein_mollie_zeitstempel_landet_in_unserer_zeitzone(): void
+    {
+        config(['app.timezone' => 'Europe/Berlin']);
+
+        // Winter: UTC+1.
+        $winter = MolliePaymentService::zeitpunkt('2026-11-16T09:45:25+00:00');
+
+        $this->assertNotNull($winter);
+        $this->assertSame('2026-11-16 10:45:25', $winter->format('Y-m-d H:i:s'));
+
+        // Sommer: UTC+2. Eine feste Verschiebung waere hier schon falsch.
+        $sommer = MolliePaymentService::zeitpunkt('2026-07-16T09:45:25+00:00');
+
+        $this->assertSame('2026-07-16 11:45:25', $sommer->format('Y-m-d H:i:s'));
+
+        // Ohne Zeitpunkt bleibt es null - nicht "jetzt".
+        $this->assertNull(MolliePaymentService::zeitpunkt(null));
+    }
+
 }

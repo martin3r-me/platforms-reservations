@@ -113,7 +113,7 @@ class MolliePaymentService
         $payment->update([
             'status'  => $geldZurueck ? $payment->status : $molliePayment->status,
             'method'  => $molliePayment->method,
-            'paid_at' => $molliePayment->paidAt ? Carbon::parse($molliePayment->paidAt) : null,
+            'paid_at' => self::zeitpunkt($molliePayment->paidAt),
         ]);
 
         // Vollständige Status-Behandlung:
@@ -191,6 +191,31 @@ class MolliePaymentService
      * @param  bool  $fehlgeschlagen  fehlgeschlagen, abgebrochen oder verfallen
      * @return bool  ob DIESER Aufruf bestätigt hat – nur dann geht die Mail raus
      */
+    /**
+     * Mollie-Zeitstempel in die Zeitzone der Anwendung bringen.
+     *
+     * Mollie liefert ISO-8601 MIT Zeitzone, fast immer UTC
+     * ("2026-11-16T09:45:25+00:00"). Carbon::parse behaelt diese Zone bei, und
+     * Eloquent schreibt den Zeitpunkt dann so, wie er dasteht - ohne
+     * umzurechnen. Alle anderen Zeitstempel entstehen ueber now() in
+     * Europe/Berlin.
+     *
+     * Folge: paid_at lag im Winter eine Stunde, im Sommer zwei Stunden vor
+     * allen anderen Zeiten derselben Bestellung. Im Backoffice sah es so aus,
+     * als waere bezahlt worden, BEVOR die Bestellung ueberhaupt entstand.
+     *
+     * Aufgefallen beim Nachsehen der gescheiterten Zahlungen bei Culinaria:
+     * Jede bezahlte Bestellung zeigte paid_at rund 59 Minuten vor created_at.
+     */
+    public static function zeitpunkt(mixed $isoZeit): ?Carbon
+    {
+        if (! $isoZeit) {
+            return null;
+        }
+
+        return Carbon::parse($isoZeit)->setTimezone(config('app.timezone'));
+    }
+
     public function zustandUebernehmen(Order $order, bool $bezahlt, bool $fehlgeschlagen, ?string $method = null): bool
     {
         // Offen, laufend, autorisiert: nichts zu tun, die Rückkehrseite pollt.
