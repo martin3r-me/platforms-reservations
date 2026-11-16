@@ -38,7 +38,10 @@ class ListOrdersTool implements ToolContract, ToolMetadataContract
             . 'new / cancellation_requested / cancelled / payment_failed - das ist die Zahl am Menüpunkt, '
             . 'aufgeschlüsselt. REST-Parameter (optional): status (pending|confirmed|cancelled|'
             . 'cancellation_requested), inbox_type (new|cancellation_requested|cancelled|payment_failed), '
-            . 'unseen (bool - nur ungesehene), event_uuid, limit (1-200, Default 50).';
+            . 'unseen (bool - nur ungesehene), event_uuid, limit (1-200, Default 50). '
+            . 'Zu jeder Bestellung steht "payment" mit status, method, mollie_id, amount und '
+            . 'dauer_sek - bei gescheiterten Zahlungen sagt method, ob der Gast ueberhaupt eine '
+            . 'Zahlart gewaehlt hat.';
     }
 
     public function getSchema(): array
@@ -135,7 +138,7 @@ class ListOrdersTool implements ToolContract, ToolMetadataContract
                     'event'         => $order->event?->name,
                     'bookings'      => $order->bookings->count(),
                     'total_amount'  => round((float) $order->total_amount, 2),
-                    'payment'       => $order->payment?->status,
+                    'payment'       => $this->zahlung($order),
                     'created_at'    => $order->created_at?->toDateTimeString(),
                     'cancellation_requested_at' => $order->cancellation_requested_at?->toDateTimeString(),
                 ])->all(),
@@ -143,6 +146,47 @@ class ListOrdersTool implements ToolContract, ToolMetadataContract
         } catch (\Throwable $e) {
             return ToolResult::error('Fehler beim Laden der Bestellungen: ' . $e->getMessage(), 'EXECUTION_ERROR');
         }
+    }
+
+    /**
+     * Was wir über die Zahlung wissen – ohne Mollie zu fragen.
+     *
+     * Die Zahlart ist bei einer NICHT zustande gekommenen Zahlung die
+     * wichtigste Angabe, und sie beantwortet zwei verschiedene Fragen:
+     *
+     * method = null  heisst, der Gast war bei Mollie und hat dort nicht
+     *                einmal eine Zahlart gewaehlt - Mollie traegt sie erst
+     *                ein, wenn er sich entschieden hat.
+     * method gesetzt heisst, er hat gewaehlt und es trotzdem nicht zu Ende
+     *                gebracht - dann liegt es an der Methode oder am Rueckweg.
+     *
+     * Dazu die Spanne von created_at bis updated_at: Wer nach zwanzig
+     * Sekunden weg ist, hat abgebrochen; wer nach zwanzig Minuten ablaeuft,
+     * hat es versucht.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function zahlung(Order $order): ?array
+    {
+        $payment = $order->payment;
+
+        if (! $payment) {
+            return null;
+        }
+
+        $von = $payment->created_at;
+        $bis = $payment->updated_at;
+
+        return [
+            'status'    => $payment->status,
+            // Die ID reicht, um den Vorgang bei Mollie nachzuschlagen - auch
+            // von jemandem, der dort Zugang hat und wir nicht.
+            'mollie_id' => $payment->mollie_id,
+            'method'    => $payment->method,
+            'amount'    => round((float) $payment->amount, 2),
+            'paid_at'   => $payment->paid_at?->toDateTimeString(),
+            'dauer_sek' => ($von && $bis) ? $bis->diffInSeconds($von) : null,
+        ];
     }
 
     /**
