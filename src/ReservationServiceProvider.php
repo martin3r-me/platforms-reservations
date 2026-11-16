@@ -184,6 +184,7 @@ class ReservationServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Reservation\Tools\TranslationsUpdateTool());
 
             // Storno (Team-/Freigabe-Storno + Rückerstattung)
+            $registry->register(new \Platform\Reservation\Tools\ListOrdersTool());
             $registry->register(new \Platform\Reservation\Tools\OrderCancelTool());
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning(
