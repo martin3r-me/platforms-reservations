@@ -13,9 +13,26 @@
         <x-ui-sidebar-item :href="route('reservation.inbox.index')">
             @svg('heroicon-o-inbox', 'w-4 h-4 text-[color:var(--nx-muted)]')
             <span class="ml-2 text-sm">Posteingang</span>
-            @if ($this->inboxCount > 0)
-                <span class="ml-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[color:var(--nx-accent)] px-1 text-[10px] font-semibold text-white">{{ $this->badge($this->inboxCount) }}</span>
-            @endif
+            {{-- Zwei Plaketten, und der Unterschied steckt in der Farbe.
+
+                 Gedeckt = Nachricht: Es ist etwas hereingekommen, zu tun ist
+                 nichts. Farbig = Aufgabe: Da wartet ein Gast auf eine
+                 Entscheidung.
+
+                 Beides in einer Zahl war der Ausgangspunkt - 126, darin null
+                 Entscheidungen. Nur die Aufgaben zu zeigen hiesse, dass man
+                 gar nicht mehr sieht, ob etwas hereinkommt. Also beides, aber
+                 nicht gleich laut. --}}
+            <span class="ml-auto flex items-center gap-1">
+                @if ($this->neuesCount > 0)
+                    <span class="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[color:var(--nx-accent-soft)] px-1 text-[10px] font-semibold tabular-nums text-[color:var(--nx-muted)]"
+                          title="{{ $this->neuesCount }} ungesehen">{{ $this->badge($this->neuesCount) }}</span>
+                @endif
+                @if ($this->inboxCount > 0)
+                    <span class="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[color:var(--nx-accent)] px-1 text-[10px] font-semibold tabular-nums text-white"
+                          title="{{ $this->inboxCount }} warten auf eine Entscheidung">{{ $this->badge($this->inboxCount) }}</span>
+                @endif
+            </span>
         </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('reservation.operations.index')">
             @svg('heroicon-o-fire', 'w-4 h-4 text-[color:var(--nx-muted)]')
@@ -110,8 +127,15 @@
         <div class="flex flex-col gap-2">
             <a href="{{ route('reservation.inbox.index') }}" wire:navigate class="relative flex items-center justify-center p-2 rounded-md text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]" title="Posteingang">
                 @svg('heroicon-o-inbox', 'w-5 h-5')
+                {{-- Eingeklappt ist nur Platz fuer EINE Plakette. Dann die
+                     Aufgabe - sie ist der Grund, warum jemand hinsehen muss.
+                     Liegt keine an, tritt die leise Zahl an ihre Stelle. --}}
                 @if ($this->inboxCount > 0)
-                    <span class="absolute right-1 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[color:var(--nx-accent)] px-1 text-[9px] font-semibold text-white">{{ $this->badge($this->inboxCount) }}</span>
+                    <span class="absolute right-1 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[color:var(--nx-accent)] px-1 text-[9px] font-semibold tabular-nums text-white"
+                          title="{{ $this->inboxCount }} warten auf eine Entscheidung">{{ $this->badge($this->inboxCount) }}</span>
+                @elseif ($this->neuesCount > 0)
+                    <span class="absolute right-1 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[color:var(--nx-accent-soft)] px-1 text-[9px] font-semibold tabular-nums text-[color:var(--nx-muted)]"
+                          title="{{ $this->neuesCount }} ungesehen">{{ $this->badge($this->neuesCount) }}</span>
                 @endif
             </a>
             <a href="{{ route('reservation.operations.index') }}" wire:navigate class="relative flex items-center justify-center p-2 rounded-md text-[color:var(--nx-muted)] hover:bg-[color:var(--nx-hover)]" title="Veranstaltungen">

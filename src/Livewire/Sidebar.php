@@ -55,13 +55,32 @@ class Sidebar extends Component
      * je drei Plaketten. Die schmale Fassung kappte schon bei 99, die breite
      * gar nicht: dieselbe Regel in zwei Fassungen, und eine davon fehlte.
      *
-     * 999 und nicht 99: Die Termin-Zahl kann bei einem Haus mit vollem
-     * Kalender dreistellig werden, und dann soll dort nicht dauerhaft
-     * dieselbe Zeichenfolge stehen. Breiter als „999+" wird es nie.
+     * 99 und nicht 999: Seit der Posteingang zwei Plaketten nebeneinander
+     * tragen kann, zaehlt jedes Zeichen Breite. Und keine dieser Zahlen wird
+     * oberhalb von hundert noch genauer gelesen - „mehr als 99" ist dort die
+     * ganze Aussage.
      */
     public function badge(int $zahl): string
     {
-        return $zahl > 999 ? '999+' : (string) $zahl;
+        return $zahl > 99 ? '99+' : (string) $zahl;
+    }
+
+    /**
+     * Ungesehene Vorgänge – die Nachrichten.
+     *
+     * Bleibt sichtbar, aber LEISE: gedeckte Plakette, keine Signalfarbe.
+     * Dass etwas hereingekommen ist, will man sehen; es ist nur nichts, was
+     * jemand tun muss. Die farbige Plakette daneben ist fuer das, was
+     * jemand tun muss.
+     */
+    #[Computed]
+    public function neuesCount(): int
+    {
+        if (! $this->teamId()) {
+            return 0;
+        }
+
+        return Order::ungeseheneImPosteingang($this->teamId());
     }
 
     /** Kommende Veranstaltungen mit Buchungen (operative Sicht). */
